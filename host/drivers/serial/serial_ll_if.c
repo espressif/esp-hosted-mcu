@@ -39,7 +39,7 @@ static struct rx_data {
 } r;
 
 /* data structures needed for serial driver */
-static QueueHandle_t to_serial_ll_intf_queue[MAX_SERIAL_INTF];
+static queue_handle_t to_serial_ll_intf_queue[MAX_SERIAL_INTF];
 static serial_ll_handle_t * interface_handle_g[MAX_SERIAL_INTF] = {NULL};
 static uint8_t conn_num = 0;
 
@@ -78,7 +78,7 @@ static int serial_ll_open(serial_ll_handle_t *serial_ll_hdl)
 
 	if (serial_ll_hdl->queue) {
 		/* clean up earlier queue */
-		vQueueDelete(serial_ll_hdl->queue);
+		g_h.funcs->_h_destroy_queue(serial_ll_hdl->queue);
 	}
 
 	/* Queue - serial rx */
@@ -120,7 +120,7 @@ static int serial_ll_close(serial_ll_handle_t * serial_ll_hdl)
 	serial_ll_hdl->state = DESTROY;
 
 	if (serial_ll_hdl->queue) {
-		vQueueDelete(serial_ll_hdl->queue);
+		g_h.funcs->_h_destroy_queue(serial_ll_hdl->queue);
 		serial_ll_hdl->queue = NULL;
 	}
 

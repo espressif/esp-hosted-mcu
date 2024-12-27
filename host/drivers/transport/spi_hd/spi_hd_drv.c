@@ -55,7 +55,7 @@ static void * spi_hd_bus_lock;
 		g_h.funcs->_h_destroy_mutex(spi_hd_bus_lock);   \
 	} while (0);
 
-#define SPI_HD_DRV_LOCK()   g_h.funcs->_h_lock_mutex(spi_hd_bus_lock, portMAX_DELAY);
+#define SPI_HD_DRV_LOCK()   g_h.funcs->_h_lock_mutex(spi_hd_bus_lock, HOSTED_BLOCK_MAX);
 #define SPI_HD_DRV_UNLOCK() g_h.funcs->_h_unlock_mutex(spi_hd_bus_lock);
 
 #else
@@ -406,7 +406,7 @@ static esp_err_t spi_hd_push_pkt_to_queue(uint8_t * rxbuff, uint16_t len, uint16
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_from_slave_queue);
 
 	return ESP_OK;
@@ -583,7 +583,7 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 	}
 
 	while (1) {
-		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, portMAX_DELAY);
+		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, HOSTED_BLOCK_MAX);
 
 		if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
 			if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))
@@ -747,7 +747,7 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	else if (buf_handle.if_type == ESP_HCI_IF)
 		pkt_prio = PRIO_Q_BT;
 
-	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
 
 #if ESP_PKT_STATS

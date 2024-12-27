@@ -119,7 +119,7 @@ void * mempool_alloc(struct mempool* mp, int nbytes, int need_memset)
 #endif
 	}
 #else
-	buf = MEM_ALLOC(MEMPOOL_ALIGNED(nbytes));
+	buf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(nbytes), MEMPOOL_ALIGNMENT_BYTES);
 #endif
 	ESP_LOGV(MEM_TAG, "alloc %u bytes at %p", nbytes, buf);
 
@@ -151,6 +151,7 @@ void mempool_free(struct mempool* mp, void *mem)
 #endif
 
 #else
-	g_h.funcs->_h_free(mem);
+	ESP_LOGV(MEM_TAG, "free at %p", mem);
+	g_h.funcs->_h_free_align(mem);
 #endif
 }

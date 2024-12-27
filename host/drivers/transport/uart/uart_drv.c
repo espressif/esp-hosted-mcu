@@ -206,7 +206,7 @@ static void h_uart_process_rx_task(void const* pvParameters)
 	}
 
 	while (1) {
-		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, portMAX_DELAY);
+		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, HOSTED_BLOCK_MAX);
 
 		if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
 			if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))
@@ -305,7 +305,7 @@ static esp_err_t h_uart_push_pkt_to_queue(uint8_t * rxbuff, uint16_t len, uint16
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_from_slave_queue);
 
 	return ESP_OK;
@@ -485,7 +485,7 @@ static void h_uart_read_task(void const* pvParameters)
 
 	while (1) {
 		// call will block until there is data to read, or an error occurred
-		rx_len = g_h.funcs->_h_uart_wait_rx_data(portMAX_DELAY);
+		rx_len = g_h.funcs->_h_uart_wait_rx_data(HOSTED_BLOCK_MAX);
 		if (rx_len < 0) {
 			ESP_LOGE(TAG, "error waiting for uart data");
 			continue;
@@ -569,7 +569,7 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	else if (buf_handle.if_type == ESP_HCI_IF)
 		pkt_prio = PRIO_Q_BT;
 
-	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
 
 #if ESP_PKT_STATS

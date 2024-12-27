@@ -62,7 +62,7 @@ static const char TAG[] = "H_SDIO_DRV";
 #if defined(USE_DRIVER_LOCK)
 static void * sdio_bus_lock;
 
-#define SDIO_DRV_LOCK()   g_h.funcs->_h_lock_mutex(sdio_bus_lock, portMAX_DELAY);
+#define SDIO_DRV_LOCK()   g_h.funcs->_h_lock_mutex(sdio_bus_lock, HOSTED_BLOCK_MAX);
 #define SDIO_DRV_UNLOCK() g_h.funcs->_h_unlock_mutex(sdio_bus_lock);
 
 #else
@@ -576,7 +576,7 @@ static esp_err_t sdio_push_pkt_to_queue(uint8_t * rxbuff, uint16_t len, uint16_t
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_from_slave_queue);
 
 	return ESP_OK;
@@ -786,7 +786,7 @@ static void sdio_read_task(void const* pvParameters)
 
 		// wait for sdio interrupt from slave
 		// call will block until there is an interrupt, timeout or error
-		res = g_h.funcs->_h_sdio_wait_slave_intr(portMAX_DELAY);
+		res = g_h.funcs->_h_sdio_wait_slave_intr(HOSTED_BLOCK_MAX);
 
 		if (res != ESP_OK) {
 			ESP_LOGE(TAG, "wait_slave_intr error: %d", res);
@@ -934,7 +934,7 @@ static void sdio_process_rx_task(void const* pvParameters)
 	ESP_LOGI(TAG, "Starting SDIO process rx task");
 
 	while (1) {
-		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, portMAX_DELAY);
+		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, HOSTED_BLOCK_MAX);
 
 		if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
 			if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))
@@ -1109,7 +1109,7 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
 
 #if ESP_PKT_STATS

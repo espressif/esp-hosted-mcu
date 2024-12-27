@@ -79,7 +79,7 @@ static inline void spi_mempool_destroy(void)
 	mempool_destroy(buf_mp_g);
 }
 
-static inline void *spi_buffer_alloc(uint need_memset)
+static inline void *spi_buffer_alloc(uint32_t need_memset)
 {
 	return mempool_alloc(buf_mp_g, MAX_SPI_BUFFER_SIZE, need_memset);
 }
@@ -260,7 +260,7 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 				pkt_prio = PRIO_Q_BT;
 			/* else OTHERS by default */
 
-			g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+			g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 			g_h.funcs->_h_post_semaphore(sem_from_slave_queue);
 
 		} else {
@@ -299,7 +299,7 @@ static int check_and_execute_spi_transaction(void)
 	gpio_pin_state_t gpio_handshake = H_HS_VAL_INACTIVE;
 	gpio_pin_state_t gpio_rx_data_ready = H_DR_VAL_INACTIVE;
 
-	g_h.funcs->_h_lock_mutex(spi_bus_lock, portMAX_DELAY);
+	g_h.funcs->_h_lock_mutex(spi_bus_lock, HOSTED_BLOCK_MAX);
 
 	/* handshake line SET -> slave ready for next transaction */
 	gpio_handshake = g_h.funcs->_h_read_gpio(H_GPIO_HANDSHAKE_Port,
@@ -428,7 +428,7 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, portMAX_DELAY);
+	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
 
 #if ESP_PKT_STATS
@@ -493,7 +493,7 @@ static void spi_transaction_task(void const* pvParameters)
 		 * on Either Data ready and Handshake pin
 		 */
 
-		if (!g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, portMAX_DELAY)) {
+		if (!g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, HOSTED_BLOCK_MAX)) {
 #if DEBUG_HOST_TX_SEMAPHORE
 			if (H_DEBUG_GPIO_PIN_Host_Tx_Pin != -1)
 				g_h.funcs->_h_write_gpio(H_DEBUG_GPIO_PIN_Host_Tx_Port, H_DEBUG_GPIO_PIN_Host_Tx_Pin, H_GPIO_LOW);
@@ -517,7 +517,7 @@ static void spi_process_rx_task(void const* pvParameters)
 
 	while (1) {
 
-		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, portMAX_DELAY);
+		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, HOSTED_BLOCK_MAX);
 
 		if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
 			if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))

@@ -29,7 +29,7 @@ struct serial_ll_operations;
 
 /* serial interface handle */
 typedef struct serial_handle_s {
-	QueueHandle_t queue;
+	queue_handle_t queue;
 	uint8_t if_type;
 	uint8_t if_num;
 	struct serial_ll_operations *fops;
