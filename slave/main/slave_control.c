@@ -1222,6 +1222,10 @@ static esp_err_t req_wifi_scan_get_ap_records(Rpc *req, Rpc *resp, void *priv_da
 		ESP_LOGD(TAG, "HE_AP: bss_color %d, partial_bss_color %d, bss_color_disabled %d",
 			p_a_he_ap->bss_color, p_a_he_ap->bss_color_disabled, p_a_he_ap->bss_color_disabled);
 
+		p_c_ap_record->bandwidth = p_a_ap_list[i].bandwidth;
+		p_c_ap_record->vht_ch_freq1 = p_a_ap_list[i].vht_ch_freq1;
+		p_c_ap_record->vht_ch_freq2 = p_a_ap_list[i].vht_ch_freq2;
+
 		/* increment num of records in rpc msg */
 		resp_payload->n_ap_records++;
 	}
@@ -1356,7 +1360,10 @@ static esp_err_t req_wifi_sta_get_ap_info(Rpc *req, Rpc *resp, void *priv_data)
 
 	printf("HE_AP: bss_color %d, partial_bss_color %d, bss_color_disabled %d\n",
 		p_a_he_ap->bss_color, p_a_he_ap->bss_color_disabled, p_a_he_ap->bss_color_disabled);
-	/* increment num of records in rpc msg */
+
+	p_c_ap_record->bandwidth = p_a_ap_info.bandwidth;
+	p_c_ap_record->vht_ch_freq1 = p_a_ap_info.vht_ch_freq1;
+	p_c_ap_record->vht_ch_freq2 = p_a_ap_info.vht_ch_freq2;
 
 err:
 	return ESP_OK;

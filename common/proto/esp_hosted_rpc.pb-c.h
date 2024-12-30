@@ -981,10 +981,27 @@ struct  WifiApRecord
    */
   WifiCountry *country;
   WifiHeApInfo *he_ap;
+  /*
+   **< For AP 20 MHz this value is set to 1. For AP 40 MHz this value is set to 2.
+   *For AP 80 MHz this value is set to 3. For AP 160MHz this value is set to 4.
+   *For AP 80+80MHz this value is set to 5
+   */
+  uint32_t bandwidth;
+  /*
+   **< This fields are used only AP bandwidth is 80 and 160 MHz, to transmit the center channel
+   *frequency of the BSS. For AP bandwidth is 80 + 80 MHz, it is the center channel frequency
+   *of the lower frequency segment.
+   */
+  uint32_t vht_ch_freq1;
+  /*
+   **< This fields are used only AP bandwidth is 80 + 80 MHz, and is used to transmit the center
+   *channel frequency of the second segment. 
+   */
+  uint32_t vht_ch_freq2;
 };
 #define WIFI_AP_RECORD__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_ap_record__descriptor) \
-    , {0,NULL}, {0,NULL}, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL }
+    , {0,NULL}, {0,NULL}, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, 0, 0, 0 }
 
 
 struct  WifiScanThreshold

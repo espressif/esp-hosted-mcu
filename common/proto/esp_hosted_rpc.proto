@@ -641,6 +641,14 @@ message wifi_ap_record {
 
 	wifi_country   country = 11;                /**< country information of AP */
 	wifi_he_ap_info he_ap = 12;
+	uint32         bandwidth = 13;              /**< For AP 20 MHz this value is set to 1. For AP 40 MHz this value is set to 2.
+                                                     For AP 80 MHz this value is set to 3. For AP 160MHz this value is set to 4.
+                                                     For AP 80+80MHz this value is set to 5*/
+	uint32         vht_ch_freq1 = 14;           /**< This fields are used only AP bandwidth is 80 and 160 MHz, to transmit the center channel
+                                                     frequency of the BSS. For AP bandwidth is 80 + 80 MHz, it is the center channel frequency
+                                                     of the lower frequency segment.*/
+	uint32         vht_ch_freq2 = 15;           /**< This fields are used only AP bandwidth is 80 + 80 MHz, and is used to transmit the center
+                                                     channel frequency of the second segment. */
 }
 
 message wifi_scan_threshold {

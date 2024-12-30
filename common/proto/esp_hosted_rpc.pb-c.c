@@ -7761,7 +7761,7 @@ const ProtobufCMessageDescriptor wifi_he_ap_info__descriptor =
   (ProtobufCMessageInit) wifi_he_ap_info__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_ap_record__field_descriptors[12] =
+static const ProtobufCFieldDescriptor wifi_ap_record__field_descriptors[15] =
 {
   {
     "bssid",
@@ -7907,10 +7907,47 @@ static const ProtobufCFieldDescriptor wifi_ap_record__field_descriptors[12] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "bandwidth",
+    13,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApRecord, bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "vht_ch_freq1",
+    14,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApRecord, vht_ch_freq1),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "vht_ch_freq2",
+    15,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApRecord, vht_ch_freq2),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_ap_record__field_indices_by_name[] = {
   8,   /* field[8] = ant */
   5,   /* field[5] = authmode */
+  12,   /* field[12] = bandwidth */
   9,   /* field[9] = bitmask */
   0,   /* field[0] = bssid */
   10,   /* field[10] = country */
@@ -7921,11 +7958,13 @@ static const unsigned wifi_ap_record__field_indices_by_name[] = {
   4,   /* field[4] = rssi */
   3,   /* field[3] = second */
   1,   /* field[1] = ssid */
+  13,   /* field[13] = vht_ch_freq1 */
+  14,   /* field[14] = vht_ch_freq2 */
 };
 static const ProtobufCIntRange wifi_ap_record__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 12 }
+  { 0, 15 }
 };
 const ProtobufCMessageDescriptor wifi_ap_record__descriptor =
 {
@@ -7935,7 +7974,7 @@ const ProtobufCMessageDescriptor wifi_ap_record__descriptor =
   "WifiApRecord",
   "",
   sizeof(WifiApRecord),
-  12,
+  15,
   wifi_ap_record__field_descriptors,
   wifi_ap_record__field_indices_by_name,
   1,  wifi_ap_record__number_ranges,

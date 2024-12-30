@@ -252,7 +252,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 
 		if (!p_a->number) {
 			ESP_LOGI(TAG, "No AP found");
-			goto fail_parse_rpc_msg2;
+			goto fail_parse_rpc_msg;
 		}
 		ESP_LOGD(TAG, "Num AP records: %u",
 				app_resp->u.wifi_scan_ap_list.number);
@@ -330,6 +330,10 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			ESP_LOGD(TAG, "HE_AP: bss_color %d, partial_bss_color %d, bss_color_disabled %d",
 					p_a_he_ap->bss_color, p_a_he_ap->bss_color_disabled, p_a_he_ap->bss_color_disabled);
 
+			list[i].bandwidth = p_c_list[i]->bandwidth;
+			list[i].vht_ch_freq1 = p_c_list[i]->vht_ch_freq1;
+			list[i].vht_ch_freq2 = p_c_list[i]->vht_ch_freq2;
+
 			//p_a_sta->rm_enabled = H_GET_BIT(STA_RM_ENABLED_BIT, p_c_sta->bitmask);
 		}
 		break;
@@ -395,6 +399,10 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 				p_c_he_ap->bitmask);
 		p_a_he_ap->bss_color_disabled = H_GET_BIT(WIFI_HE_AP_INFO_bss_color_disabled_BIT,
 				p_c_he_ap->bitmask);
+
+		ap_info->bandwidth = p_c->bandwidth;
+		ap_info->vht_ch_freq1 = p_c->vht_ch_freq1;
+		ap_info->vht_ch_freq2 = p_c->vht_ch_freq2;
 
 		break;
     } case RPC_ID__Resp_WifiClearApList: {
@@ -601,7 +609,4 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 	/* 5. Free up buffers in failure cases */
 fail_parse_rpc_msg:
 	return SUCCESS;
-
-fail_parse_rpc_msg2:
-	return FAILURE;
 }
