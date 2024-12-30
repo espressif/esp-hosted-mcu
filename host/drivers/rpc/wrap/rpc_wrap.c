@@ -1296,7 +1296,7 @@ int rpc_wifi_get_mode(wifi_mode_t* mode)
 		*mode = resp->u.wifi_mode.mode;
 	}
 
-	return SUCCESS;
+	return rpc_rsp_callback(resp);
 }
 
 int rpc_wifi_start(void)
