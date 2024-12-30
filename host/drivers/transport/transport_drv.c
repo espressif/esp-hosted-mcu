@@ -204,11 +204,6 @@ static void transport_serial_free_cb(void *buf)
 	mempool_free(chan_arr[ESP_SERIAL_IF]->memp, buf);
 }
 
-static void transport_priv_free_cb(void *buf)
-{
-	mempool_free(chan_arr[ESP_PRIV_IF]->memp, buf);
-}
-
 static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 {
 	void * copy_buff = NULL;
@@ -507,7 +502,7 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	uint16_t len = 0;
 	uint8_t *sendbuf = NULL;
 
-	sendbuf = mempool_alloc(((struct mempool*)chan_arr[ESP_PRIV_IF]->memp), 512, true);
+	sendbuf = g_h.funcs->_h_malloc(512);
 	assert(sendbuf);
 
 	/* Populate event data */
@@ -551,7 +546,7 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	/* payload len = Event len + sizeof(event type) + sizeof(event len) */
 	len += 2;
 
-	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, transport_priv_free_cb);
+	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, g_h.funcs->_h_free);
 }
 
 int process_init_event(uint8_t *evt_buf, uint16_t len)

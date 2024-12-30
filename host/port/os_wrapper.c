@@ -126,6 +126,26 @@ void *hosted_realloc(void *mem, size_t newsize)
 	return p;
 }
 
+void *hosted_malloc_align(size_t size, size_t align)
+{
+	esp_dma_mem_info_t dma_mem_info = {
+		.extra_heap_caps = 0,
+		.dma_alignment_bytes = align,
+	};
+	void *tmp_buf = NULL;
+	size_t actual_size = 0;
+	esp_err_t err = ESP_OK;
+
+	err = esp_dma_capable_malloc((size), &dma_mem_info, &tmp_buf, &actual_size);
+	if (err) tmp_buf = NULL;
+
+	return tmp_buf;
+}
+
+void hosted_free_align(void* ptr)
+{
+	FREE(ptr);
+}
 
 void hosted_init_hook(void)
 {
@@ -767,6 +787,8 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_calloc                   =  hosted_calloc                  ,
 	._h_free                     =  hosted_free                    ,
 	._h_realloc                  =  hosted_realloc                 ,
+	._h_malloc_align			 =  hosted_malloc_align			   ,
+	._h_free_align				 =  hosted_free_align			   ,
 	._h_thread_create            =  hosted_thread_create           ,
 	._h_thread_cancel            =  hosted_thread_cancel           ,
 	._h_msleep                   =  hosted_msleep                  ,

@@ -15,6 +15,8 @@ typedef struct {
 /* 4 */   void*  (*_h_calloc)(size_t blk_no, size_t size);
 /* 5 */   void   (*_h_free)(void* ptr);
 /* 6 */   void*  (*_h_realloc)(void *mem, size_t newsize);
+          void*  (*_h_malloc_align)(size_t size, rt_size_t align);
+          void   (*_h_free_align)(void* ptr);
 
           /* Thread */
 /* 11 */   void*  (*_h_thread_create)(char *tname, uint32_t tprio, uint32_t tstack_size, void (*start_routine)(void const *), void *sr_arg);
