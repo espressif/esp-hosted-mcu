@@ -34,6 +34,7 @@ struct esp_hosted_sdio_config {
 	gpio_pin_t pin_d1;
 	gpio_pin_t pin_d2;
 	gpio_pin_t pin_d3;
+	gpio_pin_t pin_reset;
 	uint8_t rx_mode;
 	bool block_mode;
 	bool iomux_enable;
@@ -51,6 +52,7 @@ struct esp_hosted_spi_hd_config {
 	gpio_pin_t pin_d1;
 	gpio_pin_t pin_d2;
 	gpio_pin_t pin_d3;
+	gpio_pin_t pin_reset;
 
 	/* SPI HD configuration */
 	uint32_t clk_mhz;
@@ -71,6 +73,7 @@ struct esp_hosted_spi_config {
 	gpio_pin_t pin_cs;
 	gpio_pin_t pin_handshake;
 	gpio_pin_t pin_data_ready;
+	gpio_pin_t pin_reset;
 
 	/* SPI Full Duplex configuration */
 	uint16_t tx_queue_size;
@@ -86,6 +89,7 @@ struct esp_hosted_uart_config {
 	/* UART pins */
 	gpio_pin_t pin_tx;
 	gpio_pin_t pin_rx;
+	gpio_pin_t pin_reset;
 
 	/* UART configuration */
 	uint8_t num_data_bits;
@@ -121,6 +125,7 @@ struct esp_hosted_transport_config {
         .pin_d1 = {.port = NULL, .pin = H_SDIO_PIN_D1}, \
         .pin_d2 = {.port = NULL, .pin = H_SDIO_PIN_D2}, \
         .pin_d3 = {.port = NULL, .pin = H_SDIO_PIN_D3}, \
+        .pin_reset = {.port = NULL, .pin = H_GPIO_PIN_RESET_Pin }, \
         .rx_mode = H_SDIO_HOST_RX_MODE, \
         .block_mode = H_SDIO_TX_BLOCK_ONLY_XFER && H_SDIO_RX_BLOCK_ONLY_XFER, \
         .iomux_enable = false, \
@@ -149,6 +154,7 @@ struct esp_hosted_transport_config {
         .pin_d1 = {.port = NULL, .pin = H_SPI_HD_PIN_D1}, \
         .pin_d2 = {.port = NULL, .pin = H_SPI_HD_PIN_D2}, \
         .pin_d3 = {.port = NULL, .pin = H_SPI_HD_PIN_D3}, \
+        .pin_reset = {.port = NULL, .pin = H_GPIO_PIN_RESET_Pin }, \
         .clk_mhz = H_SPI_HD_CLK_MHZ, \
         .mode = H_SPI_HD_MODE, \
         .tx_queue_size = H_SPI_HD_TX_QUEUE_SIZE, \
@@ -169,6 +175,7 @@ struct esp_hosted_transport_config {
         .pin_cs = {.port = NULL, .pin = H_GPIO_CS_Pin}, \
         .pin_handshake = {.port = NULL, .pin = H_GPIO_HANDSHAKE_Pin}, \
         .pin_data_ready = {.port = NULL, .pin = H_GPIO_DATA_READY_Pin}, \
+        .pin_reset = {.port = NULL, .pin = H_GPIO_PIN_RESET_Pin }, \
         .tx_queue_size = H_SPI_TX_Q, \
         .rx_queue_size = H_SPI_RX_Q, \
         .mode = H_SPI_MODE, \
@@ -182,6 +189,7 @@ struct esp_hosted_transport_config {
         .port = H_UART_PORT, \
         .pin_tx = {.port = NULL, .pin = H_UART_TX_PIN}, \
         .pin_rx = {.port = NULL, .pin = H_UART_RX_PIN}, \
+        .pin_reset = {.port = NULL, .pin = H_GPIO_PIN_RESET_Pin }, \
         .num_data_bits = H_UART_NUM_DATA_BITS, \
         .parity = H_UART_PARITY, \
         .stop_bits = H_UART_STOP_BITS, \
@@ -197,6 +205,8 @@ struct esp_hosted_transport_config {
 /* Configuration get/set functions */
 esp_hosted_transport_err_t esp_hosted_transport_set_default_config(void);
 esp_hosted_transport_err_t esp_hosted_transport_get_config(struct esp_hosted_transport_config **config);
+esp_hosted_transport_err_t esp_hosted_transport_get_reset_config(gpio_pin_t *pin_config);
+
 bool esp_hosted_transport_is_config_valid(void);
 
 #if H_TRANSPORT_SDIO == H_TRANSPORT_IN_USE

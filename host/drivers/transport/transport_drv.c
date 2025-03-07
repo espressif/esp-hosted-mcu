@@ -20,6 +20,7 @@
 #include "transport_drv.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_transport_init.h"
+#include "esp_hosted_transport_config.h"
 #include "stats.h"
 #include "esp_log.h"
 #include "esp_hosted_log.h"
@@ -62,14 +63,20 @@ uint8_t is_transport_tx_ready(void)
 
 static void reset_slave(void)
 {
-	ESP_LOGI(TAG, "Reset slave using GPIO[%u]", H_GPIO_PIN_RESET_Pin);
-	g_h.funcs->_h_config_gpio(H_GPIO_PIN_RESET_Port, H_GPIO_PIN_RESET_Pin, H_GPIO_MODE_DEF_OUTPUT);
+	gpio_pin_t reset_pin = { 0 };
+	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
+		ESP_LOGE(TAG, "Unable to get RESET config for transport");
+		return;
+	}
 
-	g_h.funcs->_h_write_gpio(H_GPIO_PIN_RESET_Port, H_GPIO_PIN_RESET_Pin, H_RESET_VAL_ACTIVE);
+	ESP_LOGI(TAG, "Reset slave using GPIO[%u]", reset_pin.pin);
+	g_h.funcs->_h_config_gpio(H_GPIO_PIN_RESET_Port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
+
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 	g_h.funcs->_h_msleep(50);
-	g_h.funcs->_h_write_gpio(H_GPIO_PIN_RESET_Port, H_GPIO_PIN_RESET_Pin, H_RESET_VAL_INACTIVE);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
 	g_h.funcs->_h_msleep(50);
-	g_h.funcs->_h_write_gpio(H_GPIO_PIN_RESET_Port, H_GPIO_PIN_RESET_Pin, H_RESET_VAL_ACTIVE);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 
 	/* stop spi transactions short time to avoid slave sync issues */
 	g_h.funcs->_h_sleep(1);

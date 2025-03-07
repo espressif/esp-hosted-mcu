@@ -11,7 +11,7 @@
 static const char *TAG = "esp_hosted_transport_config";
 
 /* Static configurations */
-static struct esp_hosted_transport_config s_transport_config;
+static struct esp_hosted_transport_config s_transport_config = { 0 };
 
 /* Flags to track if configs were set */
 static bool esp_hosted_transport_config_set;
@@ -45,6 +45,40 @@ esp_hosted_transport_err_t esp_hosted_transport_get_config(struct esp_hosted_tra
 		return ESP_TRANSPORT_ERR_INVALID_ARG;
 	}
 	*config = &s_transport_config;
+	return ESP_TRANSPORT_OK;
+}
+
+esp_hosted_transport_err_t esp_hosted_transport_get_reset_config(gpio_pin_t *pin_config)
+{
+	if (!pin_config) {
+		return ESP_TRANSPORT_ERR_INVALID_ARG;
+	}
+
+	switch(s_transport_config.transport_in_use) {
+	case H_TRANSPORT_SDIO:
+		pin_config->port = s_transport_config.u.sdio.pin_reset.port;
+		pin_config->pin  = s_transport_config.u.sdio.pin_reset.pin;
+		break;
+	case H_TRANSPORT_SPI_HD:
+		pin_config->port = s_transport_config.u.spi_hd.pin_reset.port;
+		pin_config->pin  = s_transport_config.u.spi_hd.pin_reset.pin;
+		break;
+	case H_TRANSPORT_SPI:
+		pin_config->port = s_transport_config.u.spi.pin_reset.port;
+		pin_config->pin  = s_transport_config.u.spi.pin_reset.pin;
+		break;
+	case H_TRANSPORT_UART:
+		pin_config->port = s_transport_config.u.uart.pin_reset.port;
+		pin_config->pin  = s_transport_config.u.uart.pin_reset.pin;
+		break;
+	case H_TRANSPORT_NONE: // drop through to default case
+	default:
+		// transport config not yet initialised. Use default Reset pin config
+		pin_config->port = NULL;
+		pin_config->pin  = H_GPIO_PIN_RESET_Pin;
+		break;
+	}
+
 	return ESP_TRANSPORT_OK;
 }
 
