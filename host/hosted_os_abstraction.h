@@ -103,6 +103,8 @@ typedef struct {
 /* 57 */ int (*_h_uart_read)(void *ctx, uint8_t *data, uint16_t size);
 /* 58 */ int (*_h_uart_write)(void *ctx, uint8_t *data, uint16_t size);
 #endif
+
+/* 59 */ int (*_h_restart_host)(void);
 } hosted_osi_funcs_t;
 
 struct hosted_config_t {

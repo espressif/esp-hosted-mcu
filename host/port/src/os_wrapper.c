@@ -22,6 +22,7 @@
 #include "freertos/portmacro.h"
 #include "esp_macros.h"
 #include "esp_hosted_config.h"
+#include "esp_wifi.h"
 
 /* Wi-Fi headers are reused at ESP-Hosted */
 #include "esp_wifi_crypto_types.h"
@@ -47,7 +48,7 @@ DEFINE_LOG_TAG(os_wrapper_esp);
 
 struct mempool * nw_mp_g = NULL;
 
-wpa_crypto_funcs_t g_wifi_default_wpa_crypto_funcs;
+const wpa_crypto_funcs_t g_wifi_default_wpa_crypto_funcs;
 wifi_osi_funcs_t g_wifi_osi_funcs;
 
 //ESP_EVENT_DECLARE_BASE(WIFI_EVENT);
@@ -778,6 +779,14 @@ void hosted_log_write(int  level,
 	va_end(list);
 }
 
+int hosted_restart_host(void)
+{
+	ESP_LOGI(TAG, "Restarting host");
+	esp_unregister_shutdown_handler((shutdown_handler_t)esp_wifi_stop);
+	esp_restart();
+	return 0;
+}
+
 /* newlib hooks */
 
 hosted_osi_funcs_t g_hosted_osi_funcs = {
@@ -851,4 +860,5 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_uart_read                = hosted_uart_read                ,
 	._h_uart_write               = hosted_uart_write               ,
 #endif
+	._h_restart_host             = hosted_restart_host             ,
 };

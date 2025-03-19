@@ -48,8 +48,8 @@ static const char TAG[] = "H_SDIO_DRV";
 // max number of time to try to read write buffer available reg
 #define MAX_WRITE_BUF_RETRIES             50
 
-// max number of times to try to write data to slave device
-#define MAX_WRITE_RETRIES                 2
+/* Actual data sdio_write max retry */
+#define MAX_SDIO_WRITE_RETRY              2
 
 // this locks the sdio transaction at the driver level, instead of at the HAL layer
 #define USE_DRIVER_LOCK
@@ -307,12 +307,23 @@ static int sdio_is_write_buffer_available(uint32_t buf_needed)
 {
 	static uint32_t buf_available = 0;
 	uint8_t retry = MAX_WRITE_BUF_RETRIES;
+	uint32_t max_retry_sdio_not_responding = 2;
 
 	/*If buffer needed are less than buffer available
 	  then only read for available buffer number from slave*/
 	if (buf_available < buf_needed) {
 		while (retry) {
-			sdio_get_tx_buffer_num(&buf_available, ACQUIRE_LOCK);
+			if (sdio_get_tx_buffer_num(&buf_available, ACQUIRE_LOCK) ==
+					ESP_HOSTED_SDIO_UNRESPONSIVE_CODE) {
+				max_retry_sdio_not_responding--;
+				/* restart the host to avoid the sdio locked out state */
+
+				if (!max_retry_sdio_not_responding) {
+					ESP_LOGE(TAG, "%s: SDIO slave unresponsive, restart host", __func__);
+					g_h.funcs->_h_restart_host();
+				}
+				continue;
+			}
 
 			if (buf_available < buf_needed) {
 
@@ -468,12 +479,14 @@ static void sdio_write_task(void const* pvParameters)
 				ESP_LOGE(TAG, "%s: %d: Failed to send data: %d %ld %ld", __func__,
 					retries, ret, len_to_send, data_left);
 				retries++;
-				if (retries < MAX_WRITE_RETRIES) {
+				if (retries < MAX_SDIO_WRITE_RETRY) {
 					ESP_LOGD(TAG, "retry");
 					continue;
 				} else {
-					ESP_LOGE(TAG, "abort sending of data");
-					goto unlock_done;
+					SDIO_DRV_UNLOCK();
+					ESP_LOGE(TAG, "Unrecoverable host sdio state, reset host mcu");
+					g_h.funcs->_h_restart_host();
+					goto done;
 				}
 			}
 
@@ -815,6 +828,8 @@ static void sdio_read_task(void const* pvParameters)
 			ESP_LOGE(TAG, "failed to read interrupt register");
 
 			SDIO_DRV_UNLOCK();
+			ESP_LOGI(TAG, "Host is reseting itself, to avoid any sdio race condition");
+			g_h.funcs->_h_restart_host();
 			continue;
 		}
 #endif

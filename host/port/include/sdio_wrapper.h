@@ -22,6 +22,7 @@
 #include "sdmmc_cmd.h"
 
 #define MAX_TRANSPORT_BUFFER_SIZE        MAX_SDIO_BUFFER_SIZE
+#define ESP_HOSTED_SDIO_UNRESPONSIVE_CODE 0x107
 
 /* Hosted init function to init the SDIO host
  * returns a pointer to the sdio context */
