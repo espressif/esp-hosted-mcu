@@ -8,6 +8,7 @@ before_script:
   stage: build
   tags:
     - build
+  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.3
   artifacts:
     paths:
       - "${IDF_PATH}/${IDF_EXAMPLE_PATH}/build*/build_log.txt"
@@ -34,7 +35,6 @@ before_script:
 
 build_idf_v5.3:
   extends: .build_template
-  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.3
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
