@@ -1,26 +1,13 @@
 stages:
-  - pre_check
   - build
 
 before_script:
   - git submodule update --init --recursive
 
-check_version:
-  stage: pre_check
-  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.4:1
-  script:
-   echo "Hello for MCU"
-  rules:
-    - when: always
-  tags:
-    - build
-
-  
 .build_template:
   stage: build
   tags:
     - build
-  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.4:1
   artifacts:
     paths:
       - "${IDF_PATH}/${IDF_EXAMPLE_PATH}/build*/build_log.txt"
@@ -47,6 +34,7 @@ check_version:
 
 build_idf_v5.3:
   extends: .build_template
+  image: espressif/idf:release-v5.3
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
@@ -54,7 +42,7 @@ build_idf_v5.3:
 
 build_idf_v5.4:
   extends: .build_template
-  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.4
+  image: espressif/idf:release-v5.4
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
@@ -62,7 +50,7 @@ build_idf_v5.4:
 
 build_idf_v5.5:
   extends: .build_template
-  image: ${CI_DOCKER_REGISTRY}/esp-env-latest
+  image: espressif/idf:latest
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
