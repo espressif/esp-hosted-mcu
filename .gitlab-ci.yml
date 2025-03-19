@@ -1,14 +1,26 @@
 stages:
+  - pre_check
   - build
 
 before_script:
   - git submodule update --init --recursive
 
+check_version:
+  stage: pre_check
+  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.4:1
+  script:
+   echo "Hello for MCU"
+  rules:
+    - when: always
+  tags:
+    - build
+
+  
 .build_template:
   stage: build
   tags:
     - build
-  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.3
+  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.4:1
   artifacts:
     paths:
       - "${IDF_PATH}/${IDF_EXAMPLE_PATH}/build*/build_log.txt"
