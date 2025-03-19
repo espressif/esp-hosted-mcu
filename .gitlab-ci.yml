@@ -34,7 +34,7 @@ before_script:
 
 build_idf_v5.3:
   extends: .build_template
-  image: espressif/idf:release-v5.3
+  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.3
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
@@ -42,7 +42,7 @@ build_idf_v5.3:
 
 build_idf_v5.4:
   extends: .build_template
-  image: espressif/idf:release-v5.4
+  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.4
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
@@ -50,7 +50,7 @@ build_idf_v5.4:
 
 build_idf_v5.5:
   extends: .build_template
-  image: espressif/idf:latest
+  image: ${CI_DOCKER_REGISTRY}/esp-env-latest
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
