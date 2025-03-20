@@ -167,6 +167,11 @@ static void h_uart_write_task(void const* pvParameters)
 			ESP_LOGE(TAG, "failed to send uart data");
 		}
 
+#if ESP_PKT_STATS
+		if (buf_handle.if_type == ESP_STA_IF)
+			pkt_stats.sta_tx_out++;
+#endif
+
 done:
 		if (len && !buf_handle.payload_zcopy) {
 			/* free allocated buffer, only if zerocopy is not requested */
@@ -270,6 +275,11 @@ static void h_uart_process_rx_task(void const* pvParameters)
 		} else {
 			ESP_LOGW(TAG, "unknown type %d ", buf_handle->if_type);
 		}
+
+#if ESP_PKT_STATS
+		if (buf_handle->if_type == ESP_STA_IF)
+			pkt_stats.sta_rx_out++;
+#endif
 
 		/* Free buffer handle */
 		/* When buffer offloaded to other module, that module is

@@ -648,6 +648,11 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 			ESP_LOGW(TAG, "unknown type %d ", buf_handle->if_type);
 		}
 
+#if ESP_PKT_STATS
+		if (buf_handle->if_type == ESP_STA_IF)
+			pkt_stats.sta_rx_out++;
+#endif
+
 		/* Free buffer handle */
 		/* When buffer offloaded to other module, that module is
 		 * responsible for freeing buffer. In case not offloaded or

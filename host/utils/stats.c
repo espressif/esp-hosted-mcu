@@ -209,10 +209,17 @@ struct mem_stats h_stats_g;
 #if ESP_PKT_STATS
 void stats_timer_func(void * arg)
 {
-	ESP_LOGI(TAG, "slave: sta_rx_in: %lu sta_rx_out: %lu sta_tx_in [pass: %lu drop: %lu] sta_tx_out: %lu ",
+	ESP_LOGI(TAG, "slave: sta_rx_in: %lu sta_rx_out: %lu sta_tx_in [pass: %lu drop: %lu] sta_tx_out: %lu, throttling %u",
 			pkt_stats.sta_rx_in,pkt_stats.sta_rx_out,
-			pkt_stats.sta_tx_in_pass, pkt_stats.sta_tx_in_drop, pkt_stats.sta_tx_out);
-	ESP_LOGI(TAG, "wifi_tx_throttling %u", wifi_tx_throttling);
+			pkt_stats.sta_tx_in_pass, pkt_stats.sta_tx_in_drop, pkt_stats.sta_tx_out,
+			wifi_tx_throttling);
+	ESP_LOGI(TAG, "internal: free %d l-free %d min-free %d, psram: free %d l-free %d min-free %d",
+			heap_caps_get_free_size(MALLOC_CAP_8BIT) - heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+			heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL),
+			heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL),
+			heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+			heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+			heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM));
 }
 #endif
 
