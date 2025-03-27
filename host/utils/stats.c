@@ -23,6 +23,7 @@
 #include "transport_drv.h"
 #endif
 #include "esp_log.h"
+#include "esp_hosted_transport_init.h"
 
 // use mempool and zero copy for Tx
 #include "mempool.h"

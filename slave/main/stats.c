@@ -17,6 +17,7 @@
 #include "stats.h"
 #include <unistd.h>
 #include "esp_log.h"
+#include "esp_hosted_transport_init.h"
 
 #if TEST_RAW_TP || ESP_PKT_STATS
 static const char TAG[] = "stats";
@@ -269,4 +270,3 @@ uint8_t debug_get_raw_tp_conf(void) {
 #endif
 	return raw_tp_cap;
 }
-
