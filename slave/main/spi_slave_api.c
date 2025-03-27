@@ -50,6 +50,13 @@ static const char TAG[] = "SPI_DRIVER";
 #define SPI_RX_QUEUE_SIZE          CONFIG_ESP_SPI_RX_Q_SIZE
 #define SPI_TX_QUEUE_SIZE          CONFIG_ESP_SPI_TX_Q_SIZE
 
+// de-assert HS signal on CS, instead of at end of transaction
+#if defined(CONFIG_ESP_SPI_DEASSERT_HS_ON_CS)
+#define HS_DEASSERT_ON_CS (1)
+#else
+#define HS_DEASSERT_ON_CS (0)
+#endif
+
 /* By default both Handshake and Data Ready used Active High,
  * unless configured otherwise.
  * For Active low, set value as 0 */
@@ -80,7 +87,11 @@ static const char TAG[] = "SPI_DRIVER";
 #define GPIO_MASK_DATA_READY (1ULL << GPIO_DATA_READY)
 #define GPIO_MASK_HANDSHAKE (1ULL << GPIO_HANDSHAKE)
 
+#if HS_DEASSERT_ON_CS
+#define H_CS_INTR_TO_CLEAR_HS                        GPIO_INTR_ANYEDGE
+#else
 #define H_CS_INTR_TO_CLEAR_HS                        GPIO_INTR_NEGEDGE
+#endif
 
 #if H_HANDSHAKE_ACTIVE_HIGH
   #define H_HS_VAL_ACTIVE                            GPIO_OUT_W1TS_REG
@@ -106,6 +117,9 @@ static interface_context_t context;
 static interface_handle_t if_handle_g;
 static SemaphoreHandle_t spi_tx_sem;
 static SemaphoreHandle_t spi_rx_sem;
+#if HS_DEASSERT_ON_CS
+static SemaphoreHandle_t wait_cs_deassert_sem;
+#endif
 static QueueHandle_t spi_rx_queue[MAX_PRIORITY_QUEUES];
 static QueueHandle_t spi_tx_queue[MAX_PRIORITY_QUEUES];
 #if DUMMY_TRANS_DESIGN
@@ -380,9 +394,10 @@ static void IRAM_ATTR spi_post_trans_cb(spi_slave_transaction_t *trans)
 			xSemaphoreGive(spi_sema);
 	}
 #endif
+#if !HS_DEASSERT_ON_CS
 	/* Clear handshake line */
 	reset_handshake_gpio();
-
+#endif
 }
 
 static uint8_t * get_next_tx_buffer(uint32_t *len)
@@ -649,8 +664,8 @@ static void spi_transaction_post_process_task(void* pvParameters)
 		/* Await transmission result, after any kind of transmission a new packet
 		 * (dummy or real) must be placed in SPI slave
 		 */
-		spi_slave_get_trans_result(ESP_SPI_CONTROLLER, &spi_trans,
-				portMAX_DELAY);
+		ESP_ERROR_CHECK(spi_slave_get_trans_result(ESP_SPI_CONTROLLER, &spi_trans,
+				portMAX_DELAY));
 #if DUMMY_TRANS_DESIGN
 		if (spi_trans->tx_buffer) {
 			header = (struct esp_payload_header *) spi_trans->tx_buffer;
@@ -677,6 +692,17 @@ static void spi_transaction_post_process_task(void* pvParameters)
 		if (ret == pdTRUE)
 			queue_dummy_transaction();
 #else
+
+#if HS_DEASSERT_ON_CS
+		/* Wait until CS has been deasserted before we queue a new transaction.
+		 *
+		 * Some MCUs delay deasserting CS at the end of a transaction.
+		 * If we queue a new transaction without waiting for CS to deassert,
+		 * the slave SPI can start (since CS is still asserted), and data is lost
+		 * as host is not expecting any data.
+		 */
+		xSemaphoreTake(wait_cs_deassert_sem, portMAX_DELAY);
+#endif
 		/* Queue new transaction to get ready as soon as possible */
 		queue_next_transaction();
 		assert(spi_trans);
@@ -713,7 +739,19 @@ static void spi_transaction_post_process_task(void* pvParameters)
 
 static void IRAM_ATTR gpio_disable_hs_isr_handler(void* arg)
 {
+#if HS_DEASSERT_ON_CS
+	int level = gpio_get_level(GPIO_CS);
+	if (level == 0) {
+		/* CS is asserted, disable HS */
+		reset_handshake_gpio();
+	} else {
+		/* Last transaction complete, populate next one */
+		if (wait_cs_deassert_sem)
+			xSemaphoreGive(wait_cs_deassert_sem);
+	}
+#else
 	reset_handshake_gpio();
+#endif
 }
 
 static void register_hs_disable_pin(uint32_t gpio_num)
@@ -824,6 +862,11 @@ static interface_handle_t * esp_spi_init(void)
 	gpio_set_drive_capability(GPIO_MISO, GPIO_DRIVE_CAP_3);
 	gpio_set_pull_mode(GPIO_MISO, GPIO_PULLDOWN_ONLY);
 
+#if HS_DEASSERT_ON_CS
+	wait_cs_deassert_sem = xSemaphoreCreateBinary();
+	assert(wait_cs_deassert_sem!= NULL);
+	ret = xSemaphoreTake(wait_cs_deassert_sem, 0);
+#endif
 
 	memset(&if_handle_g, 0, sizeof(if_handle_g));
 	if_handle_g.state = INIT;
@@ -930,10 +973,10 @@ static int32_t esp_spi_write(interface_handle_t *handle, interface_buffer_handle
 	else
 		xQueueSend(spi_tx_queue[PRIO_Q_OTHERS], &tx_buf_handle, portMAX_DELAY);
 
-	xSemaphoreGive(spi_tx_sem);
-
 	/* indicate waiting data on ready pin */
 	set_dataready_gpio();
+
+	xSemaphoreGive(spi_tx_sem);
 
 	return buf_handle->payload_len;
 }
