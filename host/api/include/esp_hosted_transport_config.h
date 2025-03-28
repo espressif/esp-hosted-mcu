@@ -131,7 +131,6 @@ struct esp_hosted_transport_config {
         .iomux_enable = false, \
     }
 
-
 #define INIT_DEFAULT_HOST_SDIO_IOMUX_CONFIG() \
     (struct esp_hosted_sdio_config) { \
         .clock_freq_khz = H_SDIO_CLOCK_FREQ_KHZ, \

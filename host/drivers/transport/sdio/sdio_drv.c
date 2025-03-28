@@ -303,11 +303,14 @@ static int sdio_get_len_from_slave(uint32_t *rx_size, bool is_lock_needed)
 
 #endif
 
+#define MAX_BUFF_FETCH_PERIODICITY 30000
+
 static int sdio_is_write_buffer_available(uint32_t buf_needed)
 {
 	static uint32_t buf_available = 0;
 	uint8_t retry = MAX_WRITE_BUF_RETRIES;
 	uint32_t max_retry_sdio_not_responding = 2;
+	uint32_t interval_us = 400;
 
 	/*If buffer needed are less than buffer available
 	  then only read for available buffer number from slave*/
@@ -330,9 +333,10 @@ static int sdio_is_write_buffer_available(uint32_t buf_needed)
 				ESP_LOGV(TAG, "Retry get write buffers %d", retry);
 				retry--;
 
-				if (retry < MAX_WRITE_BUF_RETRIES/2)
-					g_h.funcs->_h_msleep(1);
-
+				g_h.funcs->_h_usleep(interval_us);
+				if (interval_us < MAX_BUFF_FETCH_PERIODICITY) {
+					interval_us += 400;
+				}
 				continue;
 			}
 			break;

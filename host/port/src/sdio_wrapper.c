@@ -22,6 +22,13 @@
 #include "esp_hosted_config.h"
 #include "esp_hosted_transport_config.h"
 
+#if H_SDIO_PWR_CTRL_LDO
+#include "sd_pwr_ctrl_by_on_chip_ldo.h"
+#endif
+
+#include "soc/sdmmc_pins.h"
+#include "hal/sdmmc_ll.h"
+
 #include "esp_log.h"
 DEFINE_LOG_TAG(sdio_wrapper);
 
@@ -49,6 +56,42 @@ typedef struct  {
 static sdmmc_context_t context = { 0 };
 
 static void * sdio_bus_lock;
+
+// workarounds for known ESP-IDF SDMMC issues
+static void hosted_sdio_workaround(int slot, sdmmc_slot_config_t *slot_config)
+{
+	if (slot == 0) {
+#if !SDMMC_LL_SLOT_SUPPORT_GPIO_MATRIX(0)
+		/* workaround for 1-bit mode on Slot 0 with IOMUX only pins:
+		 * set gpio pins D2, D3 to pass sdmmc_host.c->sdmmc_host_init_slot() IOMUX GPIO checking
+		 */
+		if (slot_config->width == 1) {
+			ESP_LOGW(TAG, "workaround: setting D2-D3 in 1 bit mode for slot %d", slot);
+			slot_config->d2 = SDMMC_SLOT0_IOMUX_PIN_NUM_D2;
+			slot_config->d3 = SDMMC_SLOT0_IOMUX_PIN_NUM_D3;
+		}
+#endif
+	}
+}
+
+static bool hosted_sdio_enable_ldo(sdmmc_host_t *config)
+{
+#if H_SDIO_PWR_CTRL_LDO
+	// enable LDO Power for slot, if required
+	sd_pwr_ctrl_ldo_config_t ldo_config = {
+		.ldo_chan_id = H_SDIO_PWR_CTRL_LDO_ID,
+	};
+	sd_pwr_ctrl_handle_t pwr_ctrl_handle = NULL;
+
+	esp_err_t ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &pwr_ctrl_handle);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to create a new on-chip LDO power control driver");
+		return false;
+	}
+	config->pwr_ctrl_handle = pwr_ctrl_handle;
+#endif
+	return true;
+}
 
 static esp_err_t hosted_sdio_print_cis_information(sdmmc_card_t* card)
 {
@@ -299,6 +342,8 @@ void * hosted_sdio_init(void)
 	slot_config.d3  = context.config.pin_d3.pin;
 #endif
 
+	hosted_sdio_workaround(context.config.slot, &slot_config);
+
 	res = sdmmc_host_init_slot(context.config.slot, &slot_config);
 	if (res != ESP_OK) {
 		ESP_LOGE(TAG, "init SDMMC Host slot %d failed", H_SDMMC_HOST_SLOT);
@@ -325,13 +370,16 @@ int hosted_sdio_card_init(void *ctx)
 	struct esp_hosted_sdio_config *sdio_config = &context->config;
 
 	sdmmc_host_t config = SDMMC_HOST_DEFAULT();
+	config.slot = sdio_config->slot; // override default slot set
 
-	if (sdio_config->bus_width == 4)
-		config.flags = SDMMC_HOST_FLAG_4BIT;
-	else
-		config.flags = SDMMC_HOST_FLAG_1BIT;
+	if (!hosted_sdio_enable_ldo(&config)) {
+		goto fail;
+	}
+
 	config.max_freq_khz = sdio_config->clock_freq_khz;
-	ESP_LOGI(TAG, "SDIO master: Data-Lines: %d-bit Freq(KHz)[%u KHz]", sdio_config->bus_width==4? 4:1,
+	ESP_LOGI(TAG, "SDIO master: Slot %d, Data-Lines: %d-bit Freq(KHz)[%u KHz]",
+			config.slot,
+			sdio_config->bus_width==4? 4:1,
 			config.max_freq_khz);
 	if (sdio_config->bus_width == 4) {
 		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] D2[%u] D3[%u] Slave_Reset[%u]",

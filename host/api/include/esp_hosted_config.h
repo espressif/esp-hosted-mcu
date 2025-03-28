@@ -148,7 +148,7 @@ so feel free to change these if needed.
 
 #define H_SDIO_CLOCK_FREQ_KHZ                        CONFIG_ESP_HOSTED_SDIO_CLOCK_FREQ_KHZ
 #define H_SDIO_BUS_WIDTH                             CONFIG_ESP_HOSTED_SDIO_BUS_WIDTH
-#define H_SDMMC_HOST_SLOT                            SDMMC_HOST_SLOT_1
+#define H_SDMMC_HOST_SLOT                            CONFIG_ESP_HOSTED_SDIO_SLOT
 
 #ifdef H_SDIO_SOC_USE_GPIO_MATRIX
   #define H_SDIO_PIN_CLK                             CONFIG_ESP_HOSTED_SDIO_PIN_CLK
@@ -379,6 +379,20 @@ enum {
 #define H_TEST_RAW_TP_DIR (ESP_TEST_RAW_TP_NONE)
 #endif
 
+/*  ---------------------- ESP-IDF Specific Config start --------------------  */
+/* This section is for ESP-IDF specific support.
+ * Can be ignored on other hosts MCUs.
+ */
+
+/* Controls whether an Internal LDO powers the SDIO connection */
+#if CONFIG_ESP_HOSTED_SD_PWR_CTRL_LDO_INTERNAL_IO
+#define H_SDIO_PWR_CTRL_LDO                          1
+#define H_SDIO_PWR_CTRL_LDO_ID                       CONFIG_ESP_HOSTED_SD_PWR_CTRL_LDO_IO_ID
+#else
+#define H_SDIO_PWR_CTRL_LDO                          0
+#endif
+
+/*  ---------------------- ESP-IDF Specific Config end ----------------------  */
 
 esp_err_t esp_hosted_set_default_config(void);
 bool esp_hosted_is_config_valid(void);
