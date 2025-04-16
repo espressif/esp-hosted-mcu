@@ -331,7 +331,7 @@ enum {
   #define H_RESET_ACTIVE_HIGH                        1
 #endif
 
-#ifdef H_RESET_ACTIVE_HIGH
+#if H_RESET_ACTIVE_HIGH
   #define H_RESET_VAL_ACTIVE                         H_GPIO_HIGH
   #define H_RESET_VAL_INACTIVE                       H_GPIO_LOW
 #else
