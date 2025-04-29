@@ -84,6 +84,10 @@ esp_err_t rpc_wifi_sta_get_aid(uint16_t *aid);
 esp_err_t rpc_ota(const char* image_url);
 esp_err_t rpc_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info);
 
+esp_err_t rpc_ota_begin(void);
+esp_err_t rpc_ota_write(uint8_t* ota_data, uint32_t ota_data_len);
+esp_err_t rpc_ota_end(void);
+
 #if H_WIFI_DUALBAND_SUPPORT
 esp_err_t rpc_wifi_set_band(wifi_band_t band);
 esp_err_t rpc_wifi_get_band(wifi_band_t *band);

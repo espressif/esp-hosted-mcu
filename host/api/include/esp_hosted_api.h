@@ -17,6 +17,7 @@ extern "C" {
 #include "esp_wifi.h"
 #include "esp_wifi_remote.h"
 #include "esp_hosted_api_types.h"
+#include "esp_hosted_ota.h"
 
 /** Exported variables **/
 #define ESP_HOSTED_CHANNEL_CONFIG_DEFAULT()  { \
@@ -84,7 +85,6 @@ esp_err_t esp_wifi_remote_set_max_tx_power(int8_t power);
 esp_err_t esp_wifi_remote_get_max_tx_power(int8_t *power);
 esp_err_t esp_wifi_remote_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode);
 esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid);
-esp_err_t esp_hosted_slave_ota(const char* image_url);
 esp_err_t esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info);
 
 #if H_WIFI_DUALBAND_SUPPORT

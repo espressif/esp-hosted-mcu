@@ -34,6 +34,9 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	list(APPEND COMPONENT_SRCS "${common_dir}/protobuf-c/protobuf-c/protobuf-c.c" "${common_dir}/proto/esp_hosted_rpc.pb-c.c" )
 	list(APPEND COMPONENT_ADD_INCLUDEDIRS "${common_dir}" "${common_dir}/log" "${common_dir}/rpc" "${common_dir}/transport" "${common_dir}/protobuf-c" "${common_dir}/proto" )
 
+	# host ESP32 specific files
+	list(APPEND COMPONENT_SRCS "${host_dir}/port/esp/freertos/src/esp_hosted_ota.c")
+
 	# bt (NimBLE)
 	### TODO config for HCI over UART
 	list(APPEND COMPONENT_ADD_INCLUDEDIRS "${host_dir}/drivers/bt")
@@ -55,19 +58,19 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	endif()
 
 	# config files
-	list(APPEND COMPONENT_ADD_INCLUDEDIRS "${host_dir}/port/include")
-	list(APPEND COMPONENT_SRCS "${host_dir}/port/src/esp_hosted_config.c" "${host_dir}/port/src/esp_hosted_transport_config.c")
+	list(APPEND COMPONENT_ADD_INCLUDEDIRS "${host_dir}/port/esp/freertos/include")
+	list(APPEND COMPONENT_SRCS "${host_dir}/port/esp/freertos/src/esp_hosted_config.c" "${host_dir}/port/esp/freertos/src/esp_hosted_transport_config.c")
 
 	# transport port files
-	list(APPEND COMPONENT_SRCS "${host_dir}/port/src/os_wrapper.c")
+	list(APPEND COMPONENT_SRCS "${host_dir}/port/esp/freertos/src/os_wrapper.c")
 	if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
-		list(APPEND COMPONENT_SRCS "${host_dir}/port/src/sdio_wrapper.c")
+		list(APPEND COMPONENT_SRCS "${host_dir}/port/esp/freertos/src/sdio_wrapper.c")
 	elseif(CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE)
-		list(APPEND COMPONENT_SRCS "${host_dir}/port/src/spi_hd_wrapper.c")
+		list(APPEND COMPONENT_SRCS "${host_dir}/port/esp/freertos/src/spi_hd_wrapper.c")
 	elseif(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
-		list(APPEND COMPONENT_SRCS "${host_dir}/port/src/spi_wrapper.c")
+		list(APPEND COMPONENT_SRCS "${host_dir}/port/esp/freertos/src/spi_wrapper.c")
 	elseif(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)
-		list(APPEND COMPONENT_SRCS "${host_dir}/port/src/uart_wrapper.c")
+		list(APPEND COMPONENT_SRCS "${host_dir}/port/esp/freertos/src/uart_wrapper.c")
 	endif()
 
 endif()

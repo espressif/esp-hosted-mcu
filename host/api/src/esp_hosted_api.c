@@ -442,11 +442,6 @@ esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t
 }
 #endif
 
-esp_err_t esp_hosted_slave_ota(const char* image_url)
-{
-	return rpc_ota(image_url);
-}
-
 esp_err_t esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info)
 {
 	return rpc_get_coprocessor_fwversion(ver_info);
