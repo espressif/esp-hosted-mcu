@@ -212,8 +212,8 @@ int serial_drv_close(struct serial_drv_handle_t** serial_drv_handle)
 int rpc_platform_init(void)
 {
 	/* rpc semaphore */
-	readSemaphore = g_h.funcs->_h_create_semaphore(CONFIG_ESP_HOSTED_MAX_SIMULTANEOUS_SYNC_RPC_REQUESTS +
-			CONFIG_ESP_HOSTED_MAX_SIMULTANEOUS_ASYNC_RPC_REQUESTS);
+	readSemaphore = g_h.funcs->_h_create_semaphore(H_MAX_SYNC_RPC_REQUESTS +
+			H_MAX_ASYNC_RPC_REQUESTS);
 	assert(readSemaphore);
 
 	/* grab the semaphore, so that task will be mandated to wait on semaphore */
