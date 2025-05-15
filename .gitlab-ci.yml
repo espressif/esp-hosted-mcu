@@ -50,7 +50,16 @@ build_idf_v5.4:
 
 build_idf_v5.5:
   extends: .build_template
+  image: espressif/idf:release-v5.5
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
+        IDF_EXAMPLE_PATH: [examples/protocols/mqtt/tcp, examples/wifi/iperf]
+
+build_idf_master:
+  extends: .build_template
   image: espressif/idf:latest
+  allow_failure: true
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2", "esp32s3"]
