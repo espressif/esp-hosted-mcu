@@ -27,7 +27,7 @@ menu "ESP-Hosted config"
 	# y if SDIO Transport is available, based on host and slave selection
 	config ESP_HOSTED_PRIV_SDIO_OPTION
 		bool
-		default y if (IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4) && (SLAVE_IDF_TARGET_ESP32 || SLAVE_IDF_TARGET_ESP32C6)
+		default y if (IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4) && (SLAVE_IDF_TARGET_ESP32 || SLAVE_IDF_TARGET_ESP32C6 || SLAVE_IDF_TARGET_ESP32C5)
 		default n
 
 	# y if SPI HD Transport is available, based on host and slave selection
