@@ -127,9 +127,8 @@ For optimal performance and reliability in production designs:
 
 Setting up the hardware involves connecting the master and co-processor devices via the SDIO pins and ensuring all extra GPIO signals are properly connected. Below is the table of connections for the SDIO setup between a host ESP chipset and another ESP chipset as co-processor:
 
-
-
 ### Host connections
+
 | Signal      | ESP32 | ESP32-S3 | ESP32-P4-Function-EV-Board |
 |-------------|-------|----------|----------|
 | CLK         | 14    | 19       | 18       |
@@ -140,27 +139,59 @@ Setting up the hardware involves connecting the master and co-processor devices 
 | DAT2        | 12+[ext-pull-up](#34-pull-up-resistors)    | 20+[ext-pull-up](#34-pull-up-resistors)       | 16+[ext-pull-up](#34-pull-up-resistors)         |
 | DAT3        | 13+[ext-pull-up](#34-pull-up-resistors)    | 9+[ext-pull-up](#34-pull-up-resistors)        | 17+[ext-pull-up](#34-pull-up-resistors)       |
 
+#### ESP32-P4-Function-EV-Board with ESP32-C5 Test Board
 
+> [!NOTE]
+> Support for the ESP32-C5 is currently in BETA  (`--preview` in ESP-IDF master branch)
+
+ESP32-P4 Function EV Board GPIO setup to use with a ESP32-C5 Test Board:
+
+| Signal    | ESP32-P4 |
+|-----------|----------|
+| CLK       | 33       |
+| Reset Out | 53       |
+| CMD       | 4+[ext-pull-up](#34-pull-up-resistors)        |
+| DAT0      | 20+[ext-pull-up](#34-pull-up-resistors)       |
+| DAT1      | 23+[ext-pull-up](#34-pull-up-resistors)       |
+| DAT2      | 21+[ext-pull-up](#34-pull-up-resistors)       |
+| DAT3      | 22+[ext-pull-up](#34-pull-up-resistors)       |
+
+Current iPerf numbers, connected to a 5G Network and running iPerf (TCP and UDP tests).
+
+|     | Direction | Throughput (MBits/s) |
+|-----|-----------|----------------------|
+| UDP | PC to P4  | 60                   |
+|     | P4 to PC  | 51                   |
+| TCP | PC to P4  | 38                   |
+|     | P4 to PC  | 22                   |
+
+- PC to P4
+  - PC -> Router -> ESP Co-processor --> SDIO --> ESP32-P4
+- P4 to PC
+  - ESP32-P4 --> SDIO --> ESP Co-processor -> Router ->PC
+
+Testing using a shield box. For open air: similar setup, just with no shield box.
+
+<img src="images/PerformanceSetup-ShieldBox.png" alt="iPerf testing setup - Shield box way" width="800" />
 
 ### Co-processor connections
 
-| Signal      | ESP32 | ESP32-C6 |
-|-------------|-------|----------|
-| CLK         | 14    | 19       |
-| CMD         | 15    | 18       |
-| DAT0        | 2     | 20       |
-| DAT1        | 4     | 21       |
-| DAT2        | 12    | 22       |
-| DAT3        | 13    | 23       |
-| Reset In    | EN    | EN/RST   |
-
+| Signal      | ESP32 | ESP32-C6 | ESP32-C5 |
+|-------------|-------|----------|----------|
+| CLK         | 14    | 19       | 9        |
+| CMD         | 15    | 18       | 10       |
+| DAT0        | 2     | 20       | 8        |
+| DAT1        | 4     | 21       | 7        |
+| DAT2        | 12    | 22       | 14       |
+| DAT3        | 13    | 23       | 13       |
+| Reset In    | EN    | EN/RST   | RST      |
 
 > [!NOTE]
 >
 > A. Try to use IO_MUX pins from the datasheet for optimal performance on both sides. \
 > B. These GPIO assignments are based on default Kconfig configurations. You can modify these in the menuconfig for both host and co-processor if needed. \
 > C. Once ported, any other host with standard SDIO can be used. \
-> D. ESP32, ESP32-S3, and ESP32-P4 can be used as hosts; ESP32 and ESP32-C6 can be used as co-processors in SDIO mode. \
+> D. ESP32, ESP32-S3, and ESP32-P4 can be used as hosts; ESP32, ESP32-C6 and ESP32-C5 can be used as co-processors in SDIO mode. \
 > E. External pull-ups are mandatory
 
 ## 5 Set-Up ESP-IDF
@@ -189,8 +220,8 @@ Please follow the [ESP-IDF Get Started Guide](https://docs.espressif.com/project
 
 ## 6. Flashing the Co-processor
 
-| Supported Co-processor Targets | ESP32 | ESP32-C6 |
-| ------------------------------ | ----- | -------- |
+| Supported Co-processor Targets | ESP32 | ESP32-C6 | ESP32-C5 |
+| ------------------------------ | ----- | -------- | -------- |
 
 There are four steps to flash the ESP-Hosted co-processor firmware:
 
@@ -540,4 +571,3 @@ After flashing both the co-processor and host devices, follow these steps to con
 - [ESP32 Hardware Design Guidelines](https://www.espressif.com/en/products/hardware/esp32/resources)
 - [SDIO Protocol Basics](https://en.wikipedia.org/wiki/Serial_Peripheral_Interface)
 - [ESP SDIO Slave Communication](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/protocols/esp_sdio_slave_protocol.html)
-
