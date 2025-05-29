@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
+// Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,10 +32,10 @@
 #include "esp_hosted_transport_init.h"
 
 //#define SIMPLIFIED_SDIO_SLAVE          1
-#define SDIO_SLAVE_QUEUE_SIZE            20
-#define BUFFER_SIZE     	         MAX_TRANSPORT_BUF_SIZE
-#define BUFFER_NUM      	         20
-static uint8_t sdio_slave_rx_buffer[BUFFER_NUM][BUFFER_SIZE];
+#define SDIO_SLAVE_QUEUE_SIZE            CONFIG_ESP_SDIO_TX_Q_SIZE
+#define NUM_RX_BUFFERS                   CONFIG_ESP_SDIO_RX_Q_SIZE
+#define BUFFER_SIZE                      MAX_TRANSPORT_BUF_SIZE
+static uint8_t sdio_slave_rx_buffer[NUM_RX_BUFFERS][BUFFER_SIZE];
 
 #define SDIO_MEMPOOL_NUM_BLOCKS          40
 static struct hosted_mempool * buf_mp_tx_g;
@@ -44,7 +44,7 @@ interface_context_t context;
 interface_handle_t if_handle_g;
 static const char TAG[] = "SDIO_SLAVE";
 
-#define SDIO_RX_QUEUE_SIZE           CONFIG_ESP_SDIO_RX_Q_SIZE
+#define SDIO_TX_QUEUE_SIZE           CONFIG_ESP_SDIO_TX_Q_SIZE
 
 #if !SIMPLIFIED_SDIO_SLAVE
 static SemaphoreHandle_t sdio_rx_sem;
@@ -135,7 +135,7 @@ static void start_rx_data_throttling_if_needed(void)
 		pkt_stats.slave_wifi_rx_msg_loaded = queue_load;
 #endif
 
-		load_percent = (queue_load*100/SDIO_RX_QUEUE_SIZE);
+		load_percent = (queue_load*100/NUM_RX_BUFFERS);
 		if (load_percent > slv_cfg_g.throttle_high_threshold) {
 			slv_state_g.current_throttling = 1;
 			ESP_LOGV(TAG, "start data throttling at host");
@@ -156,7 +156,7 @@ static void stop_rx_data_throttling_if_needed(void)
 		pkt_stats.slave_wifi_rx_msg_loaded = queue_load;
 #endif
 
-		load_percent = (queue_load*100/SDIO_RX_QUEUE_SIZE);
+		load_percent = (queue_load*100/NUM_RX_BUFFERS);
 		if (load_percent < slv_cfg_g.throttle_low_threshold) {
 			slv_state_g.current_throttling = 0;
 			ESP_LOGV(TAG, "stop data throttling at host");
@@ -244,9 +244,13 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = LENGTH_1_BYTE;               pos++;len++;
 	*pos = raw_tp_cap;                  pos++;len++;
 
+	*pos = ESP_PRIV_TX_Q_SIZE;          pos++;len++;
+	*pos = LENGTH_1_BYTE;               pos++;len++;
+	*pos = SDIO_TX_QUEUE_SIZE;          pos++;len++;
+
 	*pos = ESP_PRIV_RX_Q_SIZE;          pos++;len++;
 	*pos = LENGTH_1_BYTE;               pos++;len++;
-	*pos = SDIO_RX_QUEUE_SIZE;          pos++;len++;
+	*pos = NUM_RX_BUFFERS;              pos++;len++;
 	/* TLVs end */
 
 	event->event_len = len;
@@ -316,7 +320,7 @@ static interface_handle_t * sdio_init(void)
 #else
 #error Invalid SDIO bus speed selection
 #endif
-  		.timing             = SDIO_SLAVE_TIMING,
+		.timing             = SDIO_SLAVE_TIMING,
 	};
 
 #if CONFIG_ESP_SDIO_STREAMING_MODE
@@ -325,20 +329,20 @@ static interface_handle_t * sdio_init(void)
 	ESP_LOGI(TAG, "%s: sending mode: SDIO_SLAVE_SEND_PACKET", __func__);
 #endif
 #if defined(CONFIG_IDF_TARGET_ESP32C6)
-	ESP_LOGI(TAG, "%s: ESP32-C6 SDIO RxQ[%d] timing[%u]\n", __func__, SDIO_RX_QUEUE_SIZE, config.timing);
+	ESP_LOGI(TAG, "%s: ESP32-C6 SDIO TxQ[%d] timing[%u]\n", __func__, SDIO_TX_QUEUE_SIZE, config.timing);
 #else
-	ESP_LOGI(TAG, "%s: ESP32 SDIO RxQ[%d] timing[%u]\n", __func__, SDIO_RX_QUEUE_SIZE, config.timing);
+	ESP_LOGI(TAG, "%s: ESP32 SDIO TxQ[%d] timing[%u]\n", __func__, SDIO_TX_QUEUE_SIZE, config.timing);
 #endif
 
 #if !SIMPLIFIED_SDIO_SLAVE
 	sdio_send_queue_sem = xSemaphoreCreateCounting(SDIO_SLAVE_QUEUE_SIZE, SDIO_SLAVE_QUEUE_SIZE);
 	assert(sdio_send_queue_sem);
 
-	sdio_rx_sem = xSemaphoreCreateCounting(SDIO_RX_QUEUE_SIZE*3, 0);
+	sdio_rx_sem = xSemaphoreCreateCounting(NUM_RX_BUFFERS * MAX_PRIORITY_QUEUES, 0);
 	assert(sdio_rx_sem != NULL);
 
 	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
-		sdio_rx_queue[prio_q_idx] = xQueueCreate(SDIO_RX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
+		sdio_rx_queue[prio_q_idx] = xQueueCreate(NUM_RX_BUFFERS, sizeof(interface_buffer_handle_t));
 		assert(sdio_rx_queue[prio_q_idx] != NULL);
 	}
 #endif
@@ -348,7 +352,7 @@ static interface_handle_t * sdio_init(void)
 	}
 
 
-	for (int i = 0; i < BUFFER_NUM; i++) {
+	for (int i = 0; i < NUM_RX_BUFFERS; i++) {
 		handle = sdio_slave_recv_register_buf(sdio_slave_rx_buffer[i]);
 		assert(handle != NULL);
 

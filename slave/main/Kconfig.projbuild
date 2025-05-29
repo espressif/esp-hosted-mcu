@@ -354,6 +354,12 @@ menu "Example Configuration"
 				bool "Send at negative edge, sample at negative edge"
 		endchoice
 
+		config ESP_SDIO_TX_Q_SIZE
+			int "SDIO TX queue size"
+			default 20
+			help
+				Very small TX queue will lower ESP --> SDIO -- Host data rate
+
 		config ESP_SDIO_RX_Q_SIZE
 			int "SDIO RX queue size"
 			default 20

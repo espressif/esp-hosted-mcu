@@ -24,7 +24,9 @@ If you wish to skip the theory, you can refer the [Quick Start Guide](#1-quick-s
 
 8. [Testing and Troubleshooting](#8-testing-and-troubleshooting)
 
-9. [References](#9-references)
+9. [Performance and Memory Usage](#9-performance-and-memory-usage) || [9.1 Stream and Packet Mode](#91-stream-and-packet-mode) || [9.2 Double Buffering on the Host](#92-double-buffering-on-the-host) || [9.3 Reducing Memory Usage](#93-reducing-memory-usage) || [9.4 Switching to Packet Mode](#94-switching-to-packet-mode)
+
+10. [References](#10-references)
 
 </details>
 
@@ -37,6 +39,7 @@ This section provides a brief overview of how to get started with ESP-Hosted usi
 - [6. Flashing the Co-processor](#6-flashing-the-co-processor)
 - [7. Flashing the Host](#7-flashing-the-host)
 - [8. Testing and Troubleshooting](#8-testing-and-troubleshooting)
+- [9. Performance and Memory Usage](#9-performance-and-memory-usage)
 
 These sections will guide you through the process of flashing both the co-processor and host devices, setting up the hardware connections, and verifying successful communication.
 
@@ -555,10 +558,83 @@ After flashing both the co-processor and host devices, follow these steps to con
    - Use a logic analyzer or oscilloscope to verify the SDIO signals.
    - Ensure that the power supply to both devices is stable and within the required voltage levels.
 
-## 9 References
+## 9 Performance and Memory Usage
+
+Quick summary:
+
+- for maximum network performance, at the cost of more memory usage on host and co-processor, use SDIO Streaming Mode (default mode of operation)
+- for lower memory usage, at the cost of lower network performance, use [SDIO Packet Mode](#94-switching-to-packet-mode)
+
+### 9.1 Stream and Packet Mode
+
+The co-processor SDIO can operate in two modes: Streaming Mode and Packet Mode.
+
+| **Streaming Mode** | **Packet Mode** |
+| --- | --- |
+| Co-processor combines multiple queued Tx packets together into one large packet | Co-processor queues individual Tx packets |
+| Host fetches the large packet as one SDIO transfer | Host fetches each packet one at a time |
+| Host breaks the large packet back into individual packets to send to the Rx queue | Host sends each packet to the Rx queue |
+| More efficient (less SDIO overhead), but requires more memory at Host to hold the large packet | Less efficient (higher SDIO overhead for each packet), but minimises memory required at Host |
+
+### 9.2 Double Buffering on the Host
+
+The Host implements a double-buffering scheme to receive data. One thread fetches data (using hardware DMA) from the co-processor and stores it in one Rx buffer, while another thread breaks up previously received data into packets for processing.
+
+### 9.3 Reducing Memory Usage in Streaming Mode
+
+#### 9.3.1 Host Receive
+
+> [!NOTE]
+> **Host Receive**: Router --Network Data--> Co-processor --SDIO--> Host
+
+In SDIO streaming mode, the host receives SDIO data from the co-processor in one large SDIO transfer. For this reason, **Streaming mode consumes more heap memory** compared to Packet mode, and has a higher throughput (less SDIO overhead).
+
+For Host systems with high heap memory usage, you can reduce the amount of heap memory used by ESP-Hosted for buffers, at the cost of reduced throughput, by adjusting the number of Tx buffers used by the co-processor.
+
+**On the co-processor**: run `idf.py menuconfig` ---> `Example Configuration` ---> `SDIO Configuration` and adjust `SDIO Tx queue size`. The default queue size is `20`.
+
+The table below shows the effect of changing `SDIO Tx queue size` on throughput and memory usage on the Host. The throughput numbers are obtained by using the RawTP option in ESP-Hosted to send / receive raw SDIO data.
+
+| SDIO Tx queue size | Host Rx Raw Throughput (Mbits/s) | Memory Used by Buffers (Tested) | Memory Used by Buffers (Theoretical) |
+| ---: | ---: | ---: | ---: |
+| 5  | 54 | 12,288 | 15,360 |
+| 10 | 70 | 26,624 | 30,720 |
+| 15 | 76 | 41,984 | 46,080 |
+| 20 | 80 | 56,320 | 61,440 |
+| 25 | 82 | 65,536 | 76,800 |
+| 30 | 84 | 65,536 | 92,160 |
+
+> [!NOTE]
+> The SDIO packet size is 1536 bytes. The co-processor can send at most `(Tx queue size) * 1536` bytes. Since the Host does double buffering, the theoretical Buffer Size needed is `2 * (Tx queue size) * 1536`.
+
+From the table above, throughput is more or less stagnant on and above Rx queue size of `25`. For a good trade off between memory consumption vs performance, the Rx queue sizes are currently defaulted to `20`.
+
+#### 9.3.2 Host Transmit
+
+> [!NOTE]
+> **Host Transmit**: Host --SDIO--> Co-Processor --Network Data--> Router
+
+To reduce memory usage on the co-processor, you can reduce the number of buffers the co-processor uses to receive data from the Host.
+
+**On the co-processor**: run `idf.py menuconfig` ---> `Example Configuration` ---> `SDIO Configuration` and adjust `SDIO Rx queue size`. The default queue size is `20`.
+
+Reducing the number of Rx buffers on the co-processor can affect the Tx throughput from the Host if the number of Rx buffers is set to a small value.
+
+### 9.4 Switching to Packet Mode
+
+For mimimal memory usage with a lower throughput, you can switch to Packet Mode. To do this:
+
+- on the co-processor: run `idf.py menuconfig` ---> `Example Configuration` ---> `SDIO Configuration` and untoggle `Enable SDIO Streaming Mode`
+- on the host: run `idf.py menuconfig` ---> `Component config` ---> `ESP-Hosted config` ---> `Hosted SDIO COnfiguration` ---> `SDIO Receive Optimization` and select either `No optimization` or `Always Rx Max Packet size`. `Always Rx Max Packet size` will give a slightly higher throughput.
+
+In Packet Mode, the host uses `2 * 1536` or `3,072` bytes of memory for Rx buffers.
+
+- with `No optimization`, Rx Raw Throughput is 33.0 Mbits/s
+- with `Always Rx Max Packet size`, Rx Raw Throughput is 33.2 Mbits/s
+
+## 10 References
 
 - [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/)
 - [ESP32 Hardware Design Guidelines](https://www.espressif.com/en/products/hardware/esp32/resources)
-- [SDIO Protocol Basics](https://en.wikipedia.org/wiki/Serial_Peripheral_Interface)
-- [ESP SDIO Slave Communication](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/protocols/esp_sdio_slave_protocol.html)
-
+- [ESP SDIO Slave Communication](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/esp_sdio_slave_protocol.html)
+- [ESP SDIO Card Slave Driver](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/sdio_slave.html)
