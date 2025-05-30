@@ -27,14 +27,19 @@
 #include "esp_hosted_bitmasks.h"
 #include "esp_idf_version.h"
 
-/* ESP-IDF 5.5.0: renamed reserved fields to reserved1/reserved2
- * and added VHT beamforming/MCS fields */
+/* ESP-IDF 5.5.0: renamed reserved fields to reserved1/reserved2 */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
 #define H_WIFI_NEW_RESERVED_FIELD_NAMES 1
-#define H_WIFI_VHT_FIELDS_AVAILABLE 1
+#define H_PRESENT_IN_ESP_IDF_5_5_0      1
 #else
 #define H_WIFI_NEW_RESERVED_FIELD_NAMES 0
-#define H_WIFI_VHT_FIELDS_AVAILABLE 0
+#define H_PRESENT_IN_ESP_IDF_5_5_0      0
+#endif
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#define H_PRESENT_IN_ESP_IDF_5_4_0      1
+#else
+#define H_PRESENT_IN_ESP_IDF_5_4_0      0
 #endif
 
 /* Slave-side: Always support reserved field decoding for maximum compatibility
@@ -878,13 +883,19 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->channel = p_c_sta->channel;
 		p_a_sta->listen_interval = p_c_sta->listen_interval;
 		p_a_sta->sort_method = p_c_sta->sort_method;
-		p_a_sta->threshold.rssi = p_c_sta->threshold->rssi;
-		p_a_sta->threshold.authmode = p_c_sta->threshold->authmode;
+		if (p_c_sta->threshold) {
+			p_a_sta->threshold.rssi = p_c_sta->threshold->rssi;
+			p_a_sta->threshold.authmode = p_c_sta->threshold->authmode;
+#if H_PRESENT_IN_ESP_IDF_5_4_0
+			p_a_sta->threshold.rssi_5g_adjustment = p_c_sta->threshold->rssi_5g_adjustment;
+#endif
+		}
 		//p_a_sta->ssid_hidden = p_c_sta->ssid_hidden;
 		//p_a_sta->max_connections = p_c_sta->max_connections;
-		p_a_sta->pmf_cfg.capable = p_c_sta->pmf_cfg->capable;
-		p_a_sta->pmf_cfg.required = p_c_sta->pmf_cfg->required;
-
+		if (p_c_sta->pmf_cfg) {
+			p_a_sta->pmf_cfg.capable = p_c_sta->pmf_cfg->capable;
+			p_a_sta->pmf_cfg.required = p_c_sta->pmf_cfg->required;
+		}
 		p_a_sta->rm_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_rm_enabled, p_c_sta->bitmask);
 		p_a_sta->btm_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_btm_enabled, p_c_sta->bitmask);
 		p_a_sta->mbo_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_mbo_enabled, p_c_sta->bitmask);
@@ -900,6 +911,7 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 
 		p_a_sta->sae_pwe_h2e = p_c_sta->sae_pwe_h2e;
+		p_a_sta->sae_pk_mode = p_c_sta->sae_pk_mode;
 		p_a_sta->failure_retry_cnt = p_c_sta->failure_retry_cnt;
 
 		p_a_sta->he_dcm_set = H_GET_BIT(WIFI_STA_CONFIG_2_he_dcm_set_BIT, p_c_sta->he_bitmask);
@@ -914,7 +926,7 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->he_trig_mu_bmforming_partial_feedback_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT, p_c_sta->he_bitmask);
 		p_a_sta->he_trig_cqi_feedback_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
 
-#if H_WIFI_VHT_FIELDS_AVAILABLE
+#if H_PRESENT_IN_ESP_IDF_5_5_0
 		p_a_sta->vht_su_beamformee_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
 		p_a_sta->vht_mu_beamformee_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled, p_c_sta->he_bitmask);
 		p_a_sta->vht_mcs8_enabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
@@ -948,11 +960,24 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_ap->ssid_hidden = p_c_ap->ssid_hidden;
 		p_a_ap->max_connection = p_c_ap->max_connection;
 		p_a_ap->beacon_interval = p_c_ap->beacon_interval;
+		p_a_ap->csa_count = p_c_ap->csa_count;
+		p_a_ap->dtim_period = p_c_ap->dtim_period;
 		p_a_ap->pairwise_cipher = p_c_ap->pairwise_cipher;
 		p_a_ap->ftm_responder = p_c_ap->ftm_responder;
-		p_a_ap->pmf_cfg.capable = p_c_ap->pmf_cfg->capable;
-		p_a_ap->pmf_cfg.required = p_c_ap->pmf_cfg->required;
+		if (p_c_ap->pmf_cfg) {
+			p_a_ap->pmf_cfg.capable = p_c_ap->pmf_cfg->capable;
+			p_a_ap->pmf_cfg.required = p_c_ap->pmf_cfg->required;
+		}
 		p_a_ap->sae_pwe_h2e = p_c_ap->sae_pwe_h2e;
+		p_a_ap->transition_disable = p_c_ap->transition_disable;
+#if H_PRESENT_IN_ESP_IDF_5_5_0
+		p_a_ap->sae_ext = p_c_ap->sae_ext;
+		if (p_c_ap->bss_max_idle_cfg) {
+			p_a_ap->bss_max_idle_cfg.period = p_c_ap->bss_max_idle_cfg->period;
+			p_a_ap->bss_max_idle_cfg.protected_keep_alive = p_c_ap->bss_max_idle_cfg->protected_keep_alive;
+		}
+		p_a_ap->gtk_rekey_interval = p_c_ap->gtk_rekey_interval;
+#endif
 	}
 
 	RPC_RET_FAIL_IF(esp_wifi_set_config(req_payload->iface, &cfg));
@@ -999,6 +1024,9 @@ static esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 		RPC_ALLOC_ELEMENT(WifiScanThreshold, p_c_sta->threshold, wifi_scan_threshold__init);
 		p_c_sta->threshold->rssi = p_a_sta->threshold.rssi;
 		p_c_sta->threshold->authmode = p_a_sta->threshold.authmode;
+#if H_PRESENT_IN_ESP_IDF_5_4_0
+		p_c_sta->threshold->rssi_5g_adjustment = p_a_sta->threshold.rssi_5g_adjustment;
+#endif
 		RPC_ALLOC_ELEMENT(WifiPmfConfig, p_c_sta->pmf_cfg, wifi_pmf_config__init);
 		p_c_sta->pmf_cfg->capable = p_a_sta->pmf_cfg.capable;
 		p_c_sta->pmf_cfg->required = p_a_sta->pmf_cfg.required;
@@ -1030,6 +1058,7 @@ static esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 
 		p_c_sta->sae_pwe_h2e = p_a_sta->sae_pwe_h2e;
+		p_c_sta->sae_pk_mode = p_a_sta->sae_pk_mode;
 		p_c_sta->failure_retry_cnt = p_a_sta->failure_retry_cnt;
 
 		/* HE field handling */
@@ -1060,7 +1089,7 @@ static esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 		if (p_a_sta->he_trig_cqi_feedback_disabled)
 			H_SET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
 
-#if H_WIFI_VHT_FIELDS_AVAILABLE
+#if H_PRESENT_IN_ESP_IDF_5_5_0
 		if (p_a_sta->vht_su_beamformee_disabled)
 			H_SET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
 
@@ -1089,19 +1118,29 @@ static esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 		WifiApConfig * p_c_ap = resp_payload->cfg->ap;
 		RPC_RESP_COPY_STR(p_c_ap->password, p_a_ap->password, PASSWORD_LENGTH);
 		p_c_ap->ssid_len = p_a_ap->ssid_len;
+		if (p_c_ap->ssid_len)
+			RPC_RESP_COPY_STR(p_c_ap->ssid, p_a_ap->ssid, SSID_LENGTH);
 		p_c_ap->channel = p_a_ap->channel;
 		p_c_ap->authmode = p_a_ap->authmode;
 		p_c_ap->ssid_hidden = p_a_ap->ssid_hidden;
 		p_c_ap->max_connection = p_a_ap->max_connection;
 		p_c_ap->beacon_interval = p_a_ap->beacon_interval;
+		p_c_ap->csa_count = p_a_ap->csa_count;
+		p_c_ap->dtim_period = p_a_ap->dtim_period;
 		p_c_ap->pairwise_cipher = p_a_ap->pairwise_cipher;
 		p_c_ap->ftm_responder = p_a_ap->ftm_responder;
 		RPC_ALLOC_ELEMENT(WifiPmfConfig, p_c_ap->pmf_cfg, wifi_pmf_config__init);
 		p_c_ap->pmf_cfg->capable = p_a_ap->pmf_cfg.capable;
 		p_c_ap->pmf_cfg->required = p_a_ap->pmf_cfg.required;
-		if (p_c_ap->ssid_len)
-			RPC_RESP_COPY_STR(p_c_ap->ssid, p_a_ap->ssid, SSID_LENGTH);
 		p_c_ap->sae_pwe_h2e = p_a_ap->sae_pwe_h2e;
+		p_c_ap->transition_disable = p_a_ap->transition_disable;
+#if H_PRESENT_IN_ESP_IDF_5_5_0
+		p_c_ap->sae_ext = p_a_ap->sae_ext;
+		RPC_ALLOC_ELEMENT(WifiBssMaxIdleConfig, p_c_ap->bss_max_idle_cfg, wifi_bss_max_idle_config__init);
+		p_c_ap->bss_max_idle_cfg->period = p_a_ap->bss_max_idle_cfg.period;
+		p_c_ap->bss_max_idle_cfg->protected_keep_alive = p_a_ap->bss_max_idle_cfg.protected_keep_alive;
+		p_c_ap->gtk_rekey_interval = p_a_ap->gtk_rekey_interval;
+#endif
 		break;
 	}
 	default:
@@ -1149,6 +1188,11 @@ static esp_err_t req_wifi_scan_start(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_st->active.max = p_c_st->active->max ;
 
 		p_a->home_chan_dwell_time = p_c->home_chan_dwell_time;
+
+		if (p_c->channel_bitmap) {
+			p_a->channel_bitmap.ghz_2_channels = p_c->channel_bitmap->ghz_2_channels;
+			p_a->channel_bitmap.ghz_5_channels = p_c->channel_bitmap->ghz_5_channels;
+		}
 	}
 
 	RPC_RET_FAIL_IF(esp_wifi_scan_start(p_a, req_payload->block));
@@ -1715,7 +1759,7 @@ static esp_err_t req_wifi_sta_get_negotiated_phymode(Rpc *req, Rpc *resp, void *
 
 static esp_err_t req_wifi_set_protocols(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE(RpcRespWifiSetProtocols, resp_wifi_set_protocols,
 			RpcReqWifiSetProtocols, req_wifi_set_protocols,
 			rpc__resp__wifi_set_protocols__init);
@@ -1742,7 +1786,7 @@ static esp_err_t req_wifi_set_protocols(Rpc *req, Rpc *resp, void *priv_data)
 
 static esp_err_t req_wifi_get_protocols(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE(RpcRespWifiGetProtocols, resp_wifi_get_protocols,
 			RpcReqWifiGetProtocols, req_wifi_get_protocols,
 			rpc__resp__wifi_get_protocols__init);
@@ -1770,7 +1814,7 @@ err:
 
 static esp_err_t req_wifi_set_bandwidths(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE(RpcRespWifiSetBandwidths, resp_wifi_set_bandwidths,
 			RpcReqWifiSetBandwidths, req_wifi_set_bandwidths,
 			rpc__resp__wifi_set_bandwidths__init);
@@ -1798,7 +1842,7 @@ static esp_err_t req_wifi_set_bandwidths(Rpc *req, Rpc *resp, void *priv_data)
 
 static esp_err_t req_wifi_get_bandwidths(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE(RpcRespWifiGetBandwidths, resp_wifi_get_bandwidths,
 			RpcReqWifiGetBandwidths, req_wifi_get_bandwidths,
 			rpc__resp__wifi_get_bandwidths__init);
@@ -1826,7 +1870,7 @@ err:
 
 static esp_err_t req_wifi_set_band(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE(RpcRespWifiSetBand, resp_wifi_set_band,
 			RpcReqWifiSetBand, req_wifi_set_band,
 			rpc__resp__wifi_set_band__init);
@@ -1846,7 +1890,7 @@ static esp_err_t req_wifi_set_band(Rpc *req, Rpc *resp, void *priv_data)
 
 static esp_err_t req_wifi_get_band(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE_SIMPLE(RpcRespWifiGetBand, resp_wifi_get_band,
 			RpcReqWifiGetBand, req_wifi_get_band,
 			rpc__resp__wifi_get_band__init);
@@ -1866,7 +1910,7 @@ static esp_err_t req_wifi_get_band(Rpc *req, Rpc *resp, void *priv_data)
 
 static esp_err_t req_wifi_set_band_mode(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE(RpcRespWifiSetBandMode, resp_wifi_set_bandmode,
 			RpcReqWifiSetBandMode, req_wifi_set_bandmode,
 			rpc__resp__wifi_set_band_mode__init);
@@ -1886,7 +1930,7 @@ static esp_err_t req_wifi_set_band_mode(Rpc *req, Rpc *resp, void *priv_data)
 
 static esp_err_t req_wifi_get_band_mode(Rpc *req, Rpc *resp, void *priv_data)
 {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if H_PRESENT_IN_ESP_IDF_5_4_0
 	RPC_TEMPLATE_SIMPLE(RpcRespWifiGetBandMode, resp_wifi_get_bandmode,
 			RpcReqWifiGetBandMode, req_wifi_get_bandmode,
 			rpc__resp__wifi_get_band_mode__init);

@@ -187,6 +187,51 @@ void   wifi_scan_time__free_unpacked
   assert(message->base.descriptor == &wifi_scan_time__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   wifi_scan_channel_bitmap__init
+                     (WifiScanChannelBitmap         *message)
+{
+  static const WifiScanChannelBitmap init_value = WIFI_SCAN_CHANNEL_BITMAP__INIT;
+  *message = init_value;
+}
+size_t wifi_scan_channel_bitmap__get_packed_size
+                     (const WifiScanChannelBitmap *message)
+{
+  assert(message->base.descriptor == &wifi_scan_channel_bitmap__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t wifi_scan_channel_bitmap__pack
+                     (const WifiScanChannelBitmap *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &wifi_scan_channel_bitmap__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t wifi_scan_channel_bitmap__pack_to_buffer
+                     (const WifiScanChannelBitmap *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &wifi_scan_channel_bitmap__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+WifiScanChannelBitmap *
+       wifi_scan_channel_bitmap__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (WifiScanChannelBitmap *)
+     protobuf_c_message_unpack (&wifi_scan_channel_bitmap__descriptor,
+                                allocator, len, data);
+}
+void   wifi_scan_channel_bitmap__free_unpacked
+                     (WifiScanChannelBitmap *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &wifi_scan_channel_bitmap__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   wifi_scan_config__init
                      (WifiScanConfig         *message)
 {
@@ -410,6 +455,51 @@ void   wifi_pmf_config__free_unpacked
   if(!message)
     return;
   assert(message->base.descriptor == &wifi_pmf_config__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   wifi_bss_max_idle_config__init
+                     (WifiBssMaxIdleConfig         *message)
+{
+  static const WifiBssMaxIdleConfig init_value = WIFI_BSS_MAX_IDLE_CONFIG__INIT;
+  *message = init_value;
+}
+size_t wifi_bss_max_idle_config__get_packed_size
+                     (const WifiBssMaxIdleConfig *message)
+{
+  assert(message->base.descriptor == &wifi_bss_max_idle_config__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t wifi_bss_max_idle_config__pack
+                     (const WifiBssMaxIdleConfig *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &wifi_bss_max_idle_config__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t wifi_bss_max_idle_config__pack_to_buffer
+                     (const WifiBssMaxIdleConfig *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &wifi_bss_max_idle_config__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+WifiBssMaxIdleConfig *
+       wifi_bss_max_idle_config__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (WifiBssMaxIdleConfig *)
+     protobuf_c_message_unpack (&wifi_bss_max_idle_config__descriptor,
+                                allocator, len, data);
+}
+void   wifi_bss_max_idle_config__free_unpacked
+                     (WifiBssMaxIdleConfig *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &wifi_bss_max_idle_config__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   wifi_ap_config__init
@@ -7774,7 +7864,58 @@ const ProtobufCMessageDescriptor wifi_scan_time__descriptor =
   (ProtobufCMessageInit) wifi_scan_time__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_scan_config__field_descriptors[7] =
+static const ProtobufCFieldDescriptor wifi_scan_channel_bitmap__field_descriptors[2] =
+{
+  {
+    "ghz_2_channels",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiScanChannelBitmap, ghz_2_channels),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "ghz_5_channels",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiScanChannelBitmap, ghz_5_channels),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned wifi_scan_channel_bitmap__field_indices_by_name[] = {
+  0,   /* field[0] = ghz_2_channels */
+  1,   /* field[1] = ghz_5_channels */
+};
+static const ProtobufCIntRange wifi_scan_channel_bitmap__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor wifi_scan_channel_bitmap__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "wifi_scan_channel_bitmap",
+  "WifiScanChannelBitmap",
+  "WifiScanChannelBitmap",
+  "",
+  sizeof(WifiScanChannelBitmap),
+  2,
+  wifi_scan_channel_bitmap__field_descriptors,
+  wifi_scan_channel_bitmap__field_indices_by_name,
+  1,  wifi_scan_channel_bitmap__number_ranges,
+  (ProtobufCMessageInit) wifi_scan_channel_bitmap__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor wifi_scan_config__field_descriptors[8] =
 {
   {
     "ssid",
@@ -7860,10 +8001,23 @@ static const ProtobufCFieldDescriptor wifi_scan_config__field_descriptors[7] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "channel_bitmap",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(WifiScanConfig, channel_bitmap),
+    &wifi_scan_channel_bitmap__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_scan_config__field_indices_by_name[] = {
   1,   /* field[1] = bssid */
   2,   /* field[2] = channel */
+  7,   /* field[7] = channel_bitmap */
   6,   /* field[6] = home_chan_dwell_time */
   5,   /* field[5] = scan_time */
   4,   /* field[4] = scan_type */
@@ -7873,7 +8027,7 @@ static const unsigned wifi_scan_config__field_indices_by_name[] = {
 static const ProtobufCIntRange wifi_scan_config__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 7 }
+  { 0, 8 }
 };
 const ProtobufCMessageDescriptor wifi_scan_config__descriptor =
 {
@@ -7883,7 +8037,7 @@ const ProtobufCMessageDescriptor wifi_scan_config__descriptor =
   "WifiScanConfig",
   "",
   sizeof(WifiScanConfig),
-  7,
+  8,
   wifi_scan_config__field_descriptors,
   wifi_scan_config__field_indices_by_name,
   1,  wifi_scan_config__number_ranges,
@@ -8161,7 +8315,7 @@ const ProtobufCMessageDescriptor wifi_ap_record__descriptor =
   (ProtobufCMessageInit) wifi_ap_record__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_scan_threshold__field_descriptors[2] =
+static const ProtobufCFieldDescriptor wifi_scan_threshold__field_descriptors[3] =
 {
   {
     "rssi",
@@ -8187,15 +8341,28 @@ static const ProtobufCFieldDescriptor wifi_scan_threshold__field_descriptors[2] 
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "rssi_5g_adjustment",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiScanThreshold, rssi_5g_adjustment),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_scan_threshold__field_indices_by_name[] = {
   1,   /* field[1] = authmode */
   0,   /* field[0] = rssi */
+  2,   /* field[2] = rssi_5g_adjustment */
 };
 static const ProtobufCIntRange wifi_scan_threshold__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 3 }
 };
 const ProtobufCMessageDescriptor wifi_scan_threshold__descriptor =
 {
@@ -8205,7 +8372,7 @@ const ProtobufCMessageDescriptor wifi_scan_threshold__descriptor =
   "WifiScanThreshold",
   "",
   sizeof(WifiScanThreshold),
-  2,
+  3,
   wifi_scan_threshold__field_descriptors,
   wifi_scan_threshold__field_indices_by_name,
   1,  wifi_scan_threshold__number_ranges,
@@ -8263,7 +8430,58 @@ const ProtobufCMessageDescriptor wifi_pmf_config__descriptor =
   (ProtobufCMessageInit) wifi_pmf_config__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_ap_config__field_descriptors[12] =
+static const ProtobufCFieldDescriptor wifi_bss_max_idle_config__field_descriptors[2] =
+{
+  {
+    "period",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiBssMaxIdleConfig, period),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "protected_keep_alive",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(WifiBssMaxIdleConfig, protected_keep_alive),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned wifi_bss_max_idle_config__field_indices_by_name[] = {
+  0,   /* field[0] = period */
+  1,   /* field[1] = protected_keep_alive */
+};
+static const ProtobufCIntRange wifi_bss_max_idle_config__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor wifi_bss_max_idle_config__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "wifi_bss_max_idle_config",
+  "WifiBssMaxIdleConfig",
+  "WifiBssMaxIdleConfig",
+  "",
+  sizeof(WifiBssMaxIdleConfig),
+  2,
+  wifi_bss_max_idle_config__field_descriptors,
+  wifi_bss_max_idle_config__field_indices_by_name,
+  1,  wifi_bss_max_idle_config__number_ranges,
+  (ProtobufCMessageInit) wifi_bss_max_idle_config__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor wifi_ap_config__field_descriptors[18] =
 {
   {
     "ssid",
@@ -8409,25 +8627,103 @@ static const ProtobufCFieldDescriptor wifi_ap_config__field_descriptors[12] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "csa_count",
+    13,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApConfig, csa_count),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "dtim_period",
+    14,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApConfig, dtim_period),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "transition_disable",
+    15,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApConfig, transition_disable),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "sae_ext",
+    16,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApConfig, sae_ext),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "bss_max_idle_cfg",
+    17,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(WifiApConfig, bss_max_idle_cfg),
+    &wifi_bss_max_idle_config__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "gtk_rekey_interval",
+    18,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApConfig, gtk_rekey_interval),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_ap_config__field_indices_by_name[] = {
   4,   /* field[4] = authmode */
   7,   /* field[7] = beacon_interval */
+  16,   /* field[16] = bss_max_idle_cfg */
   3,   /* field[3] = channel */
+  12,   /* field[12] = csa_count */
+  13,   /* field[13] = dtim_period */
   9,   /* field[9] = ftm_responder */
+  17,   /* field[17] = gtk_rekey_interval */
   6,   /* field[6] = max_connection */
   8,   /* field[8] = pairwise_cipher */
   1,   /* field[1] = password */
   10,   /* field[10] = pmf_cfg */
+  15,   /* field[15] = sae_ext */
   11,   /* field[11] = sae_pwe_h2e */
   0,   /* field[0] = ssid */
   5,   /* field[5] = ssid_hidden */
   2,   /* field[2] = ssid_len */
+  14,   /* field[14] = transition_disable */
 };
 static const ProtobufCIntRange wifi_ap_config__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 12 }
+  { 0, 18 }
 };
 const ProtobufCMessageDescriptor wifi_ap_config__descriptor =
 {
@@ -8437,14 +8733,14 @@ const ProtobufCMessageDescriptor wifi_ap_config__descriptor =
   "WifiApConfig",
   "",
   sizeof(WifiApConfig),
-  12,
+  18,
   wifi_ap_config__field_descriptors,
   wifi_ap_config__field_indices_by_name,
   1,  wifi_ap_config__number_ranges,
   (ProtobufCMessageInit) wifi_ap_config__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_sta_config__field_descriptors[15] =
+static const ProtobufCFieldDescriptor wifi_sta_config__field_descriptors[16] =
 {
   {
     "ssid",
@@ -8626,6 +8922,18 @@ static const ProtobufCFieldDescriptor wifi_sta_config__field_descriptors[15] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "sae_pk_mode",
+    16,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiStaConfig, sae_pk_mode),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_sta_config__field_indices_by_name[] = {
   10,   /* field[10] = bitmask */
@@ -8638,6 +8946,7 @@ static const unsigned wifi_sta_config__field_indices_by_name[] = {
   1,   /* field[1] = password */
   9,   /* field[9] = pmf_cfg */
   14,   /* field[14] = sae_h2e_identifier */
+  15,   /* field[15] = sae_pk_mode */
   11,   /* field[11] = sae_pwe_h2e */
   2,   /* field[2] = scan_method */
   7,   /* field[7] = sort_method */
@@ -8647,7 +8956,7 @@ static const unsigned wifi_sta_config__field_indices_by_name[] = {
 static const ProtobufCIntRange wifi_sta_config__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 15 }
+  { 0, 16 }
 };
 const ProtobufCMessageDescriptor wifi_sta_config__descriptor =
 {
@@ -8657,7 +8966,7 @@ const ProtobufCMessageDescriptor wifi_sta_config__descriptor =
   "WifiStaConfig",
   "",
   sizeof(WifiStaConfig),
-  15,
+  16,
   wifi_sta_config__field_descriptors,
   wifi_sta_config__field_indices_by_name,
   1,  wifi_sta_config__number_ranges,

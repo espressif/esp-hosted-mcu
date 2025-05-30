@@ -19,11 +19,13 @@ typedef struct WifiInitConfig WifiInitConfig;
 typedef struct WifiCountry WifiCountry;
 typedef struct WifiActiveScanTime WifiActiveScanTime;
 typedef struct WifiScanTime WifiScanTime;
+typedef struct WifiScanChannelBitmap WifiScanChannelBitmap;
 typedef struct WifiScanConfig WifiScanConfig;
 typedef struct WifiHeApInfo WifiHeApInfo;
 typedef struct WifiApRecord WifiApRecord;
 typedef struct WifiScanThreshold WifiScanThreshold;
 typedef struct WifiPmfConfig WifiPmfConfig;
+typedef struct WifiBssMaxIdleConfig WifiBssMaxIdleConfig;
 typedef struct WifiApConfig WifiApConfig;
 typedef struct WifiStaConfig WifiStaConfig;
 typedef struct WifiConfig WifiConfig;
@@ -873,6 +875,23 @@ struct  WifiScanTime
     , NULL, 0 }
 
 
+struct  WifiScanChannelBitmap
+{
+  ProtobufCMessage base;
+  /*
+   **< Represents 2.4 GHz channels, that bits can be set as wifi_2g_channel_bit_t shown. 
+   */
+  uint32_t ghz_2_channels;
+  /*
+   **< Represents 5 GHz channels, that bits can be set as wifi_5g_channel_bit_t shown. 
+   */
+  uint32_t ghz_5_channels;
+};
+#define WIFI_SCAN_CHANNEL_BITMAP__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&wifi_scan_channel_bitmap__descriptor) \
+    , 0, 0 }
+
+
 struct  WifiScanConfig
 {
   ProtobufCMessage base;
@@ -904,10 +923,16 @@ struct  WifiScanConfig
    **< time spent at home channel between scanning consecutive channels.
    */
   uint32_t home_chan_dwell_time;
+  /*
+   **< Channel bitmap for setting specific channels to be scanned.
+   *Please note that the 'channel' parameter above needs to be set to 0 to allow scanning by bitmap.
+   *Also, note that only allowed channels configured by wifi_country_t can be scanned. 
+   */
+  WifiScanChannelBitmap *channel_bitmap;
 };
 #define WIFI_SCAN_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_scan_config__descriptor) \
-    , {0,NULL}, {0,NULL}, 0, 0, 0, NULL, 0 }
+    , {0,NULL}, {0,NULL}, 0, 0, 0, NULL, 0, NULL }
 
 
 struct  WifiHeApInfo
@@ -1027,10 +1052,14 @@ struct  WifiScanThreshold
    *Please set authmode threshold as WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK to connect to WEP/WPA networks 
    */
   int32_t authmode;
+  /*
+   **< The RSSI value of the 5G AP is within the rssi_5g_adjustment range compared to the 2G AP, the 5G AP will be given priority for connection. 
+   */
+  uint32_t rssi_5g_adjustment;
 };
 #define WIFI_SCAN_THRESHOLD__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_scan_threshold__descriptor) \
-    , 0, 0 }
+    , 0, 0, 0 }
 
 
 struct  WifiPmfConfig
@@ -1047,6 +1076,23 @@ struct  WifiPmfConfig
 };
 #define WIFI_PMF_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_pmf_config__descriptor) \
+    , 0, 0 }
+
+
+struct  WifiBssMaxIdleConfig
+{
+  ProtobufCMessage base;
+  /*
+   **< Sets BSS Max idle period (1 Unit = 1000TUs OR 1.024 Seconds). If there are no frames for this period from a STA, SoftAP will disassociate due to inactivity. Setting it to 0 disables the feature 
+   */
+  uint32_t period;
+  /*
+   **< Requires clients to use protected keep alive frames for BSS Max Idle period 
+   */
+  protobuf_c_boolean protected_keep_alive;
+};
+#define WIFI_BSS_MAX_IDLE_CONFIG__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&wifi_bss_max_idle_config__descriptor) \
     , 0, 0 }
 
 
@@ -1103,10 +1149,34 @@ struct  WifiApConfig
    **< Configuration for SAE PWE derivation method 
    */
   int32_t sae_pwe_h2e;
+  /*
+   **< Channel Switch Announcement Count. Notify the station that the channel will switch after the csa_count beacon intervals. Default value: 3 
+   */
+  uint32_t csa_count;
+  /*
+   **< Dtim period of soft-AP. Range: 1 ~ 10. Default value: 1 
+   */
+  uint32_t dtim_period;
+  /*
+   **< Whether to enable transition disable feature 
+   */
+  uint32_t transition_disable;
+  /*
+   **< Enable SAE EXT feature. SOC_GCMP_SUPPORT is required for this feature. 
+   */
+  uint32_t sae_ext;
+  /*
+   **< Configuration for bss max idle, effective if CONFIG_WIFI_BSS_MAX_IDLE_SUPPORT is enabled 
+   */
+  WifiBssMaxIdleConfig *bss_max_idle_cfg;
+  /*
+   **< GTK rekeying interval in seconds. If set to 0, GTK rekeying is disabled. Range: 60 ~ 65535 including 0. 
+   */
+  uint32_t gtk_rekey_interval;
 };
 #define WIFI_AP_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_ap_config__descriptor) \
-    , {0,NULL}, {0,NULL}, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0 }
+    , {0,NULL}, {0,NULL}, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 0, 0, 0, 0, NULL, 0 }
 
 
 struct  WifiStaConfig
@@ -1185,17 +1255,24 @@ struct  WifiStaConfig
    *uint32_t he_trig_su_bmforming_feedback_disabled:1;             **< Whether to disable support the transmission of SU feedback in an HE TB sounding sequence. * 
    *uint32_t he_trig_mu_bmforming_partial_feedback_disabled:1;     **< Whether to disable support the transmission of partial-bandwidth MU feedback in an HE TB sounding sequence. * 
    * uint32_t he_trig_cqi_feedback_disabled:1;                      **< Whether to disable support the transmission of CQI feedback in an HE TB sounding sequence. * 
-   * uint32_t he_reserved:22;                                       **< Reserved for future feature set * 
+   * uint32_t vht_su_beamformee_disabled: 1;                        **< Whether to disable support for operation as an VHT SU beamformee. * 
+   * uint32_t vht_mu_beamformee_disabled: 1;                        **< Whether to disable support for operation as an VHT MU beamformee. * 
+   * uint32_t vht_mcs8_enabled: 1;                                  **< Whether to support VHT-MCS8. The default value is 0. * 
+   * uint32_t he_reserved:19;                                       **< Reserved for future feature set * 
    */
   uint32_t he_bitmask;
   /*
    **< Password identifier for H2E. this needs to be null terminated string. SAE_H2E_IDENTIFIER_LEN chars 
    */
   ProtobufCBinaryData sae_h2e_identifier;
+  /*
+   **< Configuration for SAE-PK (Public Key) Authentication method 
+   */
+  uint32_t sae_pk_mode;
 };
 #define WIFI_STA_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_sta_config__descriptor) \
-    , {0,NULL}, {0,NULL}, 0, 0, {0,NULL}, 0, 0, 0, NULL, NULL, 0, 0, 0, 0, {0,NULL} }
+    , {0,NULL}, {0,NULL}, 0, 0, {0,NULL}, 0, 0, 0, NULL, NULL, 0, 0, 0, 0, {0,NULL}, 0 }
 
 
 typedef enum {
@@ -3548,6 +3625,25 @@ WifiScanTime *
 void   wifi_scan_time__free_unpacked
                      (WifiScanTime *message,
                       ProtobufCAllocator *allocator);
+/* WifiScanChannelBitmap methods */
+void   wifi_scan_channel_bitmap__init
+                     (WifiScanChannelBitmap         *message);
+size_t wifi_scan_channel_bitmap__get_packed_size
+                     (const WifiScanChannelBitmap   *message);
+size_t wifi_scan_channel_bitmap__pack
+                     (const WifiScanChannelBitmap   *message,
+                      uint8_t             *out);
+size_t wifi_scan_channel_bitmap__pack_to_buffer
+                     (const WifiScanChannelBitmap   *message,
+                      ProtobufCBuffer     *buffer);
+WifiScanChannelBitmap *
+       wifi_scan_channel_bitmap__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   wifi_scan_channel_bitmap__free_unpacked
+                     (WifiScanChannelBitmap *message,
+                      ProtobufCAllocator *allocator);
 /* WifiScanConfig methods */
 void   wifi_scan_config__init
                      (WifiScanConfig         *message);
@@ -3642,6 +3738,25 @@ WifiPmfConfig *
                       const uint8_t       *data);
 void   wifi_pmf_config__free_unpacked
                      (WifiPmfConfig *message,
+                      ProtobufCAllocator *allocator);
+/* WifiBssMaxIdleConfig methods */
+void   wifi_bss_max_idle_config__init
+                     (WifiBssMaxIdleConfig         *message);
+size_t wifi_bss_max_idle_config__get_packed_size
+                     (const WifiBssMaxIdleConfig   *message);
+size_t wifi_bss_max_idle_config__pack
+                     (const WifiBssMaxIdleConfig   *message,
+                      uint8_t             *out);
+size_t wifi_bss_max_idle_config__pack_to_buffer
+                     (const WifiBssMaxIdleConfig   *message,
+                      ProtobufCBuffer     *buffer);
+WifiBssMaxIdleConfig *
+       wifi_bss_max_idle_config__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   wifi_bss_max_idle_config__free_unpacked
+                     (WifiBssMaxIdleConfig *message,
                       ProtobufCAllocator *allocator);
 /* WifiApConfig methods */
 void   wifi_ap_config__init
@@ -6564,6 +6679,9 @@ typedef void (*WifiActiveScanTime_Closure)
 typedef void (*WifiScanTime_Closure)
                  (const WifiScanTime *message,
                   void *closure_data);
+typedef void (*WifiScanChannelBitmap_Closure)
+                 (const WifiScanChannelBitmap *message,
+                  void *closure_data);
 typedef void (*WifiScanConfig_Closure)
                  (const WifiScanConfig *message,
                   void *closure_data);
@@ -6578,6 +6696,9 @@ typedef void (*WifiScanThreshold_Closure)
                   void *closure_data);
 typedef void (*WifiPmfConfig_Closure)
                  (const WifiPmfConfig *message,
+                  void *closure_data);
+typedef void (*WifiBssMaxIdleConfig_Closure)
+                 (const WifiBssMaxIdleConfig *message,
                   void *closure_data);
 typedef void (*WifiApConfig_Closure)
                  (const WifiApConfig *message,
@@ -7054,11 +7175,13 @@ extern const ProtobufCMessageDescriptor wifi_init_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_country__descriptor;
 extern const ProtobufCMessageDescriptor wifi_active_scan_time__descriptor;
 extern const ProtobufCMessageDescriptor wifi_scan_time__descriptor;
+extern const ProtobufCMessageDescriptor wifi_scan_channel_bitmap__descriptor;
 extern const ProtobufCMessageDescriptor wifi_scan_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_he_ap_info__descriptor;
 extern const ProtobufCMessageDescriptor wifi_ap_record__descriptor;
 extern const ProtobufCMessageDescriptor wifi_scan_threshold__descriptor;
 extern const ProtobufCMessageDescriptor wifi_pmf_config__descriptor;
+extern const ProtobufCMessageDescriptor wifi_bss_max_idle_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_ap_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_sta_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_config__descriptor;

@@ -605,6 +605,11 @@ message wifi_scan_time {
 												  cause station to disconnect from AP and are not recommended. */
 }
 
+message wifi_scan_channel_bitmap {
+	uint32         ghz_2_channels = 1;          /**< Represents 2.4 GHz channels, that bits can be set as wifi_2g_channel_bit_t shown. */
+	uint32         ghz_5_channels = 2;          /**< Represents 5 GHz channels, that bits can be set as wifi_5g_channel_bit_t shown. */
+}
+
 message wifi_scan_config {
 	bytes          ssid = 1;                    /**< SSID of AP 33char*/
 	bytes          bssid = 2;                   /**< MAC address of AP 6char */
@@ -613,6 +618,9 @@ message wifi_scan_config {
 	int32          scan_type = 5;               /**< scan type, active or passive */
 	wifi_scan_time scan_time = 6;               /**< scan time per channel */
 	uint32         home_chan_dwell_time = 7;    /**< time spent at home channel between scanning consecutive channels.*/
+	wifi_scan_channel_bitmap channel_bitmap = 8; /**< Channel bitmap for setting specific channels to be scanned.
+                                                      Please note that the 'channel' parameter above needs to be set to 0 to allow scanning by bitmap.
+                                                      Also, note that only allowed channels configured by wifi_country_t can be scanned. */
 }
 
 message wifi_he_ap_info {
@@ -661,11 +669,17 @@ message wifi_scan_threshold {
 Note: Incase this value is not set and password is set as per WPA2 standards(password len >= 8),
 it will be defaulted to WPA2 and device won't connect to deprecated WEP/WPA networks.
 Please set authmode threshold as WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK to connect to WEP/WPA networks */
+    uint32         rssi_5g_adjustment = 3;      /**< The RSSI value of the 5G AP is within the rssi_5g_adjustment range compared to the 2G AP, the 5G AP will be given priority for connection. */
 }
 
 message wifi_pmf_config {
 	bool           capable = 1;                 /**< Deprecated variable. Device will always connect in PMF mode if other device also advertizes PMF capability. */
 	bool           required = 2;                /**< Advertizes that Protected Management Frame is required. Device will not associate to non-PMF capable devices. */
+}
+
+message wifi_bss_max_idle_config {
+    uint32         period = 1;                /**< Sets BSS Max idle period (1 Unit = 1000TUs OR 1.024 Seconds). If there are no frames for this period from a STA, SoftAP will disassociate due to inactivity. Setting it to 0 disables the feature */
+    bool           protected_keep_alive = 2;  /**< Requires clients to use protected keep alive frames for BSS Max Idle period */
 }
 
 message wifi_ap_config {
@@ -683,6 +697,12 @@ message wifi_ap_config {
 	bool           ftm_responder = 10;          /**< Enable FTM Responder mode */
 	wifi_pmf_config pmf_cfg = 11;               /**< Configuration for Protected Management Frame */
 	int32         sae_pwe_h2e = 12;             /**< Configuration for SAE PWE derivation method */
+    uint32        csa_count = 13;               /**< Channel Switch Announcement Count. Notify the station that the channel will switch after the csa_count beacon intervals. Default value: 3 */
+    uint32        dtim_period = 14;             /**< Dtim period of soft-AP. Range: 1 ~ 10. Default value: 1 */
+    uint32        transition_disable = 15;      /**< Whether to enable transition disable feature */
+    uint32        sae_ext = 16;                 /**< Enable SAE EXT feature. SOC_GCMP_SUPPORT is required for this feature. */
+    wifi_bss_max_idle_config bss_max_idle_cfg = 17; /**< Configuration for bss max idle, effective if CONFIG_WIFI_BSS_MAX_IDLE_SUPPORT is enabled */
+    uint32        gtk_rekey_interval = 18;      /**< GTK rekeying interval in seconds. If set to 0, GTK rekeying is disabled. Range: 60 ~ 65535 including 0. */
 }
 
 message  wifi_sta_config {
@@ -720,9 +740,13 @@ Units: AP beacon intervals. Defaults to 3 if set to 0. */
     //uint32_t he_trig_su_bmforming_feedback_disabled:1;            /**< Whether to disable support the transmission of SU feedback in an HE TB sounding sequence. */
     //uint32_t he_trig_mu_bmforming_partial_feedback_disabled:1;    /**< Whether to disable support the transmission of partial-bandwidth MU feedback in an HE TB sounding sequence. */
     // uint32_t he_trig_cqi_feedback_disabled:1;                     /**< Whether to disable support the transmission of CQI feedback in an HE TB sounding sequence. */
-    // uint32_t he_reserved:22;                                      /**< Reserved for future feature set */
+    // uint32_t vht_su_beamformee_disabled: 1;                       /**< Whether to disable support for operation as an VHT SU beamformee. */
+    // uint32_t vht_mu_beamformee_disabled: 1;                       /**< Whether to disable support for operation as an VHT MU beamformee. */
+    // uint32_t vht_mcs8_enabled: 1;                                 /**< Whether to support VHT-MCS8. The default value is 0. */
+    // uint32_t he_reserved:19;                                      /**< Reserved for future feature set */
     uint32              he_bitmask = 14;
     bytes               sae_h2e_identifier = 15;                     /**< Password identifier for H2E. this needs to be null terminated string. SAE_H2E_IDENTIFIER_LEN chars */
+	uint32              sae_pk_mode = 16;                            /**< Configuration for SAE-PK (Public Key) Authentication method */
 }
 
 message wifi_config {

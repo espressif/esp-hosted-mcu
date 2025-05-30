@@ -19,10 +19,16 @@
 /* ESP-IDF 5.5.0 breaking change: reserved/he_reserved renamed to reserved1/reserved2 */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
   #define H_WIFI_NEW_RESERVED_FIELD_NAMES 1
-  #define H_WIFI_VHT_FIELDS_AVAILABLE 1
+  #define H_PRESENT_IN_ESP_IDF_5_5_0      1
 #else
   #define H_WIFI_NEW_RESERVED_FIELD_NAMES 0
-  #define H_WIFI_VHT_FIELDS_AVAILABLE 0
+  #define H_PRESENT_IN_ESP_IDF_5_5_0      0
+#endif
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+  #define H_PRESENT_IN_ESP_IDF_5_4_0      1
+#else
+  #define H_PRESENT_IN_ESP_IDF_5_4_0      0
 #endif
 
 /* User-controllable reserved field decoding - works regardless of IDF version */

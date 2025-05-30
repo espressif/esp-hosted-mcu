@@ -7,7 +7,6 @@
 #include "esp_hosted_wifi_config.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
-#include "esp_idf_version.h"
 #include "esp_hosted_config.h"
 
 DEFINE_LOG_TAG(rpc_rsp);
@@ -254,13 +253,19 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			p_a_sta->channel = p_c_sta->channel;
 			p_a_sta->listen_interval = p_c_sta->listen_interval;
 			p_a_sta->sort_method = p_c_sta->sort_method;
-			p_a_sta->threshold.rssi = p_c_sta->threshold->rssi;
-			p_a_sta->threshold.authmode = p_c_sta->threshold->authmode;
+			if (p_c_sta->threshold) {
+				p_a_sta->threshold.rssi = p_c_sta->threshold->rssi;
+				p_a_sta->threshold.authmode = p_c_sta->threshold->authmode;
+#if H_PRESENT_IN_ESP_IDF_5_4_0
+				p_a_sta->threshold.rssi_5g_adjustment = p_c_sta->threshold->rssi_5g_adjustment;
+#endif
+			}
 			//p_a_sta->ssid_hidden = p_c_sta->ssid_hidden;
 			//p_a_sta->max_connections = p_c_sta->max_connections;
-			p_a_sta->pmf_cfg.capable = p_c_sta->pmf_cfg->capable;
-			p_a_sta->pmf_cfg.required = p_c_sta->pmf_cfg->required;
-
+			if (p_c_sta->pmf_cfg) {
+				p_a_sta->pmf_cfg.capable = p_c_sta->pmf_cfg->capable;
+				p_a_sta->pmf_cfg.required = p_c_sta->pmf_cfg->required;
+			}
 			p_a_sta->rm_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_rm_enabled, p_c_sta->bitmask);
 			p_a_sta->btm_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_btm_enabled, p_c_sta->bitmask);
 			p_a_sta->mbo_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_mbo_enabled, p_c_sta->bitmask);
@@ -277,6 +282,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 #endif
 
 			p_a_sta->sae_pwe_h2e = p_c_sta->sae_pwe_h2e;
+			p_a_sta->sae_pk_mode = p_c_sta->sae_pk_mode;
 			p_a_sta->failure_retry_cnt = p_c_sta->failure_retry_cnt;
 
 			p_a_sta->he_dcm_set = H_GET_BIT(WIFI_STA_CONFIG_2_he_dcm_set_BIT, p_c_sta->he_bitmask);
@@ -291,7 +297,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			p_a_sta->he_trig_mu_bmforming_partial_feedback_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT, p_c_sta->bitmask);
 			p_a_sta->he_trig_cqi_feedback_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->bitmask);
 
-#if H_WIFI_VHT_FIELDS_AVAILABLE
+#if H_PRESENT_IN_ESP_IDF_5_5_0
 			p_a_sta->vht_su_beamformee_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
 			p_a_sta->vht_mu_beamformee_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled, p_c_sta->he_bitmask);
 			p_a_sta->vht_mcs8_enabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
@@ -319,10 +325,24 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			p_a_ap->ssid_hidden = p_c_ap->ssid_hidden;
 			p_a_ap->max_connection = p_c_ap->max_connection;
 			p_a_ap->beacon_interval = p_c_ap->beacon_interval;
+			p_a_ap->csa_count = p_c_ap->csa_count;
+			p_a_ap->dtim_period = p_c_ap->dtim_period;
 			p_a_ap->pairwise_cipher = p_c_ap->pairwise_cipher;
 			p_a_ap->ftm_responder = p_c_ap->ftm_responder;
-			p_a_ap->pmf_cfg.capable = p_c_ap->pmf_cfg->capable;
-			p_a_ap->pmf_cfg.required = p_c_ap->pmf_cfg->required;
+			if (p_c_ap->pmf_cfg) {
+				p_a_ap->pmf_cfg.capable = p_c_ap->pmf_cfg->capable;
+				p_a_ap->pmf_cfg.required = p_c_ap->pmf_cfg->required;
+			}
+			p_a_ap->sae_pwe_h2e = p_c_ap->sae_pwe_h2e;
+			p_a_ap->transition_disable = p_c_ap->transition_disable;
+#if H_PRESENT_IN_ESP_IDF_5_5_0
+			p_a_ap->sae_ext = p_c_ap->sae_ext;
+			if (p_c_ap->bss_max_idle_cfg) {
+				p_a_ap->bss_max_idle_cfg.period = p_c_ap->bss_max_idle_cfg->period;
+				p_a_ap->bss_max_idle_cfg.protected_keep_alive = p_c_ap->bss_max_idle_cfg->protected_keep_alive;
+			}
+			p_a_ap->gtk_rekey_interval = p_c_ap->gtk_rekey_interval;
+#endif
 			break;
 		}
 		default:
