@@ -137,6 +137,7 @@ menu "Example Configuration"
         int
         default 64 if EXAMPLE_MAX_CPU_FREQ_64
         default 80 if EXAMPLE_MAX_CPU_FREQ_80
+        default 90 if EXAMPLE_MAX_CPU_FREQ_90
         default 96 if EXAMPLE_MAX_CPU_FREQ_96
         default 120 if EXAMPLE_MAX_CPU_FREQ_120
         default 160 if EXAMPLE_MAX_CPU_FREQ_160

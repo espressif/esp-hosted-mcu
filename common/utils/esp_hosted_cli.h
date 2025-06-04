@@ -11,7 +11,7 @@
 
 /* host */
 #ifdef CONFIG_ESP_HOSTED_ENABLED
-  #include "esp_hosted_config.h"
+  #include "port_esp_hosted_host_config.h"
   #include "power_save_drv.h"
 #endif
 

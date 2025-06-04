@@ -18,13 +18,14 @@
 #include "transport_drv.h"
 
 #include "spi_hd_drv.h"
-#include "esp_hosted_config.h"
+#include "port_esp_hosted_host_config.h"
 
 #include "esp_hosted_log.h"
 #include "power_save_drv.h"
 #include "esp_hosted_power_save.h"
 #include "esp_hosted_transport_config.h"
 #include "esp_hosted_bt.h"
+#include "port_esp_hosted_host_os.h"
 
 static const char TAG[] = "H_SPI_HD_DRV";
 
@@ -503,7 +504,7 @@ static void spi_hd_read_task(void const* pvParameters)
 
 	ESP_LOGD(TAG, "Open Data path");
 	// slave is ready: initialise Data Ready as interrupt input
-	g_h.funcs->_h_config_gpio_as_interrupt(H_SPI_HD_GPIO_DATA_READY_Port, H_SPI_HD_PIN_DATA_READY,
+	g_h.funcs->_h_config_gpio_as_interrupt(H_SPI_HD_PORT_DATA_READY, H_SPI_HD_PIN_DATA_READY,
 			H_SPI_HD_DR_INTR_EDGE, gpio_dr_isr_handler, NULL);
 
 	// tell slave to open data path
@@ -885,7 +886,7 @@ void check_if_max_freq_used(uint8_t chip_type)
 int ensure_slave_bus_ready(void *bus_handle)
 {
 	esp_err_t res = ESP_OK;
-	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
 		ESP_LOGE(TAG, "Unable to get RESET config for transport");

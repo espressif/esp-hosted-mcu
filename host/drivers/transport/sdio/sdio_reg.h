@@ -8,7 +8,7 @@
 #define __SDIO_REG_H
 
 /** Includes **/
-#include "common.h"
+#include "port_esp_hosted_host_config.h"
 
 /** constants/macros **/
 #define SD_IO_CCCR_FN_ENABLE           0x02

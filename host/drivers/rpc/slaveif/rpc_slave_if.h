@@ -12,7 +12,7 @@
 #include "esp_hosted_rpc.pb-c.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
-#include "esp_hosted_wifi_config.h"
+#include "port_esp_hosted_host_wifi_config.h"
 
 #ifdef __cplusplus
 extern "C" {

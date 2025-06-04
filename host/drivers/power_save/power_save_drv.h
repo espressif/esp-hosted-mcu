@@ -1,13 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /* This file is internal to ESP-Hosted */
 
 #ifndef __POWER_SAVE_DRV_H
 #define __POWER_SAVE_DRV_H
-
-#include "common.h"
 
 /**
  * @brief Stops the host power save mode.

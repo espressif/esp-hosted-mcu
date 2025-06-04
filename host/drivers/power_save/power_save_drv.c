@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2023 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /** Includes **/
 #include "esp_log.h"
@@ -7,7 +10,8 @@
 #include "power_save_drv.h"
 #include "stats.h"
 #include "transport_drv.h"
-#include "esp_hosted_config.h"
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_os.h"
 #include "esp_hosted_power_save.h"
 #include "esp_hosted_transport_config.h"
 
@@ -69,6 +73,9 @@ int esp_hosted_power_save_init(void)
 	/* Reset state flags */
 	power_save_on = 0;
 	reset_in_progress = false;
+
+	// configure wakeup as GPIO input
+	g_h.funcs->_h_config_gpio(gpio_port, gpio_num, H_GPIO_MODE_DEF_INPUT);
 
 	int initial_level = g_h.funcs->_h_read_gpio(gpio_port, gpio_num);
 	ESP_LOGI(TAG, "Initial GPIO level: %d", initial_level);
@@ -166,7 +173,7 @@ static int notify_slave_host_power_save_stop(void)
 int hold_slave_reset_gpio_pre_power_save(void)
 {
 #if H_HOST_PS_ALLOWED
-	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
 		ESP_LOGE(TAG, "Unable to get RESET config for transport");
@@ -186,7 +193,7 @@ int hold_slave_reset_gpio_pre_power_save(void)
 int release_slave_reset_gpio_post_wakeup(void)
 {
 #if H_HOST_PS_ALLOWED
-	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
 		ESP_LOGE(TAG, "Unable to get RESET config for transport");

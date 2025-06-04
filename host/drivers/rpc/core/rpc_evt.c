@@ -1,12 +1,16 @@
-// Copyright 2015-2022 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "rpc_core.h"
 #include "rpc_slave_if.h"
-#include "esp_log.h"
-#include <inttypes.h>
 #include "esp_hosted_transport.h"
+#include "port_esp_hosted_host_log.h"
+#include "port_esp_hosted_host_config.h"
 #include "esp_hosted_bitmasks.h"
+#include "esp_hosted_os_abstraction.h"
 
 DEFINE_LOG_TAG(rpc_evt);
 
@@ -138,7 +142,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		p_a->flow_id_bitmap = p_c->flow_id_bitmap;
 
 		memset(p_a->actual_suspend_time_ms, 0, sizeof(p_a->actual_suspend_time_ms));
-		for (i = 0; i < min(num_elements, p_c->n_actual_suspend_time_ms); i++) {
+		for (i = 0; i < H_MIN(num_elements, p_c->n_actual_suspend_time_ms); i++) {
 			p_a->actual_suspend_time_ms[i] = p_c->actual_suspend_time_ms[i];
 		}
 

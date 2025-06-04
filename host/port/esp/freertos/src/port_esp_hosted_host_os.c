@@ -1,21 +1,12 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "string.h"
 #include "esp_log.h"
-#include "os_wrapper.h"
+#include "port_esp_hosted_host_os.h"
 #include "esp_log.h"
 #include <stdlib.h>
 #include "driver/gpio.h"
@@ -23,34 +14,34 @@
 #include "esp_heap_caps.h"
 #include "freertos/portmacro.h"
 #include "esp_macros.h"
-#include "esp_hosted_config.h"
 #include "esp_wifi.h"
-#include "esp_sleep.h"
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_log.h"
 #include "esp_hosted_power_save.h"
-#include "esp_system.h"
-#include "hal/gpio_types.h"
-#include "driver/gpio.h"
-#include "esp_hosted_wifi_config.h"
 
+#if H_HOST_PS_ALLOWED
+#include "esp_sleep.h"
+#endif
 
 /* Wi-Fi headers are reused at ESP-Hosted */
 #include "esp_wifi_crypto_types.h"
 #include "esp_private/wifi_os_adapter.h"
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
-#include "sdio_wrapper.h"
+#include "port_esp_hosted_host_sdio.h"
 #endif
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
-#include "spi_wrapper.h"
+#include "port_esp_hosted_host_spi.h"
 #endif
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
-#include "spi_hd_wrapper.h"
+#include "port_esp_hosted_host_spi_hd.h"
 #endif
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_UART
-#include "uart_wrapper.h"
+#include "port_esp_hosted_host_uart.h"
 #endif
 
 DEFINE_LOG_TAG(os_wrapper_esp);
@@ -92,7 +83,8 @@ void * hosted_memset(void* buf, int val, size_t len)
 
 void* hosted_malloc(size_t size)
 {
-	return MALLOC(size);
+	/* without alignment */
+	return malloc(size);
 }
 
 void* hosted_calloc(size_t blk_no, size_t size)
@@ -109,7 +101,7 @@ void* hosted_calloc(size_t blk_no, size_t size)
 void hosted_free(void* ptr)
 {
 	if(ptr) {
-		FREE(ptr);
+		free(ptr);
 		ptr=NULL;
 	}
 }
@@ -141,7 +133,7 @@ void *hosted_malloc_align(size_t size, size_t align)
 
 void hosted_free_align(void* ptr)
 {
-	FREE(ptr);
+	free(ptr);
 }
 
 void hosted_init_hook(void)

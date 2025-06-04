@@ -11,7 +11,8 @@
  */
 
 #include "esp_hosted_api_priv.h"
-#include "esp_hosted_wifi_config.h"
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_wifi_config.h"
 
 H_WEAK_REF esp_err_t esp_wifi_init(const wifi_init_config_t *config)
 {

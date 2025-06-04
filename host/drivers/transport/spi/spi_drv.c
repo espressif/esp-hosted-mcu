@@ -6,13 +6,10 @@
 
 
 #include "mempool.h"
-#include "common.h"
-#include "esp_hosted_config.h"
 #include "transport_drv.h"
 #include "spi_drv.h"
 #include "serial_drv.h"
 #include "esp_hosted_transport.h"
-#include "esp_log.h"
 #include "esp_hosted_log.h"
 #include "stats.h"
 #include "hci_drv.h"
@@ -21,6 +18,9 @@
 #include "esp_hosted_power_save.h"
 #include "esp_hosted_transport_config.h"
 #include "esp_hosted_bt.h"
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_log.h"
+#include "port_esp_hosted_host_os.h"
 
 DEFINE_LOG_TAG(spi);
 
@@ -320,7 +320,7 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 
 	if (is_wakeup_pkt && len<1500) {
 		ESP_LOGW(TAG, "Host wakeup triggered, if_type: %u, len: %u ", h->if_type, len);
-		//ESP_HEXLOGW("Wakeup_pkt", rxbuff+offset, len, min(len, 128));
+		//ESP_HEXLOGW("Wakeup_pkt", rxbuff+offset, len, H_MIN(len, 128));
 	}
 
 	if (ESP_MAX_IF == h->if_type)
@@ -805,7 +805,7 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 		} else {
 			/* Non HCI packets */
 			if (!buf_handle.payload_zcopy && len)
-				g_h.funcs->_h_memcpy(payload, buf_handle.payload, min(len, MAX_PAYLOAD_SIZE));
+				g_h.funcs->_h_memcpy(payload, buf_handle.payload, H_MIN(len, MAX_PAYLOAD_SIZE));
 		}
 
 		//TODO: checksum should be configurable from menuconfig
@@ -870,7 +870,7 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 int ensure_slave_bus_ready(void *bus_handle)
 {
 	esp_err_t res = ESP_OK;
-	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
 		ESP_LOGE(TAG, "Unable to get RESET config for transport");

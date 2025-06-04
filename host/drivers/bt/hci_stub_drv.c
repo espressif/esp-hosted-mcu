@@ -1,5 +1,8 @@
-// Copyright 2015-2024 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "hci_drv.h"
 
@@ -11,13 +14,16 @@ static const char TAG[] = "hci_stub_drv";
 #include "nimble/transport.h"
 #endif
 
-#if H_BT_HOST_ESP_BLUEDROID
 #include "esp_hosted_bt.h"
+#include "port_esp_hosted_host_os.h"
+
+#if H_BT_HOST_ESP_BLUEDROID
+#include "esp_hosted_bluedroid.h"
 #endif
 
 #define WEAK __attribute__((weak))
 
-int hci_rx_handler(interface_buffer_handle_t *buf_handle)
+H_WEAK_REF int hci_rx_handler(uint8_t *buf, size_t buf_len)
 {
 	/* Hosted transport received BT packets, but Hosted was not
 	 * configured to handle BT packets. Drop them.
@@ -52,6 +58,14 @@ void hci_drv_show_configuration(void)
  *   used. In this case, the stub functions are used and drops the
  *   incoming data.
  */
+
+WEAK void ble_transport_ll_init(void)
+{
+}
+
+WEAK void ble_transport_ll_deinit(void)
+{
+}
 
 WEAK int ble_transport_to_ll_acl_impl(struct os_mbuf *om)
 {

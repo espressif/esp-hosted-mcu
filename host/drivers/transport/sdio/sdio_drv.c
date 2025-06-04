@@ -84,9 +84,9 @@
 #include "esp_hosted_transport_init.h"
 #include "power_save_drv.h"
 #include "esp_hosted_power_save.h"
-#include "esp_hosted_config.h"
 #include "esp_hosted_transport_config.h"
 #include "esp_hosted_bt.h"
+#include "port_esp_hosted_host_config.h"
 
 static const char TAG[] = "H_SDIO_DRV";
 
@@ -97,8 +97,10 @@ static const char TAG[] = "H_SDIO_DRV";
 #define DO_COMBINED_REG_READ (1)
 
 /** Constants/Macros **/
-#define TO_SLAVE_QUEUE_SIZE               H_SDIO_TX_Q
-#define FROM_SLAVE_QUEUE_SIZE             H_SDIO_RX_Q
+
+// default queue sizes if unable to get from transport config
+#define DEFAULT_TO_SLAVE_QUEUE_SIZE       20
+#define DEFAULT_FROM_SLAVE_QUEUE_SIZE     20
 
 #define RX_TASK_STACK_SIZE                CONFIG_ESP_HOSTED_DFLT_TASK_STACK
 #define TX_TASK_STACK_SIZE                CONFIG_ESP_HOSTED_DFLT_TASK_STACK
@@ -672,7 +674,7 @@ static int is_valid_sdio_rx_packet(uint8_t *rxbuff_a, uint16_t *len_a, uint16_t 
 
 	if (is_wakeup_pkt && len<1500) {
 		ESP_LOGI(TAG, "Host wakeup triggered, len: %u ", len);
-		ESP_HEXLOGW("Wakeup_pkt", rxbuff_a+offset, len, min(len,128));
+		ESP_HEXLOGW("Wakeup_pkt", rxbuff_a+offset, len, H_MIN(len,128));
 	}
 
 	if ((!len) ||
@@ -822,9 +824,9 @@ static uint8_t * sdio_rx_get_buffer(uint32_t len)
 	if (len > double_buf.buffer[index].buf_size) {
 		if (*buf) {
 			// free already allocated memory
-			g_h.funcs->_h_free(*buf);
+			g_h.funcs->_h_free_align(*buf);
 		}
-		*buf = (uint8_t *)MEM_ALLOC(len);
+		*buf = (uint8_t *)g_h.funcs->_h_malloc_align(len, HOSTED_MEM_ALIGNMENT_64);
 		assert(*buf);
 		double_buf.buffer[index].buf_size = len;
 		ESP_LOGD(TAG, "buf %d size: %ld", index, double_buf.buffer[index].buf_size);
@@ -981,7 +983,7 @@ static void sdio_read_task(void const* pvParameters)
 
 
 #if DO_COMBINED_REG_READ
-	reg_buf = MEM_ALLOC(REG_BUF_LEN);
+	reg_buf = g_h.funcs->_h_malloc_align(REG_BUF_LEN, HOSTED_MEM_ALIGNMENT_64);
 	assert(reg_buf);
 #endif
 
@@ -1241,16 +1243,38 @@ static void sdio_process_rx_task(void const* pvParameters)
 void *bus_init_internal(void)
 {
 	uint8_t prio_q_idx = 0;
+
+	int tx_queue_size = DEFAULT_TO_SLAVE_QUEUE_SIZE;
+	int rx_queue_size = DEFAULT_FROM_SLAVE_QUEUE_SIZE;
+
+	struct esp_hosted_sdio_config *psdio_config;
+
+	// get queue sizes from transport config
+	if (ESP_TRANSPORT_OK == esp_hosted_sdio_get_config(&psdio_config)) {
+		tx_queue_size = psdio_config->tx_queue_size;
+		rx_queue_size = psdio_config->rx_queue_size;
+		if (!tx_queue_size) {
+			tx_queue_size = DEFAULT_TO_SLAVE_QUEUE_SIZE;
+			ESP_LOGW(TAG, "provided sdio tx queue size is zero! Setting to %d", tx_queue_size);
+		}
+		if (!rx_queue_size) {
+			rx_queue_size = DEFAULT_FROM_SLAVE_QUEUE_SIZE;
+			ESP_LOGW(TAG, "provided sdio rx queue size is zero! Setting to %d", rx_queue_size);
+		}
+	} else {
+		ESP_LOGW(TAG, "failed to get SDIO transport config: using default values");
+	}
+
 	/* register callback */
 
 	sdio_bus_lock = g_h.funcs->_h_create_mutex();
 	assert(sdio_bus_lock);
 
-	sem_to_slave_queue = g_h.funcs->_h_create_semaphore(TO_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES);
+	sem_to_slave_queue = g_h.funcs->_h_create_semaphore(tx_queue_size * MAX_PRIORITY_QUEUES);
 	assert(sem_to_slave_queue);
 	g_h.funcs->_h_get_semaphore(sem_to_slave_queue, 0);
 
-	sem_from_slave_queue = g_h.funcs->_h_create_semaphore(FROM_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES);
+	sem_from_slave_queue = g_h.funcs->_h_create_semaphore(rx_queue_size * MAX_PRIORITY_QUEUES);
 	assert(sem_from_slave_queue);
 	g_h.funcs->_h_get_semaphore(sem_from_slave_queue, 0);
 
@@ -1259,11 +1283,11 @@ void *bus_init_internal(void)
 
 	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
 		/* Queue - rx */
-		from_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(FROM_SLAVE_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
+		from_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(rx_queue_size, sizeof(interface_buffer_handle_t));
 		assert(from_slave_queue[prio_q_idx]);
 
 		/* Queue - tx */
-		to_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(TO_SLAVE_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
+		to_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(tx_queue_size, sizeof(interface_buffer_handle_t));
 		assert(to_slave_queue[prio_q_idx]);
 	}
 
@@ -1398,7 +1422,7 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 int ensure_slave_bus_ready(void *bus_handle)
 {
 	int res = -1;
-	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
 		ESP_LOGE(TAG, "Unable to get RESET config for transport");

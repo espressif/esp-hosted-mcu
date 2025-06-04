@@ -15,8 +15,8 @@
 
 /* Wrapper interfaces for SDMMC to communicated with slave using SDIO */
 
-#ifndef __SDIO_WRAPPER_H_
-#define __SDIO_WRAPPER_H_
+#ifndef __PORT_ESP_HOSTED_HOST_SDIO_H_
+#define __PORT_ESP_HOSTED_HOST_SDIO_H_
 
 #include "esp_check.h"
 #include "sdmmc_cmd.h"

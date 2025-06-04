@@ -1,5 +1,8 @@
-// Copyright 2015-2022 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -9,10 +12,9 @@
 #include "serial_if.h"
 #include "serial_drv.h"
 #include <unistd.h>
-#include "esp_log.h"
 #include "esp_task.h"
-#include "esp_hosted_config.h"
-
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_log.h"
 
 static const char *TAG = "rpc_core";
 

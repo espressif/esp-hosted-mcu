@@ -1,8 +1,8 @@
 /*
-* SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* Current OTA method(s) supported:
  * - OTA from a HTTP URL
@@ -18,6 +18,7 @@
 #include "esp_log.h"
 
 #include "rpc_wrap.h"
+#include "port_esp_hosted_host_os.h"
 #include "esp_hosted_ota.h"
 
 #define CHUNK_SIZE                                        1400

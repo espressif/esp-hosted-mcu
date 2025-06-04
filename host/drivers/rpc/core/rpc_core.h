@@ -1,8 +1,7 @@
 /*
- * Espressif Systems Wireless LAN device driver
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
- * Copyright (C) 2015-2022 Espressif Systems (Shanghai) PTE LTD
- * SPDX-License-Identifier: GPL-2.0 OR Apache-2.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef __RPC_CORE_H
@@ -11,8 +10,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+#include "transport_drv.h"
 #include "rpc_slave_if.h"
-#include "os_wrapper.h"
+#include "port_esp_hosted_host_log.h"
 
 #ifndef BIT
 #define BIT(n) (1UL << (n))
@@ -88,7 +89,7 @@ typedef struct q_element {
 
 #define RPC_REQ_COPY_STR(DsT,SrC,MaxSizE) {                                   \
   if (SrC) {                                                                  \
-    RPC_REQ_COPY_BYTES(DsT, SrC, min(strlen((char*)SrC)+1,MaxSizE));          \
+    RPC_REQ_COPY_BYTES(DsT, SrC, H_MIN(strlen((char*)SrC)+1,MaxSizE));        \
   }                                                                           \
 }
 

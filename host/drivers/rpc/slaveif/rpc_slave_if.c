@@ -6,8 +6,8 @@
 
 #include "rpc_slave_if.h"
 #include "rpc_core.h"
-#include "esp_hosted_wifi_config.h"
-#include "esp_log.h"
+#include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_log.h"
 
 DEFINE_LOG_TAG(rpc_api);
 
