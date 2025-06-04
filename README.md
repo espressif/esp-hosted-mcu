@@ -154,6 +154,10 @@ Legends:
 - TBD : To be determined
 - iperf : iperf2 with test resukts in mbps
 
+> [!NOTE]
+>
+> For the shield box readings maked with (S), full network set up explained in [Shield Box Test Setup](shield-box-test-setup.md)
+
 **Host can be any ESP chipset or any non-ESP MCU.**
 
 ###### Hosted Transports table

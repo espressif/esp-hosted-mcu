@@ -547,14 +547,11 @@ idf.py -p <co-processor_serial_port> flash
 >
 > Put host in bootloader mode using following command and then retry flashing the co-processor
 >
-> ```bash
-> esptool.py -p **<host_serial_port>** --before default_reset --after no_reset run
-> ```
-
-Monitor the output (optional):
-```
-idf.py -p <coprocessor_serial_port> monitor
-```
+> `esptool.py -p **<host_serial_port>** --before default_reset --after no_reset run`
+>
+> Flash the co-processor and log the output:
+>
+> `idf.py -p <co-processor_serial_port> flash monitor`
 
 ##### 9.4.2 Co-processor OTA Flashing (Subsequent Updates)
 
@@ -795,7 +792,9 @@ After flashing both the co-processor and host devices, follow these steps to con
 
    Note: Replace `<STA_IP>` with the IP address of the external STA, and `<HOST_IP>` with the IP address of the ESP-Hosted device.
 
-   [!NOTE] Shield box throughput testing setup explained in [Shield Box Test Setup](shield-box-test-setup.md).
+> [!TIP]
+>
+> To measure the optimal performance, check out the [Shield Box Test Setup](shield-box-test-setup.md).
 
 8. Troubleshooting:
    - If you encounter issues, refer to section 6.3 for testing the SPI connection.

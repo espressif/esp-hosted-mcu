@@ -381,7 +381,9 @@ Use GPIOs 36 or lower on the P4 DevKit to avoid LDO power issues with high numbe
 > [!NOTE]
 > Avoid using GPIO 35 and 36 as they affect the ESP32-P4 Bootloader Mode. See [ESP32-P4 Boot Mode Selection](https://docs.espressif.com/projects/esptool/en/latest/esp32p4/advanced-topics/boot-mode-selection.html#select-bootloader-mode) for more information.
 
-Shield box throughput testing setup explained in [Shield Box Test Setup](shield-box-test-setup.md).
+> [!TIP]
+>
+> To measure the optimal performance, check out the [Shield Box Test Setup](shield-box-test-setup.md).
 
 ## 9. References
 
