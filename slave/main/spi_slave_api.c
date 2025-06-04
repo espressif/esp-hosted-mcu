@@ -835,9 +835,9 @@ static interface_handle_t * esp_spi_init(void)
 	gpio_set_pull_mode(GPIO_SCLK, GPIO_PULLUP_ONLY);
 	gpio_set_pull_mode(GPIO_CS, GPIO_PULLUP_ONLY);
 
-	ESP_LOGI(TAG, "SPI Ctrl:%u mode: %u, Freq:ConfigAtHost\nGPIOs: MOSI: %u, MISO: %u, CS: %u, CLK: %u HS: %u DR: %u\n",
+	ESP_LOGI(TAG, "SPI Ctrl:%u mode: %u, Freq:ConfigAtHost\nGPIOs: CLK:%u MOSI:%u MISO:%u CS:%u HS:%u DR:%u\n",
 			ESP_SPI_CONTROLLER, slvcfg.mode,
-			GPIO_MOSI, GPIO_MISO, GPIO_CS, GPIO_SCLK,
+			GPIO_SCLK, GPIO_MOSI, GPIO_MISO, GPIO_CS,
 			GPIO_HANDSHAKE, GPIO_DATA_READY);
 
 	ESP_LOGI(TAG, "Hosted SPI queue size: Tx:%u Rx:%u", SPI_TX_QUEUE_SIZE, SPI_RX_QUEUE_SIZE);

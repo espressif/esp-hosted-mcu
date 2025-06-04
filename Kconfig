@@ -447,14 +447,6 @@ ESP32XX_SPI_CLK_FREQ_RANGE_MAX := 40
 				help
 					Please check your schematic first and input your LDO ID.
 
-			config ESP_HOSTED_SDIO_GPIO_RESET_SLAVE
-				int "GPIO pin for Reseting slave ESP"
-				default 54 if IDF_TARGET_ESP32P4
-				default 42 if IDF_TARGET_ESP32S3
-				default 5
-				help
-					GPIO pin for Resetting ESP SDIO slave device. Should be connected to RST/EN of ESP SDIO slave device.
-
 			choice
 				prompt "SDIO Bus Width"
 				default ESP_HOSTED_SDIO_4_BIT_BUS
@@ -486,6 +478,116 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 				help
 					"Optimize SDIO CLK by increasing till host practically can support. Clock frequency for ESP32-P4 as host <= 40MHz"
 
+			config ESP_HOSTED_CUSTOM_SDIO_PINS
+				bool "Use custom SDIO GPIO pins"
+				default n if IDF_TARGET_ESP32
+				default n
+				help
+					Enable this to use custom GPIO pins for SDIO on ESP32-P4 and ESP32-S3.
+					ESP32 has fixed GPIOs for SDIO host (Do not use custom GPIOs)
+					ESP32-P4 slot 0 is fixed GPIOs for SDIO host (Do not use custom GPIOs)
+					ESP32-P4 slot 1, ESP32-S3 slot 0/1 is flexible GPIOs for SDIO host (Flexible GPIOs)
+
+			config ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MIN
+				int
+				default 4 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 19 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 15 if IDF_TARGET_ESP32
+				default 0
+
+			config ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MAX
+				int
+				default 4 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 19 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 15 if IDF_TARGET_ESP32
+				default 100
+
+			config ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MIN
+				int
+				default 33 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 18 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 14 if IDF_TARGET_ESP32
+				default 0
+
+			config ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MAX
+				int
+				default 33 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 18 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 14 if IDF_TARGET_ESP32
+				default 100
+
+			config ESP_HOSTED_SDIO_D0_GPIO_RANGE_MIN
+				int
+				default 20 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 14 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 2 if IDF_TARGET_ESP32
+				default 0
+
+			config ESP_HOSTED_SDIO_D0_GPIO_RANGE_MAX
+				int
+				default 20 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 14 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 2 if IDF_TARGET_ESP32
+				default 100
+
+			config ESP_HOSTED_SDIO_D1_GPIO_RANGE_MIN
+				int
+				default 23 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 15 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 4 if IDF_TARGET_ESP32
+				default 0
+
+			config ESP_HOSTED_SDIO_D1_GPIO_RANGE_MAX
+				int
+				default 23 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 15 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 4 if IDF_TARGET_ESP32
+				default 100
+
+			config ESP_HOSTED_SDIO_D2_GPIO_RANGE_MIN
+				int
+				default 21 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 16 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 12 if IDF_TARGET_ESP32
+				default 0
+
+			config ESP_HOSTED_SDIO_D2_GPIO_RANGE_MAX
+				int
+				default 21 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 16 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 12 if IDF_TARGET_ESP32
+				default 100
+
+			config ESP_HOSTED_SDIO_D3_GPIO_RANGE_MIN
+				int
+				default 22 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 17 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 13 if IDF_TARGET_ESP32
+				default 0
+
+			config ESP_HOSTED_SDIO_D3_GPIO_RANGE_MAX
+				int
+				default 22 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C5 && IDF_TARGET_ESP32P4
+				default 17 if !ESP_HOSTED_CUSTOM_SDIO_PINS && SLAVE_IDF_TARGET_ESP32C6 && IDF_TARGET_ESP32P4
+				default 13 if IDF_TARGET_ESP32
+				default 100
+
+			config ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MIN
+				int
+				default 54 if !ESP_HOSTED_CUSTOM_SDIO_PINS && IDF_TARGET_ESP32P4 && SLAVE_IDF_TARGET_ESP32C6
+				default 53 if !ESP_HOSTED_CUSTOM_SDIO_PINS && IDF_TARGET_ESP32P4 && SLAVE_IDF_TARGET_ESP32C5
+				default 42 if !ESP_HOSTED_CUSTOM_SDIO_PINS && IDF_TARGET_ESP32S3
+				default 0
+				help
+					GPIO pin for Resetting ESP SDIO slave device. Should be connected to RST/EN of ESP SDIO slave device.
+
+			config ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MAX
+				int
+				default 54 if !ESP_HOSTED_CUSTOM_SDIO_PINS && IDF_TARGET_ESP32P4 && SLAVE_IDF_TARGET_ESP32C6
+				default 53 if !ESP_HOSTED_CUSTOM_SDIO_PINS && IDF_TARGET_ESP32P4 && SLAVE_IDF_TARGET_ESP32C5
+				default 42 if !ESP_HOSTED_CUSTOM_SDIO_PINS && IDF_TARGET_ESP32S3
+				default 100
+
 ### *START* GPIO SDIO pin configurations for Slot 0 and 1
 			config ESP_HOSTED_PRIV_SDIO_PIN_CMD_SLOT_0
 				depends on ESP_HOSTED_SDIO_SLOT_0
@@ -500,10 +602,10 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 				depends on ESP_HOSTED_SDIO_SLOT_1
 				int "CMD GPIO number"
 				default 47 if IDF_TARGET_ESP32S3
-				default 19 if IDF_TARGET_ESP32P4
-				range 15 15 if IDF_TARGET_ESP32
+				range ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MIN ESP_HOSTED_SDIO_CMD_GPIO_RANGE_MAX
 				help
-					"Value can only be configured for some targets. Displayed always for reference."
+					CMD GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
+					Enable 'Use custom SDIO GPIO pins' to disable range restrictions.
 
 			config ESP_HOSTED_PRIV_SDIO_PIN_CLK_SLOT_0
 				depends on ESP_HOSTED_SDIO_SLOT_0
@@ -518,10 +620,10 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 				depends on ESP_HOSTED_SDIO_SLOT_1
 				int "CLK GPIO number"
 				default 19 if IDF_TARGET_ESP32S3
-				default 18 if IDF_TARGET_ESP32P4
-				range 14 14 if IDF_TARGET_ESP32
+				range ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MIN ESP_HOSTED_SDIO_CLK_GPIO_RANGE_MAX
 				help
-					"Value can only be configured for some targets. Displayed always for reference."
+					CLK GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
+					Enable 'Use custom SDIO GPIO pins' to disable range restrictions.
 
 			config ESP_HOSTED_PRIV_SDIO_PIN_D0_SLOT_0
 				depends on ESP_HOSTED_SDIO_SLOT_0
@@ -536,10 +638,10 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 				depends on ESP_HOSTED_SDIO_SLOT_1
 				int "D0 GPIO number"
 				default 13 if IDF_TARGET_ESP32S3
-				default 14 if IDF_TARGET_ESP32P4
-				range 2 2 if IDF_TARGET_ESP32
+				range ESP_HOSTED_SDIO_D0_GPIO_RANGE_MIN ESP_HOSTED_SDIO_D0_GPIO_RANGE_MAX
 				help
-					"Value can only be configured for some targets. Displayed always for reference."
+					D0 GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
+					Enable 'Use custom SDIO GPIO pins' to disable range restrictions.
 
 			if ESP_HOSTED_SDIO_4_BIT_BUS
 				config ESP_HOSTED_PRIV_SDIO_PIN_D1_4BIT_BUS_SLOT_0
@@ -555,10 +657,10 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 					depends on ESP_HOSTED_SDIO_SLOT_1
 					int "D1 GPIO number"
 					default 35 if IDF_TARGET_ESP32S3
-					default 15 if IDF_TARGET_ESP32P4
-					range 4 4 if IDF_TARGET_ESP32
+					range ESP_HOSTED_SDIO_D1_GPIO_RANGE_MIN ESP_HOSTED_SDIO_D1_GPIO_RANGE_MAX
 					help
-						"Value can only be configured for some targets. Displayed always for reference."
+						D1 GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
+						Enable 'Use custom SDIO GPIO pins' to disable range restrictions.
 
 				config ESP_HOSTED_PRIV_SDIO_PIN_D2_4BIT_BUS_SLOT_0
 					depends on ESP_HOSTED_SDIO_SLOT_0
@@ -573,10 +675,10 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 					depends on ESP_HOSTED_SDIO_SLOT_1
 					int "D2 GPIO number"
 					default 20 if IDF_TARGET_ESP32S3
-					default 16 if IDF_TARGET_ESP32P4
-					range 12 12 if IDF_TARGET_ESP32
+					range ESP_HOSTED_SDIO_D2_GPIO_RANGE_MIN ESP_HOSTED_SDIO_D2_GPIO_RANGE_MAX
 					help
-						"Value can only be configured for some targets. Displayed always for reference."
+						D2 GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
+						Enable 'Use custom SDIO GPIO pins' to disable range restrictions.
 
 				config ESP_HOSTED_PRIV_SDIO_PIN_D3_4BIT_BUS_SLOT_0
 					depends on ESP_HOSTED_SDIO_SLOT_0
@@ -591,10 +693,10 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 					depends on ESP_HOSTED_SDIO_SLOT_1
 					int "D3 GPIO number"
 					default 9 if IDF_TARGET_ESP32S3
-					default 17 if IDF_TARGET_ESP32P4
-					range 13 13 if IDF_TARGET_ESP32
+					range ESP_HOSTED_SDIO_D3_GPIO_RANGE_MIN ESP_HOSTED_SDIO_D3_GPIO_RANGE_MAX
 					help
-						"Value can only be configured for some targets. Displayed always for reference."
+						D3 GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
+						Enable 'Use custom SDIO GPIO pins' to disable range restrictions.
 			endif
 
 			if !ESP_HOSTED_SDIO_4_BIT_BUS
@@ -610,11 +712,19 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 					depends on ESP_HOSTED_SDIO_SLOT_1
 					int "D1 GPIO number (Interrupt Line)"
 					default 35 if IDF_TARGET_ESP32S3
-					default 15 if IDF_TARGET_ESP32P4
-					range 4 4 if IDF_TARGET_ESP32
+					range ESP_HOSTED_SDIO_D1_GPIO_RANGE_MIN ESP_HOSTED_SDIO_D1_GPIO_RANGE_MAX
 					help
-						"Value can only be configured for some targets. Displayed always for reference."
+						D1 GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
+						Enable 'Use custom SDIO GPIO pins' to disable range restrictions.
 			endif
+
+			config ESP_HOSTED_SDIO_GPIO_RESET_SLAVE
+				int "GPIO pin for Reseting slave ESP"
+				range ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MIN ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MAX
+				default 5
+				help
+					GPIO pin for Resetting ESP SDIO slave device. Should be connected to RST/EN of ESP SDIO slave device.
+
 ### *END* GPIO SDIO pin configurations for Slot 0 and 1
 
 			config ESP_HOSTED_SDIO_PIN_CMD
@@ -991,14 +1101,14 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 				ENABLE/DISABLE software UART checksum
 	endmenu
 
-		config ESP_HOSTED_GPIO_SLAVE_RESET_SLAVE
+	config ESP_HOSTED_GPIO_SLAVE_RESET_SLAVE
 			int
 			default ESP_HOSTED_SPI_GPIO_RESET_SLAVE if ESP_HOSTED_SPI_HOST_INTERFACE
 			default ESP_HOSTED_SDIO_GPIO_RESET_SLAVE if ESP_HOSTED_SDIO_HOST_INTERFACE
 			default ESP_HOSTED_SPI_HD_GPIO_RESET_SLAVE if ESP_HOSTED_SPI_HD_HOST_INTERFACE
 			default ESP_HOSTED_UART_GPIO_RESET_SLAVE if ESP_HOSTED_UART_HOST_INTERFACE
 
-		config ESP_HOSTED_RESET_GPIO_ACTIVE_LOW
+	config ESP_HOSTED_RESET_GPIO_ACTIVE_LOW
 			bool
 			default n if ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH || ESP_HOSTED_SPI_RESET_ACTIVE_HIGH || ESP_HOSTED_SPI_HD_RESET_ACTIVE_HIGH || ESP_HOSTED_UART_RESET_ACTIVE_HIGH
 			default y if ESP_HOSTED_SDIO_RESET_ACTIVE_LOW || ESP_HOSTED_SPI_RESET_ACTIVE_LOW || ESP_HOSTED_SPI_HD_RESET_ACTIVE_LOW || ESP_HOSTED_UART_RESET_ACTIVE_LOW
