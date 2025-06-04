@@ -3,21 +3,20 @@
 <details>
 <summary>Table of Contents</summary>
 
-- [Introduction](#1-introduction)
-- [Set-Up ESP-IDF](#2-set-up-esp-idf)
-- [Building Host for the P4](#3-building-host-for-the-p4)
+- [1. Introduction](#1-introduction)
+- [2. Set-Up ESP-IDF](#2-set-up-esp-idf)
+- [3. Building Host for the P4](#3-building-host-for-the-p4)
   - [Adding Components](#31-adding-components)
   - [Configuring Defaults](#32-configuring-defaults)
   - [Building Firmware](#33-building-firmware)
-- [Checking ESP-Hosted](#4-checking-esp-hosted)
-- [Flashing ESP32-C6](#5-flashing-esp32-c6)
+- [4. Checking ESP-Hosted](#4-checking-esp-hosted)
+- [5. Flashing ESP32-C6](#5-flashing-esp32-c6)
   - [Using ESP-Prog](#51-using-esp-prog)
   - [OTA Updates](#52-ota-updates)
-- [Troubleshooting](#6-troubleshooting)
-- [Flashing the On-board ESP32-P4 through the ESP-Prog](#7-flashing-esp32-p4)
-- [Testing ESP-Hosted with SPI-FD with other MCUs](#8-testing-esp-hosted-with-spi-fd-with-other-mcus)
-- [References](#9-references)
-
+- [6. Troubleshooting](#6-troubleshooting)
+- [7. Flashing the On-board ESP32-P4 through the ESP-Prog](#7-flashing-esp32-p4)
+- [8. Testing ESP-Hosted with SPI-FD with other MCUs](#8-testing-esp-hosted-with-spi-fd-with-other-mcus)
+- [9. References](#10-references)
 </details>
 
 ## 1. Introduction
@@ -381,6 +380,8 @@ Use GPIOs 36 or lower on the P4 DevKit to avoid LDO power issues with high numbe
 
 > [!NOTE]
 > Avoid using GPIO 35 and 36 as they affect the ESP32-P4 Bootloader Mode. See [ESP32-P4 Boot Mode Selection](https://docs.espressif.com/projects/esptool/en/latest/esp32p4/advanced-topics/boot-mode-selection.html#select-bootloader-mode) for more information.
+
+Shield box throughput testing setup explained in [Shield Box Test Setup](shield-box-test-setup.md).
 
 ## 9. References
 

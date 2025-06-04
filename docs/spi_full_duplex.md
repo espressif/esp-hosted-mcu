@@ -538,7 +538,7 @@ After flashing both the co-processor and host devices, follow these steps to con
    - Set Wi-Fi mode: `wifi_mode <mode>` (where mode can be 'sta', 'ap', or 'apsta')
 
 7. Advanced iperf testing:
-   Once connected, you can run iperf tests:
+   Once connected, you can run iperf tests to verify performance:
 
    | Test Case | Host Command | External STA Command |
    |-----------|--------------|----------------------|
@@ -548,6 +548,8 @@ After flashing both the co-processor and host devices, follow these steps to con
    | TCP Host RX | `iperf -s -i 3` | `iperf -c <HOST_IP> -t 60 -i 3` |
 
    Note: Replace `<STA_IP>` with the IP address of the external STA, and `<HOST_IP>` with the IP address of the ESP-Hosted device.
+
+   Shield box throughput testing setup explained in [Shield Box Test Setup](shield-box-test-setup.md).
 
 8. Troubleshooting:
    - If you encounter issues, refer to section 6.3 for testing the SPI connection.
