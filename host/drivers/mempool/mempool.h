@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/queue.h>
-#include "os_wrapper.h"
+#include "port_esp_hosted_host_os.h"
 
 
 #define MEMPOOL_OK                       0

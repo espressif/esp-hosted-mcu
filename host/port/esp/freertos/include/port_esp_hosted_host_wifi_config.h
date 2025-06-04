@@ -3,11 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __ESP_HOSTED_WIFI_CONFIG_H__
-#define __ESP_HOSTED_WIFI_CONFIG_H__
+#ifndef __PORT_ESP_HOSTED_HOST_WIFI_CONFIG_H__
+#define __PORT_ESP_HOSTED_HOST_WIFI_CONFIG_H__
 
 #include "esp_idf_version.h"
-#include "esp_hosted_config.h"
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 1)
 #error ESP-IDF version used is not supported

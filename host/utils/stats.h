@@ -1,18 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __STATS__H
 #define __STATS__H
@@ -20,10 +10,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "common.h"
-#include "esp_hosted_config.h"
-#include "esp_hosted_header.h"
 
 /* Stats CONFIG:
  *
@@ -48,17 +34,7 @@ extern "C" {
  */
 
 #if TEST_RAW_TP
-#include "os_wrapper.h"
 
-/* Raw throughput is supported only one direction
- * at a time
- * i.e. ESP to Host OR
- * Host to ESP
- */
-#if 0
-#define TEST_RAW_TP__ESP_TO_HOST     1
-#define TEST_RAW_TP__HOST_TO_ESP     !TEST_RAW_TP__ESP_TO_HOST
-#endif
 #define TEST_RAW_TP__TIMEOUT         H_RAW_TP_REPORT_INTERVAL
 
 void update_test_raw_tp_rx_len(uint16_t len);

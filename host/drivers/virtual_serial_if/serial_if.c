@@ -3,10 +3,9 @@
 
 /** Includes **/
 #include <string.h>
-#include "os_wrapper.h"
 #include "serial_if.h"
 #include "serial_drv.h"
-#include "esp_log.h"
+#include "port_esp_hosted_host_log.h"
 
 DEFINE_LOG_TAG(serial_if);
 

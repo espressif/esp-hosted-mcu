@@ -1,20 +1,27 @@
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-#ifndef __OS_WRAPPER_H
-#define __OS_WRAPPER_H
+#ifndef __PORT_ESP_HOSTED_HOST_OS_H
+#define __PORT_ESP_HOSTED_HOST_OS_H
 
-#include "os_header.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
+#include "freertos/event_groups.h"
+
 #include "esp_task.h"
 #include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
 
 #include "mempool.h"
-//#include "esp_hosted_config.h"
 
-#include "esp_hosted_config.h"
-#include "hosted_os_abstraction.h"
+#include "port_esp_hosted_host_config.h"
+#include "esp_hosted_os_abstraction.h"
 #include "esp_timer.h"
 #include "esp_event.h"
 #include "esp_heap_caps.h"
@@ -22,11 +29,9 @@
 #include "esp_wifi_types.h"
 #include "esp_wifi_default.h"
 
-
 ESP_EVENT_DECLARE_BASE(WIFI_EVENT);
 #define MCU_SYS                                      1
 
-#include "common.h"
 #include "esp_dma_utils.h"
 
 #define MAX_PAYLOAD_SIZE (MAX_TRANSPORT_BUFFER_SIZE-H_ESP_PAYLOAD_HEADER_OFFSET)
@@ -87,14 +92,9 @@ enum {
 #define RET_FAIL4                                    -4
 #define RET_FAIL_TIMEOUT                             -5
 
-/* without alignment */
-#define MALLOC(x)                        malloc(x)
-
-/* This is [malloc + aligned DMA] */
-#define MEM_ALLOC(x)                     heap_caps_aligned_alloc(64, (x), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT)
-
-#define FREE(x)                          free(x);
-
+#define HOSTED_MEM_ALIGNMENT_4      4
+#define HOSTED_MEM_ALIGNMENT_32     32
+#define HOSTED_MEM_ALIGNMENT_64     64
 
 /** Enumeration **/
 enum hardware_type_e {
@@ -162,4 +162,4 @@ struct serial_drv_handle_t;
 struct timer_handle_t;
 extern struct mempool * nw_mp_g;
 
-#endif /*__OS_WRAPPER_H*/
+#endif

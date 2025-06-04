@@ -26,7 +26,7 @@
 #include "ble_compatibility_test.h"
 #include "esp_gatt_common_api.h"
 
-#include "esp_hosted_bt.h"
+#include "esp_hosted_bluedroid.h"
 
 #define DEBUG_ON  0
 

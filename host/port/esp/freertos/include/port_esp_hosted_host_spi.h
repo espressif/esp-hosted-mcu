@@ -15,8 +15,8 @@
 
 /* Wrapper interfaces for SPI to communicated with slave using SDIO */
 
-#ifndef __SPI_WRAPPER_H_
-#define __SPI_WRAPPER_H_
+#ifndef __PORT_ESP_HOSTED_HOST_SPI_H_
+#define __PORT_ESP_HOSTED_HOST_SPI_H_
 
 #define MAX_TRANSPORT_BUFFER_SIZE        MAX_SPI_BUFFER_SIZE
 /* Hosted SPI init function

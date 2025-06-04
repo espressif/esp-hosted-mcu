@@ -2,11 +2,8 @@
  * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
-#ifndef __HOSTED_OS_ABSTRACTION_H__
-#define __HOSTED_OS_ABSTRACTION_H__
-
-#include "esp_hosted_config.h"
-#include "esp_hosted_power_save.h"
+#ifndef __ESP_HOSTED_OS_ABSTRACTION_H__
+#define __ESP_HOSTED_OS_ABSTRACTION_H__
 
 typedef struct {
           /* Memory */
@@ -130,4 +127,4 @@ extern hosted_osi_funcs_t g_hosted_osi_funcs;
 
 extern struct hosted_config_t g_h;
 
-#endif /*__HOSTED_OS_ABSTRACTION_H__*/
+#endif

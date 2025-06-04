@@ -1,10 +1,12 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __ESP_HOSTED_BT_CONFIG_H__
-#define __ESP_HOSTED_BT_CONFIG_H__
+#ifndef __PORT_ESP_HOSTED_HOST_BT_CONFIG_H__
+#define __PORT_ESP_HOSTED_HOST_BT_CONFIG_H__
+
+#include "esp_idf_version.h"
 
 // check: if co-processor SOC is ESP32, only BT BLE 4.2 is supported
 #if CONFIG_SLAVE_IDF_TARGET_ESP32

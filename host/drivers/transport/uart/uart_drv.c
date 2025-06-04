@@ -9,7 +9,6 @@
 
 #include "drivers/bt/hci_drv.h"
 
-#include "common.h"
 #include "endian.h"
 #include "esp_log.h"
 #include "esp_hosted_log.h"
@@ -19,6 +18,7 @@
 #include "esp_hosted_transport_config.h"
 #include "power_save_drv.h"
 #include "esp_hosted_bt.h"
+#include "port_esp_hosted_host_os.h"
 
 static const char TAG[] = "H_UART_DRV";
 
@@ -645,7 +645,7 @@ void bus_deinit_internal(void *bus_handle)
 int ensure_slave_bus_ready(void *bus_handle)
 {
 	esp_err_t res = ESP_OK;
-	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
 		ESP_LOGE(TAG, "Unable to get RESET config for transport");

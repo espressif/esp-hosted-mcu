@@ -19,7 +19,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-#include "esp_hosted_bt.h"
+#include "esp_hosted_bluedroid.h"
 
 #define REPORT_PROTOCOL_MOUSE_REPORT_SIZE      (4)
 #define REPORT_BUFFER_SIZE                     REPORT_PROTOCOL_MOUSE_REPORT_SIZE
