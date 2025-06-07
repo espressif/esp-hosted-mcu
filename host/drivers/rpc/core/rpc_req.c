@@ -249,10 +249,23 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			if (p_a_sta->transition_disable)
 				H_SET_BIT(WIFI_STA_CONFIG_1_transition_disable, p_c_sta->bitmask);
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)
-			WIFI_STA_CONFIG_1_SET_RESERVED_VAL(p_a_sta->reserved, p_c_sta->bitmask);
-#else
-			WIFI_STA_CONFIG_1_SET_RESERVED_VAL(p_a_sta->reserved1, p_c_sta->bitmask);
+#if H_WIFI_VHT_FIELDS_AVAILABLE
+			if (p_a_sta->vht_su_beamformee_disabled)
+				H_SET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
+
+			if (p_a_sta->vht_mu_beamformee_disabled)
+				H_SET_BIT(WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled, p_c_sta->he_bitmask);
+
+			if (p_a_sta->vht_mcs8_enabled)
+				H_SET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
+#endif
+
+#if H_DECODE_WIFI_RESERVED_FIELD
+  #if H_WIFI_NEW_RESERVED_FIELD_NAMES
+			WIFI_STA_CONFIG_2_SET_RESERVED_VAL(p_a_sta->reserved2, p_c_sta->he_bitmask);
+  #else
+			WIFI_STA_CONFIG_2_SET_RESERVED_VAL(p_a_sta->he_reserved, p_c_sta->he_bitmask);
+  #endif
 #endif
 
 			p_c_sta->sae_pwe_h2e = p_a_sta->sae_pwe_h2e;
@@ -284,9 +297,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			if (p_a_sta->he_trig_cqi_feedback_disabled)
 				H_SET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)
-			WIFI_STA_CONFIG_2_SET_RESERVED_VAL(p_a_sta->he_reserved, p_c_sta->he_bitmask);
-#else
+#if H_WIFI_VHT_FIELDS_AVAILABLE
 			if (p_a_sta->vht_su_beamformee_disabled)
 				H_SET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
 
@@ -295,8 +306,14 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 
 			if (p_a_sta->vht_mcs8_enabled)
 				H_SET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
+#endif
 
+#if H_DECODE_WIFI_RESERVED_FIELD
+  #if H_WIFI_NEW_RESERVED_FIELD_NAMES
 			WIFI_STA_CONFIG_2_SET_RESERVED_VAL(p_a_sta->reserved2, p_c_sta->he_bitmask);
+  #else
+			WIFI_STA_CONFIG_2_SET_RESERVED_VAL(p_a_sta->he_reserved, p_c_sta->he_bitmask);
+  #endif
 #endif
 
 			RPC_REQ_COPY_BYTES(p_c_sta->sae_h2e_identifier, p_a_sta->sae_h2e_identifier, SAE_H2E_IDENTIFIER_LEN);

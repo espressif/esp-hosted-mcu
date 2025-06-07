@@ -1344,4 +1344,13 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 				Once the Wi-Fi is no more stressed, data throttling would be stopped, once slave Wi-Fi load
 				is lower than this threshold
 	endmenu
+
+	config ESP_HOSTED_DECODE_WIFI_RESERVED_FIELD
+		bool "Decode WiFi configuration reserved field names"
+		default n
+		help
+			Enable this option to use legacy 'reserved' and 'he_reserved' field names
+			in WiFi configuration structures OR newer 'reserved1' and 'reserved2'
+			field names.
+
 endmenu
