@@ -248,7 +248,13 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			if (p_a_sta->transition_disable)
 				H_SET_BIT(STA_TRASITION_DISABLED_BIT, p_c_sta->bitmask);
 
+#if H_DECODE_WIFI_RESERVED_FIELD
+#if H_WIFI_NEW_RESERVED_FIELD_NAMES
+			WIFI_CONFIG_STA_SET_RESERVED_VAL(p_a_sta->reserved1, p_c_sta->bitmask);
+#else
 			WIFI_CONFIG_STA_SET_RESERVED_VAL(p_a_sta->reserved, p_c_sta->bitmask);
+#endif
+#endif
 
 			p_c_sta->sae_pwe_h2e = p_a_sta->sae_pwe_h2e;
 			p_c_sta->failure_retry_cnt = p_a_sta->failure_retry_cnt;
@@ -256,11 +262,11 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			if (p_a_sta->he_dcm_set)
 				H_SET_BIT(WIFI_HE_STA_CONFIG_he_dcm_set_BIT, p_c_sta->he_bitmask);
 
-			// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide
+			/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide */
 			if (p_a_sta->he_dcm_max_constellation_tx)
 				p_c_sta->he_bitmask |= ((p_a_sta->he_dcm_max_constellation_tx & 0x03) << WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx_BITS);
 
-			// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide
+			/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide */
 			if (p_a_sta->he_dcm_max_constellation_rx)
 				p_c_sta->he_bitmask |= ((p_a_sta->he_dcm_max_constellation_rx & 0x03) << WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx_BITS);
 
@@ -279,7 +285,24 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			if (p_a_sta->he_trig_cqi_feedback_disabled)
 				H_SET_BIT(WIFI_HE_STA_CONFIG_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
 
-			WIFI_HE_STA_SET_RESERVED_VAL(p_a_sta->he_reserved, p_c_sta->he_bitmask);
+#if H_WIFI_VHT_FIELDS_AVAILABLE
+			if (p_a_sta->vht_su_beamformee_disabled)
+				H_SET_BIT(WIFI_VHT_STA_CONFIG_vht_su_beamformee_disabled_BIT, p_c_sta->he_bitmask);
+
+			if (p_a_sta->vht_mu_beamformee_disabled)
+				H_SET_BIT(WIFI_VHT_STA_CONFIG_vht_mu_beamformee_disabled_BIT, p_c_sta->he_bitmask);
+
+			if (p_a_sta->vht_mcs8_enabled)
+				H_SET_BIT(WIFI_VHT_STA_CONFIG_vht_mcs8_enabled_BIT, p_c_sta->he_bitmask);
+#endif
+
+#if H_DECODE_WIFI_RESERVED_FIELD
+#if H_WIFI_NEW_RESERVED_FIELD_NAMES
+			WIFI_HE_STA_CONFIG_SET_RESERVED_VAL(p_a_sta->reserved2, p_c_sta->he_bitmask);
+#else
+			WIFI_HE_STA_CONFIG_SET_RESERVED_VAL(p_a_sta->he_reserved, p_c_sta->he_bitmask);
+#endif
+#endif
 
 			RPC_REQ_COPY_BYTES(p_c_sta->sae_h2e_identifier, p_a_sta->sae_h2e_identifier, SAE_H2E_IDENTIFIER_LEN);
 			break;

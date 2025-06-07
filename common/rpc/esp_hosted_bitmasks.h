@@ -6,6 +6,24 @@
 #ifndef __ESP_HOSTED_BITMASKS__H
 #define __ESP_HOSTED_BITMASKS__H
 
+/* For host builds, include ESP-specific wifi config */
+#ifdef CONFIG_ESP_HOSTED_ENABLED
+#include "esp_hosted_wifi_config.h"
+#endif
+
+/* Default fallbacks for non-ESP host builds */
+#ifndef H_WIFI_DUALBAND_SUPPORT
+  #define H_WIFI_DUALBAND_SUPPORT 0
+#endif
+
+#ifndef H_WIFI_VHT_FIELDS_AVAILABLE
+  #define H_WIFI_VHT_FIELDS_AVAILABLE 0
+#endif
+
+#ifndef H_WIFI_NEW_RESERVED_FIELD_NAMES
+  #define H_WIFI_NEW_RESERVED_FIELD_NAMES 0
+#endif
+
 #define H_SET_BIT(pos, val)                       (val|=(1<<pos))
 
 #define H_GET_BIT(pos, val)                       (val&(1<<pos)? 1: 0)
@@ -71,7 +89,7 @@ enum {
 
 /* WIFI HE AP Info bitmasks */
 enum {
-	// WIFI_HE_AP_INFO_BSS_COLOR is six bits wide
+	/* WIFI_HE_AP_INFO_BSS_COLOR is six bits wide */
 	WIFI_HE_AP_INFO_partial_bss_color_BIT  = 6,
 	WIFI_HE_AP_INFO_bss_color_disabled_BIT = 7,
 	WIFI_HE_AP_INFO_MAX_USED_BIT           = 8,
@@ -82,24 +100,41 @@ enum {
 /* WIFI HE Station Config bitmasks */
 enum {
 	WIFI_HE_STA_CONFIG_he_dcm_set_BIT                                     = 0,
-	// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide
+	/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide */
 	WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx_BITS                   = 1,
-	// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide
+	/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide */
 	WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx_BITS                   = 3,
 	WIFI_HE_STA_CONFIG_he_mcs9_enabled_BIT                                = 5,
 	WIFI_HE_STA_CONFIG_he_su_beamformee_disabled_BIT                      = 6,
 	WIFI_HE_STA_CONFIG_he_trig_su_bmforming_feedback_disabled_BIT         = 7,
 	WIFI_HE_STA_CONFIG_he_trig_mu_bmforming_partial_feedback_disabled_BIT = 8,
 	WIFI_HE_STA_CONFIG_he_trig_cqi_feedback_disabled_BIT                  = 9,
+
+#if H_WIFI_VHT_FIELDS_AVAILABLE
+	/* VHT fields (ESP-IDF 5.5.0+) */
+	WIFI_VHT_STA_CONFIG_vht_su_beamformee_disabled_BIT                    = 10,
+	WIFI_VHT_STA_CONFIG_vht_mu_beamformee_disabled_BIT                    = 11,
+	WIFI_VHT_STA_CONFIG_vht_mcs8_enabled_BIT                              = 12,
+	WIFI_HE_STA_CONFIG_MAX_USED_BIT                                       = 13,
+#else
 	WIFI_HE_STA_CONFIG_MAX_USED_BIT                                       = 10,
+#endif
 };
 
-#define WIFI_HE_STA_CONFIG_BITS 0xFC00
+#if H_WIFI_VHT_FIELDS_AVAILABLE
+#define WIFI_HE_STA_CONFIG_RESERVED_BITMASK 0xE000
+#else
+#define WIFI_HE_STA_CONFIG_RESERVED_BITMASK 0xFC00
+#endif
 
 #define WIFI_HE_STA_GET_RESERVED_VAL(num)                                      \
-    ((num&WIFI_HE_STA_CONFIG_BITS)>>WIFI_HE_STA_CONFIG_MAX_USED_BIT)
+    ((num&WIFI_HE_STA_CONFIG_RESERVED_BITMASK)>>WIFI_HE_STA_CONFIG_MAX_USED_BIT)
 
 #define WIFI_HE_STA_SET_RESERVED_VAL(reserved_in,num_out)                      \
     (num_out|=(reserved_in <<  WIFI_HE_STA_CONFIG_MAX_USED_BIT));
+
+/* Aliases for compatibility with RPC code */
+#define WIFI_HE_STA_CONFIG_GET_RESERVED_VAL WIFI_HE_STA_GET_RESERVED_VAL
+#define WIFI_HE_STA_CONFIG_SET_RESERVED_VAL WIFI_HE_STA_SET_RESERVED_VAL
 
 #endif
