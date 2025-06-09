@@ -18,6 +18,7 @@ extern "C" {
 #include "esp_wifi_remote.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_ota.h"
+#include "esp_hosted_wifi_config.h"
 
 /** Exported variables **/
 #define ESP_HOSTED_CHANNEL_CONFIG_DEFAULT()  { \
