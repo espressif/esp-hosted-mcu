@@ -216,7 +216,7 @@ int hci_rx_handler(interface_buffer_handle_t *buf_handle)
 		s_callback.notify_host_recv(data, len_total_read);
 	}
 
-	return ESP_FAIL;
+	return ESP_OK;
 }
 
 void hosted_hci_bluedroid_open(void)

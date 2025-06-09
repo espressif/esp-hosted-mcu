@@ -6,6 +6,13 @@
 #ifndef __ESP_HOSTED_BT_CONFIG_H__
 #define __ESP_HOSTED_BT_CONFIG_H__
 
+// check: if co-processor SOC is ESP32, only BT BLE 4.2 is supported
+#if CONFIG_SLAVE_IDF_TARGET_ESP32
+#if CONFIG_BT_BLE_50_FEATURES_SUPPORTED || CONFIG_BT_NIMBLE_50_FEATURE_SUPPORT
+#error "ESP32 co-processor only supports BLE 4.2"
+#endif
+#endif
+
 // Hosted BT defines for NimBLE
 #if CONFIG_ESP_HOSTED_ENABLE_BT_NIMBLE
 #define H_BT_HOST_ESP_NIMBLE 1

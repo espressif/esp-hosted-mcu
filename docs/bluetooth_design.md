@@ -39,6 +39,10 @@ hardware.
 > Check that the memory requirement for your preferred Bluetooth host
 > stack can be satisfied on the Host.
 
+> [!WARNING]
+> The ESP32 only supports Bluetooth v4.2. If you are using a ESP32 as
+> the co-processor, the host Bluetooth stack must also be v4.2.
+
 ESP-Hosted is Bluetooth stack agnostic. To showcase ESP-Hosted's
 Bluetooth support, both `esp-nimble` and `esp-bluedroid` are used
 here. Users can use their own preferred Bluetooth stack with some
