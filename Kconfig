@@ -1059,4 +1059,13 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 				Once the Wi-Fi is no more stressed, data throttling would be stopped, once slave Wi-Fi load
 				is lower than this threshold
 	endmenu
+
+	config ESP_HOSTED_DECODE_WIFI_RESERVED_FIELD
+		bool "Copy Wi-Fi configuration reserved field values"
+		default n
+		help
+			ESP-IDF Wi-Fi structures contain reserved bitmask values.
+			Enable this option if you want to copy these values between host and co-processor.
+			It is usually safe to ignore these reserved values.
+
 endmenu

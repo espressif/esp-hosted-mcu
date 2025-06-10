@@ -25,6 +25,23 @@
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
 
+/* Slave-side ESP-IDF version detection for bitmasks compatibility */
+#include "esp_idf_version.h"
+
+/* ESP-IDF 5.5.0 breaking change: reserved/he_reserved renamed to reserved1/reserved2
+ * VHT fields (vht_su_beamformee_disabled, vht_mu_beamformee_disabled, vht_mcs8_enabled) added
+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+#define H_WIFI_NEW_RESERVED_FIELD_NAMES 1
+#define H_WIFI_VHT_FIELDS_AVAILABLE 1
+#else
+#define H_WIFI_NEW_RESERVED_FIELD_NAMES 0
+#define H_WIFI_VHT_FIELDS_AVAILABLE 0
+#endif
+
+/* Slave-side: Enable reserved field decoding by default for compatibility */
+#define H_DECODE_WIFI_RESERVED_FIELD 1
+
 #include "coprocessor_fw_version.h"
 
 #define MAC_STR_LEN                 17
@@ -874,22 +891,43 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->ft_enabled = H_GET_BIT(STA_FT_ENABLED_BIT, p_c_sta->bitmask);
 		p_a_sta->owe_enabled = H_GET_BIT(STA_OWE_ENABLED_BIT, p_c_sta->bitmask);
 		p_a_sta->transition_disable = H_GET_BIT(STA_TRASITION_DISABLED_BIT, p_c_sta->bitmask);
+
+#if H_DECODE_WIFI_RESERVED_FIELD
+#if H_WIFI_NEW_RESERVED_FIELD_NAMES
+		p_a_sta->reserved1 = WIFI_CONFIG_STA_GET_RESERVED_VAL(p_c_sta->bitmask);
+#else
 		p_a_sta->reserved = WIFI_CONFIG_STA_GET_RESERVED_VAL(p_c_sta->bitmask);
+#endif
+#endif
 
 		p_a_sta->sae_pwe_h2e = p_c_sta->sae_pwe_h2e;
 		p_a_sta->failure_retry_cnt = p_c_sta->failure_retry_cnt;
 
 		p_a_sta->he_dcm_set = H_GET_BIT(WIFI_HE_STA_CONFIG_he_dcm_set_BIT, p_c_sta->he_bitmask);
-		// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide
+
+		/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide */
 		p_a_sta->he_dcm_max_constellation_tx = (p_c_sta->he_bitmask >> WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx_BITS) & 0x03;
-		// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide
+		/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide */
 		p_a_sta->he_dcm_max_constellation_rx = (p_c_sta->he_bitmask >> WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx_BITS) & 0x03;
 		p_a_sta->he_mcs9_enabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_mcs9_enabled_BIT, p_c_sta->he_bitmask);
 		p_a_sta->he_su_beamformee_disabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_su_beamformee_disabled_BIT, p_c_sta->he_bitmask);
-		p_a_sta->he_trig_su_bmforming_feedback_disabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_trig_su_bmforming_feedback_disabled_BIT, p_c_sta->bitmask);
-		p_a_sta->he_trig_mu_bmforming_partial_feedback_disabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_trig_mu_bmforming_partial_feedback_disabled_BIT, p_c_sta->bitmask);
-		p_a_sta->he_trig_cqi_feedback_disabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_trig_cqi_feedback_disabled_BIT, p_c_sta->bitmask);
-		p_a_sta->he_reserved = WIFI_HE_STA_GET_RESERVED_VAL(p_c_sta->bitmask);
+		p_a_sta->he_trig_su_bmforming_feedback_disabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_trig_su_bmforming_feedback_disabled_BIT, p_c_sta->he_bitmask);
+		p_a_sta->he_trig_mu_bmforming_partial_feedback_disabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_trig_mu_bmforming_partial_feedback_disabled_BIT, p_c_sta->he_bitmask);
+		p_a_sta->he_trig_cqi_feedback_disabled = H_GET_BIT(WIFI_HE_STA_CONFIG_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
+
+#if H_WIFI_VHT_FIELDS_AVAILABLE
+		p_a_sta->vht_su_beamformee_disabled = H_GET_BIT(WIFI_VHT_STA_CONFIG_vht_su_beamformee_disabled_BIT, p_c_sta->he_bitmask);
+		p_a_sta->vht_mu_beamformee_disabled = H_GET_BIT(WIFI_VHT_STA_CONFIG_vht_mu_beamformee_disabled_BIT, p_c_sta->he_bitmask);
+		p_a_sta->vht_mcs8_enabled = H_GET_BIT(WIFI_VHT_STA_CONFIG_vht_mcs8_enabled_BIT, p_c_sta->he_bitmask);
+#endif
+
+#if H_DECODE_WIFI_RESERVED_FIELD
+#if H_WIFI_NEW_RESERVED_FIELD_NAMES
+		p_a_sta->reserved2 = WIFI_HE_STA_CONFIG_GET_RESERVED_VAL(p_c_sta->he_bitmask);
+#else
+		p_a_sta->he_reserved = WIFI_HE_STA_CONFIG_GET_RESERVED_VAL(p_c_sta->he_bitmask);
+#endif
+#endif
 
 		/* Avoid using fast scan, which leads to faster SSID selection,
 		 * but faces data throughput issues when same SSID broadcasted by weaker AP
@@ -988,6 +1026,49 @@ static esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 
 		p_c_sta->sae_pwe_h2e = p_a_sta->sae_pwe_h2e;
 		p_c_sta->failure_retry_cnt = p_a_sta->failure_retry_cnt;
+
+		/* HE field handling */
+		if (p_a_sta->he_dcm_set)
+			H_SET_BIT(WIFI_HE_STA_CONFIG_he_dcm_set_BIT, p_c_sta->he_bitmask);
+
+		/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide */
+		p_c_sta->he_bitmask |= (p_a_sta->he_dcm_max_constellation_tx & 0x03) << WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx_BITS;
+		/* WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide */
+		p_c_sta->he_bitmask |= (p_a_sta->he_dcm_max_constellation_rx & 0x03) << WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx_BITS;
+
+		if (p_a_sta->he_mcs9_enabled)
+			H_SET_BIT(WIFI_HE_STA_CONFIG_he_mcs9_enabled_BIT, p_c_sta->he_bitmask);
+
+		if (p_a_sta->he_su_beamformee_disabled)
+			H_SET_BIT(WIFI_HE_STA_CONFIG_he_su_beamformee_disabled_BIT, p_c_sta->he_bitmask);
+
+		if (p_a_sta->he_trig_su_bmforming_feedback_disabled)
+			H_SET_BIT(WIFI_HE_STA_CONFIG_he_trig_su_bmforming_feedback_disabled_BIT, p_c_sta->he_bitmask);
+
+		if (p_a_sta->he_trig_mu_bmforming_partial_feedback_disabled)
+			H_SET_BIT(WIFI_HE_STA_CONFIG_he_trig_mu_bmforming_partial_feedback_disabled_BIT, p_c_sta->he_bitmask);
+
+		if (p_a_sta->he_trig_cqi_feedback_disabled)
+			H_SET_BIT(WIFI_HE_STA_CONFIG_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
+
+#if H_WIFI_VHT_FIELDS_AVAILABLE
+		if (p_a_sta->vht_su_beamformee_disabled)
+			H_SET_BIT(WIFI_VHT_STA_CONFIG_vht_su_beamformee_disabled_BIT, p_c_sta->he_bitmask);
+
+		if (p_a_sta->vht_mu_beamformee_disabled)
+			H_SET_BIT(WIFI_VHT_STA_CONFIG_vht_mu_beamformee_disabled_BIT, p_c_sta->he_bitmask);
+
+		if (p_a_sta->vht_mcs8_enabled)
+			H_SET_BIT(WIFI_VHT_STA_CONFIG_vht_mcs8_enabled_BIT, p_c_sta->he_bitmask);
+#endif
+
+#if H_DECODE_WIFI_RESERVED_FIELD
+#if H_WIFI_NEW_RESERVED_FIELD_NAMES
+		WIFI_HE_STA_CONFIG_SET_RESERVED_VAL(p_a_sta->reserved2, p_c_sta->he_bitmask);
+#else
+		WIFI_HE_STA_CONFIG_SET_RESERVED_VAL(p_a_sta->he_reserved, p_c_sta->he_bitmask);
+#endif
+#endif
 		break;
 	}
 	case WIFI_IF_AP: {
