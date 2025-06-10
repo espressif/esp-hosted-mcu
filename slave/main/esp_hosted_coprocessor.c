@@ -78,7 +78,7 @@ static struct rx_data {
 	uint8_t valid;
 	uint16_t cur_seq_no;
 	int len;
-	uint8_t data[4096];
+	uint8_t data[8192];
 } r;
 
 uint8_t ap_mac[BSSID_BYTES_SIZE] = {0};

@@ -130,7 +130,7 @@ static void raw_tp_tx_task(void const* pvParameters)
 		for (i=0; i<(TEST_RAW_TP__BUF_SIZE/4-1); i++, ptr++)
 			*ptr = 0xBAADF00D;
 
-		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
+		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, raw_tp_tx_buf, H_DEFLT_FREE_FUNC, 0);
 
 #else
 		raw_tp_tx_buf = mempool_alloc(buf_mp_g, MAX_TRANSPORT_BUFFER_SIZE, true);

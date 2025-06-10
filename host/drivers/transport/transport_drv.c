@@ -273,7 +273,7 @@ static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 	assert(copy_buff);
 	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
-	return esp_hosted_tx(ESP_STA_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, transport_sta_free_cb, 0);
+	return esp_hosted_tx(ESP_STA_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, copy_buff, transport_sta_free_cb, 0);
 }
 
 static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
@@ -290,14 +290,14 @@ static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 	assert(copy_buff);
 	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
-	return esp_hosted_tx(ESP_AP_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, transport_ap_free_cb, 0);
+	return esp_hosted_tx(ESP_AP_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, copy_buff, transport_ap_free_cb, 0);
 }
 
 esp_err_t transport_drv_serial_tx(void *h, void *buffer, size_t len)
 {
 	/* TODO */
 	assert(h && h==chan_arr[ESP_SERIAL_IF]->api_chan);
-	return esp_hosted_tx(ESP_SERIAL_IF, 0, buffer, len, H_BUFF_NO_ZEROCOPY, transport_serial_free_cb, 0);
+	return esp_hosted_tx(ESP_SERIAL_IF, 0, buffer, len, H_BUFF_NO_ZEROCOPY, buffer, transport_serial_free_cb, 0);
 }
 
 
@@ -638,7 +638,7 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	/* payload len = Event len + sizeof(event type) + sizeof(event len) */
 	len += 2;
 
-	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, g_h.funcs->_h_free, 0);
+	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, sendbuf, g_h.funcs->_h_free, 0);
 }
 
 static int transport_delayed_init(void)
