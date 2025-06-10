@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - release/0.1
 
 jobs:
   upload_components:
