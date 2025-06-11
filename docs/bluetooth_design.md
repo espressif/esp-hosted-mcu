@@ -49,7 +49,7 @@ here. Users can use their own preferred Bluetooth stack with some
 porting effort.
 
 `esp-nimble` is a fork of Apache NimBLE and available from
-ESP-IDF. The NimBLE Bluetooth slack proves Bluetooth Low Energy (BLE)
+ESP-IDF. The NimBLE Bluetooth stack provides Bluetooth Low Energy (BLE)
 only functionality.
 
 `esp-bluedroid` is a fork of the Bluedroid based stack and available
