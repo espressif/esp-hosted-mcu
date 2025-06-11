@@ -57,6 +57,10 @@ static esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
 	case HTTP_EVENT_REDIRECT:
 		ESP_LOGW(TAG, "HTTP_EVENT_REDIRECT");
 		break;
+	// Other trivial events like HTTP_EVENT_ON_HEADERS_COMPLETE can be handled when needed
+	default:
+		ESP_LOGD(TAG, "Unhandled event id: %d", evt->event_id);
+		break;
 	}
 
 	return ESP_OK;
