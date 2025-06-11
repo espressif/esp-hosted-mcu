@@ -100,4 +100,4 @@ build_idf_master:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5", "esp32", "esp32c2", "esp32c3", "esp32s3" ]
-        IDF_EXAMPLE_PATH: [examples/wifi/iperf]
+        IDF_EXAMPLE_PATH: [examples/protocols/mqtt/tcp, examples/wifi/iperf]
