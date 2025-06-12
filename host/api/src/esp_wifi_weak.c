@@ -19,7 +19,7 @@
  * Used when WiFi-Remote does not provide required esp_wifi calls
  */
 
-#include "esp_hosted_api.h"
+#include "esp_hosted_api_priv.h"
 #include "esp_hosted_wifi_config.h"
 
 #define WEAK __attribute__((weak))

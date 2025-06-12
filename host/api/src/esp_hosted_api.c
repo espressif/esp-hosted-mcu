@@ -10,9 +10,9 @@ extern "C" {
 
 /** Includes **/
 #include "esp_hosted_transport_config.h"
-#include "esp_wifi_remote.h"
 #include "esp_hosted_wifi_config.h"
-#include "esp_hosted_api.h"
+#include "esp_hosted_api_priv.h"
+#include "esp_hosted_wifi_remote_glue.h"
 #include "esp_check.h"
 #include "transport_drv.h"
 #include "rpc_wrap.h"
@@ -29,10 +29,6 @@ struct esp_remote_channel {
 };
 
 //static semaphore_handle_t transport_up_sem;
-
-typedef esp_err_t (*esp_remote_channel_rx_fn_t)(void *h, void *buffer,
-		void *buff_to_free, size_t len);
-typedef esp_err_t (*esp_remote_channel_tx_fn_t)(void *h, void *buffer, size_t len);
 
 /** Inline functions **/
 
@@ -96,7 +92,7 @@ static void set_host_modules_log_level(void)
 	esp_log_level_set("rpc_rsp", ESP_LOG_WARN);
 	esp_log_level_set("rpc_evt", ESP_LOG_WARN);
 }
-esp_err_t esp_hosted_init(void)
+int esp_hosted_init(void)
 {
 	if (esp_hosted_init_done)
 		return ESP_OK;
@@ -120,7 +116,7 @@ esp_err_t esp_hosted_init(void)
 	return ESP_OK;
 }
 
-esp_err_t esp_hosted_deinit(void)
+int esp_hosted_deinit(void)
 {
 	ESP_LOGI(TAG, "ESP-Hosted deinit\n");
 	rpc_unregister_event_callbacks();
@@ -141,16 +137,7 @@ static inline esp_err_t esp_hosted_reconfigure(void)
 	return ESP_OK;
 }
 
-esp_err_t esp_hosted_reinit(void)
-{
-	ESP_LOGI(TAG, "ESP-Hosted re-init\n");
-	ESP_ERROR_CHECK(esp_hosted_deinit());
-	ESP_ERROR_CHECK(esp_hosted_init());
-	ESP_ERROR_CHECK(esp_hosted_reconfigure());
-	return ESP_OK;
-}
-
-esp_err_t esp_hosted_slave_reset(void)
+int esp_hosted_connect_to_slave(void)
 {
 	ESP_LOGI(TAG, "ESP-Hosted Try to communicate with ESP-Hosted slave\n");
 	return esp_hosted_reconfigure();
@@ -399,8 +386,8 @@ esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid)
 {
 	return rpc_wifi_sta_get_aid(aid);
 }
-
 #if H_WIFI_DUALBAND_SUPPORT
+/* Dual-band WiFi API - always available at high level, but returns ESP_ERR_NOT_SUPPORTED when co-processor do not support */
 esp_err_t esp_wifi_remote_set_band(wifi_band_t band)
 {
 	return rpc_wifi_set_band(band);
