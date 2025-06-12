@@ -10,9 +10,9 @@ extern "C" {
 
 /** Includes **/
 #include "esp_hosted_transport_config.h"
-#include "esp_wifi_remote.h"
 #include "esp_hosted_wifi_config.h"
-#include "esp_hosted_api.h"
+#include "esp_hosted_api_priv.h"
+#include "esp_hosted_wifi_remote_glue.h"
 #include "esp_check.h"
 #include "transport_drv.h"
 #include "rpc_wrap.h"
@@ -401,6 +401,7 @@ esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid)
 }
 
 #if H_WIFI_DUALBAND_SUPPORT
+/* Dual-band WiFi API - always available, but may return ESP_ERR_NOT_SUPPORTED on older platforms */
 esp_err_t esp_wifi_remote_set_band(wifi_band_t band)
 {
 	return rpc_wifi_set_band(band);

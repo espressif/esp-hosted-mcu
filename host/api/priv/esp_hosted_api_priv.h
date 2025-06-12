@@ -4,43 +4,21 @@
 * SPDX-License-Identifier: Apache-2.0
 */
 
-/** prevent recursive inclusion **/
-#ifndef __ESP_HOSTED_API_H__
-#define __ESP_HOSTED_API_H__
+/* prevent recursive inclusion */
+#ifndef __ESP_HOSTED_API_PRIV_H__
+#define __ESP_HOSTED_API_PRIV_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Includes **/
+/* Includes */
 #include "stdbool.h"
 #include "esp_wifi.h"
 #include "esp_wifi_remote.h"
 #include "esp_hosted_api_types.h"
 
-/** Exported variables **/
-#define ESP_HOSTED_CHANNEL_CONFIG_DEFAULT()  { \
-	.secure = true,                            \
-}
-
-struct esp_remote_channel_config {
-	int if_type; // values should be of esp_hosted_if_type_t
-	bool secure;
-};
-
-/** Inline functions **/
-
-/** Exported Functions **/
-esp_err_t esp_hosted_init(void);
-esp_err_t esp_hosted_deinit(void);
-esp_err_t esp_hosted_reinit(void);
-
-esp_err_t esp_hosted_setup(void);
-esp_err_t esp_hosted_slave_reset(void);
-esp_remote_channel_t esp_hosted_add_channel(esp_remote_channel_config_t config,
-		esp_remote_channel_tx_fn_t *tx, const esp_remote_channel_rx_fn_t rx);
-esp_err_t esp_hosted_remove_channel(esp_remote_channel_t channel);
-
+/* Remote WiFi API Functions - Port/Implementation Specific */
 esp_err_t esp_wifi_remote_init(const wifi_init_config_t *arg);
 esp_err_t esp_wifi_remote_deinit(void);
 esp_err_t esp_wifi_remote_set_mode(wifi_mode_t mode);
@@ -84,10 +62,9 @@ esp_err_t esp_wifi_remote_set_max_tx_power(int8_t power);
 esp_err_t esp_wifi_remote_get_max_tx_power(int8_t *power);
 esp_err_t esp_wifi_remote_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode);
 esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid);
-esp_err_t esp_hosted_slave_ota(const char* image_url);
-esp_err_t esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info);
 
 #if H_WIFI_DUALBAND_SUPPORT
+/* Dual-band WiFi API (Depends upon co-processor used) */
 esp_err_t esp_wifi_remote_set_band(wifi_band_t band);
 esp_err_t esp_wifi_remote_get_band(wifi_band_t *band);
 esp_err_t esp_wifi_remote_set_band_mode(wifi_band_mode_t band_mode);
@@ -102,4 +79,4 @@ esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t
 }
 #endif
 
-#endif
+#endif /* __ESP_HOSTED_API_PRIV_H__ */
