@@ -1,9 +1,9 @@
 /*
- * Espressif Systems Wireless LAN device driver
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
- * Copyright (C) 2015-2022 Espressif Systems (Shanghai) PTE LTD
- * SPDX-License-Identifier: GPL-2.0 OR Apache-2.0
+ * SPDX-License-Identifier: Apache-2.0
  */
+
 #include "rpc_slave_if.h"
 #include "rpc_core.h"
 #include "esp_hosted_wifi_config.h"
@@ -333,6 +333,62 @@ ctrl_cmd_t * rpc_slaveif_wifi_set_protocols(ctrl_cmd_t *req)
 	RPC_SEND_REQ(RPC_ID__Req_WifiSetProtocols);
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
+
+ctrl_cmd_t * rpc_slaveif_wifi_set_inactive_time(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiSetInactiveTime);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_get_inactive_time(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiGetInactiveTime);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+#if H_WIFI_HE_SUPPORT
+ctrl_cmd_t * rpc_slaveif_wifi_sta_twt_config(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaTwtConfig);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_setup(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaItwtSetup);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_teardown(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaItwtTeardown);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_suspend(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaItwtSuspend);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_get_flow_id_status(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaItwtGetFlowIdStatus);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_send_probe_req(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaItwtSendProbeReq);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_set_target_wake_time_offset(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaItwtSetTargetWakeTimeOffset);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+#endif
 
 ctrl_cmd_t * rpc_slaveif_get_coprocessor_fwversion(ctrl_cmd_t *req)
 {

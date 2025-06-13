@@ -83,12 +83,23 @@ esp_err_t rpc_wifi_set_max_tx_power(int8_t power);
 esp_err_t rpc_wifi_get_max_tx_power(int8_t *power);
 esp_err_t rpc_wifi_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode);
 esp_err_t rpc_wifi_sta_get_aid(uint16_t *aid);
-
+esp_err_t rpc_wifi_set_inactive_time(wifi_interface_t ifx, uint16_t sec);
+esp_err_t rpc_wifi_get_inactive_time(wifi_interface_t ifx, uint16_t *sec);
 esp_err_t rpc_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info);
 
 esp_err_t rpc_ota_begin(void);
 esp_err_t rpc_ota_write(uint8_t* ota_data, uint32_t ota_data_len);
 esp_err_t rpc_ota_end(void);
+
+#if H_WIFI_HE_SUPPORT
+esp_err_t rpc_wifi_sta_twt_config(wifi_twt_config_t *config);
+esp_err_t rpc_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config);
+esp_err_t rpc_wifi_sta_itwt_teardown(int flow_id);
+esp_err_t rpc_wifi_sta_itwt_suspend(int flow_id, int suspend_time_ms);
+esp_err_t rpc_wifi_sta_itwt_get_flow_id_status(int *flow_id_bitmap);
+esp_err_t rpc_wifi_sta_itwt_send_probe_req(int timeout_ms);
+esp_err_t rpc_wifi_sta_itwt_set_target_wake_time_offset(int offset_us);
+#endif
 
 #if H_WIFI_DUALBAND_SUPPORT
 esp_err_t rpc_wifi_set_band(wifi_band_t band);

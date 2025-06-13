@@ -1,8 +1,7 @@
 /*
- * Espressif Systems Wireless LAN device driver
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
- * Copyright (C) 2015-2022 Espressif Systems (Shanghai) PTE LTD
- * SPDX-License-Identifier: GPL-2.0 OR Apache-2.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /** prevent recursive inclusion **/
@@ -179,6 +178,18 @@ typedef struct {
 } rpc_set_dhcp_dns_status_t;
 
 typedef struct {
+	wifi_interface_t ifx;
+	uint16_t sec;
+} rpc_wifi_inactive_time_t;
+
+#if H_WIFI_HE_SUPPORT
+typedef struct {
+	int flow_id;
+	int suspend_time_ms;
+} rpc_wifi_itwt_suspend_t;
+#endif
+
+typedef struct {
 	/* event */
 	uint32_t hb_num;
 	/* Req */
@@ -249,7 +260,25 @@ typedef struct Ctrl_cmd_t {
 		rpc_wifi_sta_get_negotiated_phymode_t wifi_sta_get_negotiated_phymode;
 		rpc_wifi_sta_get_aid_t      wifi_sta_get_aid;
 
+		rpc_wifi_inactive_time_t    wifi_inactive_time;
+
 		rpc_coprocessor_fwversion_t coprocessor_fwversion;
+
+#if H_WIFI_HE_SUPPORT
+		wifi_twt_config_t           wifi_twt_config;
+
+		wifi_itwt_setup_config_t    wifi_itwt_setup_config;
+
+		int                         wifi_itwt_flow_id;
+
+		rpc_wifi_itwt_suspend_t     wifi_itwt_suspend;
+
+		int                         wifi_itwt_flow_id_bitmap;
+
+		int                         wifi_itwt_probe_req_timeout_ms;
+
+		int                         wifi_itwt_set_target_wake_time_offset_us;
+#endif
 
 #if H_WIFI_DUALBAND_SUPPORT
 		rpc_wifi_protocols_t        wifi_protocols;
@@ -276,6 +305,16 @@ typedef struct Ctrl_cmd_t {
 		wifi_event_sta_connected_t   e_wifi_sta_connected;
 
 		wifi_event_sta_disconnected_t e_wifi_sta_disconnected;
+
+#if H_WIFI_HE_SUPPORT
+		wifi_event_sta_itwt_setup_t    e_wifi_sta_itwt_setup;
+
+		wifi_event_sta_itwt_teardown_t e_wifi_sta_itwt_teardown;
+
+		wifi_event_sta_itwt_suspend_t  e_wifi_sta_itwt_suspend;
+
+		wifi_event_sta_itwt_probe_t    e_wifi_sta_itwt_probe;
+#endif
 	}u;
 
 	/* By default this callback is set to NULL.
@@ -482,7 +521,15 @@ ctrl_cmd_t * rpc_slaveif_wifi_get_band(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_band_mode(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_band_mode(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_set_slave_dhcp_dns_status(ctrl_cmd_t *req);
-
+ctrl_cmd_t * rpc_slaveif_wifi_set_inactive_time(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_get_inactive_time(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_twt_config(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_setup(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_teardown(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_suspend(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_get_flow_id_status(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_send_probe_req(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_set_target_wake_time_offset(ctrl_cmd_t *req);
 #ifdef __cplusplus
 }
 #endif

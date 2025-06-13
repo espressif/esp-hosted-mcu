@@ -59,6 +59,8 @@ typedef struct WifiEventApWpsRgFailReason WifiEventApWpsRgFailReason;
 typedef struct WifiEventApWpsRgSuccess WifiEventApWpsRgSuccess;
 typedef struct WifiProtocols WifiProtocols;
 typedef struct WifiBandwidths WifiBandwidths;
+typedef struct WifiItwtSetupConfig WifiItwtSetupConfig;
+typedef struct WifiTwtConfig WifiTwtConfig;
 typedef struct ConnectedSTAList ConnectedSTAList;
 typedef struct RpcReqGetMacAddress RpcReqGetMacAddress;
 typedef struct RpcRespGetMacAddress RpcRespGetMacAddress;
@@ -168,6 +170,24 @@ typedef struct RpcReqWifiSetBandMode RpcReqWifiSetBandMode;
 typedef struct RpcRespWifiSetBandMode RpcRespWifiSetBandMode;
 typedef struct RpcReqWifiGetBandMode RpcReqWifiGetBandMode;
 typedef struct RpcRespWifiGetBandMode RpcRespWifiGetBandMode;
+typedef struct RpcReqWifiSetInactiveTime RpcReqWifiSetInactiveTime;
+typedef struct RpcRespWifiSetInactiveTime RpcRespWifiSetInactiveTime;
+typedef struct RpcReqWifiGetInactiveTime RpcReqWifiGetInactiveTime;
+typedef struct RpcRespWifiGetInactiveTime RpcRespWifiGetInactiveTime;
+typedef struct RpcReqWifiStaItwtSetup RpcReqWifiStaItwtSetup;
+typedef struct RpcRespWifiStaItwtSetup RpcRespWifiStaItwtSetup;
+typedef struct RpcReqWifiStaItwtTeardown RpcReqWifiStaItwtTeardown;
+typedef struct RpcRespWifiStaItwtTeardown RpcRespWifiStaItwtTeardown;
+typedef struct RpcReqWifiStaItwtSuspend RpcReqWifiStaItwtSuspend;
+typedef struct RpcRespWifiStaItwtSuspend RpcRespWifiStaItwtSuspend;
+typedef struct RpcReqWifiStaItwtGetFlowIdStatus RpcReqWifiStaItwtGetFlowIdStatus;
+typedef struct RpcRespWifiStaItwtGetFlowIdStatus RpcRespWifiStaItwtGetFlowIdStatus;
+typedef struct RpcReqWifiStaItwtSendProbeReq RpcReqWifiStaItwtSendProbeReq;
+typedef struct RpcRespWifiStaItwtSendProbeReq RpcRespWifiStaItwtSendProbeReq;
+typedef struct RpcReqWifiStaItwtSetTargetWakeTimeOffset RpcReqWifiStaItwtSetTargetWakeTimeOffset;
+typedef struct RpcRespWifiStaItwtSetTargetWakeTimeOffset RpcRespWifiStaItwtSetTargetWakeTimeOffset;
+typedef struct RpcReqWifiStaTwtConfig RpcReqWifiStaTwtConfig;
+typedef struct RpcRespWifiStaTwtConfig RpcRespWifiStaTwtConfig;
 typedef struct RpcReqGetCoprocessorFwVersion RpcReqGetCoprocessorFwVersion;
 typedef struct RpcRespGetCoprocessorFwVersion RpcRespGetCoprocessorFwVersion;
 typedef struct RpcReqSetDhcpDnsStatus RpcReqSetDhcpDnsStatus;
@@ -183,6 +203,10 @@ typedef struct RpcEventStaScanDone RpcEventStaScanDone;
 typedef struct RpcEventStaConnected RpcEventStaConnected;
 typedef struct RpcEventStaDisconnected RpcEventStaDisconnected;
 typedef struct RpcEventDhcpDnsStatus RpcEventDhcpDnsStatus;
+typedef struct RpcEventStaItwtSetup RpcEventStaItwtSetup;
+typedef struct RpcEventStaItwtTeardown RpcEventStaItwtTeardown;
+typedef struct RpcEventStaItwtSuspend RpcEventStaItwtSuspend;
+typedef struct RpcEventStaItwtProbe RpcEventStaItwtProbe;
 typedef struct Rpc Rpc;
 
 
@@ -598,13 +622,41 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_GetDhcpDnsStatus = 353,
   /*
+   *0x162
+   */
+  RPC_ID__Req_WifiStaTwtConfig = 354,
+  /*
+   *0x163
+   */
+  RPC_ID__Req_WifiStaItwtSetup = 355,
+  /*
+   *0x164
+   */
+  RPC_ID__Req_WifiStaItwtTeardown = 356,
+  /*
+   *0x165
+   */
+  RPC_ID__Req_WifiStaItwtSuspend = 357,
+  /*
+   *0x166
+   */
+  RPC_ID__Req_WifiStaItwtGetFlowIdStatus = 358,
+  /*
+   *0x167
+   */
+  RPC_ID__Req_WifiStaItwtSendProbeReq = 359,
+  /*
+   *0x168
+   */
+  RPC_ID__Req_WifiStaItwtSetTargetWakeTimeOffset = 360,
+  /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   *0x162
+   *0x169
    */
-  RPC_ID__Req_Max = 354,
+  RPC_ID__Req_Max = 361,
   /*
    ** Response Msgs *
    */
@@ -708,11 +760,18 @@ typedef enum _RpcId {
   RPC_ID__Resp_WifiScanGetApRecord = 607,
   RPC_ID__Resp_SetDhcpDnsStatus = 608,
   RPC_ID__Resp_GetDhcpDnsStatus = 609,
+  RPC_ID__Resp_WifiStaTwtConfig = 610,
+  RPC_ID__Resp_WifiStaItwtSetup = 611,
+  RPC_ID__Resp_WifiStaItwtTeardown = 612,
+  RPC_ID__Resp_WifiStaItwtSuspend = 613,
+  RPC_ID__Resp_WifiStaItwtGetFlowIdStatus = 614,
+  RPC_ID__Resp_WifiStaItwtSendProbeReq = 615,
+  RPC_ID__Resp_WifiStaItwtSetTargetWakeTimeOffset = 616,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 610,
+  RPC_ID__Resp_Max = 617,
   /*
    ** Event Msgs *
    */
@@ -726,11 +785,15 @@ typedef enum _RpcId {
   RPC_ID__Event_StaConnected = 775,
   RPC_ID__Event_StaDisconnected = 776,
   RPC_ID__Event_DhcpDnsStatus = 777,
+  RPC_ID__Event_StaItwtSetup = 778,
+  RPC_ID__Event_StaItwtTeardown = 779,
+  RPC_ID__Event_StaItwtSuspend = 780,
+  RPC_ID__Event_StaItwtProbe = 781,
   /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  RPC_ID__Event_Max = 778
+  RPC_ID__Event_Max = 782
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_ID)
 } RpcId;
 
@@ -2083,6 +2146,48 @@ struct  WifiBandwidths
     , 0, 0 }
 
 
+struct  WifiItwtSetupConfig
+{
+  ProtobufCMessage base;
+  uint32_t setup_cmd;
+  /*
+   * uint16_t trigger : 1;                **< 1: a trigger-enabled individual TWT, 0: a non-trigger-enabled individual TWT * 
+   * uint16_t flow_type : 1;              **< 0: an announced individual TWT, 1: an unannounced individual TWT * 
+   * uint16_t flow_id : 3;                 **< When set up an individual TWT agreement, the flow id will be assigned by AP after a successful agreement setup.
+   *                                          flow_id could be specified to a value in the range of [0, 7], but it might be changed by AP in the response.
+   *                                          When change TWT parameters of the existing TWT agreement, flow_id should be an existing one. The value range is [0, 7]. * 
+   * uint16_t wake_invl_expn : 5;         **< Individual TWT Wake Interval Exponent. The value range is [0, 31]. * 
+   * uint16_t wake_duration_unit : 1;     **< Individual TWT Wake duration unit, 0: 256us 1: TU (TU = 1024us)* 
+   * uint16_t reserved : 5;               **< bit: 11.15 reserved * 
+   */
+  uint32_t bitmask_1;
+  uint32_t min_wake_dura;
+  uint32_t wake_invl_mant;
+  uint32_t twt_id;
+  uint32_t timeout_time_ms;
+};
+#define WIFI_ITWT_SETUP_CONFIG__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&wifi_itwt_setup_config__descriptor) \
+    , 0, 0, 0, 0, 0, 0 }
+
+
+struct  WifiTwtConfig
+{
+  ProtobufCMessage base;
+  /*
+   **< post twt wakeup event 
+   */
+  protobuf_c_boolean post_wakeup_event;
+  /*
+   **< twt enable send qos null to keep alive 
+   */
+  protobuf_c_boolean twt_enable_keep_alive;
+};
+#define WIFI_TWT_CONFIG__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&wifi_twt_config__descriptor) \
+    , 0, 0 }
+
+
 struct  ConnectedSTAList
 {
   ProtobufCMessage base;
@@ -3194,6 +3299,189 @@ struct  RpcRespWifiGetBandMode
     , 0, 0 }
 
 
+struct  RpcReqWifiSetInactiveTime
+{
+  ProtobufCMessage base;
+  uint32_t ifx;
+  uint32_t sec;
+};
+#define RPC__REQ__WIFI_SET_INACTIVE_TIME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_set_inactive_time__descriptor) \
+    , 0, 0 }
+
+
+struct  RpcRespWifiSetInactiveTime
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_SET_INACTIVE_TIME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_set_inactive_time__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiGetInactiveTime
+{
+  ProtobufCMessage base;
+  uint32_t ifx;
+};
+#define RPC__REQ__WIFI_GET_INACTIVE_TIME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_get_inactive_time__descriptor) \
+    , 0 }
+
+
+struct  RpcRespWifiGetInactiveTime
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  uint32_t sec;
+};
+#define RPC__RESP__WIFI_GET_INACTIVE_TIME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_get_inactive_time__descriptor) \
+    , 0, 0 }
+
+
+struct  RpcReqWifiStaItwtSetup
+{
+  ProtobufCMessage base;
+  WifiItwtSetupConfig *setup_config;
+};
+#define RPC__REQ__WIFI_STA_ITWT_SETUP__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_itwt_setup__descriptor) \
+    , NULL }
+
+
+struct  RpcRespWifiStaItwtSetup
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_ITWT_SETUP__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_itwt_setup__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiStaItwtTeardown
+{
+  ProtobufCMessage base;
+  int32_t flow_id;
+};
+#define RPC__REQ__WIFI_STA_ITWT_TEARDOWN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_itwt_teardown__descriptor) \
+    , 0 }
+
+
+struct  RpcRespWifiStaItwtTeardown
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_ITWT_TEARDOWN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_itwt_teardown__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiStaItwtSuspend
+{
+  ProtobufCMessage base;
+  int32_t flow_id;
+  int32_t suspend_time_ms;
+};
+#define RPC__REQ__WIFI_STA_ITWT_SUSPEND__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_itwt_suspend__descriptor) \
+    , 0, 0 }
+
+
+struct  RpcRespWifiStaItwtSuspend
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_ITWT_SUSPEND__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_itwt_suspend__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiStaItwtGetFlowIdStatus
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__WIFI_STA_ITWT_GET_FLOW_ID_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_itwt_get_flow_id_status__descriptor) \
+     }
+
+
+struct  RpcRespWifiStaItwtGetFlowIdStatus
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  int32_t flow_id_bitmap;
+};
+#define RPC__RESP__WIFI_STA_ITWT_GET_FLOW_ID_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_itwt_get_flow_id_status__descriptor) \
+    , 0, 0 }
+
+
+struct  RpcReqWifiStaItwtSendProbeReq
+{
+  ProtobufCMessage base;
+  int32_t timeout_ms;
+};
+#define RPC__REQ__WIFI_STA_ITWT_SEND_PROBE_REQ__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_itwt_send_probe_req__descriptor) \
+    , 0 }
+
+
+struct  RpcRespWifiStaItwtSendProbeReq
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_ITWT_SEND_PROBE_REQ__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_itwt_send_probe_req__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiStaItwtSetTargetWakeTimeOffset
+{
+  ProtobufCMessage base;
+  int32_t offset_us;
+};
+#define RPC__REQ__WIFI_STA_ITWT_SET_TARGET_WAKE_TIME_OFFSET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_itwt_set_target_wake_time_offset__descriptor) \
+    , 0 }
+
+
+struct  RpcRespWifiStaItwtSetTargetWakeTimeOffset
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_ITWT_SET_TARGET_WAKE_TIME_OFFSET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiStaTwtConfig
+{
+  ProtobufCMessage base;
+  WifiTwtConfig *config;
+};
+#define RPC__REQ__WIFI_STA_TWT_CONFIG__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_twt_config__descriptor) \
+    , NULL }
+
+
+struct  RpcRespWifiStaTwtConfig
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_TWT_CONFIG__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_twt_config__descriptor) \
+    , 0 }
+
+
 struct  RpcReqGetCoprocessorFwVersion
 {
   ProtobufCMessage base;
@@ -3383,6 +3671,61 @@ struct  RpcEventDhcpDnsStatus
     , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0, 0 }
 
 
+struct  RpcEventStaItwtSetup
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  WifiItwtSetupConfig *config;
+  int32_t status;
+  uint32_t reason;
+  uint64_t target_wake_time;
+};
+#define RPC__EVENT__STA_ITWT_SETUP__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_setup__descriptor) \
+    , 0, NULL, 0, 0, 0 }
+
+
+struct  RpcEventStaItwtTeardown
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  uint32_t flow_id;
+  uint32_t status;
+};
+#define RPC__EVENT__STA_ITWT_TEARDOWN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_teardown__descriptor) \
+    , 0, 0, 0 }
+
+
+struct  RpcEventStaItwtSuspend
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  int32_t status;
+  uint32_t flow_id_bitmap;
+  /*
+   * represents uint32_t actual_suspend_time_ms[]
+   */
+  size_t n_actual_suspend_time_ms;
+  uint32_t *actual_suspend_time_ms;
+};
+#define RPC__EVENT__STA_ITWT_SUSPEND__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_suspend__descriptor) \
+    , 0, 0, 0, 0,NULL }
+
+
+struct  RpcEventStaItwtProbe
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  int32_t status;
+  uint32_t reason;
+};
+#define RPC__EVENT__STA_ITWT_PROBE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_probe__descriptor) \
+    , 0, 0, 0 }
+
+
 typedef enum {
   RPC__PAYLOAD__NOT_SET = 0,
   RPC__PAYLOAD_REQ_GET_MAC_ADDRESS = 257,
@@ -3425,6 +3768,8 @@ typedef enum {
   RPC__PAYLOAD_REQ_WIFI_AP_GET_STA_LIST = 311,
   RPC__PAYLOAD_REQ_WIFI_AP_GET_STA_AID = 312,
   RPC__PAYLOAD_REQ_WIFI_SET_STORAGE = 313,
+  RPC__PAYLOAD_REQ_WIFI_SET_INACTIVE_TIME = 325,
+  RPC__PAYLOAD_REQ_WIFI_GET_INACTIVE_TIME = 326,
   RPC__PAYLOAD_REQ_WIFI_SET_COUNTRY_CODE = 334,
   RPC__PAYLOAD_REQ_WIFI_GET_COUNTRY_CODE = 335,
   RPC__PAYLOAD_REQ_WIFI_STA_GET_AID = 338,
@@ -3442,6 +3787,13 @@ typedef enum {
   RPC__PAYLOAD_REQ_WIFI_SCAN_GET_AP_RECORD = 351,
   RPC__PAYLOAD_REQ_SET_DHCP_DNS = 352,
   RPC__PAYLOAD_REQ_GET_DHCP_DNS = 353,
+  RPC__PAYLOAD_REQ_WIFI_STA_TWT_CONFIG = 354,
+  RPC__PAYLOAD_REQ_WIFI_STA_ITWT_SETUP = 355,
+  RPC__PAYLOAD_REQ_WIFI_STA_ITWT_TEARDOWN = 356,
+  RPC__PAYLOAD_REQ_WIFI_STA_ITWT_SUSPEND = 357,
+  RPC__PAYLOAD_REQ_WIFI_STA_ITWT_GET_FLOW_ID_STATUS = 358,
+  RPC__PAYLOAD_REQ_WIFI_STA_ITWT_SEND_PROBE_REQ = 359,
+  RPC__PAYLOAD_REQ_WIFI_STA_ITWT_SET_TARGET_WAKE_TIME_OFFSET = 360,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -3482,6 +3834,8 @@ typedef enum {
   RPC__PAYLOAD_RESP_WIFI_AP_GET_STA_LIST = 567,
   RPC__PAYLOAD_RESP_WIFI_AP_GET_STA_AID = 568,
   RPC__PAYLOAD_RESP_WIFI_SET_STORAGE = 569,
+  RPC__PAYLOAD_RESP_WIFI_SET_INACTIVE_TIME = 581,
+  RPC__PAYLOAD_RESP_WIFI_GET_INACTIVE_TIME = 582,
   RPC__PAYLOAD_RESP_WIFI_SET_COUNTRY_CODE = 590,
   RPC__PAYLOAD_RESP_WIFI_GET_COUNTRY_CODE = 591,
   RPC__PAYLOAD_RESP_WIFI_STA_GET_AID = 594,
@@ -3499,6 +3853,13 @@ typedef enum {
   RPC__PAYLOAD_RESP_WIFI_SCAN_GET_AP_RECORD = 607,
   RPC__PAYLOAD_RESP_SET_DHCP_DNS = 608,
   RPC__PAYLOAD_RESP_GET_DHCP_DNS = 609,
+  RPC__PAYLOAD_RESP_WIFI_STA_TWT_CONFIG = 610,
+  RPC__PAYLOAD_RESP_WIFI_STA_ITWT_SETUP = 611,
+  RPC__PAYLOAD_RESP_WIFI_STA_ITWT_TEARDOWN = 612,
+  RPC__PAYLOAD_RESP_WIFI_STA_ITWT_SUSPEND = 613,
+  RPC__PAYLOAD_RESP_WIFI_STA_ITWT_GET_FLOW_ID_STATUS = 614,
+  RPC__PAYLOAD_RESP_WIFI_STA_ITWT_SEND_PROBE_REQ = 615,
+  RPC__PAYLOAD_RESP_WIFI_STA_ITWT_SET_TARGET_WAKE_TIME_OFFSET = 616,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -3507,7 +3868,11 @@ typedef enum {
   RPC__PAYLOAD_EVENT_STA_SCAN_DONE = 774,
   RPC__PAYLOAD_EVENT_STA_CONNECTED = 775,
   RPC__PAYLOAD_EVENT_STA_DISCONNECTED = 776,
-  RPC__PAYLOAD_EVENT_DHCP_DNS = 777
+  RPC__PAYLOAD_EVENT_DHCP_DNS = 777,
+  RPC__PAYLOAD_EVENT_STA_ITWT_SETUP = 778,
+  RPC__PAYLOAD_EVENT_STA_ITWT_TEARDOWN = 779,
+  RPC__PAYLOAD_EVENT_STA_ITWT_SUSPEND = 780,
+  RPC__PAYLOAD_EVENT_STA_ITWT_PROBE = 781
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC__PAYLOAD__CASE)
 } Rpc__PayloadCase;
 
@@ -3571,6 +3936,8 @@ struct  Rpc
     RpcReqWifiApGetStaList *req_wifi_ap_get_sta_list;
     RpcReqWifiApGetStaAid *req_wifi_ap_get_sta_aid;
     RpcReqWifiSetStorage *req_wifi_set_storage;
+    RpcReqWifiSetInactiveTime *req_wifi_set_inactive_time;
+    RpcReqWifiGetInactiveTime *req_wifi_get_inactive_time;
     RpcReqWifiSetCountryCode *req_wifi_set_country_code;
     RpcReqWifiGetCountryCode *req_wifi_get_country_code;
     RpcReqWifiStaGetAid *req_wifi_sta_get_aid;
@@ -3588,6 +3955,13 @@ struct  Rpc
     RpcReqWifiScanGetApRecord *req_wifi_scan_get_ap_record;
     RpcReqSetDhcpDnsStatus *req_set_dhcp_dns;
     RpcReqGetDhcpDnsStatus *req_get_dhcp_dns;
+    RpcReqWifiStaTwtConfig *req_wifi_sta_twt_config;
+    RpcReqWifiStaItwtSetup *req_wifi_sta_itwt_setup;
+    RpcReqWifiStaItwtTeardown *req_wifi_sta_itwt_teardown;
+    RpcReqWifiStaItwtSuspend *req_wifi_sta_itwt_suspend;
+    RpcReqWifiStaItwtGetFlowIdStatus *req_wifi_sta_itwt_get_flow_id_status;
+    RpcReqWifiStaItwtSendProbeReq *req_wifi_sta_itwt_send_probe_req;
+    RpcReqWifiStaItwtSetTargetWakeTimeOffset *req_wifi_sta_itwt_set_target_wake_time_offset;
     /*
      ** Responses *
      */
@@ -3631,6 +4005,8 @@ struct  Rpc
     RpcRespWifiApGetStaList *resp_wifi_ap_get_sta_list;
     RpcRespWifiApGetStaAid *resp_wifi_ap_get_sta_aid;
     RpcRespWifiSetStorage *resp_wifi_set_storage;
+    RpcRespWifiSetInactiveTime *resp_wifi_set_inactive_time;
+    RpcRespWifiGetInactiveTime *resp_wifi_get_inactive_time;
     RpcRespWifiSetCountryCode *resp_wifi_set_country_code;
     RpcRespWifiGetCountryCode *resp_wifi_get_country_code;
     RpcRespWifiStaGetAid *resp_wifi_sta_get_aid;
@@ -3648,6 +4024,13 @@ struct  Rpc
     RpcRespWifiScanGetApRecord *resp_wifi_scan_get_ap_record;
     RpcRespSetDhcpDnsStatus *resp_set_dhcp_dns;
     RpcRespGetDhcpDnsStatus *resp_get_dhcp_dns;
+    RpcRespWifiStaTwtConfig *resp_wifi_sta_twt_config;
+    RpcRespWifiStaItwtSetup *resp_wifi_sta_itwt_setup;
+    RpcRespWifiStaItwtTeardown *resp_wifi_sta_itwt_teardown;
+    RpcRespWifiStaItwtSuspend *resp_wifi_sta_itwt_suspend;
+    RpcRespWifiStaItwtGetFlowIdStatus *resp_wifi_sta_itwt_get_flow_id_status;
+    RpcRespWifiStaItwtSendProbeReq *resp_wifi_sta_itwt_send_probe_req;
+    RpcRespWifiStaItwtSetTargetWakeTimeOffset *resp_wifi_sta_itwt_set_target_wake_time_offset;
     /*
      ** Notifications *
      */
@@ -3660,6 +4043,10 @@ struct  Rpc
     RpcEventStaConnected *event_sta_connected;
     RpcEventStaDisconnected *event_sta_disconnected;
     RpcEventDhcpDnsStatus *event_dhcp_dns;
+    RpcEventStaItwtSetup *event_sta_itwt_setup;
+    RpcEventStaItwtTeardown *event_sta_itwt_teardown;
+    RpcEventStaItwtSuspend *event_sta_itwt_suspend;
+    RpcEventStaItwtProbe *event_sta_itwt_probe;
   };
 };
 #define RPC__INIT \
@@ -4502,6 +4889,44 @@ WifiBandwidths *
                       const uint8_t       *data);
 void   wifi_bandwidths__free_unpacked
                      (WifiBandwidths *message,
+                      ProtobufCAllocator *allocator);
+/* WifiItwtSetupConfig methods */
+void   wifi_itwt_setup_config__init
+                     (WifiItwtSetupConfig         *message);
+size_t wifi_itwt_setup_config__get_packed_size
+                     (const WifiItwtSetupConfig   *message);
+size_t wifi_itwt_setup_config__pack
+                     (const WifiItwtSetupConfig   *message,
+                      uint8_t             *out);
+size_t wifi_itwt_setup_config__pack_to_buffer
+                     (const WifiItwtSetupConfig   *message,
+                      ProtobufCBuffer     *buffer);
+WifiItwtSetupConfig *
+       wifi_itwt_setup_config__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   wifi_itwt_setup_config__free_unpacked
+                     (WifiItwtSetupConfig *message,
+                      ProtobufCAllocator *allocator);
+/* WifiTwtConfig methods */
+void   wifi_twt_config__init
+                     (WifiTwtConfig         *message);
+size_t wifi_twt_config__get_packed_size
+                     (const WifiTwtConfig   *message);
+size_t wifi_twt_config__pack
+                     (const WifiTwtConfig   *message,
+                      uint8_t             *out);
+size_t wifi_twt_config__pack_to_buffer
+                     (const WifiTwtConfig   *message,
+                      ProtobufCBuffer     *buffer);
+WifiTwtConfig *
+       wifi_twt_config__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   wifi_twt_config__free_unpacked
+                     (WifiTwtConfig *message,
                       ProtobufCAllocator *allocator);
 /* ConnectedSTAList methods */
 void   connected_stalist__init
@@ -6574,6 +6999,348 @@ RpcRespWifiGetBandMode *
 void   rpc__resp__wifi_get_band_mode__free_unpacked
                      (RpcRespWifiGetBandMode *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqWifiSetInactiveTime methods */
+void   rpc__req__wifi_set_inactive_time__init
+                     (RpcReqWifiSetInactiveTime         *message);
+size_t rpc__req__wifi_set_inactive_time__get_packed_size
+                     (const RpcReqWifiSetInactiveTime   *message);
+size_t rpc__req__wifi_set_inactive_time__pack
+                     (const RpcReqWifiSetInactiveTime   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_set_inactive_time__pack_to_buffer
+                     (const RpcReqWifiSetInactiveTime   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiSetInactiveTime *
+       rpc__req__wifi_set_inactive_time__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_set_inactive_time__free_unpacked
+                     (RpcReqWifiSetInactiveTime *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiSetInactiveTime methods */
+void   rpc__resp__wifi_set_inactive_time__init
+                     (RpcRespWifiSetInactiveTime         *message);
+size_t rpc__resp__wifi_set_inactive_time__get_packed_size
+                     (const RpcRespWifiSetInactiveTime   *message);
+size_t rpc__resp__wifi_set_inactive_time__pack
+                     (const RpcRespWifiSetInactiveTime   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_set_inactive_time__pack_to_buffer
+                     (const RpcRespWifiSetInactiveTime   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiSetInactiveTime *
+       rpc__resp__wifi_set_inactive_time__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_set_inactive_time__free_unpacked
+                     (RpcRespWifiSetInactiveTime *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiGetInactiveTime methods */
+void   rpc__req__wifi_get_inactive_time__init
+                     (RpcReqWifiGetInactiveTime         *message);
+size_t rpc__req__wifi_get_inactive_time__get_packed_size
+                     (const RpcReqWifiGetInactiveTime   *message);
+size_t rpc__req__wifi_get_inactive_time__pack
+                     (const RpcReqWifiGetInactiveTime   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_get_inactive_time__pack_to_buffer
+                     (const RpcReqWifiGetInactiveTime   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiGetInactiveTime *
+       rpc__req__wifi_get_inactive_time__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_get_inactive_time__free_unpacked
+                     (RpcReqWifiGetInactiveTime *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiGetInactiveTime methods */
+void   rpc__resp__wifi_get_inactive_time__init
+                     (RpcRespWifiGetInactiveTime         *message);
+size_t rpc__resp__wifi_get_inactive_time__get_packed_size
+                     (const RpcRespWifiGetInactiveTime   *message);
+size_t rpc__resp__wifi_get_inactive_time__pack
+                     (const RpcRespWifiGetInactiveTime   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_get_inactive_time__pack_to_buffer
+                     (const RpcRespWifiGetInactiveTime   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiGetInactiveTime *
+       rpc__resp__wifi_get_inactive_time__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_get_inactive_time__free_unpacked
+                     (RpcRespWifiGetInactiveTime *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaItwtSetup methods */
+void   rpc__req__wifi_sta_itwt_setup__init
+                     (RpcReqWifiStaItwtSetup         *message);
+size_t rpc__req__wifi_sta_itwt_setup__get_packed_size
+                     (const RpcReqWifiStaItwtSetup   *message);
+size_t rpc__req__wifi_sta_itwt_setup__pack
+                     (const RpcReqWifiStaItwtSetup   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_itwt_setup__pack_to_buffer
+                     (const RpcReqWifiStaItwtSetup   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaItwtSetup *
+       rpc__req__wifi_sta_itwt_setup__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_itwt_setup__free_unpacked
+                     (RpcReqWifiStaItwtSetup *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaItwtSetup methods */
+void   rpc__resp__wifi_sta_itwt_setup__init
+                     (RpcRespWifiStaItwtSetup         *message);
+size_t rpc__resp__wifi_sta_itwt_setup__get_packed_size
+                     (const RpcRespWifiStaItwtSetup   *message);
+size_t rpc__resp__wifi_sta_itwt_setup__pack
+                     (const RpcRespWifiStaItwtSetup   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_itwt_setup__pack_to_buffer
+                     (const RpcRespWifiStaItwtSetup   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaItwtSetup *
+       rpc__resp__wifi_sta_itwt_setup__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_itwt_setup__free_unpacked
+                     (RpcRespWifiStaItwtSetup *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaItwtTeardown methods */
+void   rpc__req__wifi_sta_itwt_teardown__init
+                     (RpcReqWifiStaItwtTeardown         *message);
+size_t rpc__req__wifi_sta_itwt_teardown__get_packed_size
+                     (const RpcReqWifiStaItwtTeardown   *message);
+size_t rpc__req__wifi_sta_itwt_teardown__pack
+                     (const RpcReqWifiStaItwtTeardown   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_itwt_teardown__pack_to_buffer
+                     (const RpcReqWifiStaItwtTeardown   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaItwtTeardown *
+       rpc__req__wifi_sta_itwt_teardown__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_itwt_teardown__free_unpacked
+                     (RpcReqWifiStaItwtTeardown *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaItwtTeardown methods */
+void   rpc__resp__wifi_sta_itwt_teardown__init
+                     (RpcRespWifiStaItwtTeardown         *message);
+size_t rpc__resp__wifi_sta_itwt_teardown__get_packed_size
+                     (const RpcRespWifiStaItwtTeardown   *message);
+size_t rpc__resp__wifi_sta_itwt_teardown__pack
+                     (const RpcRespWifiStaItwtTeardown   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_itwt_teardown__pack_to_buffer
+                     (const RpcRespWifiStaItwtTeardown   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaItwtTeardown *
+       rpc__resp__wifi_sta_itwt_teardown__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_itwt_teardown__free_unpacked
+                     (RpcRespWifiStaItwtTeardown *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaItwtSuspend methods */
+void   rpc__req__wifi_sta_itwt_suspend__init
+                     (RpcReqWifiStaItwtSuspend         *message);
+size_t rpc__req__wifi_sta_itwt_suspend__get_packed_size
+                     (const RpcReqWifiStaItwtSuspend   *message);
+size_t rpc__req__wifi_sta_itwt_suspend__pack
+                     (const RpcReqWifiStaItwtSuspend   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_itwt_suspend__pack_to_buffer
+                     (const RpcReqWifiStaItwtSuspend   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaItwtSuspend *
+       rpc__req__wifi_sta_itwt_suspend__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_itwt_suspend__free_unpacked
+                     (RpcReqWifiStaItwtSuspend *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaItwtSuspend methods */
+void   rpc__resp__wifi_sta_itwt_suspend__init
+                     (RpcRespWifiStaItwtSuspend         *message);
+size_t rpc__resp__wifi_sta_itwt_suspend__get_packed_size
+                     (const RpcRespWifiStaItwtSuspend   *message);
+size_t rpc__resp__wifi_sta_itwt_suspend__pack
+                     (const RpcRespWifiStaItwtSuspend   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_itwt_suspend__pack_to_buffer
+                     (const RpcRespWifiStaItwtSuspend   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaItwtSuspend *
+       rpc__resp__wifi_sta_itwt_suspend__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_itwt_suspend__free_unpacked
+                     (RpcRespWifiStaItwtSuspend *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaItwtGetFlowIdStatus methods */
+void   rpc__req__wifi_sta_itwt_get_flow_id_status__init
+                     (RpcReqWifiStaItwtGetFlowIdStatus         *message);
+size_t rpc__req__wifi_sta_itwt_get_flow_id_status__get_packed_size
+                     (const RpcReqWifiStaItwtGetFlowIdStatus   *message);
+size_t rpc__req__wifi_sta_itwt_get_flow_id_status__pack
+                     (const RpcReqWifiStaItwtGetFlowIdStatus   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_itwt_get_flow_id_status__pack_to_buffer
+                     (const RpcReqWifiStaItwtGetFlowIdStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaItwtGetFlowIdStatus *
+       rpc__req__wifi_sta_itwt_get_flow_id_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_itwt_get_flow_id_status__free_unpacked
+                     (RpcReqWifiStaItwtGetFlowIdStatus *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaItwtGetFlowIdStatus methods */
+void   rpc__resp__wifi_sta_itwt_get_flow_id_status__init
+                     (RpcRespWifiStaItwtGetFlowIdStatus         *message);
+size_t rpc__resp__wifi_sta_itwt_get_flow_id_status__get_packed_size
+                     (const RpcRespWifiStaItwtGetFlowIdStatus   *message);
+size_t rpc__resp__wifi_sta_itwt_get_flow_id_status__pack
+                     (const RpcRespWifiStaItwtGetFlowIdStatus   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_itwt_get_flow_id_status__pack_to_buffer
+                     (const RpcRespWifiStaItwtGetFlowIdStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaItwtGetFlowIdStatus *
+       rpc__resp__wifi_sta_itwt_get_flow_id_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_itwt_get_flow_id_status__free_unpacked
+                     (RpcRespWifiStaItwtGetFlowIdStatus *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaItwtSendProbeReq methods */
+void   rpc__req__wifi_sta_itwt_send_probe_req__init
+                     (RpcReqWifiStaItwtSendProbeReq         *message);
+size_t rpc__req__wifi_sta_itwt_send_probe_req__get_packed_size
+                     (const RpcReqWifiStaItwtSendProbeReq   *message);
+size_t rpc__req__wifi_sta_itwt_send_probe_req__pack
+                     (const RpcReqWifiStaItwtSendProbeReq   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_itwt_send_probe_req__pack_to_buffer
+                     (const RpcReqWifiStaItwtSendProbeReq   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaItwtSendProbeReq *
+       rpc__req__wifi_sta_itwt_send_probe_req__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_itwt_send_probe_req__free_unpacked
+                     (RpcReqWifiStaItwtSendProbeReq *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaItwtSendProbeReq methods */
+void   rpc__resp__wifi_sta_itwt_send_probe_req__init
+                     (RpcRespWifiStaItwtSendProbeReq         *message);
+size_t rpc__resp__wifi_sta_itwt_send_probe_req__get_packed_size
+                     (const RpcRespWifiStaItwtSendProbeReq   *message);
+size_t rpc__resp__wifi_sta_itwt_send_probe_req__pack
+                     (const RpcRespWifiStaItwtSendProbeReq   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_itwt_send_probe_req__pack_to_buffer
+                     (const RpcRespWifiStaItwtSendProbeReq   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaItwtSendProbeReq *
+       rpc__resp__wifi_sta_itwt_send_probe_req__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_itwt_send_probe_req__free_unpacked
+                     (RpcRespWifiStaItwtSendProbeReq *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaItwtSetTargetWakeTimeOffset methods */
+void   rpc__req__wifi_sta_itwt_set_target_wake_time_offset__init
+                     (RpcReqWifiStaItwtSetTargetWakeTimeOffset         *message);
+size_t rpc__req__wifi_sta_itwt_set_target_wake_time_offset__get_packed_size
+                     (const RpcReqWifiStaItwtSetTargetWakeTimeOffset   *message);
+size_t rpc__req__wifi_sta_itwt_set_target_wake_time_offset__pack
+                     (const RpcReqWifiStaItwtSetTargetWakeTimeOffset   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_itwt_set_target_wake_time_offset__pack_to_buffer
+                     (const RpcReqWifiStaItwtSetTargetWakeTimeOffset   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaItwtSetTargetWakeTimeOffset *
+       rpc__req__wifi_sta_itwt_set_target_wake_time_offset__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_itwt_set_target_wake_time_offset__free_unpacked
+                     (RpcReqWifiStaItwtSetTargetWakeTimeOffset *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaItwtSetTargetWakeTimeOffset methods */
+void   rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__init
+                     (RpcRespWifiStaItwtSetTargetWakeTimeOffset         *message);
+size_t rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__get_packed_size
+                     (const RpcRespWifiStaItwtSetTargetWakeTimeOffset   *message);
+size_t rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__pack
+                     (const RpcRespWifiStaItwtSetTargetWakeTimeOffset   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__pack_to_buffer
+                     (const RpcRespWifiStaItwtSetTargetWakeTimeOffset   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaItwtSetTargetWakeTimeOffset *
+       rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__free_unpacked
+                     (RpcRespWifiStaItwtSetTargetWakeTimeOffset *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaTwtConfig methods */
+void   rpc__req__wifi_sta_twt_config__init
+                     (RpcReqWifiStaTwtConfig         *message);
+size_t rpc__req__wifi_sta_twt_config__get_packed_size
+                     (const RpcReqWifiStaTwtConfig   *message);
+size_t rpc__req__wifi_sta_twt_config__pack
+                     (const RpcReqWifiStaTwtConfig   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_twt_config__pack_to_buffer
+                     (const RpcReqWifiStaTwtConfig   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaTwtConfig *
+       rpc__req__wifi_sta_twt_config__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_twt_config__free_unpacked
+                     (RpcReqWifiStaTwtConfig *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaTwtConfig methods */
+void   rpc__resp__wifi_sta_twt_config__init
+                     (RpcRespWifiStaTwtConfig         *message);
+size_t rpc__resp__wifi_sta_twt_config__get_packed_size
+                     (const RpcRespWifiStaTwtConfig   *message);
+size_t rpc__resp__wifi_sta_twt_config__pack
+                     (const RpcRespWifiStaTwtConfig   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_twt_config__pack_to_buffer
+                     (const RpcRespWifiStaTwtConfig   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaTwtConfig *
+       rpc__resp__wifi_sta_twt_config__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_twt_config__free_unpacked
+                     (RpcRespWifiStaTwtConfig *message,
+                      ProtobufCAllocator *allocator);
 /* RpcReqGetCoprocessorFwVersion methods */
 void   rpc__req__get_coprocessor_fw_version__init
                      (RpcReqGetCoprocessorFwVersion         *message);
@@ -6859,6 +7626,82 @@ RpcEventDhcpDnsStatus *
 void   rpc__event__dhcp_dns_status__free_unpacked
                      (RpcEventDhcpDnsStatus *message,
                       ProtobufCAllocator *allocator);
+/* RpcEventStaItwtSetup methods */
+void   rpc__event__sta_itwt_setup__init
+                     (RpcEventStaItwtSetup         *message);
+size_t rpc__event__sta_itwt_setup__get_packed_size
+                     (const RpcEventStaItwtSetup   *message);
+size_t rpc__event__sta_itwt_setup__pack
+                     (const RpcEventStaItwtSetup   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_setup__pack_to_buffer
+                     (const RpcEventStaItwtSetup   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtSetup *
+       rpc__event__sta_itwt_setup__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_setup__free_unpacked
+                     (RpcEventStaItwtSetup *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventStaItwtTeardown methods */
+void   rpc__event__sta_itwt_teardown__init
+                     (RpcEventStaItwtTeardown         *message);
+size_t rpc__event__sta_itwt_teardown__get_packed_size
+                     (const RpcEventStaItwtTeardown   *message);
+size_t rpc__event__sta_itwt_teardown__pack
+                     (const RpcEventStaItwtTeardown   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_teardown__pack_to_buffer
+                     (const RpcEventStaItwtTeardown   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtTeardown *
+       rpc__event__sta_itwt_teardown__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_teardown__free_unpacked
+                     (RpcEventStaItwtTeardown *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventStaItwtSuspend methods */
+void   rpc__event__sta_itwt_suspend__init
+                     (RpcEventStaItwtSuspend         *message);
+size_t rpc__event__sta_itwt_suspend__get_packed_size
+                     (const RpcEventStaItwtSuspend   *message);
+size_t rpc__event__sta_itwt_suspend__pack
+                     (const RpcEventStaItwtSuspend   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_suspend__pack_to_buffer
+                     (const RpcEventStaItwtSuspend   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtSuspend *
+       rpc__event__sta_itwt_suspend__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_suspend__free_unpacked
+                     (RpcEventStaItwtSuspend *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventStaItwtProbe methods */
+void   rpc__event__sta_itwt_probe__init
+                     (RpcEventStaItwtProbe         *message);
+size_t rpc__event__sta_itwt_probe__get_packed_size
+                     (const RpcEventStaItwtProbe   *message);
+size_t rpc__event__sta_itwt_probe__pack
+                     (const RpcEventStaItwtProbe   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_probe__pack_to_buffer
+                     (const RpcEventStaItwtProbe   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtProbe *
+       rpc__event__sta_itwt_probe__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_probe__free_unpacked
+                     (RpcEventStaItwtProbe *message,
+                      ProtobufCAllocator *allocator);
 /* Rpc methods */
 void   rpc__init
                      (Rpc         *message);
@@ -7011,6 +7854,12 @@ typedef void (*WifiProtocols_Closure)
                   void *closure_data);
 typedef void (*WifiBandwidths_Closure)
                  (const WifiBandwidths *message,
+                  void *closure_data);
+typedef void (*WifiItwtSetupConfig_Closure)
+                 (const WifiItwtSetupConfig *message,
+                  void *closure_data);
+typedef void (*WifiTwtConfig_Closure)
+                 (const WifiTwtConfig *message,
                   void *closure_data);
 typedef void (*ConnectedSTAList_Closure)
                  (const ConnectedSTAList *message,
@@ -7339,6 +8188,60 @@ typedef void (*RpcReqWifiGetBandMode_Closure)
 typedef void (*RpcRespWifiGetBandMode_Closure)
                  (const RpcRespWifiGetBandMode *message,
                   void *closure_data);
+typedef void (*RpcReqWifiSetInactiveTime_Closure)
+                 (const RpcReqWifiSetInactiveTime *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiSetInactiveTime_Closure)
+                 (const RpcRespWifiSetInactiveTime *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiGetInactiveTime_Closure)
+                 (const RpcReqWifiGetInactiveTime *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiGetInactiveTime_Closure)
+                 (const RpcRespWifiGetInactiveTime *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaItwtSetup_Closure)
+                 (const RpcReqWifiStaItwtSetup *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaItwtSetup_Closure)
+                 (const RpcRespWifiStaItwtSetup *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaItwtTeardown_Closure)
+                 (const RpcReqWifiStaItwtTeardown *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaItwtTeardown_Closure)
+                 (const RpcRespWifiStaItwtTeardown *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaItwtSuspend_Closure)
+                 (const RpcReqWifiStaItwtSuspend *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaItwtSuspend_Closure)
+                 (const RpcRespWifiStaItwtSuspend *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaItwtGetFlowIdStatus_Closure)
+                 (const RpcReqWifiStaItwtGetFlowIdStatus *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaItwtGetFlowIdStatus_Closure)
+                 (const RpcRespWifiStaItwtGetFlowIdStatus *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaItwtSendProbeReq_Closure)
+                 (const RpcReqWifiStaItwtSendProbeReq *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaItwtSendProbeReq_Closure)
+                 (const RpcRespWifiStaItwtSendProbeReq *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaItwtSetTargetWakeTimeOffset_Closure)
+                 (const RpcReqWifiStaItwtSetTargetWakeTimeOffset *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaItwtSetTargetWakeTimeOffset_Closure)
+                 (const RpcRespWifiStaItwtSetTargetWakeTimeOffset *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaTwtConfig_Closure)
+                 (const RpcReqWifiStaTwtConfig *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaTwtConfig_Closure)
+                 (const RpcRespWifiStaTwtConfig *message,
+                  void *closure_data);
 typedef void (*RpcReqGetCoprocessorFwVersion_Closure)
                  (const RpcReqGetCoprocessorFwVersion *message,
                   void *closure_data);
@@ -7383,6 +8286,18 @@ typedef void (*RpcEventStaDisconnected_Closure)
                   void *closure_data);
 typedef void (*RpcEventDhcpDnsStatus_Closure)
                  (const RpcEventDhcpDnsStatus *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtSetup_Closure)
+                 (const RpcEventStaItwtSetup *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtTeardown_Closure)
+                 (const RpcEventStaItwtTeardown *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtSuspend_Closure)
+                 (const RpcEventStaItwtSuspend *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtProbe_Closure)
+                 (const RpcEventStaItwtProbe *message,
                   void *closure_data);
 typedef void (*Rpc_Closure)
                  (const Rpc *message,
@@ -7443,6 +8358,8 @@ extern const ProtobufCMessageDescriptor wifi_event_ap_wps_rg_fail_reason__descri
 extern const ProtobufCMessageDescriptor wifi_event_ap_wps_rg_success__descriptor;
 extern const ProtobufCMessageDescriptor wifi_protocols__descriptor;
 extern const ProtobufCMessageDescriptor wifi_bandwidths__descriptor;
+extern const ProtobufCMessageDescriptor wifi_itwt_setup_config__descriptor;
+extern const ProtobufCMessageDescriptor wifi_twt_config__descriptor;
 extern const ProtobufCMessageDescriptor connected_stalist__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__get_mac_address__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__get_mac_address__descriptor;
@@ -7552,6 +8469,24 @@ extern const ProtobufCMessageDescriptor rpc__req__wifi_set_band_mode__descriptor
 extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_band_mode__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__wifi_get_band_mode__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__wifi_get_band_mode__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_set_inactive_time__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_inactive_time__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_get_inactive_time__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_get_inactive_time__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_itwt_setup__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_itwt_setup__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_itwt_teardown__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_itwt_teardown__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_itwt_suspend__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_itwt_suspend__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_itwt_get_flow_id_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_itwt_get_flow_id_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_itwt_send_probe_req__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_itwt_send_probe_req__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_itwt_set_target_wake_time_offset__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_itwt_set_target_wake_time_offset__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_twt_config__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_twt_config__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__get_coprocessor_fw_version__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__get_coprocessor_fw_version__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__set_dhcp_dns_status__descriptor;
@@ -7567,6 +8502,10 @@ extern const ProtobufCMessageDescriptor rpc__event__sta_scan_done__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_connected__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_disconnected__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__dhcp_dns_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_setup__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_teardown__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_suspend__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_probe__descriptor;
 extern const ProtobufCMessageDescriptor rpc__descriptor;
 
 PROTOBUF_C__END_DECLS

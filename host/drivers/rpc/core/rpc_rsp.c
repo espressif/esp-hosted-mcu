@@ -576,6 +576,48 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		app_resp->u.coprocessor_fwversion.patch1 =
 			rpc_msg->resp_get_coprocessor_fwversion->patch1;
 		break;
+	} case RPC_ID__Resp_WifiSetInactiveTime: {
+		RPC_FAIL_ON_NULL(resp_wifi_set_inactive_time);
+		RPC_ERR_IN_RESP(resp_wifi_set_inactive_time);
+		break;
+	} case RPC_ID__Resp_WifiGetInactiveTime: {
+		RPC_FAIL_ON_NULL(resp_wifi_get_inactive_time);
+		RPC_ERR_IN_RESP(resp_wifi_get_inactive_time);
+		app_resp->u.wifi_inactive_time.sec =
+			rpc_msg->resp_wifi_get_inactive_time->sec;
+		break;
+#if H_WIFI_HE_SUPPORT
+	} case RPC_ID__Resp_WifiStaTwtConfig: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_twt_config);
+		RPC_ERR_IN_RESP(resp_wifi_sta_twt_config);
+		break;
+	} case RPC_ID__Resp_WifiStaItwtSetup: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_setup);
+		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_setup);
+		break;
+	} case RPC_ID__Resp_WifiStaItwtTeardown: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_teardown);
+		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_teardown);
+		break;
+	} case RPC_ID__Resp_WifiStaItwtSuspend: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_suspend);
+		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_suspend);
+		break;
+	} case RPC_ID__Resp_WifiStaItwtGetFlowIdStatus: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_get_flow_id_status);
+		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_get_flow_id_status);
+		app_resp->u.wifi_itwt_flow_id_bitmap =
+			rpc_msg->resp_wifi_sta_itwt_get_flow_id_status->flow_id_bitmap;
+		break;
+	} case RPC_ID__Resp_WifiStaItwtSendProbeReq: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_suspend);
+		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_suspend);
+		break;
+	} case RPC_ID__Resp_WifiStaItwtSetTargetWakeTimeOffset: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_set_target_wake_time_offset);
+		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_set_target_wake_time_offset);
+		break;
+#endif
 #if H_WIFI_DUALBAND_SUPPORT
 	} case RPC_ID__Resp_WifiSetProtocols: {
 		RPC_FAIL_ON_NULL(resp_wifi_set_protocols);

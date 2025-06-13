@@ -167,6 +167,32 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				p_e, sizeof(wifi_event_sta_disconnected_t), HOSTED_BLOCK_MAX);
 			netif_connected = false;
 			break;
+#if H_WIFI_HE_SUPPORT
+		} case RPC_ID__Event_StaItwtSetup: {
+			ESP_LOGV(TAG, "ESP Event: iTWT: Setup");
+			wifi_event_sta_itwt_setup_t *p_e = &app_event->u.e_wifi_sta_itwt_setup;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_SETUP,
+				p_e, sizeof(wifi_event_sta_itwt_setup_t), HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_StaItwtTeardown: {
+			ESP_LOGV(TAG, "ESP Event: iTWT: Teardown");
+			wifi_event_sta_itwt_teardown_t *p_e = &app_event->u.e_wifi_sta_itwt_teardown;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_TEARDOWN,
+				p_e, sizeof(wifi_event_sta_itwt_teardown_t), HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_StaItwtSuspend: {
+			ESP_LOGV(TAG, "ESP Event: iTWT: Suspend");
+			wifi_event_sta_itwt_suspend_t *p_e = &app_event->u.e_wifi_sta_itwt_suspend;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_SUSPEND,
+				p_e, sizeof(wifi_event_sta_itwt_suspend_t), HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_StaItwtProbe: {
+			ESP_LOGV(TAG, "ESP Event: iTWT: Probe");
+			wifi_event_sta_itwt_probe_t *p_e = &app_event->u.e_wifi_sta_itwt_probe;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_PROBE,
+				p_e, sizeof(wifi_event_sta_itwt_probe_t), HOSTED_BLOCK_MAX);
+			break;
+#endif // H_WIFI_HE_SUPPORT
 		} case RPC_ID__Event_WifiEventNoArgs: {
 			int wifi_event_id = app_event->u.e_wifi_simple.wifi_event_id;
 
@@ -337,6 +363,12 @@ int rpc_register_event_callbacks(void)
 		{ RPC_ID__Event_StaConnected,              rpc_event_callback },
 		{ RPC_ID__Event_StaDisconnected,           rpc_event_callback },
 		{ RPC_ID__Event_DhcpDnsStatus,             rpc_event_callback },
+#if H_WIFI_HE_SUPPORT
+		{ RPC_ID__Event_StaItwtSetup,              rpc_event_callback },
+		{ RPC_ID__Event_StaItwtTeardown,           rpc_event_callback },
+		{ RPC_ID__Event_StaItwtSuspend,            rpc_event_callback },
+		{ RPC_ID__Event_StaItwtProbe,              rpc_event_callback },
+#endif // H_WIFI_HE_SUPPORT
 	};
 
 	for (evt=0; evt<sizeof(events)/sizeof(event_callback_table_t); evt++) {
@@ -501,8 +533,19 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_WifiGetBand:
 	case RPC_ID__Resp_WifiSetBandMode:
 	case RPC_ID__Resp_WifiGetBandMode:
-	case RPC_ID__Resp_GetCoprocessorFwVersion:
-	case RPC_ID__Resp_SetDhcpDnsStatus: {
+	case RPC_ID__Resp_SetDhcpDnsStatus:
+	case RPC_ID__Resp_WifiSetInactiveTime:
+	case RPC_ID__Resp_WifiGetInactiveTime:
+#if H_WIFI_HE_SUPPORT
+	case RPC_ID__Resp_WifiStaTwtConfig:
+	case RPC_ID__Resp_WifiStaItwtSetup:
+	case RPC_ID__Resp_WifiStaItwtTeardown:
+	case RPC_ID__Resp_WifiStaItwtSuspend:
+	case RPC_ID__Resp_WifiStaItwtGetFlowIdStatus:
+	case RPC_ID__Resp_WifiStaItwtSendProbeReq:
+	case RPC_ID__Resp_WifiStaItwtSetTargetWakeTimeOffset:
+#endif // H_WIFI_HE_SUPPORT
+	case RPC_ID__Resp_GetCoprocessorFwVersion: {
 		/* Intended fallthrough */
 		break;
 	} default: {
@@ -717,6 +760,121 @@ esp_err_t rpc_wifi_sta_get_aid(uint16_t *aid)
 	}
 	return rpc_rsp_callback(resp);
 }
+
+esp_err_t rpc_wifi_set_inactive_time(wifi_interface_t ifx, uint16_t sec)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_inactive_time.ifx = ifx;
+	req->u.wifi_inactive_time.sec = sec;
+	resp = rpc_slaveif_wifi_set_inactive_time(req);
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_inactive_time.ifx = ifx;
+	resp = rpc_slaveif_wifi_get_inactive_time(req);
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*sec = resp->u.wifi_inactive_time.sec;
+	}
+	return rpc_rsp_callback(resp);
+}
+
+#if H_WIFI_HE_SUPPORT
+esp_err_t rpc_wifi_sta_twt_config(wifi_twt_config_t *config)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!config)
+		return FAILURE;
+
+	g_h.funcs->_h_memcpy(&req->u.wifi_twt_config, config, sizeof(wifi_twt_config_t));
+	resp = rpc_slaveif_wifi_sta_twt_config(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!setup_config)
+		return FAILURE;
+
+	g_h.funcs->_h_memcpy(&req->u.wifi_itwt_setup_config, setup_config, sizeof(wifi_itwt_setup_config_t));
+	resp = rpc_slaveif_wifi_sta_itwt_setup(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_sta_itwt_teardown(int flow_id)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_itwt_flow_id = flow_id;
+	resp = rpc_slaveif_wifi_sta_itwt_teardown(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_sta_itwt_suspend(int flow_id, int suspend_time_ms)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_itwt_suspend.flow_id = flow_id;
+	req->u.wifi_itwt_suspend.suspend_time_ms = suspend_time_ms;
+	resp = rpc_slaveif_wifi_sta_itwt_suspend(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_sta_itwt_get_flow_id_status(int *flow_id_bitmap)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_wifi_sta_itwt_get_flow_id_status(req);
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*flow_id_bitmap = resp->u.wifi_itwt_flow_id_bitmap;
+	}
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_sta_itwt_send_probe_req(int timeout_ms)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_itwt_probe_req_timeout_ms = timeout_ms;
+	resp = rpc_slaveif_wifi_sta_itwt_send_probe_req(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_sta_itwt_set_target_wake_time_offset(int offset_us)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_itwt_set_target_wake_time_offset_us = offset_us;
+	resp = rpc_slaveif_wifi_sta_itwt_set_target_wake_time_offset(req);
+	return rpc_rsp_callback(resp);
+}
+#endif // H_WIFI_HE_SUPPORT
 
 #if H_WIFI_DUALBAND_SUPPORT
 esp_err_t rpc_wifi_set_band(wifi_band_t band)

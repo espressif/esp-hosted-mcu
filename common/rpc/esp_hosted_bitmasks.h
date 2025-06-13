@@ -118,3 +118,24 @@ enum {
     (num_out |= (reserved_in << WIFI_STA_CONFIG_2_MAX_USED_BIT));
 
 #endif
+
+/* WIFI ITWT Setup Config bitmasks */
+
+enum {
+	WIFI_ITWT_CONFIG_1_trigger_BIT            = 0,
+	WIFI_ITWT_CONFIG_1_flow_type_BIT          = 1,
+	// WIFI_ITWT_CONFIG_1_flow_id_BIT is three bits wide
+	WIFI_ITWT_CONFIG_1_flow_id_BIT            = 2,
+	// WIFI_ITWT_CONFIG_1_wake_invl_expn_BIT is five bits wide
+	WIFI_ITWT_CONFIG_1_wake_invl_expn_BIT     = 5,
+	WIFI_ITWT_CONFIG_1_wake_duration_unit_BIT = 10,
+	WIFI_ITWT_CONFIG_1_MAX_USED_BIT           = 11,
+};
+
+#define WIFI_ITWT_CONFIG_1_RESERVED_BITMASK 0xFFFFF800
+
+#define WIFI_ITWT_CONFIG_1_GET_RESERVED_VAL(num)                                    \
+    ((num & WIFI_ITWT_CONFIG_1_RESERVED_BITMASK) >> WIFI_ITWT_CONFIG_1_MAX_USED_BIT)
+
+#define WIFI_ITWT_CONFIG_1_SET_RESERVED_VAL(reserved_in,num_out)                    \
+    (num_out |= (reserved_in << WIFI_ITWT_CONFIG_1_MAX_USED_BIT));

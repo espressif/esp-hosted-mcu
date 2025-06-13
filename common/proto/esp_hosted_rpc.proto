@@ -417,9 +417,17 @@ enum RpcId {
 	Req_SetDhcpDnsStatus              = 352; //0x160
 	Req_GetDhcpDnsStatus              = 353; //0x161
 
-/* Add new control path command response before Req_Max
+	Req_WifiStaTwtConfig              = 354; //0x162
+	Req_WifiStaItwtSetup              = 355; //0x163
+	Req_WifiStaItwtTeardown           = 356; //0x164
+	Req_WifiStaItwtSuspend            = 357; //0x165
+	Req_WifiStaItwtGetFlowIdStatus    = 358; //0x166
+	Req_WifiStaItwtSendProbeReq       = 359; //0x167
+	Req_WifiStaItwtSetTargetWakeTimeOffset = 360; //0x168
+
+	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 354; //0x162
+	Req_Max = 361; //0x169
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -546,9 +554,17 @@ enum RpcId {
 	Resp_SetDhcpDnsStatus             = 608;
 	Resp_GetDhcpDnsStatus             = 609;
 
+	Resp_WifiStaTwtConfig             = 610;
+	Resp_WifiStaItwtSetup             = 611;
+	Resp_WifiStaItwtTeardown          = 612;
+	Resp_WifiStaItwtSuspend           = 613;
+	Resp_WifiStaItwtGetFlowIdStatus   = 614;
+	Resp_WifiStaItwtSendProbeReq      = 615;
+	Resp_WifiStaItwtSetTargetWakeTimeOffset = 616;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 610;
+	Resp_Max = 617;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -562,9 +578,14 @@ enum RpcId {
 	Event_StaDisconnected = 776;
 	Event_DhcpDnsStatus = 777;
 
+	Event_StaItwtSetup = 778;
+	Event_StaItwtTeardown = 779;
+	Event_StaItwtSuspend = 780;
+	Event_StaItwtProbe = 781;
+
 	/* Add new control path command notification before Event_Max
 	 * and update Event_Max */
-	Event_Max = 778;
+	Event_Max = 782;
 }
 
 message wifi_init_config {
@@ -993,6 +1014,28 @@ message wifi_protocols {
 message wifi_bandwidths {
 	uint32 ghz_2g = 1;                          /* Represents 2.4 GHz bandwidth */
 	uint32 ghz_5g = 2;                          /* Represents 5 GHz bandwidth */
+}
+
+message wifi_itwt_setup_config {
+	uint32 setup_cmd = 1;
+    // uint16_t trigger : 1;               /**< 1: a trigger-enabled individual TWT, 0: a non-trigger-enabled individual TWT */
+    // uint16_t flow_type : 1;             /**< 0: an announced individual TWT, 1: an unannounced individual TWT */
+    // uint16_t flow_id : 3;                /**< When set up an individual TWT agreement, the flow id will be assigned by AP after a successful agreement setup.
+    //                                          flow_id could be specified to a value in the range of [0, 7], but it might be changed by AP in the response.
+    //                                          When change TWT parameters of the existing TWT agreement, flow_id should be an existing one. The value range is [0, 7]. */
+    // uint16_t wake_invl_expn : 5;        /**< Individual TWT Wake Interval Exponent. The value range is [0, 31]. */
+    // uint16_t wake_duration_unit : 1;    /**< Individual TWT Wake duration unit, 0: 256us 1: TU (TU = 1024us)*/
+    // uint16_t reserved : 5;              /**< bit: 11.15 reserved */
+	uint32 bitmask_1 = 2;
+	uint32 min_wake_dura = 3;
+	uint32 wake_invl_mant = 4;
+	uint32 twt_id = 5;
+	uint32 timeout_time_ms = 6;
+}
+
+message wifi_twt_config {
+    bool post_wakeup_event = 1;              /**< post twt wakeup event */
+    bool twt_enable_keep_alive = 2;          /**< twt enable send qos null to keep alive */
 }
 
 /* internal supporting structures for Rpc */
@@ -1554,6 +1597,81 @@ message Rpc_Resp_WifiGetBandMode {
 	uint32 bandmode = 2;
 }
 
+message Rpc_Req_WifiSetInactiveTime {
+	uint32 ifx = 1;
+	uint32 sec = 2;
+}
+
+message Rpc_Resp_WifiSetInactiveTime {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiGetInactiveTime {
+	uint32 ifx = 1;
+}
+
+message Rpc_Resp_WifiGetInactiveTime {
+	int32 resp = 1;
+	uint32 sec = 2;
+}
+
+message Rpc_Req_WifiStaItwtSetup {
+	wifi_itwt_setup_config setup_config = 1;
+}
+
+message Rpc_Resp_WifiStaItwtSetup {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiStaItwtTeardown {
+	int32 flow_id = 1;
+}
+
+message Rpc_Resp_WifiStaItwtTeardown {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiStaItwtSuspend {
+	int32 flow_id = 1;
+	int32 suspend_time_ms = 2;
+}
+
+message Rpc_Resp_WifiStaItwtSuspend {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiStaItwtGetFlowIdStatus {
+}
+
+message Rpc_Resp_WifiStaItwtGetFlowIdStatus {
+	int32 resp = 1;
+	int32 flow_id_bitmap = 2;
+}
+
+message Rpc_Req_WifiStaItwtSendProbeReq {
+	int32 timeout_ms = 1;
+}
+
+message Rpc_Resp_WifiStaItwtSendProbeReq {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiStaItwtSetTargetWakeTimeOffset {
+	int32 offset_us = 1;
+}
+
+message Rpc_Resp_WifiStaItwtSetTargetWakeTimeOffset {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiStaTwtConfig {
+	wifi_twt_config config = 1;
+}
+
+message Rpc_Resp_WifiStaTwtConfig {
+	int32 resp = 1;
+}
+
 message Rpc_Req_GetCoprocessorFwVersion {
 }
 
@@ -1661,6 +1779,33 @@ message Rpc_Event_DhcpDnsStatus {
 	int32 resp = 10;
 }
 
+message Rpc_Event_StaItwtSetup {
+	int32 resp = 1;
+	wifi_itwt_setup_config config = 2;
+	int32 status = 3;
+	uint32 reason = 4;
+	uint64 target_wake_time = 5;
+}
+
+message Rpc_Event_StaItwtTeardown {
+	int32 resp = 1;
+	uint32 flow_id = 2;
+	uint32 status = 3;
+}
+
+message Rpc_Event_StaItwtSuspend {
+	int32 resp = 1;
+	int32 status = 2;
+	uint32 flow_id_bitmap = 3;
+	repeated uint32 actual_suspend_time_ms = 4; // represents uint32_t actual_suspend_time_ms[]
+}
+
+message Rpc_Event_StaItwtProbe {
+	int32 resp = 1;
+	int32 status = 2;
+	uint32 reason = 3;
+}
+
 message Rpc {
 	/* msg_type could be req, resp or Event */
 	RpcType msg_type = 1;
@@ -1734,6 +1879,9 @@ message Rpc {
 		Rpc_Req_WifiApGetStaAid             req_wifi_ap_get_sta_aid           = 312;
 		Rpc_Req_WifiSetStorage              req_wifi_set_storage              = 313;
 
+		Rpc_Req_WifiSetInactiveTime         req_wifi_set_inactive_time        = 325;
+		Rpc_Req_WifiGetInactiveTime         req_wifi_get_inactive_time        = 326;
+
 		Rpc_Req_WifiSetCountryCode          req_wifi_set_country_code         = 334;
 		Rpc_Req_WifiGetCountryCode          req_wifi_get_country_code         = 335;
 		Rpc_Req_WifiStaGetAid               req_wifi_sta_get_aid              = 338;
@@ -1757,6 +1905,14 @@ message Rpc {
 
 		Rpc_Req_SetDhcpDnsStatus            req_set_dhcp_dns                  = 352;
 		Rpc_Req_GetDhcpDnsStatus            req_get_dhcp_dns                  = 353;
+
+		Rpc_Req_WifiStaTwtConfig            req_wifi_sta_twt_config           = 354;
+		Rpc_Req_WifiStaItwtSetup            req_wifi_sta_itwt_setup           = 355;
+		Rpc_Req_WifiStaItwtTeardown         req_wifi_sta_itwt_teardown        = 356;
+		Rpc_Req_WifiStaItwtSuspend          req_wifi_sta_itwt_suspend         = 357;
+		Rpc_Req_WifiStaItwtGetFlowIdStatus  req_wifi_sta_itwt_get_flow_id_status = 358;
+		Rpc_Req_WifiStaItwtSendProbeReq     req_wifi_sta_itwt_send_probe_req  = 359;
+		Rpc_Req_WifiStaItwtSetTargetWakeTimeOffset req_wifi_sta_itwt_set_target_wake_time_offset = 360;
 
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
@@ -1818,6 +1974,9 @@ message Rpc {
 		Rpc_Resp_WifiApGetStaAid            resp_wifi_ap_get_sta_aid           = 568;
 		Rpc_Resp_WifiSetStorage             resp_wifi_set_storage              = 569;
 
+		Rpc_Resp_WifiSetInactiveTime        resp_wifi_set_inactive_time        = 581;
+		Rpc_Resp_WifiGetInactiveTime        resp_wifi_get_inactive_time        = 582;
+
 		Rpc_Resp_WifiSetCountryCode         resp_wifi_set_country_code         = 590;
 		Rpc_Resp_WifiGetCountryCode         resp_wifi_get_country_code         = 591;
 		Rpc_Resp_WifiStaGetAid              resp_wifi_sta_get_aid              = 594;
@@ -1842,6 +2001,14 @@ message Rpc {
 		Rpc_Resp_SetDhcpDnsStatus           resp_set_dhcp_dns                  = 608;
 		Rpc_Resp_GetDhcpDnsStatus           resp_get_dhcp_dns                  = 609;
 
+		Rpc_Resp_WifiStaTwtConfig           resp_wifi_sta_twt_config           = 610;
+		Rpc_Resp_WifiStaItwtSetup           resp_wifi_sta_itwt_setup           = 611;
+		Rpc_Resp_WifiStaItwtTeardown        resp_wifi_sta_itwt_teardown        = 612;
+		Rpc_Resp_WifiStaItwtSuspend         resp_wifi_sta_itwt_suspend         = 613;
+		Rpc_Resp_WifiStaItwtGetFlowIdStatus resp_wifi_sta_itwt_get_flow_id_status = 614;
+		Rpc_Resp_WifiStaItwtSendProbeReq    resp_wifi_sta_itwt_send_probe_req  = 615;
+		Rpc_Resp_WifiStaItwtSetTargetWakeTimeOffset resp_wifi_sta_itwt_set_target_wake_time_offset = 616;
+
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
 		Rpc_Event_Heartbeat                 event_heartbeat                    = 770;
@@ -1852,6 +2019,10 @@ message Rpc {
 		Rpc_Event_StaConnected              event_sta_connected                = 775;
 		Rpc_Event_StaDisconnected           event_sta_disconnected             = 776;
 		Rpc_Event_DhcpDnsStatus             event_dhcp_dns                     = 777;
+		Rpc_Event_StaItwtSetup              event_sta_itwt_setup               = 778;
+		Rpc_Event_StaItwtTeardown           event_sta_itwt_teardown            = 779;
+		Rpc_Event_StaItwtSuspend            event_sta_itwt_suspend             = 780;
+		Rpc_Event_StaItwtProbe              event_sta_itwt_probe               = 781;
 	}
 }
 

@@ -13,6 +13,12 @@
 #error ESP-IDF version used is not supported
 #endif
 
+#if CONFIG_ESP_HOSTED_ENABLE_ITWT && CONFIG_SLAVE_SOC_WIFI_HE_SUPPORT
+  #define H_WIFI_HE_SUPPORT 1
+#else
+  #define H_WIFI_HE_SUPPORT 0
+#endif
+
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
   /* dual band API support available */
   #define H_WIFI_DUALBAND_SUPPORT 1

@@ -472,6 +472,87 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		RPC_ALLOC_ASSIGN(RpcReqGetCoprocessorFwVersion, req_get_coprocessor_fwversion,
 				rpc__req__get_coprocessor_fw_version__init);
 		break;
+	} case RPC_ID__Req_WifiSetInactiveTime: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiSetInactiveTime, req_wifi_set_inactive_time,
+				rpc__req__wifi_set_inactive_time__init);
+		req_payload->ifx = app_req->u.wifi_inactive_time.ifx;
+		req_payload->sec = app_req->u.wifi_inactive_time.sec;
+		break;
+	} case RPC_ID__Req_WifiGetInactiveTime: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiGetInactiveTime, req_wifi_get_inactive_time,
+				rpc__req__wifi_get_inactive_time__init);
+		req_payload->ifx = app_req->u.wifi_inactive_time.ifx;
+		break;
+#if H_WIFI_HE_SUPPORT
+	} case RPC_ID__Req_WifiStaTwtConfig: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiStaTwtConfig, req_wifi_sta_twt_config,
+				rpc__req__wifi_sta_twt_config__init);
+		RPC_ALLOC_ELEMENT(WifiTwtConfig, req_payload->config, wifi_twt_config__init);
+		req_payload->config->post_wakeup_event = app_req->u.wifi_twt_config.post_wakeup_event;
+		req_payload->config->twt_enable_keep_alive = app_req->u.wifi_twt_config.twt_enable_keep_alive;
+		break;
+	} case RPC_ID__Req_WifiStaItwtSetup: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiStaItwtSetup, req_wifi_sta_itwt_setup,
+				rpc__req__wifi_sta_itwt_setup__init);
+		RPC_ALLOC_ELEMENT(WifiItwtSetupConfig, req_payload->setup_config, wifi_itwt_setup_config__init);
+		wifi_itwt_setup_config_t * p_a_cfg = &app_req->u.wifi_itwt_setup_config;
+		WifiItwtSetupConfig * p_c_cfg = req_payload->setup_config;
+
+		p_c_cfg->setup_cmd = p_a_cfg->setup_cmd;
+		if (p_a_cfg->trigger)
+			H_SET_BIT(WIFI_ITWT_CONFIG_1_trigger_BIT, p_c_cfg->bitmask_1);
+
+		if (p_a_cfg->flow_type)
+			H_SET_BIT(WIFI_ITWT_CONFIG_1_flow_type_BIT, p_c_cfg->bitmask_1);
+
+		// WIFI_ITWT_CONFIG_1_flow_id_BIT is three bits wide
+		if (p_a_cfg->flow_id)
+			p_c_cfg->bitmask_1 |= ((p_a_cfg->flow_id & 0x07) << WIFI_ITWT_CONFIG_1_flow_id_BIT);
+
+		// WIFI_ITWT_CONFIG_1_wake_invl_expn_BIT is five bits wide
+		if (p_a_cfg->wake_invl_expn)
+			p_c_cfg->bitmask_1 |= ((p_a_cfg->wake_invl_expn & 0x1F) << WIFI_ITWT_CONFIG_1_wake_invl_expn_BIT);
+
+		if (p_a_cfg->wake_duration_unit)
+			H_SET_BIT(WIFI_ITWT_CONFIG_1_wake_duration_unit_BIT, p_c_cfg->bitmask_1);
+
+#if H_DECODE_WIFI_RESERVED_FIELD
+		WIFI_ITWT_CONFIG_1_SET_RESERVED_VAL(p_a_cfg->reserved, p_c_cfg->bitmask_1);
+#endif
+		p_c_cfg->min_wake_dura = p_a_cfg->min_wake_dura;
+		p_c_cfg->wake_invl_mant = p_a_cfg->wake_invl_mant;
+		p_c_cfg->twt_id = p_a_cfg->twt_id;
+		p_c_cfg->timeout_time_ms = p_a_cfg->timeout_time_ms;
+
+		break;
+	} case RPC_ID__Req_WifiStaItwtTeardown: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiStaItwtTeardown, req_wifi_sta_itwt_teardown,
+				rpc__req__wifi_sta_itwt_teardown__init);
+
+		req_payload->flow_id = app_req->u.wifi_itwt_flow_id;
+		break;
+	} case RPC_ID__Req_WifiStaItwtSuspend: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiStaItwtSuspend, req_wifi_sta_itwt_suspend,
+				rpc__req__wifi_sta_itwt_suspend__init);
+
+		req_payload->flow_id = app_req->u.wifi_itwt_suspend.flow_id;
+		req_payload->suspend_time_ms = app_req->u.wifi_itwt_suspend.suspend_time_ms;
+		break;
+	} case RPC_ID__Req_WifiStaItwtGetFlowIdStatus: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiStaItwtGetFlowIdStatus, req_wifi_sta_itwt_get_flow_id_status,
+				rpc__req__wifi_sta_itwt_get_flow_id_status__init);
+		break;
+	} case RPC_ID__Req_WifiStaItwtSendProbeReq: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiStaItwtSendProbeReq, req_wifi_sta_itwt_send_probe_req,
+				rpc__req__wifi_sta_itwt_send_probe_req__init);
+		req_payload->timeout_ms = app_req->u.wifi_itwt_probe_req_timeout_ms;
+		break;
+	} case RPC_ID__Req_WifiStaItwtSetTargetWakeTimeOffset: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiStaItwtSetTargetWakeTimeOffset, req_wifi_sta_itwt_set_target_wake_time_offset,
+				rpc__req__wifi_sta_itwt_set_target_wake_time_offset__init);
+		req_payload->offset_us = app_req->u.wifi_itwt_set_target_wake_time_offset_us;
+		break;
+#endif
 #if H_WIFI_DUALBAND_SUPPORT
 	} case RPC_ID__Req_WifiSetProtocols: {
 		RPC_ALLOC_ASSIGN(RpcReqWifiSetProtocols, req_wifi_set_protocols,

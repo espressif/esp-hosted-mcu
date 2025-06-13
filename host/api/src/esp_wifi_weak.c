@@ -223,6 +223,54 @@ H_WEAK_REF esp_err_t esp_wifi_sta_get_rssi(int *rssi)
 	return esp_wifi_remote_sta_get_rssi(rssi);
 }
 
+H_WEAK_REF esp_err_t esp_wifi_set_inactive_time(wifi_interface_t ifx, uint16_t sec)
+{
+	return esp_wifi_remote_set_inactive_time(ifx, sec);
+}
+
+H_WEAK_REF esp_err_t esp_wifi_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
+{
+	return esp_wifi_remote_get_inactive_time(ifx, sec);
+}
+
+#if H_WIFI_HE_SUPPORT
+H_WEAK_REF esp_err_t esp_wifi_sta_twt_config(wifi_twt_config_t *config)
+{
+	return esp_wifi_remote_sta_twt_config(config);
+}
+
+H_WEAK_REF esp_err_t esp_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+{
+	return esp_wifi_remote_sta_itwt_setup(setup_config);
+}
+
+H_WEAK_REF esp_err_t esp_wifi_sta_itwt_teardown(int flow_id)
+{
+	return esp_wifi_remote_sta_itwt_teardown(flow_id);
+}
+
+H_WEAK_REF esp_err_t esp_wifi_sta_itwt_suspend(int flow_id, int suspend_time_ms)
+{
+	return esp_wifi_remote_sta_itwt_suspend(flow_id, suspend_time_ms);
+}
+
+H_WEAK_REF esp_err_t esp_wifi_sta_itwt_get_flow_id_status(int *flow_id_bitmap)
+{
+	return esp_wifi_remote_sta_itwt_get_flow_id_status(flow_id_bitmap);
+}
+
+H_WEAK_REF esp_err_t esp_wifi_sta_itwt_send_probe_req(int timeout_ms)
+{
+	return esp_wifi_remote_sta_itwt_send_probe_req(timeout_ms);
+}
+
+H_WEAK_REF esp_err_t esp_wifi_sta_itwt_set_target_wake_time_offset(int offset_us)
+{
+	return esp_wifi_remote_sta_itwt_set_target_wake_time_offset(offset_us);
+}
+
+#endif
+
 #if H_WIFI_DUALBAND_SUPPORT
 H_WEAK_REF esp_err_t esp_wifi_set_band(wifi_band_t band)
 {

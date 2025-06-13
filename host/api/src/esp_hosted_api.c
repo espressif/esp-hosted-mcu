@@ -436,6 +436,54 @@ esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid)
 	check_transport_up();
 	return rpc_wifi_sta_get_aid(aid);
 }
+
+esp_err_t esp_wifi_remote_set_inactive_time(wifi_interface_t ifx, uint16_t sec)
+{
+	return rpc_wifi_set_inactive_time(ifx, sec);
+}
+
+esp_err_t esp_wifi_remote_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
+{
+	return rpc_wifi_get_inactive_time(ifx, sec);
+}
+
+#if H_WIFI_HE_SUPPORT
+esp_err_t esp_wifi_remote_sta_twt_config(wifi_twt_config_t *config)
+{
+	return rpc_wifi_sta_twt_config(config);
+}
+
+esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+{
+	return rpc_wifi_sta_itwt_setup(setup_config);
+}
+
+esp_err_t esp_wifi_remote_sta_itwt_teardown(int flow_id)
+{
+	return rpc_wifi_sta_itwt_teardown(flow_id);
+}
+
+esp_err_t esp_wifi_remote_sta_itwt_suspend(int flow_id, int suspend_time_ms)
+{
+	return rpc_wifi_sta_itwt_suspend(flow_id, suspend_time_ms);
+}
+
+esp_err_t esp_wifi_remote_sta_itwt_get_flow_id_status(int *flow_id_bitmap)
+{
+	return rpc_wifi_sta_itwt_get_flow_id_status(flow_id_bitmap);
+}
+
+esp_err_t esp_wifi_remote_sta_itwt_send_probe_req(int timeout_ms)
+{
+	return rpc_wifi_sta_itwt_send_probe_req(timeout_ms);
+}
+
+esp_err_t esp_wifi_remote_sta_itwt_set_target_wake_time_offset(int offset_us)
+{
+	return rpc_wifi_sta_itwt_set_target_wake_time_offset(offset_us);
+}
+#endif
+
 #if H_WIFI_DUALBAND_SUPPORT
 /* Dual-band WiFi API - always available at high level, but returns ESP_ERR_NOT_SUPPORTED when co-processor do not support */
 esp_err_t esp_wifi_remote_set_band(wifi_band_t band)

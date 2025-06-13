@@ -64,6 +64,18 @@ esp_err_t esp_wifi_remote_set_max_tx_power(int8_t power);
 esp_err_t esp_wifi_remote_get_max_tx_power(int8_t *power);
 esp_err_t esp_wifi_remote_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode);
 esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid);
+esp_err_t esp_wifi_remote_set_inactive_time(wifi_interface_t ifx, uint16_t sec);
+esp_err_t esp_wifi_remote_get_inactive_time(wifi_interface_t ifx, uint16_t *sec);
+
+#if H_WIFI_HE_SUPPORT
+esp_err_t esp_wifi_remote_sta_twt_config(wifi_twt_config_t *config);
+esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config);
+esp_err_t esp_wifi_remote_sta_itwt_teardown(int flow_id);
+esp_err_t esp_wifi_remote_sta_itwt_suspend(int flow_id, int suspend_time_ms);
+esp_err_t esp_wifi_remote_sta_itwt_get_flow_id_status(int *flow_id_bitmap);
+esp_err_t esp_wifi_remote_sta_itwt_send_probe_req(int timeout_ms);
+esp_err_t esp_wifi_remote_sta_itwt_set_target_wake_time_offset(int timeout_us);
+#endif
 
 #if H_WIFI_DUALBAND_SUPPORT
 /* Dual-band WiFi API (Depends upon co-processor used) */
