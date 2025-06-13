@@ -79,7 +79,7 @@ static void reset_slave(void)
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 
 	/* stop spi transactions short time to avoid slave sync issues */
-	g_h.funcs->_h_sleep(1);
+	g_h.funcs->_h_msleep(1500);
 }
 
 static void transport_driver_event_handler(uint8_t event)
