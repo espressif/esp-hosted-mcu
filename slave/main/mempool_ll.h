@@ -268,16 +268,25 @@ os_error_t os_mempool_ext_init(struct os_mempool_ext *mpe, uint16_t blocks,
                                uint32_t block_size, void *membuf, const char *name);
 
 /**
- * Clears a memory pool.
+ * Clear a memory pool.
  *
- * @param mp            The mempool to clear.
+ * @param mp                    The mempool to clear.
  *
- * @return os_error_t
+ * @return                      0 on success, error code on failure.
  */
 os_error_t os_mempool_clear(struct os_mempool *mp);
 
 /**
- * Clears an extended memory pool.
+ * Unregister a memory pool.
+ *
+ * @param mp                    The mempool to unregister.
+ *
+ * @return                      0 on success, error code on failure.
+ */
+void os_mempool_unregister(struct os_mempool *mp);
+
+/**
+ * Clear an extended memory pool.
  *
  * @param mpe            The extended memory pool to clear.
  *

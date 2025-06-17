@@ -191,6 +191,12 @@ os_mempool_ext_clear(struct os_mempool_ext *mpe)
 	return os_mempool_clear(&mpe->mpe_mp);
 }
 
+void
+os_mempool_unregister(struct os_mempool *mp)
+{
+	STAILQ_REMOVE(&g_os_hosted_mempool_list, mp, os_mempool, mp_list);
+}
+
 bool
 os_mempool_is_sane(const struct os_mempool *mp)
 {

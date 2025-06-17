@@ -16,6 +16,7 @@
 
 #include "mempool.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 
 const char *TAG = "HS_MP";
 
@@ -101,6 +102,7 @@ void hosted_mempool_destroy(struct hosted_mempool *mempool)
 	ESP_LOGI(MEM_TAG, "Destroy mempool %p num_blk[%lu] blk_size:[%lu]", mempool->pool, mempool->num_blocks, mempool->block_size);
 #endif
 
+	os_mempool_unregister(mempool->pool);
 	FREE(mempool->pool);
 
 	if (!mempool->static_heap)
@@ -116,8 +118,10 @@ void * hosted_mempool_alloc(struct hosted_mempool *mempool,
 	void *mem = NULL;
 
 #ifdef CONFIG_ESP_CACHE_MALLOC
-	if (!mempool)
+	if (!mempool) {
+		ESP_LOGE(TAG, "mempool %p is NULL", mempool);
 		return NULL;
+	}
 
 #if MYNEWT_VAL(OS_MEMPOOL_CHECK)
 	assert(mempool->heap);
@@ -137,16 +141,22 @@ void * hosted_mempool_alloc(struct hosted_mempool *mempool,
 	if (mem && need_memset)
 		memset(mem, 0, nbytes);
 
+	if (!mem) {
+		ESP_LOGE(TAG, "mempool %p alloc failed nbytes[%u]", mempool, nbytes);
+	}
 	return mem;
 }
 
 int hosted_mempool_free(struct hosted_mempool *mempool, void *mem)
 {
-	if (!mem)
+	if (!mem) {
 		return 0;
+	}
 #ifdef CONFIG_ESP_CACHE_MALLOC
-	if (!mempool)
+	if (!mempool) {
+		ESP_LOGE(TAG, "%s: mempool %p is NULL", __func__, mempool);
 		return MEMPOOL_FAIL;
+	}
 
 #if MYNEWT_VAL(OS_MEMPOOL_CHECK)
 	assert(mempool->heap);

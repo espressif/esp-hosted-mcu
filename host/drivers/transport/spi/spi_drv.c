@@ -16,7 +16,6 @@
 #include "mempool.h"
 #include "common.h"
 #include "esp_hosted_config.h"
-//#include "netdev_if.h"
 #include "transport_drv.h"
 #include "spi_drv.h"
 #include "serial_drv.h"
@@ -26,16 +25,14 @@
 #include "stats.h"
 #include "hci_drv.h"
 #include "endian.h"
+#include "power_save_drv.h"
+#include "esp_hosted_power_save.h"
+#include "esp_hosted_transport_config.h"
 
 DEFINE_LOG_TAG(spi);
 
 void * spi_handle = NULL;
 semaphore_handle_t spi_trans_ready_sem;
-
-#if DEBUG_HOST_TX_SEMAPHORE
-#define H_DEBUG_GPIO_PIN_Host_Tx_Port NULL
-#define H_DEBUG_GPIO_PIN_Host_Tx_Pin  -1
-#endif
 
 static uint8_t schedule_dummy_rx = 0;
 
@@ -64,6 +61,7 @@ static void * spi_rx_thread;
 static void spi_transaction_task(void const* pvParameters);
 static void spi_process_rx_task(void const* pvParameters);
 static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)(void* ptr));
+
 
 static inline void spi_mempool_create(void)
 {
@@ -119,9 +117,81 @@ static void FAST_RAM_ATTR gpio_dr_isr_handler(void* arg)
 	ESP_EARLY_LOGV(TAG, "%s", __func__);
 }
 
-void transport_deinit_internal(void)
+void bus_deinit_internal(void *bus_handle)
 {
-	/* TODO */
+	if (!bus_handle) {
+		ESP_LOGE(TAG, "Invalid bus handle for deinit");
+		return;
+	}
+
+	ESP_LOGI(TAG, "Deinitializing SPI bus");
+
+	/* Disable interrupts first */
+	if (H_GPIO_HANDSHAKE_Pin != -1) {
+		g_h.funcs->_h_teardown_gpio_interrupt(H_GPIO_HANDSHAKE_Port, H_GPIO_HANDSHAKE_Pin);
+	}
+
+	if (H_GPIO_DATA_READY_Pin != -1) {
+		g_h.funcs->_h_teardown_gpio_interrupt(H_GPIO_DATA_READY_Port, H_GPIO_DATA_READY_Pin);
+	}
+
+	/* Delete threads */
+	if (spi_transaction_thread) {
+		g_h.funcs->_h_thread_cancel(spi_transaction_thread);
+		spi_transaction_thread = NULL;
+	}
+
+	if (spi_rx_thread) {
+		g_h.funcs->_h_thread_cancel(spi_rx_thread);
+		spi_rx_thread = NULL;
+	}
+
+	/* Deinitialize SPI bus through platform-specific handler */
+	if (spi_handle) {
+		g_h.funcs->_h_bus_deinit(bus_handle);
+		spi_handle = NULL;
+	}
+
+	/* Delete semaphores */
+	if (spi_trans_ready_sem) {
+		g_h.funcs->_h_destroy_semaphore(spi_trans_ready_sem);
+		spi_trans_ready_sem = NULL;
+	}
+
+	/* Destroy memory pool */
+	spi_mempool_destroy();
+
+	/* Delete queues */
+	for (uint8_t prio_q_idx = 0; prio_q_idx < MAX_PRIORITY_QUEUES; prio_q_idx++) {
+		if (from_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(from_slave_queue[prio_q_idx]);
+			from_slave_queue[prio_q_idx] = NULL;
+		}
+
+		if (to_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(to_slave_queue[prio_q_idx]);
+			to_slave_queue[prio_q_idx] = NULL;
+		}
+	}
+
+	/* Delete semaphores for queues */
+	if (sem_from_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_from_slave_queue);
+		sem_from_slave_queue = NULL;
+	}
+
+	if (sem_to_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_to_slave_queue);
+		sem_to_slave_queue = NULL;
+	}
+
+	/* Delete mutex */
+	if (spi_bus_lock) {
+		g_h.funcs->_h_destroy_mutex(spi_bus_lock);
+		spi_bus_lock = NULL;
+	}
+
+	ESP_LOGI(TAG, "SPI bus deinitialized");
 }
 
 /**
@@ -129,7 +199,7 @@ void transport_deinit_internal(void)
   * @param  transport_evt_handler_fp - event handler
   * @retval None
   */
-void transport_init_internal(void)
+void *bus_init_internal(void)
 {
 	uint8_t prio_q_idx;
 
@@ -139,8 +209,10 @@ void transport_init_internal(void)
 
 	sem_to_slave_queue = g_h.funcs->_h_create_semaphore(TO_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES);
 	assert(sem_to_slave_queue);
+	g_h.funcs->_h_get_semaphore(sem_to_slave_queue, 0);
 	sem_from_slave_queue = g_h.funcs->_h_create_semaphore(FROM_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES);
 	assert(sem_from_slave_queue);
+	g_h.funcs->_h_get_semaphore(sem_from_slave_queue, 0);
 
 	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
 		/* Queue - rx */
@@ -173,6 +245,8 @@ void transport_init_internal(void)
 	spi_rx_thread = g_h.funcs->_h_thread_create("spi_rx", DFLT_TASK_PRIO,
 			DFLT_TASK_STACK_SIZE, spi_process_rx_task, NULL);
 	assert(spi_rx_thread);
+
+	return spi_handle;
 }
 
 
@@ -186,30 +260,37 @@ void transport_init_internal(void)
   */
 static int process_spi_rx_buf(uint8_t * rxbuff)
 {
-	struct  esp_payload_header *payload_header;
+	struct  esp_payload_header *h;
 	uint16_t rx_checksum = 0, checksum = 0;
 	interface_buffer_handle_t buf_handle = {0};
 	uint16_t len, offset;
 	int ret = 0;
 	uint8_t pkt_prio = PRIO_Q_OTHERS;
+	uint8_t is_wakeup_pkt = 0;
 
 	if (!rxbuff)
 		return -1;
 
-	ESP_HEXLOGV("h_spi_rx", rxbuff, 16);
-
 	/* create buffer rx handle, used for processing */
-	payload_header = (struct esp_payload_header *) rxbuff;
+	h = (struct esp_payload_header *) rxbuff;
 
 	/* Fetch length and offset from payload header */
-	len = le16toh(payload_header->len);
-	offset = le16toh(payload_header->offset);
+	len = le16toh(h->len);
+	offset = le16toh(h->offset);
+	is_wakeup_pkt = h->flags & FLAG_WAKEUP_PKT;
 
-	if (ESP_MAX_IF == payload_header->if_type)
+	if (is_wakeup_pkt && len<1500) {
+		ESP_LOGW(TAG, "Host wakeup triggered, if_type: %u, len: %u ", h->if_type, len);
+		//ESP_HEXLOGW("Wakeup_pkt", rxbuff+offset, len, min(len, 128));
+	}
+
+	ESP_HEXLOGD("h_spi_rx", rxbuff, len, 32);
+
+	if (ESP_MAX_IF == h->if_type)
 		schedule_dummy_rx = 0;
 
 	if (!len) {
-		wifi_tx_throttling = payload_header->throttle_cmd;
+		wifi_tx_throttling = h->throttle_cmd;
 		ret = -5;
 		goto done;
 	}
@@ -228,8 +309,8 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 		goto done;
 
 	} else {
-		rx_checksum = le16toh(payload_header->checksum);
-		payload_header->checksum = 0;
+		rx_checksum = le16toh(h->checksum);
+		h->checksum = 0;
 
 		checksum = compute_checksum(rxbuff, len+offset);
 		//TODO: checksum needs to be configurable from menuconfig
@@ -237,12 +318,12 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 			buf_handle.priv_buffer_handle = rxbuff;
 			buf_handle.free_buf_handle = spi_buffer_free;
 			buf_handle.payload_len = len;
-			buf_handle.if_type     = payload_header->if_type;
-			buf_handle.if_num      = payload_header->if_num;
+			buf_handle.if_type     = h->if_type;
+			buf_handle.if_num      = h->if_num;
 			buf_handle.payload     = rxbuff + offset;
-			buf_handle.seq_num     = le16toh(payload_header->seq_num);
-			buf_handle.flag        = payload_header->flags;
-			wifi_tx_throttling     = payload_header->throttle_cmd;
+			buf_handle.seq_num     = le16toh(h->seq_num);
+			buf_handle.flag        = h->flags;
+			wifi_tx_throttling = h->throttle_cmd;
 #if 0
 #if CONFIG_H_LOWER_MEMCOPY
 			if ((buf_handle.if_type == ESP_STA_IF) ||
@@ -333,7 +414,7 @@ static int check_and_execute_spi_transaction(void)
 				schedule_dummy_tx = 0;
 			} else {
 				schedule_dummy_tx = 1;
-				ESP_HEXLOGV("h_spi_tx", txbuff, 16);
+				ESP_HEXLOGD("h_spi_tx", txbuff, 32, 32);
 			}
 
 			ESP_LOGV(TAG, "dr %u tx_valid %u\n", gpio_rx_data_ready, is_valid_tx_buf);
@@ -384,8 +465,6 @@ static int check_and_execute_spi_transaction(void)
 	return ret;
 }
 
-
-
 /**
   * @brief  Send to slave via SPI
   * @param  iface_type -type of interface
@@ -395,22 +474,23 @@ static int check_and_execute_spi_transaction(void)
   * @retval sendbuf - Tx buffer
   */
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
-		uint8_t * wbuffer, uint16_t wlen, uint8_t buff_zcopy, void (*free_wbuf_fun)(void* ptr))
+		uint8_t * wbuffer, uint16_t wlen, uint8_t buff_zcopy,
+		void (*free_wbuf_fun)(void* ptr), uint8_t flag)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	void (*free_func)(void* ptr) = NULL;
-	uint8_t transport_up = is_transport_tx_ready();
 	uint8_t pkt_prio = PRIO_Q_OTHERS;
 
 	if (free_wbuf_fun)
 		free_func = free_wbuf_fun;
 
-	if (!wbuffer || !wlen || (wlen > MAX_PAYLOAD_SIZE) || !transport_up) {
-		ESP_LOGE(TAG, "write fail: trans_ready[%u] buff(%p) 0? OR (0<len(%u)<=max_poss_len(%u))?",
-				transport_up, wbuffer, wlen, MAX_PAYLOAD_SIZE);
+	if ((!flag) && (!wbuffer || !wlen || (wlen > MAX_PAYLOAD_SIZE))) {
+		ESP_LOGE(TAG, "write fail: buff(%p) 0? OR (0<len(%u)<=max_poss_len(%u))?",
+				wbuffer, wlen, MAX_PAYLOAD_SIZE);
 		H_FREE_PTR_WITH_FUNC(free_func, wbuffer);
-		return STM_FAIL;
+		return -1;
 	}
+
 	//g_h.funcs->_h_memset(&buf_handle, 0, sizeof(buf_handle));
 	buf_handle.payload_zcopy = buff_zcopy;
 	buf_handle.if_type = iface_type;
@@ -419,8 +499,9 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	buf_handle.payload = wbuffer;
 	buf_handle.priv_buffer_handle = wbuffer;
 	buf_handle.free_buf_handle = free_func;
+	buf_handle.flag = flag;
 
-	ESP_LOGV(TAG, "ifype: %u wbuff:%p, free: %p wlen:%u ", iface_type, wbuffer, free_func, wlen);
+	ESP_LOGV(TAG, "ifype: %u wbuff:%p, free: %p wlen:%u flag:%u", iface_type, wbuffer, free_func, wlen, flag);
 
 	if (buf_handle.if_type == ESP_SERIAL_IF)
 		pkt_prio = PRIO_Q_SERIAL;
@@ -436,13 +517,9 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		pkt_stats.sta_tx_in_pass++;
 #endif
 
-#if DEBUG_HOST_TX_SEMAPHORE
-	if (H_DEBUG_GPIO_PIN_Host_Tx_Pin != -1)
-		g_h.funcs->_h_write_gpio(H_DEBUG_GPIO_PIN_Host_Tx_Port, H_DEBUG_GPIO_PIN_Host_Tx_Pin, H_GPIO_HIGH);
-#endif
 	g_h.funcs->_h_post_semaphore(spi_trans_ready_sem);
 
-	return STM_OK;
+	return 0;
 }
 
 
@@ -456,18 +533,15 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
   */
 static void spi_transaction_task(void const* pvParameters)
 {
+	/* Netif creation is now handled by the example code */
 
-	ESP_LOGD(TAG, "Staring SPI task");
-#if DEBUG_HOST_TX_SEMAPHORE
-	if (H_DEBUG_GPIO_PIN_Host_Tx_Pin != -1)
-		g_h.funcs->_h_config_gpio(H_DEBUG_GPIO_PIN_Host_Tx_Port, H_DEBUG_GPIO_PIN_Host_Tx_Pin, H_GPIO_MODE_DEF_OUTPUT);
-#endif
+	ESP_LOGI(TAG, "Staring SPI task");
 
 	g_h.funcs->_h_config_gpio_as_interrupt(H_GPIO_HANDSHAKE_Port, H_GPIO_HANDSHAKE_Pin,
-			H_HS_INTR_EDGE, gpio_hs_isr_handler);
+			H_HS_INTR_EDGE, gpio_hs_isr_handler, NULL);
 
 	g_h.funcs->_h_config_gpio_as_interrupt(H_GPIO_DATA_READY_Port, H_GPIO_DATA_READY_Pin,
-			H_DR_INTR_EDGE, gpio_dr_isr_handler);
+			H_DR_INTR_EDGE, gpio_dr_isr_handler, NULL);
 
 #if !H_HANDSHAKE_ACTIVE_HIGH
 	ESP_LOGI(TAG, "Handshake: Active Low");
@@ -478,13 +552,12 @@ static void spi_transaction_task(void const* pvParameters)
 
 	ESP_LOGD(TAG, "SPI GPIOs configured");
 
-	create_debugging_tasks();
-
 	for (;;) {
 
 		if ((!is_transport_rx_ready()) ||
 			(!spi_trans_ready_sem)) {
-			g_h.funcs->_h_msleep(300);
+			ESP_LOGD(TAG, "SPI transaction task sleep");
+			g_h.funcs->_h_msleep(100);
 			continue;
 		}
 
@@ -494,10 +567,6 @@ static void spi_transaction_task(void const* pvParameters)
 		 */
 
 		if (!g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, HOSTED_BLOCK_MAX)) {
-#if DEBUG_HOST_TX_SEMAPHORE
-			if (H_DEBUG_GPIO_PIN_Host_Tx_Pin != -1)
-				g_h.funcs->_h_write_gpio(H_DEBUG_GPIO_PIN_Host_Tx_Port, H_DEBUG_GPIO_PIN_Host_Tx_Pin, H_GPIO_LOW);
-#endif
 
 			check_and_execute_spi_transaction();
 		}
@@ -514,6 +583,14 @@ static void spi_process_rx_task(void const* pvParameters)
 	interface_buffer_handle_t buf_handle_l = {0};
 	interface_buffer_handle_t *buf_handle = NULL;
 	int ret = 0;
+
+#if H_HOST_PS_ALLOWED
+	if (esp_hosted_woke_from_deep_sleep()) {
+		ESP_LOGW(TAG, "Host Woke-up");
+		/* Inform slave, host power save is stopped */
+		stop_host_power_save();
+	}
+#endif
 
 	while (1) {
 
@@ -642,9 +719,14 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 			len = buf_handle.payload_len;
 	}
 
-	if (len) {
+	if (buf_handle.flag || len) {
+		/* Continue transfer if flag or buffer is valid */
+		*is_valid_tx_buf = 1;
+	}
 
-		ESP_HEXLOGD("h_spi_tx", buf_handle.payload, 16);
+	if (*is_valid_tx_buf) {
+
+		ESP_HEXLOGD("h_spi_tx", buf_handle.payload, len, 16);
 
 		if (!buf_handle.payload_zcopy) {
 			sendbuf = spi_buffer_alloc(MEMSET_REQUIRED);
@@ -664,10 +746,6 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 			goto done;
 		}
 
-		//g_h.funcs->_h_memset(sendbuf, 0, MAX_SPI_BUFFER_SIZE);
-
-		*is_valid_tx_buf = 1;
-
 		/* Form Tx header */
 		payload_header = (struct esp_payload_header *) sendbuf;
 		payload = sendbuf + sizeof(struct esp_payload_header);
@@ -675,6 +753,7 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 		payload_header->offset  = htole16(sizeof(struct esp_payload_header));
 		payload_header->if_type = buf_handle.if_type;
 		payload_header->if_num  = buf_handle.if_num;
+		payload_header->flags    = buf_handle.flag;
 
 		if (payload_header->if_type == ESP_HCI_IF) {
 			// special handling for HCI
@@ -686,9 +765,11 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 				payload_header->len = htole16(len);
 				g_h.funcs->_h_memcpy(payload, &buf_handle.payload[1], len);
 			}
-		} else
-		if (!buf_handle.payload_zcopy)
-			g_h.funcs->_h_memcpy(payload, buf_handle.payload, min(len, MAX_PAYLOAD_SIZE));
+		} else {
+			/* Non HCI packets */
+			if (!buf_handle.payload_zcopy && len)
+				g_h.funcs->_h_memcpy(payload, buf_handle.payload, min(len, MAX_PAYLOAD_SIZE));
+		}
 
 		//TODO: checksum should be configurable from menuconfig
 		payload_header->checksum = htole16(compute_checksum(sendbuf,
@@ -696,6 +777,7 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 	}
 
 done:
+/* TODO: check if this is needed for only flag */
 	if (len && !buf_handle.payload_zcopy) {
 		/* free allocated buffer, only if zerocopy is not requested */
 		H_FREE_PTR_WITH_FUNC(buf_handle.free_buf_handle, buf_handle.priv_buffer_handle);
@@ -710,4 +792,80 @@ done:
 	}
 
 	return sendbuf;
+}
+
+void check_if_max_freq_used(uint8_t chip_type)
+{
+	switch (chip_type) {
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32:
+		if (H_SPI_FD_CLK_MHZ < 10) {
+			ESP_LOGW(TAG, "SPI FD clock in-use: [%u]MHz. Can optimize in 1MHz steps till Max[%u]MHz", H_SPI_FD_CLK_MHZ, 10);
+		}
+		break;
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32S3:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32S2:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C3:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C2:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C6:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C5:
+		if (H_SPI_FD_CLK_MHZ < 40) {
+			ESP_LOGW(TAG, "SPI FDclock in-use: [%u]MHz. Can optimize in 1MHz steps till Max[%u]MHz", H_SPI_FD_CLK_MHZ, 40);
+		}
+		break;
+	}
+}
+static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
+{
+	ESP_LOGI(TAG, "Resetting slave on SPI bus with pin %d", reset_pin.pin);
+	g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
+	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	//g_h.funcs->_h_msleep(1500);
+	return ESP_OK;
+}
+
+int ensure_slave_bus_ready(void *bus_handle)
+{
+	esp_err_t res = ESP_OK;
+	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+
+	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
+		ESP_LOGE(TAG, "Unable to get RESET config for transport");
+		return ESP_FAIL;
+	}
+
+	assert(reset_pin.pin != -1);
+
+	release_slave_reset_gpio_post_wakeup();
+
+	if (esp_hosted_woke_from_deep_sleep()) {
+		g_h.funcs->_h_msleep(700);
+		stop_host_power_save();
+	} else {
+		ESP_LOGI(TAG, "Resetting slave");
+		transport_gpio_reset(bus_handle, reset_pin);
+	}
+
+	return res;
+}
+
+int bus_inform_slave_host_power_save_start(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is started");
+	int ret = ESP_OK;
+	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+	return ret;
+}
+
+int bus_inform_slave_host_power_save_stop(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is stopped");
+	int ret = ESP_OK;
+	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+	return ret;
 }

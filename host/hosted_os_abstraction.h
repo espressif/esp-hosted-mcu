@@ -6,6 +6,7 @@
 #define __HOSTED_OS_ABSTRACTION_H__
 
 #include "esp_hosted_config.h"
+#include "esp_hosted_power_save.h"
 
 typedef struct {
           /* Memory */
@@ -53,7 +54,7 @@ typedef struct {
 
           /* Timer */
 /* 32 */  int    (*_h_timer_stop)(void *timer_handle);
-/* 33 */  void*  (*_h_timer_start)(int duration, int type, void (*timeout_handler)(void *), void *arg);
+/* 33 */  void*  (*_h_timer_start)(const char *name, int duration_ms, int type, void (*timeout_handler)(void *), void *arg);
 
           /* Mempool */
 #ifdef H_USE_MEMPOOL
@@ -64,47 +65,57 @@ typedef struct {
 
           /* GPIO */
 /* 37 */ int (*_h_config_gpio)(void* gpio_port, uint32_t gpio_num, uint32_t mode);
-/* 38 */ int (*_h_config_gpio_as_interrupt)(void* gpio_port, uint32_t gpio_num, uint32_t intr_type, void (*gpio_isr_handler)(void* arg));
+/* 38 */ int (*_h_config_gpio_as_interrupt)(void* gpio_port, uint32_t gpio_num, uint32_t intr_type, void (*gpio_isr_handler)(void* arg), void *arg);
+/* 39 */ int (*_h_teardown_gpio_interrupt)(void* gpio_port, uint32_t gpio_num);
 /* 39 */ int (*_h_read_gpio)(void* gpio_port, uint32_t gpio_num);
 /* 40 */ int (*_h_write_gpio)(void* gpio_port, uint32_t gpio_num, uint32_t value);
-
+/* 40 */ int (*_h_pull_gpio)(void* gpio_port, uint32_t gpio_num, uint32_t pull_value, uint32_t enable);
+/* 41 */ int (*_h_hold_gpio)(void* gpio_port, uint32_t gpio_num, uint32_t hold_value);
+/* 42 */ int (*_h_get_host_wakeup_or_reboot_reason)(void);
           /* All Transports - Init */
 /* 41 */ void * (*_h_bus_init)(void);
+/* 42 */ int (*_h_bus_deinit)(void*);
           /* Transport - SPI */
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
-/* 42 */ int (*_h_do_bus_transfer)(void *transfer_context);
+/* 43 */ int (*_h_do_bus_transfer)(void *transfer_context);
 #endif
-/* 43 */ int (*_h_event_wifi_post)(int32_t event_id, void* event_data, size_t event_data_size, uint32_t ticks_to_wait);
-/* 44 */ void (*_h_printf)(int level, const char *tag, const char *format, ...);
-/* 45 */ void (*_h_hosted_init_hook)(void);
+/* 44 */ int (*_h_event_wifi_post)(int32_t event_id, void* event_data, size_t event_data_size, uint32_t ticks_to_wait);
+// 45 - int (*_h_event_ip_post)(int32_t event_id, void* event_data, size_t event_data_size, uint32_t ticks_to_wait);
+/* 45 */ void (*_h_printf)(int level, const char *tag, const char *format, ...);
+/* 46 */ void (*_h_hosted_init_hook)(void);
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
           /* Transport - SDIO */
-/* 46 */ int (*_h_sdio_card_init)(void *ctx);
-/* 47 */ int (*_h_sdio_read_reg)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
-/* 48 */ int (*_h_sdio_write_reg)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
-/* 49 */ int (*_h_sdio_read_block)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
-/* 50 */ int (*_h_sdio_write_block)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
-/* 51 */ int (*_h_sdio_wait_slave_intr)(void *ctx, uint32_t ticks_to_wait);
+/* 47 */ int (*_h_sdio_card_init)(void *ctx);
+/* 48 */ int (*_h_sdio_card_deinit)(void*ctx);
+/* 49 */ int (*_h_sdio_read_reg)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
+/* 50 */ int (*_h_sdio_write_reg)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
+/* 51 */ int (*_h_sdio_read_block)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
+/* 52 */ int (*_h_sdio_write_block)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
+/* 53 */ int (*_h_sdio_wait_slave_intr)(void *ctx, uint32_t ticks_to_wait);
 #endif
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
           /* Transport - SPI HD */
-/* 51 */ int (*_h_spi_hd_read_reg)(uint32_t reg, uint32_t *data, int poll, bool lock_required);
-/* 52 */ int (*_h_spi_hd_write_reg)(uint32_t reg, uint32_t *data, bool lock_required);
-/* 53 */ int (*_h_spi_hd_read_dma)(uint8_t *data, uint16_t size, bool lock_required);
-/* 54 */ int (*_h_spi_hd_write_dma)(uint8_t *data, uint16_t size, bool lock_required);
-/* 55 */ int (*_h_spi_hd_set_data_lines)(uint32_t data_lines);
-/* 56 */ int (*_h_spi_hd_send_cmd9)(void);
+/* 54 */ int (*_h_spi_hd_read_reg)(uint32_t reg, uint32_t *data, int poll, bool lock_required);
+/* 55 */ int (*_h_spi_hd_write_reg)(uint32_t reg, uint32_t *data, bool lock_required);
+/* 56 */ int (*_h_spi_hd_read_dma)(uint8_t *data, uint16_t size, bool lock_required);
+/* 57 */ int (*_h_spi_hd_write_dma)(uint8_t *data, uint16_t size, bool lock_required);
+/* 58 */ int (*_h_spi_hd_set_data_lines)(uint32_t data_lines);
+/* 59 */ int (*_h_spi_hd_send_cmd9)(void);
 #endif
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_UART
           /* Transport - UART */
-/* 57 */ int (*_h_uart_read)(void *ctx, uint8_t *data, uint16_t size);
-/* 58 */ int (*_h_uart_write)(void *ctx, uint8_t *data, uint16_t size);
+/* 60 */ int (*_h_uart_read)(void *ctx, uint8_t *data, uint16_t size);
+/* 61 */ int (*_h_uart_write)(void *ctx, uint8_t *data, uint16_t size);
 #endif
 
-/* 59 */ int (*_h_restart_host)(void);
+/* 62 */ int (*_h_restart_host)(void);
+
+/* 63 */ int (*_h_config_host_power_save_hal_impl)(uint32_t power_save_type, void* gpio_port, uint32_t gpio_num, int level);
+/* 64 */ int (*_h_start_host_power_save_hal_impl)(uint32_t power_save_type);
+
 } hosted_osi_funcs_t;
 
 struct hosted_config_t {

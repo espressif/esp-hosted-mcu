@@ -159,6 +159,7 @@ static esp_err_t hosted_sdio_card_fn_init(sdmmc_card_t *card)
 	SDIO_FAIL_IF_NULL(card);
 
 	ESP_ERROR_CHECK(sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_ENABLE, &ioe));
+
 	ESP_LOGD(TAG, "IOE: 0x%02x", ioe);
 
 	ESP_ERROR_CHECK(sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_READY, &ior));
@@ -288,6 +289,16 @@ static esp_err_t sdio_write_toio(sdmmc_card_t *card, uint32_t function, uint32_t
 	return ESP_OK;
 }
 
+int hosted_sdio_deinit(void* ctx)
+{
+	sdmmc_host_t *host = (sdmmc_host_t *)ctx;
+	if (host) {
+		sdmmc_host_deinit();
+		HOSTED_FREE(host);
+	}
+	return ESP_OK;
+}
+
 void * hosted_sdio_init(void)
 {
 	esp_err_t res;
@@ -328,8 +339,10 @@ void * hosted_sdio_init(void)
 
 	// initialise SDMMC host
 	res = sdmmc_host_init();
-	if (res != ESP_OK)
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to initialize SDMMC host");
 		return NULL;
+	}
 
 	// configure SDIO interface and slot
 	slot_config.width = context.config.bus_width;
@@ -352,8 +365,10 @@ void * hosted_sdio_init(void)
 
 	// initialise connected SDIO card/slave
 	context.card = (sdmmc_card_t *)g_h.funcs->_h_malloc(sizeof(sdmmc_card_t));
-	if (!context.card)
+	if (!context.card) {
+		ESP_LOGE(TAG, "Failed to allocate memory for SDMMC card");
 		return NULL;
+	}
 
 	// initialise mutex for bus locking
 	sdio_bus_lock = g_h.funcs->_h_create_mutex();
@@ -367,7 +382,11 @@ int hosted_sdio_card_init(void *ctx)
 	SDIO_FAIL_IF_NULL(ctx);
 
 	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
+	SDIO_FAIL_IF_NULL(ctx);
+
 	struct esp_hosted_sdio_config *sdio_config = &context->config;
+	SDIO_FAIL_IF_NULL(sdio_config);
+	SDIO_FAIL_IF_NULL(context->card);
 
 	sdmmc_host_t config = SDMMC_HOST_DEFAULT();
 	config.slot = sdio_config->slot; // override default slot set
@@ -433,7 +452,7 @@ fail:
 	return ESP_FAIL;
 }
 
-esp_err_t hosted_sdio_deinit(void *ctx)
+int hosted_sdio_card_deinit(void *ctx)
 {
 	SDIO_FAIL_IF_NULL(ctx);
 
@@ -442,7 +461,6 @@ esp_err_t hosted_sdio_deinit(void *ctx)
 
 	if (card) {
 		sdmmc_host_deinit();
-		HOSTED_FREE(card);
 		return ESP_OK;
 	}
 	return ESP_FAIL;
@@ -456,9 +474,11 @@ int hosted_sdio_read_reg(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, 
 
 	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
 	sdmmc_card_t *card = context->card;
+	SDIO_FAIL_IF_NULL(card);
 
 	/* Need to apply address mask when reading/writing slave registers */
 	reg &= ESP_ADDRESS_MASK;
+	ESP_LOGV(TAG, "%s: reg[0x%" PRIx32"] size[%u]", __func__, reg, size);
 
 	SDIO_LOCK(lock_required);
 	if (size <= 1) {
@@ -481,6 +501,7 @@ int hosted_sdio_write_reg(void *ctx, uint32_t reg, uint8_t *data, uint16_t size,
 
 	/* Need to apply address mask when reading/writing slave registers */
 	reg &= ESP_ADDRESS_MASK;
+	ESP_LOGV(TAG, "%s: reg[0x%" PRIx32"] size[%u]", __func__, reg, size);
 
 	SDIO_LOCK(lock_required);
 	if (size <= 1) {
@@ -500,6 +521,8 @@ int hosted_sdio_read_block(void *ctx, uint32_t reg, uint8_t *data, uint16_t size
 
 	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
 	sdmmc_card_t *card = context->card;
+	SDIO_FAIL_IF_NULL(card);
+	ESP_LOGV(TAG, "%s: reg[0x%" PRIx32"] size[%u]", __func__, reg, size);
 
 	SDIO_LOCK(lock_required);
 	if (size <= 1) {
@@ -519,6 +542,8 @@ int hosted_sdio_write_block(void *ctx, uint32_t reg, uint8_t *data, uint16_t siz
 
 	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
 	sdmmc_card_t *card = context->card;
+	SDIO_FAIL_IF_NULL(card);
+	ESP_LOGV(TAG, "%s: reg[0x%" PRIx32"] size[%u]", __func__, reg, size);
 
 	SDIO_LOCK(lock_required);
 	if (size <= 1) {
@@ -537,6 +562,8 @@ int hosted_sdio_wait_slave_intr(void *ctx, uint32_t ticks_to_wait)
 
 	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
 	sdmmc_card_t *card = context->card;
+
+	SDIO_FAIL_IF_NULL(card);
 
 	return sdmmc_io_wait_int(card, ticks_to_wait);
 }

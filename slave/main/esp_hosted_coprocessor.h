@@ -25,4 +25,6 @@
 typedef struct {
 	interface_context_t *context;
 } adapter;
+
+esp_err_t esp_hosted_coprocessor_init(void);
 #endif

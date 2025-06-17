@@ -238,11 +238,11 @@ There are four steps to flash the ESP-Hosted co-processor firmware:
    ```
 
 #### 6.2.1 Transport config
-  - Navigate to "Example configuration" -> "Transport layer"
-  - Select "SDIO"
+  - Navigate to "Example configuration" -> "Bus Config in between Host and Co-processor"
+  - In "Transport layer", select "SDIO"
 
 #### 6.2.2 Any other config
-  - Optionally, Configure any additional SDIO-specific settings like co-processor GPIOs, SDIO Mode, SDIO timing,etc.
+  - Optionally, Configure any additional SDIO-specific settings in the "SDIO Configuration" menu, like co-processor GPIOs, SDIO Mode, SDIO timing,etc.
 
 ###### Generated files
 - Generated config files are (1) `sdkconfig` file and (2) internal `sdkconfig.h` file.
@@ -591,7 +591,7 @@ In SDIO streaming mode, the host receives SDIO data from the co-processor in one
 
 For Host systems with high heap memory usage, you can reduce the amount of heap memory used by ESP-Hosted for buffers, at the cost of reduced throughput, by adjusting the number of Tx buffers used by the co-processor.
 
-**On the co-processor**: run `idf.py menuconfig` ---> `Example Configuration` ---> `SDIO Configuration` and adjust `SDIO Tx queue size`. The default queue size is `20`.
+**On the co-processor**: run `idf.py menuconfig` -> `Example Configuration` -> `Bus Config in between Host and Co-processor` -> `SDIO Configuration` and adjust `SDIO Tx queue size`. The default queue size is `20`.
 
 The table below shows the effect of changing `SDIO Tx queue size` on throughput and memory usage on the Host. The throughput numbers are obtained by using the RawTP option in ESP-Hosted to send / receive raw SDIO data.
 
@@ -616,7 +616,14 @@ From the table above, throughput is more or less stagnant on and above Rx queue 
 
 To reduce memory usage on the co-processor, you can reduce the number of buffers the co-processor uses to receive data from the Host.
 
-**On the co-processor**: run `idf.py menuconfig` ---> `Example Configuration` ---> `SDIO Configuration` and adjust `SDIO Rx queue size`. The default queue size is `20`.
+**On the co-processor**: run `idf.py menuconfig`
+
+```
+Example Configuration
+└── Bus Config in between Host and Co-processor
+    └── SDIO Configuration
+        └── SDIO Rx queue size (default: 20)
+```
 
 Reducing the number of Rx buffers on the co-processor can affect the Tx throughput from the Host if the number of Rx buffers is set to a small value.
 
@@ -624,11 +631,26 @@ Reducing the number of Rx buffers on the co-processor can affect the Tx throughp
 
 For mimimal memory usage with a lower throughput, you can switch to Packet Mode. To do this:
 
-- on the co-processor: run `idf.py menuconfig` ---> `Example Configuration` ---> `SDIO Configuration` and untoggle `Enable SDIO Streaming Mode`
-- on the host: run `idf.py menuconfig` ---> `Component config` ---> `ESP-Hosted config` ---> `Hosted SDIO COnfiguration` ---> `SDIO Receive Optimization` and select either `No optimization` or `Always Rx Max Packet size`. `Always Rx Max Packet size` will give a slightly higher throughput.
+- on the co-processor: run `idf.py menuconfig`
 
+  ```
+  Example Configuration
+  └── Bus Config in between Host and Co-processor
+      └── SDIO Configuration
+          └── Enable SDIO Streaming Mode [Deselect this option]
+  ```
+
+- on the host: run `idf.py menuconfig`
+  ```
+   ── Component config
+      └── ESP-Hosted config
+          └── Hosted SDIO Configuration
+              └── SDIO Receive Optimization
+                  ├── No optimization
+                  ├── Always Rx Max Packet size [Change to this, preferably]
+                  └── Use Streaming Mode        [Default was selected, change to one of above]
+  ```
 In Packet Mode, the host uses `2 * 1536` or `3,072` bytes of memory for Rx buffers.
-
 - with `No optimization`, Rx Raw Throughput is 33.0 Mbits/s
 - with `Always Rx Max Packet size`, Rx Raw Throughput is 33.2 Mbits/s
 

@@ -58,16 +58,6 @@ extern "C" {
 #define SUCCESS 0
 #define FAILURE -1
 
-typedef enum stm_ret_s {
-	STM_OK                =  0,
-	STM_FAIL              = -1,
-	STM_FAIL_TIMEOUT      = -2,
-	STM_FAIL_INVALID_ARG  = -3,
-	STM_FAIL_NO_MEMORY    = -4,
-	STM_FAIL_NOT_FOUND    = -5,
-	STM_FAIL_NOT_FINISHED = -6,
-	STM_FAIL_ALIGNMENT    = -7
-}stm_ret_t;
 
 typedef enum {
 	TRANSPORT_INACTIVE,

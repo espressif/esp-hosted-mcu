@@ -30,10 +30,13 @@ void * hosted_sdio_init(void);
 
 /* Hosted SDIO deinit function
  * expects a pointer to the sdio context */
-esp_err_t hosted_sdio_deinit(void *ctx);
+int hosted_sdio_deinit(void *ctx);
 
 /* Hosted SDIO to initialise the SDIO card */
 int hosted_sdio_card_init(void *ctx);
+
+/* Hosted SDIO to deinitialise the SDIO card */
+int hosted_sdio_card_deinit(void *ctx);
 
 /* Hosted SDIO functions to read / write to slave scratch registers
  * and to read / write block data

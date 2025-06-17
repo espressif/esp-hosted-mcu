@@ -23,6 +23,9 @@
 #include "esp_hosted_log.h"
 #include "transport_drv.h"
 #include "stats.h"
+#include "esp_hosted_power_save.h"
+#include "esp_hosted_transport_config.h"
+
 
 static const char TAG[] = "H_UART_DRV";
 
@@ -226,7 +229,7 @@ static void h_uart_process_rx_task(void const* pvParameters)
 
 		buf_handle = &buf_handle_l;
 
-		ESP_HEXLOGV("rx", buf_handle->payload, buf_handle->payload_len);
+		ESP_HEXLOGV("h_uart_rx", buf_handle->payload, buf_handle->payload_len, 32);
 
 		if (buf_handle->if_type == ESP_SERIAL_IF) {
 			/* serial interface path */
@@ -468,7 +471,7 @@ static void h_uart_read_task(void const* pvParameters)
 	}
 }
 
-void transport_init_internal(void)
+void *bus_init_internal(void)
 {
 	uint8_t prio_q_idx = 0;
 
@@ -506,11 +509,13 @@ void transport_init_internal(void)
 
 	h_uart_write_task_info = g_h.funcs->_h_thread_create("uart_tx",
 		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, h_uart_write_task, NULL);
+
+	return uart_handle;
 }
 
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		uint8_t * wbuffer, uint16_t wlen, uint8_t buff_zcopy,
-		void (*free_wbuf_fun)(void* ptr))
+		void (*free_wbuf_fun)(void* ptr), uint8_t flag)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	void (*free_func)(void* ptr) = NULL;
@@ -536,6 +541,7 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	buf_handle.payload = wbuffer;
 	buf_handle.priv_buffer_handle = wbuffer;
 	buf_handle.free_buf_handle = free_func;
+	buf_handle.flag = flag;
 
 	if (buf_handle.if_type == ESP_SERIAL_IF)
 		pkt_prio = PRIO_Q_SERIAL;
@@ -551,4 +557,117 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 #endif
 
 	return ESP_OK;
+}
+
+void bus_deinit_internal(void *bus_handle)
+{
+	uint8_t prio_q_idx = 0;
+
+	/* Stop threads */
+	if (h_uart_write_task_info) {
+		g_h.funcs->_h_thread_cancel(h_uart_write_task_info);
+		h_uart_write_task_info = NULL;
+	}
+
+	if (h_uart_read_task_info) {
+		g_h.funcs->_h_thread_cancel(h_uart_read_task_info);
+		h_uart_read_task_info = NULL;
+	}
+
+	if (h_uart_process_rx_task_info) {
+		g_h.funcs->_h_thread_cancel(h_uart_process_rx_task_info);
+		h_uart_process_rx_task_info = NULL;
+	}
+
+	/* Clean up queues */
+	for (prio_q_idx = 0; prio_q_idx < MAX_PRIORITY_QUEUES; prio_q_idx++) {
+		if (from_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(from_slave_queue[prio_q_idx]);
+			from_slave_queue[prio_q_idx] = NULL;
+		}
+
+		if (to_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(to_slave_queue[prio_q_idx]);
+			to_slave_queue[prio_q_idx] = NULL;
+		}
+	}
+
+	/* Clean up semaphores */
+	if (sem_to_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_to_slave_queue);
+		sem_to_slave_queue = NULL;
+	}
+
+	if (sem_from_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_from_slave_queue);
+		sem_from_slave_queue = NULL;
+	}
+
+	/* Deinitialize the UART bus */
+	if (uart_handle) {
+		ESP_LOGI(TAG, "Deinitializing UART bus");
+		if (bus_handle) {
+			g_h.funcs->_h_bus_deinit(bus_handle);
+		}
+
+		if (buf_mp_g) {
+			mempool_destroy(buf_mp_g);
+			buf_mp_g = NULL;
+		}
+		uart_handle = NULL;
+	}
+}
+
+int ensure_slave_bus_ready(void *bus_handle)
+{
+	esp_err_t res = ESP_OK;
+	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+
+	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
+		ESP_LOGE(TAG, "Unable to get RESET config for transport");
+		return ESP_FAIL;
+	}
+
+	assert(reset_pin.pin != -1);
+
+	release_slave_reset_gpio_post_wakeup();
+
+	if (!esp_hosted_is_reboot_due_to_deep_sleep()) {
+		/* Reset the slave */
+		ESP_LOGI(TAG, "Resetting slave on UART bus with pin %d", reset_pin.pin);
+		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
+		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
+		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+		g_h.funcs->_h_msleep(1500);
+	} else {
+		g_h.funcs->_h_msleep(700);
+	}
+
+	return res;
+}
+
+int bus_inform_slave_host_power_save_start(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is started");
+	int ret = ESP_OK;
+	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+	return ret;
+}
+
+int bus_inform_slave_host_power_save_stop(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is stopped");
+	int ret = ESP_OK;
+	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+	return ret;
+}
+
+void check_if_max_freq_used(uint8_t chip_type)
+{
+	/* TODO: Implement */
 }

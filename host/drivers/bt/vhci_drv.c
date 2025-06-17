@@ -9,6 +9,17 @@
 
 #include "hci_drv.h"
 
+#ifndef __WEAK__
+#  if defined(__GNUC__) || defined(__clang__)
+#    define __WEAK__ __attribute__((weak))
+#  elif defined(_MSC_VER)
+#    define __WEAK__ __declspec(selectany)
+#  else
+#    define __WEAK__
+#  endif
+#endif
+
+
 #if H_BT_HOST_ESP_NIMBLE
 #include "host/ble_hs_mbuf.h"
 #include "os/os_mbuf.h"
@@ -44,7 +55,7 @@ void hci_drv_show_configuration(void)
 /**
  * HCI_H4_xxx is the first byte of the received data
  */
-int hci_rx_handler(interface_buffer_handle_t *buf_handle)
+__WEAK__ int hci_rx_handler(interface_buffer_handle_t *buf_handle)
 {
 	uint8_t * data = buf_handle->payload;
 	uint32_t len_total_read = buf_handle->payload_len;
@@ -167,7 +178,7 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf *om)
 		goto exit;
 	}
 
-	res = esp_hosted_tx(ESP_HCI_IF, 0, data, data_len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC);
+	res = esp_hosted_tx(ESP_HCI_IF, 0, data, data_len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
 
  exit:
 	os_mbuf_free_chain(om);
@@ -195,7 +206,7 @@ int ble_transport_to_ll_cmd_impl(void *buf)
 	data[0] = HCI_H4_CMD;
 	memcpy(&data[1], buf, buf_len - 1);
 
-	res = esp_hosted_tx(ESP_HCI_IF, 0, data, buf_len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC);
+	res = esp_hosted_tx(ESP_HCI_IF, 0, data, buf_len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
 
  exit:
 	ble_transport_free(buf);
@@ -207,7 +218,7 @@ int ble_transport_to_ll_cmd_impl(void *buf)
 #if H_BT_HOST_ESP_BLUEDROID
 static esp_bluedroid_hci_driver_callbacks_t s_callback = { 0 };
 
-int hci_rx_handler(interface_buffer_handle_t *buf_handle)
+__WEAK__ int hci_rx_handler(interface_buffer_handle_t *buf_handle)
 {
 	uint8_t * data = buf_handle->payload;
 	uint32_t len_total_read = buf_handle->payload_len;
@@ -248,7 +259,7 @@ void hosted_hci_bluedroid_send(uint8_t *data, uint16_t len)
 	}
 	memcpy(ptr, data, len);
 
-	res = esp_hosted_tx(ESP_HCI_IF, 0, ptr, len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC);
+	res = esp_hosted_tx(ESP_HCI_IF, 0, ptr, len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
 
 	if (res) {
 		ESP_LOGE(TAG, "%s: Tx failed", __func__);

@@ -33,6 +33,18 @@ int rpc_slaveif_init(void)
 	return rpc_core_init();
 }
 
+int rpc_slaveif_start(void)
+{
+	ESP_LOGD(TAG, "%s", __func__);
+	return rpc_core_start();
+}
+
+int rpc_slaveif_stop(void)
+{
+	ESP_LOGD(TAG, "%s", __func__);
+	return rpc_core_stop();
+}
+
 int rpc_slaveif_deinit(void)
 {
 	ESP_LOGD(TAG, "%s", __func__);
@@ -371,3 +383,9 @@ ctrl_cmd_t * rpc_slaveif_wifi_get_band_mode(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 #endif
+
+ctrl_cmd_t * rpc_slaveif_set_slave_dhcp_dns_status(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_SetDhcpDnsStatus);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}

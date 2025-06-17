@@ -147,11 +147,11 @@ idf.py menuconfig
 ```
 
 #### 6.2.1 Transport config
-  - Navigate to "Example configuration" -> "Transport layer"
-  - Select "UART"
+  - Navigate to "Example configuration" -> "Bus Config in between Host and Co-processor"
+  - In "Transport layer", select "UART"
 
 #### 6.2.2 Any other config
-  - Optionally, Configure any additional UART-specific settings like TX and Rx GPIOs, baud rate, etc.
+  - Optionally, Configure any additional UART-specific settings in the "UART Configuration" menu, like TX and Rx GPIOs, baud rate, etc.
 
 ###### Generated files
 - Generated config files are (1) `sdkconfig` file and (2) internal `sdkconfig.h` file.
@@ -327,7 +327,7 @@ Now that ESP-IDF is set up, follow these steps to prepare the host:
    ESP-Hosted-MCU host configurations are available under "Component config" -> "ESP-Hosted config"
    1. Select "UART" as the transport layer
    2. Change co-processor chipset to connect to under "Slave chipset to be used"
-   3. Optionally, Configure UART-specific settings like
+   3. Optionally, Configure UART-specific settings in the "UART Configuration" menu, like:
      - UART Tx and Rx GPIOs
      - UART baud rate
      - UART Checksum Enable/Disable (Checksum is recommended to be enabled)

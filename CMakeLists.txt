@@ -37,6 +37,10 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	# host ESP32 specific files
 	list(APPEND srcs "${host_dir}/port/esp/freertos/src/esp_hosted_ota.c")
 
+	# cli
+	list(APPEND srcs "${common_dir}/utils/esp_hosted_cli.c")
+	list(APPEND priv_include "${common_dir}/utils")
+
 	# bt (NimBLE)
 	### TODO config for HCI over UART
 	list(APPEND priv_include "${host_dir}/drivers/bt")
@@ -45,6 +49,10 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	else()
 		list(APPEND srcs "${host_dir}/drivers/bt/hci_stub_drv.c")
 	endif()
+
+	# power save
+	list(APPEND priv_include "${host_dir}/drivers/power_save")
+	list(APPEND srcs "${host_dir}/drivers/power_save/power_save_drv.c")
 
 	# transport files
 	if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
@@ -75,8 +83,17 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 
 endif()
 
+if(EXISTS "${IDF_PATH}/components/esp_driver_sdio")
+    message(STATUS "Using new driver components (IDF ≥ 5.0)")
+    list(APPEND driver_requires esp_driver_sdmmc esp_driver_spi esp_driver_uart esp_driver_gpio)
+else()
+    message(STATUS "Using legacy driver component (IDF ≤ 4.4)")
+    list(APPEND driver_requires driver)
+endif()
+
 idf_component_register(SRCS ${srcs}
-	PRIV_REQUIRES soc esp_event esp_netif esp_timer driver esp_wifi bt esp_http_client
+	PRIV_REQUIRES soc esp_event esp_netif esp_timer driver esp_wifi bt esp_http_client console
+	REQUIRES ${driver_requires}
 	INCLUDE_DIRS ${pub_include}
 	PRIV_INCLUDE_DIRS ${priv_include})
 
@@ -92,3 +109,5 @@ endif()
 # 	# used to workaround SPI transfer issue
 # 	idf_component_optional_requires(PRIVATE esp_mm)
 # endif()
+
+

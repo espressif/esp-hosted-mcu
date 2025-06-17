@@ -170,6 +170,10 @@ typedef struct RpcReqWifiGetBandMode RpcReqWifiGetBandMode;
 typedef struct RpcRespWifiGetBandMode RpcRespWifiGetBandMode;
 typedef struct RpcReqGetCoprocessorFwVersion RpcReqGetCoprocessorFwVersion;
 typedef struct RpcRespGetCoprocessorFwVersion RpcRespGetCoprocessorFwVersion;
+typedef struct RpcReqSetDhcpDnsStatus RpcReqSetDhcpDnsStatus;
+typedef struct RpcRespSetDhcpDnsStatus RpcRespSetDhcpDnsStatus;
+typedef struct RpcReqGetDhcpDnsStatus RpcReqGetDhcpDnsStatus;
+typedef struct RpcRespGetDhcpDnsStatus RpcRespGetDhcpDnsStatus;
 typedef struct RpcEventWifiEventNoArgs RpcEventWifiEventNoArgs;
 typedef struct RpcEventESPInit RpcEventESPInit;
 typedef struct RpcEventHeartbeat RpcEventHeartbeat;
@@ -178,6 +182,7 @@ typedef struct RpcEventAPStaConnected RpcEventAPStaConnected;
 typedef struct RpcEventStaScanDone RpcEventStaScanDone;
 typedef struct RpcEventStaConnected RpcEventStaConnected;
 typedef struct RpcEventStaDisconnected RpcEventStaDisconnected;
+typedef struct RpcEventDhcpDnsStatus RpcEventDhcpDnsStatus;
 typedef struct Rpc Rpc;
 
 
@@ -585,13 +590,21 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_WifiScanGetApRecord = 351,
   /*
+   *0x160
+   */
+  RPC_ID__Req_SetDhcpDnsStatus = 352,
+  /*
+   *0x161
+   */
+  RPC_ID__Req_GetDhcpDnsStatus = 353,
+  /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   *0x160
+   *0x162
    */
-  RPC_ID__Req_Max = 352,
+  RPC_ID__Req_Max = 354,
   /*
    ** Response Msgs *
    */
@@ -693,11 +706,13 @@ typedef enum _RpcId {
   RPC_ID__Resp_WifiGetBandMode = 605,
   RPC_ID__Resp_GetCoprocessorFwVersion = 606,
   RPC_ID__Resp_WifiScanGetApRecord = 607,
+  RPC_ID__Resp_SetDhcpDnsStatus = 608,
+  RPC_ID__Resp_GetDhcpDnsStatus = 609,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 608,
+  RPC_ID__Resp_Max = 610,
   /*
    ** Event Msgs *
    */
@@ -710,11 +725,12 @@ typedef enum _RpcId {
   RPC_ID__Event_StaScanDone = 774,
   RPC_ID__Event_StaConnected = 775,
   RPC_ID__Event_StaDisconnected = 776,
+  RPC_ID__Event_DhcpDnsStatus = 777,
   /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  RPC_ID__Event_Max = 777
+  RPC_ID__Event_Max = 778
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_ID)
 } RpcId;
 
@@ -3200,6 +3216,63 @@ struct  RpcRespGetCoprocessorFwVersion
     , 0, 0, 0, 0 }
 
 
+struct  RpcReqSetDhcpDnsStatus
+{
+  ProtobufCMessage base;
+  int32_t iface;
+  int32_t net_link_up;
+  int32_t dhcp_up;
+  ProtobufCBinaryData dhcp_ip;
+  ProtobufCBinaryData dhcp_nm;
+  ProtobufCBinaryData dhcp_gw;
+  int32_t dns_up;
+  ProtobufCBinaryData dns_ip;
+  int32_t dns_type;
+};
+#define RPC__REQ__SET_DHCP_DNS_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__set_dhcp_dns_status__descriptor) \
+    , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0 }
+
+
+struct  RpcRespSetDhcpDnsStatus
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__SET_DHCP_DNS_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__set_dhcp_dns_status__descriptor) \
+    , 0 }
+
+
+struct  RpcReqGetDhcpDnsStatus
+{
+  ProtobufCMessage base;
+  int32_t iface;
+};
+#define RPC__REQ__GET_DHCP_DNS_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__get_dhcp_dns_status__descriptor) \
+    , 0 }
+
+
+struct  RpcRespGetDhcpDnsStatus
+{
+  ProtobufCMessage base;
+  int32_t iface;
+  int32_t net_link_up;
+  int32_t dhcp_up;
+  ProtobufCBinaryData dhcp_ip;
+  ProtobufCBinaryData dhcp_nm;
+  ProtobufCBinaryData dhcp_gw;
+  int32_t dns_up;
+  ProtobufCBinaryData dns_ip;
+  int32_t dns_type;
+  int32_t resp;
+};
+#define RPC__RESP__GET_DHCP_DNS_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__get_dhcp_dns_status__descriptor) \
+    , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0, 0 }
+
+
 struct  RpcEventWifiEventNoArgs
 {
   ProtobufCMessage base;
@@ -3291,6 +3364,25 @@ struct  RpcEventStaDisconnected
     , 0, NULL }
 
 
+struct  RpcEventDhcpDnsStatus
+{
+  ProtobufCMessage base;
+  int32_t iface;
+  int32_t net_link_up;
+  int32_t dhcp_up;
+  ProtobufCBinaryData dhcp_ip;
+  ProtobufCBinaryData dhcp_nm;
+  ProtobufCBinaryData dhcp_gw;
+  int32_t dns_up;
+  ProtobufCBinaryData dns_ip;
+  int32_t dns_type;
+  int32_t resp;
+};
+#define RPC__EVENT__DHCP_DNS_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__dhcp_dns_status__descriptor) \
+    , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0, 0 }
+
+
 typedef enum {
   RPC__PAYLOAD__NOT_SET = 0,
   RPC__PAYLOAD_REQ_GET_MAC_ADDRESS = 257,
@@ -3348,6 +3440,8 @@ typedef enum {
   RPC__PAYLOAD_REQ_WIFI_GET_BANDMODE = 349,
   RPC__PAYLOAD_REQ_GET_COPROCESSOR_FWVERSION = 350,
   RPC__PAYLOAD_REQ_WIFI_SCAN_GET_AP_RECORD = 351,
+  RPC__PAYLOAD_REQ_SET_DHCP_DNS = 352,
+  RPC__PAYLOAD_REQ_GET_DHCP_DNS = 353,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -3403,6 +3497,8 @@ typedef enum {
   RPC__PAYLOAD_RESP_WIFI_GET_BANDMODE = 605,
   RPC__PAYLOAD_RESP_GET_COPROCESSOR_FWVERSION = 606,
   RPC__PAYLOAD_RESP_WIFI_SCAN_GET_AP_RECORD = 607,
+  RPC__PAYLOAD_RESP_SET_DHCP_DNS = 608,
+  RPC__PAYLOAD_RESP_GET_DHCP_DNS = 609,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -3410,7 +3506,8 @@ typedef enum {
   RPC__PAYLOAD_EVENT_WIFI_EVENT_NO_ARGS = 773,
   RPC__PAYLOAD_EVENT_STA_SCAN_DONE = 774,
   RPC__PAYLOAD_EVENT_STA_CONNECTED = 775,
-  RPC__PAYLOAD_EVENT_STA_DISCONNECTED = 776
+  RPC__PAYLOAD_EVENT_STA_DISCONNECTED = 776,
+  RPC__PAYLOAD_EVENT_DHCP_DNS = 777
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC__PAYLOAD__CASE)
 } Rpc__PayloadCase;
 
@@ -3489,6 +3586,8 @@ struct  Rpc
     RpcReqWifiGetBandMode *req_wifi_get_bandmode;
     RpcReqGetCoprocessorFwVersion *req_get_coprocessor_fwversion;
     RpcReqWifiScanGetApRecord *req_wifi_scan_get_ap_record;
+    RpcReqSetDhcpDnsStatus *req_set_dhcp_dns;
+    RpcReqGetDhcpDnsStatus *req_get_dhcp_dns;
     /*
      ** Responses *
      */
@@ -3547,6 +3646,8 @@ struct  Rpc
     RpcRespWifiGetBandMode *resp_wifi_get_bandmode;
     RpcRespGetCoprocessorFwVersion *resp_get_coprocessor_fwversion;
     RpcRespWifiScanGetApRecord *resp_wifi_scan_get_ap_record;
+    RpcRespSetDhcpDnsStatus *resp_set_dhcp_dns;
+    RpcRespGetDhcpDnsStatus *resp_get_dhcp_dns;
     /*
      ** Notifications *
      */
@@ -3558,6 +3659,7 @@ struct  Rpc
     RpcEventStaScanDone *event_sta_scan_done;
     RpcEventStaConnected *event_sta_connected;
     RpcEventStaDisconnected *event_sta_disconnected;
+    RpcEventDhcpDnsStatus *event_dhcp_dns;
   };
 };
 #define RPC__INIT \
@@ -6510,6 +6612,82 @@ RpcRespGetCoprocessorFwVersion *
 void   rpc__resp__get_coprocessor_fw_version__free_unpacked
                      (RpcRespGetCoprocessorFwVersion *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqSetDhcpDnsStatus methods */
+void   rpc__req__set_dhcp_dns_status__init
+                     (RpcReqSetDhcpDnsStatus         *message);
+size_t rpc__req__set_dhcp_dns_status__get_packed_size
+                     (const RpcReqSetDhcpDnsStatus   *message);
+size_t rpc__req__set_dhcp_dns_status__pack
+                     (const RpcReqSetDhcpDnsStatus   *message,
+                      uint8_t             *out);
+size_t rpc__req__set_dhcp_dns_status__pack_to_buffer
+                     (const RpcReqSetDhcpDnsStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqSetDhcpDnsStatus *
+       rpc__req__set_dhcp_dns_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__set_dhcp_dns_status__free_unpacked
+                     (RpcReqSetDhcpDnsStatus *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespSetDhcpDnsStatus methods */
+void   rpc__resp__set_dhcp_dns_status__init
+                     (RpcRespSetDhcpDnsStatus         *message);
+size_t rpc__resp__set_dhcp_dns_status__get_packed_size
+                     (const RpcRespSetDhcpDnsStatus   *message);
+size_t rpc__resp__set_dhcp_dns_status__pack
+                     (const RpcRespSetDhcpDnsStatus   *message,
+                      uint8_t             *out);
+size_t rpc__resp__set_dhcp_dns_status__pack_to_buffer
+                     (const RpcRespSetDhcpDnsStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespSetDhcpDnsStatus *
+       rpc__resp__set_dhcp_dns_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__set_dhcp_dns_status__free_unpacked
+                     (RpcRespSetDhcpDnsStatus *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqGetDhcpDnsStatus methods */
+void   rpc__req__get_dhcp_dns_status__init
+                     (RpcReqGetDhcpDnsStatus         *message);
+size_t rpc__req__get_dhcp_dns_status__get_packed_size
+                     (const RpcReqGetDhcpDnsStatus   *message);
+size_t rpc__req__get_dhcp_dns_status__pack
+                     (const RpcReqGetDhcpDnsStatus   *message,
+                      uint8_t             *out);
+size_t rpc__req__get_dhcp_dns_status__pack_to_buffer
+                     (const RpcReqGetDhcpDnsStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqGetDhcpDnsStatus *
+       rpc__req__get_dhcp_dns_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__get_dhcp_dns_status__free_unpacked
+                     (RpcReqGetDhcpDnsStatus *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespGetDhcpDnsStatus methods */
+void   rpc__resp__get_dhcp_dns_status__init
+                     (RpcRespGetDhcpDnsStatus         *message);
+size_t rpc__resp__get_dhcp_dns_status__get_packed_size
+                     (const RpcRespGetDhcpDnsStatus   *message);
+size_t rpc__resp__get_dhcp_dns_status__pack
+                     (const RpcRespGetDhcpDnsStatus   *message,
+                      uint8_t             *out);
+size_t rpc__resp__get_dhcp_dns_status__pack_to_buffer
+                     (const RpcRespGetDhcpDnsStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespGetDhcpDnsStatus *
+       rpc__resp__get_dhcp_dns_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__get_dhcp_dns_status__free_unpacked
+                     (RpcRespGetDhcpDnsStatus *message,
+                      ProtobufCAllocator *allocator);
 /* RpcEventWifiEventNoArgs methods */
 void   rpc__event__wifi_event_no_args__init
                      (RpcEventWifiEventNoArgs         *message);
@@ -6661,6 +6839,25 @@ RpcEventStaDisconnected *
                       const uint8_t       *data);
 void   rpc__event__sta_disconnected__free_unpacked
                      (RpcEventStaDisconnected *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventDhcpDnsStatus methods */
+void   rpc__event__dhcp_dns_status__init
+                     (RpcEventDhcpDnsStatus         *message);
+size_t rpc__event__dhcp_dns_status__get_packed_size
+                     (const RpcEventDhcpDnsStatus   *message);
+size_t rpc__event__dhcp_dns_status__pack
+                     (const RpcEventDhcpDnsStatus   *message,
+                      uint8_t             *out);
+size_t rpc__event__dhcp_dns_status__pack_to_buffer
+                     (const RpcEventDhcpDnsStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventDhcpDnsStatus *
+       rpc__event__dhcp_dns_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__dhcp_dns_status__free_unpacked
+                     (RpcEventDhcpDnsStatus *message,
                       ProtobufCAllocator *allocator);
 /* Rpc methods */
 void   rpc__init
@@ -7148,6 +7345,18 @@ typedef void (*RpcReqGetCoprocessorFwVersion_Closure)
 typedef void (*RpcRespGetCoprocessorFwVersion_Closure)
                  (const RpcRespGetCoprocessorFwVersion *message,
                   void *closure_data);
+typedef void (*RpcReqSetDhcpDnsStatus_Closure)
+                 (const RpcReqSetDhcpDnsStatus *message,
+                  void *closure_data);
+typedef void (*RpcRespSetDhcpDnsStatus_Closure)
+                 (const RpcRespSetDhcpDnsStatus *message,
+                  void *closure_data);
+typedef void (*RpcReqGetDhcpDnsStatus_Closure)
+                 (const RpcReqGetDhcpDnsStatus *message,
+                  void *closure_data);
+typedef void (*RpcRespGetDhcpDnsStatus_Closure)
+                 (const RpcRespGetDhcpDnsStatus *message,
+                  void *closure_data);
 typedef void (*RpcEventWifiEventNoArgs_Closure)
                  (const RpcEventWifiEventNoArgs *message,
                   void *closure_data);
@@ -7171,6 +7380,9 @@ typedef void (*RpcEventStaConnected_Closure)
                   void *closure_data);
 typedef void (*RpcEventStaDisconnected_Closure)
                  (const RpcEventStaDisconnected *message,
+                  void *closure_data);
+typedef void (*RpcEventDhcpDnsStatus_Closure)
+                 (const RpcEventDhcpDnsStatus *message,
                   void *closure_data);
 typedef void (*Rpc_Closure)
                  (const Rpc *message,
@@ -7342,6 +7554,10 @@ extern const ProtobufCMessageDescriptor rpc__req__wifi_get_band_mode__descriptor
 extern const ProtobufCMessageDescriptor rpc__resp__wifi_get_band_mode__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__get_coprocessor_fw_version__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__get_coprocessor_fw_version__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__set_dhcp_dns_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__set_dhcp_dns_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__get_dhcp_dns_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__get_dhcp_dns_status__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_event_no_args__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__espinit__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__heartbeat__descriptor;
@@ -7350,6 +7566,7 @@ extern const ProtobufCMessageDescriptor rpc__event__ap__sta_connected__descripto
 extern const ProtobufCMessageDescriptor rpc__event__sta_scan_done__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_connected__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_disconnected__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__dhcp_dns_status__descriptor;
 extern const ProtobufCMessageDescriptor rpc__descriptor;
 
 PROTOBUF_C__END_DECLS

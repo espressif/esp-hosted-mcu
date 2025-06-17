@@ -29,6 +29,10 @@
 #include "esp_hosted_config.h"
 
 #include "esp_hosted_log.h"
+#include "power_save_drv.h"
+#include "esp_hosted_power_save.h"
+#include "esp_hosted_transport_config.h"
+
 static const char TAG[] = "H_SPI_HD_DRV";
 
 // this locks the spi_hd transaction at the driver level, instead of at the HAL layer
@@ -133,6 +137,7 @@ static inline void spi_hd_buffer_free(void *buf)
  */
 static void FAST_RAM_ATTR gpio_dr_isr_handler(void* arg)
 {
+	ESP_EARLY_LOGD(TAG, "gpio_dr_isr_handler");
 	g_h.funcs->_h_post_semaphore_from_isr(spi_hd_data_ready_sem);
 }
 
@@ -219,7 +224,7 @@ static void spi_hd_write_task(void const* pvParameters)
 		if (tx_needed)
 			len = buf_handle.payload_len;
 
-		if (!len) {
+		if (!buf_handle.flag && !len) {
 			ESP_LOGE(TAG, "%s: Empty len", __func__);
 			goto done;
 		}
@@ -289,7 +294,7 @@ static void spi_hd_write_task(void const* pvParameters)
 
 		data_left = len + sizeof(struct esp_payload_header);
 
-		ESP_HEXLOGV("h_spi_hd_tx", sendbuf, data_left);
+		ESP_HEXLOGD("h_spi_hd_tx", sendbuf, data_left, 32);
 
 		ret = g_h.funcs->_h_spi_hd_write_dma(sendbuf, data_left, ACQUIRE_LOCK);
 		if (ret) {
@@ -461,6 +466,7 @@ static void spi_hd_read_task(void const* pvParameters)
 	while (true) {
 		vTaskDelay(pdMS_TO_TICKS(100));
 		if (is_transport_rx_ready()) {
+			ESP_LOGI(TAG, "spi_hd_read_task: transport rx ready");
 			break;
 		}
 	}
@@ -472,17 +478,15 @@ static void spi_hd_read_task(void const* pvParameters)
 			ESP_LOGE(TAG, "Error reading slave register");
 		}
 		else if (data == SPI_HD_STATE_SLAVE_READY) {
-			ESP_LOGV(TAG, "Slave is ready");
+			ESP_LOGI(TAG, "Slave is ready");
 			break;
 		}
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 
-	create_debugging_tasks();
-
 	// slave is ready: initialise Data Ready as interrupt input
 	g_h.funcs->_h_config_gpio_as_interrupt(H_SPI_HD_GPIO_DATA_READY_Port, H_SPI_HD_PIN_DATA_READY,
-			H_SPI_HD_DR_INTR_EDGE, gpio_dr_isr_handler);
+			H_SPI_HD_DR_INTR_EDGE, gpio_dr_isr_handler, NULL);
 
 	// tell slave to open data path
 	data = SPI_HD_CTRL_DATAPATH_ON;
@@ -492,6 +496,7 @@ static void spi_hd_read_task(void const* pvParameters)
 	while (1) {
 		// wait for read semaphore to trigger
 		g_h.funcs->_h_get_semaphore(spi_hd_data_ready_sem, HOSTED_BLOCK_MAX);
+		ESP_LOGV(TAG, "spi_hd_read_task: data ready intr");
 
 		SPI_HD_DRV_LOCK();
 
@@ -550,6 +555,7 @@ static void spi_hd_read_task(void const* pvParameters)
 		rxbuff = spi_hd_buffer_alloc(MEMSET_REQUIRED);
 		assert(rxbuff);
 
+		ESP_LOGV(TAG, "spi_hd_read_task: trigger spi hd dma read");
 		// read data
 		res = g_h.funcs->_h_spi_hd_read_dma(rxbuff, size_to_xfer, ACQUIRE_LOCK);
 
@@ -563,7 +569,7 @@ static void spi_hd_read_task(void const* pvParameters)
 			continue;
 		}
 
-		ESP_HEXLOGV("spi_hd_rx", rxbuff, size_to_xfer);
+		ESP_HEXLOGD("spi_hd_rx", rxbuff, size_to_xfer, 32);
 
 		if (spi_hd_push_data_to_queue(rxbuff, size_to_xfer))
 			ESP_LOGE(TAG, "Failed to push data to rx queue");
@@ -581,9 +587,12 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 	while (true) {
 		vTaskDelay(pdMS_TO_TICKS(100));
 		if (is_transport_rx_ready()) {
+			ESP_LOGI(TAG, "transport rx not yet up");
 			break;
 		}
 	}
+
+	ESP_LOGI(TAG, "spi_hd_process_rx_task: transport rx ready");
 
 	while (1) {
 		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, HOSTED_BLOCK_MAX);
@@ -598,7 +607,7 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 		buf_handle = &buf_handle_l;
 
 		ESP_LOGV(TAG, "spi_hd iftype:%d", (int)buf_handle->if_type);
-		ESP_HEXLOGV("rx", buf_handle->payload, buf_handle->payload_len);
+		ESP_HEXLOGD("rx", buf_handle->payload, buf_handle->payload_len, 32);
 
 		if (buf_handle->if_type == ESP_SERIAL_IF) {
 			/* serial interface path */
@@ -665,7 +674,7 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 	}
 }
 
-void transport_init_internal(void)
+void * bus_init_internal(void)
 {
 	uint8_t prio_q_idx = 0;
 
@@ -710,18 +719,75 @@ void transport_init_internal(void)
 		ESP_LOGE(TAG, "could not create spi_hd handle, exiting\n");
 		assert(spi_hd_handle);
 	}
+
+	ESP_LOGI(TAG, "Initialised SPI HD driver");
+	return spi_hd_handle;
 }
 
-void transport_deinit_internal(void)
+void bus_deinit_internal(void *bus_handle)
 {
-	/* TODO */
+	uint8_t prio_q_idx = 0;
+
+	/* Stop threads */
+	if (spi_hd_read_thread) {
+		g_h.funcs->_h_thread_cancel(spi_hd_read_thread);
+		spi_hd_read_thread = NULL;
+	}
+
+	if (spi_hd_process_rx_thread) {
+		g_h.funcs->_h_thread_cancel(spi_hd_process_rx_thread);
+		spi_hd_process_rx_thread = NULL;
+	}
+
+	if (spi_hd_write_thread) {
+		g_h.funcs->_h_thread_cancel(spi_hd_write_thread);
+		spi_hd_write_thread = NULL;
+	}
+
+	/* Clean up queues */
+	for (prio_q_idx = 0; prio_q_idx < MAX_PRIORITY_QUEUES; prio_q_idx++) {
+		if (from_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(from_slave_queue[prio_q_idx]);
+			from_slave_queue[prio_q_idx] = NULL;
+		}
+
+		if (to_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(to_slave_queue[prio_q_idx]);
+			to_slave_queue[prio_q_idx] = NULL;
+		}
+	}
+
+	/* Clean up semaphores */
+	if (sem_to_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_to_slave_queue);
+		sem_to_slave_queue = NULL;
+	}
+
+	if (sem_from_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_from_slave_queue);
+		sem_from_slave_queue = NULL;
+	}
+
+	if (spi_hd_data_ready_sem) {
+		g_h.funcs->_h_destroy_semaphore(spi_hd_data_ready_sem);
+		spi_hd_data_ready_sem = NULL;
+	}
+
+	/* Deinitialize the SPI HD bus */
+	if (spi_hd_handle) {
+		g_h.funcs->_h_bus_deinit(bus_handle);
+		spi_hd_handle = NULL;
+	}
 
 	SPI_HD_DRV_LOCK_DESTROY();
+
+	spi_hd_mempool_destroy();
+	ESP_LOGI(TAG, "Deinitialised SPI HD driver");
 }
 
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		uint8_t * wbuffer, uint16_t wlen, uint8_t buff_zcopy,
-		void (*free_wbuf_fun)(void* ptr))
+		void (*free_wbuf_fun)(void* ptr), uint8_t flag)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	void (*free_func)(void* ptr) = NULL;
@@ -733,9 +799,8 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	if (free_wbuf_fun)
 		free_func = free_wbuf_fun;
 
-	if (!wbuffer || !wlen ||
-		(wlen > MAX_PAYLOAD_SIZE) ||
-		!transport_up) {
+	if ((!flag) &&
+	     (!wbuffer || !wlen ||(wlen > MAX_PAYLOAD_SIZE) || !transport_up)) {
 		ESP_LOGE(TAG, "tx fail: NULL buff, invalid len (%u) or len > max len (%u), transport_up(%u))",
 				wlen, MAX_PAYLOAD_SIZE, transport_up);
 		H_FREE_PTR_WITH_FUNC(free_func, wbuffer);
@@ -749,6 +814,7 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	buf_handle.payload = wbuffer;
 	buf_handle.priv_buffer_handle = wbuffer;
 	buf_handle.free_buf_handle = free_func;
+	buf_handle.flag = flag;
 
 	if (buf_handle.if_type == ESP_SERIAL_IF)
 		pkt_prio = PRIO_Q_SERIAL;
@@ -764,4 +830,57 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 #endif
 
 	return ESP_OK;
+}
+
+void check_if_max_freq_used(uint8_t chip_type)
+{
+	if (H_SPI_HD_CLK_MHZ < 40) {
+		ESP_LOGW(TAG, "SPI HD FD clock in-use: [%u]MHz. Can optimize in 1MHz steps till Max[%u]MHz", H_SPI_HD_CLK_MHZ, 40);
+	}
+}
+
+int ensure_slave_bus_ready(void *bus_handle)
+{
+	esp_err_t res = ESP_OK;
+	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+
+	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
+		ESP_LOGE(TAG, "Unable to get RESET config for transport");
+		return ESP_FAIL;
+	}
+
+	assert(reset_pin.pin != -1);
+
+	release_slave_reset_gpio_post_wakeup();
+
+	if (!esp_hosted_woke_from_deep_sleep()) {
+		/* Reset the slave */
+		ESP_LOGI(TAG, "Resetting slave on SPI HD bus with pin %d", reset_pin.pin);
+		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
+		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
+		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	}
+
+	return res;
+}
+
+int bus_inform_slave_host_power_save_start(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is started");
+	int ret = ESP_OK;
+	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+	return ret;
+}
+
+int bus_inform_slave_host_power_save_stop(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is stopped");
+	int ret = ESP_OK;
+	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+	return ret;
 }

@@ -23,6 +23,9 @@
  * returns a pointer to the spi context */
 void * hosted_spi_init(void);
 
+/* Hosted SPI deinit function */
+int hosted_spi_deinit(void *handle);
+
 /* Hosted SPI transfer function */
 int hosted_do_spi_transfer(void *trans);
 

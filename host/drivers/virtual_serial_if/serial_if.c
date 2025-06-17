@@ -18,24 +18,6 @@ DEFINE_LOG_TAG(serial_if);
 #define PROTO_PSER_TLV_T_EPNAME           0x01
 #define PROTO_PSER_TLV_T_DATA             0x02
 
-#if 0
-#ifdef MCU_SYS
-#define command_log(format, ...)          printf(format "\r", ##__VA_ARGS__);
-#else
-#define command_log(...)                  printf("%s:%u ",__func__,__LINE__); \
-                                          printf(__VA_ARGS__);
-#endif
-#endif
-
-#if 0
-#define HOSTED_CALLOC(buff,nbytes) do {                           \
-    buff = (uint8_t *)g_h.funcs->_h_calloc(1, nbytes);       \
-    if (!buff) {                                                  \
-        printf("%s, Failed to allocate memory \n", __func__);     \
-        goto free_bufs;                                           \
-    }                                                             \
-} while(0);
-#endif
 
 /** Exported variables **/
 struct serial_drv_handle_t* serial_handle = NULL;
@@ -171,6 +153,11 @@ int transport_pserial_send(uint8_t* data, uint16_t data_length)
 	uint16_t buf_len = 0;
 	uint8_t *write_buf = NULL;
 
+	if (!data || !data_length) {
+		ESP_LOGW(TAG, "Empty RPC data, ignored");
+		return FAILURE;
+	}
+
 /*
  * TLV (Type - Length - Value) structure is as follows:
  * --------------------------------------------------------------------------------------------
@@ -185,30 +172,31 @@ int transport_pserial_send(uint8_t* data, uint16_t data_length)
 	buf_len = SIZE_OF_TYPE + SIZE_OF_LENGTH + strlen(ep_name) +
 		SIZE_OF_TYPE + SIZE_OF_LENGTH + data_length;
 
-	HOSTED_CALLOC(uint8_t,write_buf,buf_len,free_bufs);
+	HOSTED_CALLOC(uint8_t,write_buf,buf_len,free_bufs2);
 
 	if (!serial_handle) {
 		ESP_LOGE(TAG, "Serial connection closed?\n");
-		goto free_bufs;
+		goto free_bufs1;
 	}
 
 	count = compose_tlv(write_buf, data, data_length);
 	if (!count) {
 		ESP_LOGE(TAG, "Failed to compose TX data\n");
-		goto free_bufs;
+		goto free_bufs1;
 	}
 
 	ret = serial_drv_write(serial_handle, write_buf, count, &count);
 	if (ret != SUCCESS) {
 		ESP_LOGE(TAG, "Failed to write TX data\n");
-		goto free_bufs;
-	}
-	return SUCCESS;
-free_bufs:
-	if (write_buf) {
-		g_h.funcs->_h_free(write_buf);
+		goto free_bufs2;
 	}
 
+	return ret;
+
+free_bufs1:
+	HOSTED_FREE(write_buf);
+free_bufs2:
+	/* write_buf is supposed to be freed by serial_drv_write() */
 	return FAILURE;
 }
 

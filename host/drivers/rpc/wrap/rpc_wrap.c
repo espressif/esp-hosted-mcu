@@ -31,7 +31,7 @@
 #include "esp_hosted_wifi_config.h"
 #include "esp_hosted_transport.h"
 
-DEFINE_LOG_TAG(rpc_wrap);
+static const char *TAG = "RPC_WRAP";
 
 uint8_t restart_after_slave_ota = 0;
 
@@ -42,10 +42,14 @@ uint8_t restart_after_slave_ota = 0;
 #define VENDOR_OUI_2                                      3
 #define VENDOR_OUI_TYPE                                   22
 #define CHUNK_SIZE                                        1400
+
 #define OTA_BEGIN_RSP_TIMEOUT_SEC                         15
+#define WIFI_INIT_RSP_TIMEOUT_SEC                         10
 #define OTA_FROM_WEB_URL                                  1
 
 
+/* Forward declarations */
+static int rpc_wifi_connect_async(void);
 
 static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
 {
@@ -88,6 +92,18 @@ int rpc_init(void)
 	return rpc_slaveif_init();
 }
 
+int rpc_start(void)
+{
+	ESP_LOGD(TAG, "%s", __func__);
+	return rpc_slaveif_start();
+}
+
+int rpc_stop(void)
+{
+	ESP_LOGD(TAG, "%s", __func__);
+	return rpc_slaveif_stop();
+}
+
 int rpc_deinit(void)
 {
 	ESP_LOGD(TAG, "%s", __func__);
@@ -97,6 +113,8 @@ int rpc_deinit(void)
 
 static int rpc_event_callback(ctrl_cmd_t * app_event)
 {
+	static bool netif_started = false;
+	static bool netif_connected = false;
 	ESP_LOGV(TAG, "%u",app_event->msg_id);
 	if (!app_event || (app_event->msg_type != RPC_TYPE__Event)) {
 		if (app_event)
@@ -123,30 +141,42 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			wifi_event_ap_staconnected_t *p_e = &app_event->u.e_wifi_ap_staconnected;
 
 			if (strlen((char*)p_e->mac)) {
-				ESP_LOGV(TAG, "ESP Event: SoftAP mode: connected station");
-				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_AP_STACONNECTED,
-					p_e, sizeof(wifi_event_ap_staconnected_t), HOSTED_BLOCK_MAX);
+				ESP_LOGI(TAG, "ESP Event: SoftAP mode: connected station");
+				if (netif_started) {
+					g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_CONNECTED,
+							p_e, sizeof(wifi_event_sta_connected_t), HOSTED_BLOCK_MAX);
+				} else {
+					ESP_LOGW(TAG, "Netif not started, deferring STA_CONNECTED event");
+				}
 			}
 			break;
 		} case RPC_ID__Event_AP_StaDisconnected: {
 			wifi_event_ap_stadisconnected_t *p_e = &app_event->u.e_wifi_ap_stadisconnected;
 			if (strlen((char*)p_e->mac)) {
-				ESP_LOGV(TAG, "ESP Event: SoftAP mode: disconnected MAC");
+				ESP_LOGI(TAG, "ESP Event: SoftAP mode: disconnected MAC");
 				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_AP_STADISCONNECTED,
 					p_e, sizeof(wifi_event_ap_stadisconnected_t), HOSTED_BLOCK_MAX);
 			}
 			break;
 		} case RPC_ID__Event_StaConnected: {
-			ESP_LOGV(TAG, "ESP Event: Station mode: Connected");
+			ESP_LOGI(TAG, "ESP Event: Station mode: Connected");
+
 			wifi_event_sta_connected_t *p_e = &app_event->u.e_wifi_sta_connected;
-			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_CONNECTED,
-				p_e, sizeof(wifi_event_sta_connected_t), HOSTED_BLOCK_MAX);
+
+			if (!netif_connected && netif_started) {
+				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_STOP, 0, 0, HOSTED_BLOCK_MAX);
+				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_START, 0, 0, HOSTED_BLOCK_MAX);
+				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_CONNECTED,
+					p_e, sizeof(wifi_event_sta_connected_t), HOSTED_BLOCK_MAX);
+				netif_connected = true;
+			}
 			break;
 		} case RPC_ID__Event_StaDisconnected: {
-			ESP_LOGV(TAG, "ESP Event: Station mode: Disconnected");
+			ESP_LOGI(TAG, "ESP Event: Station mode: Disconnected");
 			wifi_event_sta_disconnected_t *p_e = &app_event->u.e_wifi_sta_disconnected;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_DISCONNECTED,
 				p_e, sizeof(wifi_event_sta_disconnected_t), HOSTED_BLOCK_MAX);
+			netif_connected = false;
 			break;
 		} case RPC_ID__Event_WifiEventNoArgs: {
 			int wifi_event_id = app_event->u.e_wifi_simple.wifi_event_id;
@@ -154,37 +184,65 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			switch (wifi_event_id) {
 
 			case WIFI_EVENT_STA_START:
-				ESP_LOGV(TAG, "ESP Event: wifi station started");
+				ESP_LOGI(TAG, "ESP Event: wifi station started");
+				/* Trigger connection when station is started */
+				if (!netif_connected) {
+					rpc_wifi_connect_async();
+				}
+				netif_started = true;
 				break;
 			case WIFI_EVENT_STA_STOP:
-				ESP_LOGV(TAG, "ESP Event: wifi station stopped");
+				ESP_LOGI(TAG, "ESP Event: wifi station stopped");
+				netif_started = false;
+				netif_connected = false;
 				break;
 
 			case WIFI_EVENT_AP_START:
-				ESP_LOGD(TAG,"ESP Event: softap started");
+				ESP_LOGI(TAG,"ESP Event: softap started");
 				break;
 
 			case WIFI_EVENT_AP_STOP:
-				ESP_LOGD(TAG,"ESP Event: softap stopped");
+				ESP_LOGI(TAG,"ESP Event: softap stopped");
 				break;
 
 			case WIFI_EVENT_HOME_CHANNEL_CHANGE:
 				ESP_LOGD(TAG,"ESP Event: Home channel changed");
 				break;
 
+			case WIFI_EVENT_AP_STACONNECTED:
+				ESP_LOGI(TAG,"ESP Event: softap station connected");
+				break;
+
+			case WIFI_EVENT_AP_STADISCONNECTED:
+				ESP_LOGI(TAG,"ESP Event: softap station disconnected");
+				break;
 			default:
-				ESP_LOGW(TAG, "ESP Event: Event[%x] - unhandled", wifi_event_id);
+				ESP_LOGV(TAG, "ESP Event: Event[%x]", wifi_event_id);
 				break;
 			} /* inner switch case */
-			g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 
+
+			if ((wifi_event_id != WIFI_EVENT_AP_START) &&
+				(wifi_event_id != WIFI_EVENT_AP_STACONNECTED) &&
+				(wifi_event_id != WIFI_EVENT_AP_STADISCONNECTED)) {
+
+				/* For STA_START, only post if netif is not already started */
+				if (wifi_event_id == WIFI_EVENT_STA_START && !netif_started) {
+					ESP_LOGW(TAG, "Posting STA_START event");
+					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
+				} else if (wifi_event_id != WIFI_EVENT_STA_START) {
+					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
+				}
+			}
 			break;
 		} case RPC_ID__Event_StaScanDone: {
 			wifi_event_sta_scan_done_t *p_e = &app_event->u.e_wifi_sta_scan_done;
-			ESP_LOGV(TAG, "ESP Event: StaScanDone");
+			ESP_LOGI(TAG, "ESP Event: StaScanDone");
 			ESP_LOGV(TAG, "scan: status: %lu number:%u scan_id:%u", p_e->status, p_e->number, p_e->scan_id);
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_SCAN_DONE,
 				p_e, sizeof(wifi_event_sta_scan_done_t), HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_DhcpDnsStatus: {
 			break;
 		} default: {
 			ESP_LOGW(TAG, "Invalid event[0x%x] to parse", app_event->msg_id);
@@ -291,6 +349,7 @@ int rpc_register_event_callbacks(void)
 		{ RPC_ID__Event_StaScanDone,               rpc_event_callback },
 		{ RPC_ID__Event_StaConnected,              rpc_event_callback },
 		{ RPC_ID__Event_StaDisconnected,           rpc_event_callback },
+		{ RPC_ID__Event_DhcpDnsStatus,             rpc_event_callback },
 	};
 
 	for (evt=0; evt<sizeof(events)/sizeof(event_callback_table_t); evt++) {
@@ -451,7 +510,8 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_WifiGetBand:
 	case RPC_ID__Resp_WifiSetBandMode:
 	case RPC_ID__Resp_WifiGetBandMode:
-	case RPC_ID__Resp_GetCoprocessorFwVersion: {
+	case RPC_ID__Resp_GetCoprocessorFwVersion:
+	case RPC_ID__Resp_SetDhcpDnsStatus: {
 		/* Intended fallthrough */
 		break;
 	} default: {
@@ -531,7 +591,8 @@ int rpc_wifi_get_mac(wifi_interface_t mode, uint8_t out_mac[6])
 	if (resp && resp->resp_event_status == SUCCESS) {
 
 		g_h.funcs->_h_memcpy(out_mac, resp->u.wifi_mac.mac, BSSID_BYTES_SIZE);
-		ESP_LOGV(TAG, "mac address is [" MACSTR "]", MAC2STR(out_mac));
+		ESP_LOGI(TAG, "%s mac address is [" MACSTR "]",
+			mode==WIFI_IF_STA? "sta":"ap", MAC2STR(out_mac));
 	}
 	return rpc_rsp_callback(resp);
 }
@@ -810,6 +871,8 @@ int rpc_wifi_init(const wifi_init_config_t *arg)
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
+	req->rsp_timeout_sec = WIFI_INIT_RSP_TIMEOUT_SEC;
+
 	if (!arg)
 		return FAILURE;
 
@@ -877,26 +940,24 @@ int rpc_wifi_stop(void)
 
 int rpc_wifi_connect(void)
 {
-#if 1
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
 	resp = rpc_slaveif_wifi_connect(req);
 	return rpc_rsp_callback(resp);
-	return 0;
-#else
+}
+
+static int rpc_wifi_connect_async(void)
+{
 	/* implemented asynchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-	ctrl_cmd_t *resp = NULL;
 
 	req->rpc_rsp_cb = rpc_rsp_callback;
-	ESP_LOGE(TAG, "Async call registerd: %p", rpc_rsp_callback);
 
 	rpc_slaveif_wifi_connect(req);
 
 	return SUCCESS;
-#endif
 }
 
 int rpc_wifi_disconnect(void)
@@ -1359,5 +1420,38 @@ int rpc_wifi_get_protocol(wifi_interface_t ifx, uint8_t *protocol_bitmap)
 		*protocol_bitmap = resp->u.wifi_protocol.protocol_bitmap;
 	}
 
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_set_dhcp_dns_status(wifi_interface_t ifx, uint8_t link_up,
+		uint8_t dhcp_up, char *dhcp_ip, char *dhcp_nm, char *dhcp_gw,
+		uint8_t dns_up, char *dns_ip, uint8_t dns_type)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	ESP_LOGI(TAG, "iface:%u link_up:%u dhcp_up:%u dns_up:%u dns_type:%u",
+			ifx, link_up, dhcp_up, dns_up, dns_type);
+	ESP_LOGI(TAG, "dhcp ip:%s nm:%s gw:%s dns ip:%s",
+			dhcp_ip, dhcp_nm, dhcp_gw, dns_ip);
+	req->u.slave_dhcp_dns_status.iface = ifx;
+	req->u.slave_dhcp_dns_status.net_link_up = link_up;
+	req->u.slave_dhcp_dns_status.dhcp_up = dhcp_up;
+	req->u.slave_dhcp_dns_status.dns_up = dns_up;
+	req->u.slave_dhcp_dns_status.dns_type = dns_type;
+
+	if (dhcp_ip)
+		strlcpy((char *)req->u.slave_dhcp_dns_status.dhcp_ip, dhcp_ip, 64);
+	if (dhcp_nm)
+		strlcpy((char *)req->u.slave_dhcp_dns_status.dhcp_nm, dhcp_nm, 64);
+	if (dhcp_gw)
+		strlcpy((char *)req->u.slave_dhcp_dns_status.dhcp_gw, dhcp_gw, 64);
+
+	if (dns_ip)
+		strlcpy((char *)req->u.slave_dhcp_dns_status.dns_ip, dns_ip, 64);
+
+
+	resp = rpc_slaveif_set_slave_dhcp_dns_status(req);
 	return rpc_rsp_callback(resp);
 }

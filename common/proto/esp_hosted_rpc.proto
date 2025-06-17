@@ -414,9 +414,12 @@ enum RpcId {
 
 	Req_WifiScanGetApRecord           = 351; //0x15f
 
+	Req_SetDhcpDnsStatus              = 352; //0x160
+	Req_GetDhcpDnsStatus              = 353; //0x161
+
 /* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 352; //0x160
+	Req_Max = 354; //0x162
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -540,9 +543,12 @@ enum RpcId {
 
 	Resp_WifiScanGetApRecord          = 607;
 
+	Resp_SetDhcpDnsStatus             = 608;
+	Resp_GetDhcpDnsStatus             = 609;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 608;
+	Resp_Max = 610;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -554,10 +560,11 @@ enum RpcId {
 	Event_StaScanDone = 774;
 	Event_StaConnected = 775;
 	Event_StaDisconnected = 776;
+	Event_DhcpDnsStatus = 777;
 
 	/* Add new control path command notification before Event_Max
 	 * and update Event_Max */
-	Event_Max = 777;
+	Event_Max = 778;
 }
 
 message wifi_init_config {
@@ -1557,6 +1564,43 @@ message Rpc_Resp_GetCoprocessorFwVersion {
 	uint32 patch1 = 4;
 }
 
+message Rpc_Req_SetDhcpDnsStatus {
+	int32 iface = 1;
+	int32 net_link_up = 2;
+
+	int32 dhcp_up = 3;
+	bytes dhcp_ip = 4;
+	bytes dhcp_nm = 5;
+	bytes dhcp_gw = 6;
+
+	int32 dns_up = 7;
+	bytes dns_ip = 8;
+	int32 dns_type = 9;
+}
+
+message Rpc_Resp_SetDhcpDnsStatus {
+	int32 resp = 1;
+}
+
+message Rpc_Req_GetDhcpDnsStatus {
+	int32 iface = 1;
+}
+
+message Rpc_Resp_GetDhcpDnsStatus {
+	int32 iface = 1;
+	int32 net_link_up = 2;
+
+	int32 dhcp_up = 3;
+	bytes dhcp_ip = 4;
+	bytes dhcp_nm = 5;
+	bytes dhcp_gw = 6;
+
+	int32 dns_up = 7;
+	bytes dns_ip = 8;
+	int32 dns_type = 9;
+	int32 resp = 10;
+}
+
 /** Event structure **/
 
 message Rpc_Event_WifiEventNoArgs {
@@ -1600,6 +1644,21 @@ message Rpc_Event_StaConnected {
 message Rpc_Event_StaDisconnected {
 	int32 resp = 1;
 	wifi_event_sta_disconnected sta_disconnected = 2;
+}
+
+message Rpc_Event_DhcpDnsStatus {
+	int32 iface = 1;
+	int32 net_link_up = 2;
+
+	int32 dhcp_up = 3;
+	bytes dhcp_ip = 4;
+	bytes dhcp_nm = 5;
+	bytes dhcp_gw = 6;
+
+	int32 dns_up = 7;
+	bytes dns_ip = 8;
+	int32 dns_type = 9;
+	int32 resp = 10;
 }
 
 message Rpc {
@@ -1696,6 +1755,9 @@ message Rpc {
 
 		Rpc_Req_WifiScanGetApRecord         req_wifi_scan_get_ap_record       = 351;
 
+		Rpc_Req_SetDhcpDnsStatus            req_set_dhcp_dns                  = 352;
+		Rpc_Req_GetDhcpDnsStatus            req_get_dhcp_dns                  = 353;
+
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
 		Rpc_Resp_SetMacAddress              resp_set_mac_address               = 514;
@@ -1777,6 +1839,9 @@ message Rpc {
 
 		Rpc_Resp_WifiScanGetApRecord        resp_wifi_scan_get_ap_record       = 607;
 
+		Rpc_Resp_SetDhcpDnsStatus           resp_set_dhcp_dns                  = 608;
+		Rpc_Resp_GetDhcpDnsStatus           resp_get_dhcp_dns                  = 609;
+
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
 		Rpc_Event_Heartbeat                 event_heartbeat                    = 770;
@@ -1786,6 +1851,7 @@ message Rpc {
 		Rpc_Event_StaScanDone               event_sta_scan_done                = 774;
 		Rpc_Event_StaConnected              event_sta_connected                = 775;
 		Rpc_Event_StaDisconnected           event_sta_disconnected             = 776;
+		Rpc_Event_DhcpDnsStatus             event_dhcp_dns                     = 777;
 	}
 }
 

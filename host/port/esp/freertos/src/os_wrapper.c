@@ -17,6 +17,7 @@
 #include "esp_log.h"
 #include "os_wrapper.h"
 #include "esp_log.h"
+#include <stdlib.h>
 #include "driver/gpio.h"
 #include "esp_event.h"
 #include "esp_heap_caps.h"
@@ -24,6 +25,13 @@
 #include "esp_macros.h"
 #include "esp_hosted_config.h"
 #include "esp_wifi.h"
+#include "esp_sleep.h"
+#include "esp_hosted_power_save.h"
+#include "esp_system.h"
+#include "hal/gpio_types.h"
+#include "driver/gpio.h"
+#include "esp_hosted_wifi_config.h"
+
 
 /* Wi-Fi headers are reused at ESP-Hosted */
 #include "esp_wifi_crypto_types.h"
@@ -52,12 +60,10 @@ struct mempool * nw_mp_g = NULL;
 const wpa_crypto_funcs_t g_wifi_default_wpa_crypto_funcs;
 wifi_osi_funcs_t g_wifi_osi_funcs;
 
-//ESP_EVENT_DECLARE_BASE(WIFI_EVENT);
-ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
+ESP_EVENT_DECLARE_BASE(WIFI_EVENT);
 struct hosted_config_t g_h = HOSTED_CONFIG_INIT_DEFAULT();
 
 struct timer_handle_t {
-	//osTimerId timer_id;
 	esp_timer_handle_t timer_id;
 };
 
@@ -162,14 +168,6 @@ void *hosted_thread_create(const char *tname, uint32_t tprio, uint32_t tstack_si
 		return NULL;
 	}
 
-#if 0
-	osThreadDef(
-			Ctrl_port_tsk,
-			start_routine,
-			CTRL_PATH_TASK_PRIO, 0,
-			CTRL_PATH_TASK_STACK_SIZE);
-	*thread_handle = osThreadCreate(osThread(Ctrl_port_tsk), arg);
-#endif
 	task_created = xTaskCreate((void (*)(void *))start_routine, tname, tstack_size, sr_arg, tprio, thread_handle);
 	if (!(*thread_handle)) {
 		ESP_LOGE(TAG, "Failed to create thread: %s\n", tname);
@@ -198,12 +196,6 @@ int hosted_thread_cancel(void *thread_handle)
 
 	thread_hdl = (thread_handle_t *)thread_handle;
 
-	//ret = osThreadTerminate(*thread_hdl);
-	//if (ret) {
-	//	ESP_LOGE(TAG, "Prob in pthread_cancel, destroy handle anyway\n");
-	//	HOSTED_FREE(thread_handle);
-	//	return RET_INVALID;
-	//}
 	vTaskDelete(*thread_hdl);
 
 	HOSTED_FREE(thread_handle);
@@ -213,9 +205,7 @@ int hosted_thread_cancel(void *thread_handle)
 /* -------- Sleeps -------------- */
 unsigned int hosted_msleep(unsigned int mseconds)
 {
-   //osDelay(mseconds);
    vTaskDelay(pdMS_TO_TICKS(mseconds));
-   //usleep(mseconds*1000UL);
    return 0;
 }
 
@@ -227,7 +217,6 @@ unsigned int hosted_usleep(unsigned int useconds)
 
 unsigned int hosted_sleep(unsigned int seconds)
 {
-   //osDelay(seconds * 1000);
    return hosted_msleep(seconds * 1000UL);
 }
 
@@ -642,22 +631,22 @@ int hosted_timer_stop(void *timer_handle)
  * }
  **/
 
-//void *hosted_timer_start(int duration, int type,
-//		void (*timeout_handler)(void const *), void *arg)
-void *hosted_timer_start(int duration, int type,
+void *hosted_timer_start(const char *name, int duration_ms, int type,
 		void (*timeout_handler)(void *), void *arg)
 {
 	struct timer_handle_t *timer_handle = NULL;
 	int ret = RET_OK;
 
-	ESP_LOGD(TAG, "Start the timer %u\n", duration);
+	esp_hosted_timer_type_t esp_timer_type = type;
+
+	ESP_LOGD(TAG, "Start the timer %u\n", duration_ms);
 	//os_timer_type timer_type = osTimerOnce;
 	//osTimerDef (timerNew, timeout_handler);
 	const esp_timer_create_args_t timerNew_args = {
 		.callback = timeout_handler,
 		/* argument specified here will be passed to timer callback function */
 		.arg = (void*) arg,
-		.name = "one-shot"
+		.name = name,
 	};
 
 
@@ -681,16 +670,18 @@ void *hosted_timer_start(int duration, int type,
 	}
 
 	/* Start depending upon timer type */
-	if (type == RPC__TIMER_PERIODIC) {
-		ret = esp_timer_start_periodic(timer_handle->timer_id, SEC_TO_MICROSEC(duration));
-	} else if (type == RPC__TIMER_ONESHOT) {
-		ret = esp_timer_start_once(timer_handle->timer_id, SEC_TO_MICROSEC(duration));
+	if (esp_timer_type == H_TIMER_TYPE_PERIODIC) {
+		ret = esp_timer_start_periodic(timer_handle->timer_id, MILLISEC_TO_MICROSEC(duration_ms));
+	} else if (esp_timer_type == H_TIMER_TYPE_ONESHOT) {
+		ret = esp_timer_start_once(timer_handle->timer_id, MILLISEC_TO_MICROSEC(duration_ms));
 	} else {
 		ESP_LOGE(TAG, "Unsupported timer type. supported: one_shot, periodic\n");
 		esp_timer_delete(timer_handle->timer_id);
 		HOSTED_FREE(timer_handle);
 		return NULL;
 	}
+	/* This is a workaround to kick the timer task to pick up the timer */
+	vTaskDelay(100);
 
 	if (ret) {
 		esp_timer_delete(timer_handle->timer_id);
@@ -718,11 +709,14 @@ int hosted_config_gpio(void* gpio_port, uint32_t gpio_num, uint32_t mode)
 	return 0;
 }
 
-int hosted_config_gpio_as_interrupt(void* gpio_port, uint32_t gpio_num, uint32_t intr_type, void (*new_gpio_isr_handler)(void* arg))
+int hosted_setup_gpio_interrupt(void* gpio_port, uint32_t gpio_num, uint32_t intr_type, void (*fn)(void *), void *arg)
 {
+	int ret = 0;
+	static bool isr_service_installed = false;
+
 	gpio_config_t new_gpio_io_conf={
-		.intr_type=intr_type,
 		.mode=GPIO_MODE_INPUT,
+		.intr_type = GPIO_INTR_DISABLE,
 		.pin_bit_mask=(1ULL<<gpio_num)
 	};
 
@@ -733,13 +727,31 @@ int hosted_config_gpio_as_interrupt(void* gpio_port, uint32_t gpio_num, uint32_t
 	}
 
 	ESP_LOGI(TAG, "GPIO [%d] configuring as Interrupt", (int) gpio_num);
-	gpio_config(&new_gpio_io_conf);
 
-	gpio_set_intr_type(gpio_num, intr_type);
-	gpio_install_isr_service(0);
-	gpio_isr_handler_add(gpio_num, new_gpio_isr_handler, NULL);
+	ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_config(&new_gpio_io_conf));
 
-	return 0;
+	if (!isr_service_installed) {
+		gpio_install_isr_service(0);
+		isr_service_installed = true;
+	}
+
+    gpio_isr_handler_remove(gpio_num);
+    ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_isr_handler_add(gpio_num, fn, arg));
+
+    ret = gpio_set_intr_type(gpio_num, intr_type);
+    if (ret != ESP_OK) {
+        gpio_isr_handler_remove(gpio_num);
+        return ret;
+    }
+
+	ESP_ERROR_CHECK_WITHOUT_ABORT(gpio_intr_enable(gpio_num));
+	return ret;
+}
+
+int hosted_teardown_gpio_interrupt(void* gpio_port, uint32_t gpio_num)
+{
+    gpio_intr_disable(gpio_num);
+    return gpio_isr_handler_remove(gpio_num);
 }
 
 int hosted_read_gpio(void*gpio_port, uint32_t gpio_num)
@@ -751,6 +763,33 @@ int hosted_write_gpio(void* gpio_port, uint32_t gpio_num, uint32_t value)
 {
 	return gpio_set_level(gpio_num, value);
 }
+int hosted_hold_gpio(void* gpio_port, uint32_t gpio_num, uint32_t hold_value)
+{
+	if (hold_value) {
+		return gpio_hold_en(gpio_num);
+	} else {
+		return gpio_hold_dis(gpio_num);
+	}
+}
+
+int hosted_pull_gpio(void* gpio_port, uint32_t gpio_num, uint32_t pull_value, uint32_t enable)
+{
+	if (pull_value == H_GPIO_PULL_UP) {
+		if (enable) {
+			return gpio_pullup_en(gpio_num);
+		} else {
+			return gpio_pullup_dis(gpio_num);
+		}
+	} else {
+		if (enable) {
+			return gpio_pulldown_en(gpio_num);
+		} else {
+			return gpio_pulldown_dis(gpio_num);
+		}
+	}
+	return 0;
+}
+
 
 int hosted_wifi_event_post(int32_t event_id,
 		void* event_data, size_t event_data_size, uint32_t ticks_to_wait)
@@ -777,7 +816,64 @@ int hosted_restart_host(void)
 	return 0;
 }
 
-/* newlib hooks */
+
+int hosted_config_host_power_save(uint32_t power_save_type, void* gpio_port, uint32_t gpio_num, int level)
+{
+#if H_HOST_PS_ALLOWED
+	if (power_save_type == HOSTED_POWER_SAVE_TYPE_DEEP_SLEEP) {
+		if (!esp_sleep_is_valid_wakeup_gpio(gpio_num)) {
+			return -1;
+		}
+		return esp_deep_sleep_enable_gpio_wakeup(BIT(gpio_num), level);
+	}
+#endif
+	return -1;
+}
+
+int hosted_start_host_power_save(uint32_t power_save_type)
+{
+#if H_HOST_PS_ALLOWED
+	if (power_save_type == HOSTED_POWER_SAVE_TYPE_DEEP_SLEEP) {
+		esp_deep_sleep_start();
+		return 0;
+	} else if (power_save_type == HOSTED_POWER_SAVE_TYPE_LIGHT_SLEEP) {
+		ESP_LOGE(TAG, "Light sleep is not supported, yet");
+		return -1;
+	} else if (power_save_type == HOSTED_POWER_SAVE_TYPE_NONE) {
+		return 0;
+	}
+#endif
+	return -1;
+}
+
+
+int hosted_get_host_wakeup_or_reboot_reason(void)
+{
+#if H_HOST_PS_ALLOWED
+	esp_reset_reason_t reboot_reason = esp_reset_reason();
+	uint8_t wakeup_due_to_gpio = 0;
+
+#if H_PRESENT_IN_ESP_IDF_6_0_0
+	uint32_t wakeup_causes = esp_sleep_get_wakeup_causes();
+	wakeup_due_to_gpio = (wakeup_causes & BIT(ESP_SLEEP_WAKEUP_GPIO));
+#else
+	uint32_t wakeup_causes = esp_sleep_get_wakeup_cause();
+	wakeup_due_to_gpio = (wakeup_reason == ESP_SLEEP_WAKEUP_GPIO);
+#endif
+
+	if (reboot_reason == ESP_RST_POWERON) {
+		return HOSTED_WAKEUP_NORMAL_REBOOT;
+	} else if ((reboot_reason == ESP_RST_DEEPSLEEP) &&
+	    (wakeup_due_to_gpio)) {
+		return HOSTED_WAKEUP_DEEP_SLEEP;
+	}
+
+	return HOSTED_WAKEUP_UNDEFINED;
+#else
+	return HOSTED_WAKEUP_NORMAL_REBOOT;
+#endif
+}
+
 
 hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_memcpy                   =  hosted_memcpy                  ,
@@ -817,11 +913,18 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_unlock_mempool           =  hosted_unlock_mempool          ,
 #endif
 	._h_config_gpio              =  hosted_config_gpio             ,
-	._h_config_gpio_as_interrupt =  hosted_config_gpio_as_interrupt,
+	._h_config_gpio_as_interrupt =  hosted_setup_gpio_interrupt,
+	._h_teardown_gpio_interrupt  = hosted_teardown_gpio_interrupt,
+	._h_hold_gpio                = hosted_hold_gpio,
 	._h_read_gpio                =  hosted_read_gpio               ,
 	._h_write_gpio               =  hosted_write_gpio              ,
+	._h_pull_gpio                = hosted_pull_gpio,
+
+	._h_get_host_wakeup_or_reboot_reason = hosted_get_host_wakeup_or_reboot_reason,
+
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
 	._h_bus_init                 =  hosted_spi_init                ,
+	._h_bus_deinit               =  hosted_spi_deinit              ,
 	._h_do_bus_transfer          =  hosted_do_spi_transfer         ,
 #endif
 	._h_event_wifi_post          =  hosted_wifi_event_post         ,
@@ -829,6 +932,7 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_hosted_init_hook         =  hosted_init_hook               ,
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
 	._h_bus_init                 =  hosted_sdio_init               ,
+	._h_bus_deinit               =  hosted_sdio_deinit             ,
 	._h_sdio_card_init           =  hosted_sdio_card_init          ,
 	._h_sdio_read_reg            =  hosted_sdio_read_reg           ,
 	._h_sdio_write_reg           =  hosted_sdio_write_reg          ,
@@ -838,6 +942,7 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 #endif
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
 	._h_bus_init                 =  hosted_spi_hd_init               ,
+	._h_bus_deinit               =  hosted_spi_hd_deinit             ,
 	._h_spi_hd_read_reg          =  hosted_spi_hd_read_reg           ,
 	._h_spi_hd_write_reg         =  hosted_spi_hd_write_reg          ,
 	._h_spi_hd_read_dma          =  hosted_spi_hd_read_dma           ,
@@ -847,8 +952,12 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 #endif
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_UART
 	._h_bus_init                 = hosted_uart_init                ,
+	._h_bus_deinit               = hosted_uart_deinit              ,
 	._h_uart_read                = hosted_uart_read                ,
 	._h_uart_write               = hosted_uart_write               ,
 #endif
 	._h_restart_host             = hosted_restart_host             ,
+
+	._h_config_host_power_save_hal_impl = hosted_config_host_power_save,
+	._h_start_host_power_save_hal_impl = hosted_start_host_power_save,
 };

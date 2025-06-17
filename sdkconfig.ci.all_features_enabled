@@ -1,0 +1,8 @@
+# ESP-Hosted All Features Enabled Configuration
+# This configuration enables power save, CLI, and SDIO with minimal overrides
+
+# Host Power Save Configuration (default is y when supported)
+CONFIG_ESP_HOSTED_HOST_POWER_SAVE_ENABLED=y
+
+# CLI Configuration (default is y)
+CONFIG_ESP_HOSTED_CLI_ENABLED=y

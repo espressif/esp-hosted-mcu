@@ -69,7 +69,7 @@ int serial_drv_write (struct serial_drv_handle_t* serial_drv_handle,
 		return RET_INVALID;
 	}
 
-	ESP_HEXLOGV("serial_write", buf, in_count);
+	ESP_HEXLOGV("serial_write", buf, in_count, 32);
 	ret = serial_ll_if_g->fops->write(serial_ll_if_g, buf, in_count);
 	if (ret != RET_OK) {
 		*out_count = 0;
@@ -108,6 +108,7 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 		return NULL;
 	}
 
+	ESP_LOGV(TAG, "Wait for serial_ll_semaphore");
 	g_h.funcs->_h_get_semaphore(readSemaphore, HOSTED_BLOCK_MAX);
 
 	if( (!serial_ll_if_g) ||
@@ -116,6 +117,7 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 		ESP_LOGE(TAG,"serial interface refusing to read\n\r");
 		return NULL;
 	}
+	ESP_LOGV(TAG, "Starting serial_ll read");
 
 	/* Get buffer from serial interface */
 	read_buf = serial_ll_if_g->fops->read(serial_ll_if_g, &rx_buf_len);
@@ -123,7 +125,7 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 		ESP_LOGE(TAG,"serial read failed\n\r");
 		return NULL;
 	}
-	ESP_HEXLOGV("serial_read", read_buf, rx_buf_len);
+	ESP_HEXLOGV("serial_read", read_buf, rx_buf_len, 32);
 
 /*
  * Read Operation happens in two steps because total read length is unknown
@@ -167,6 +169,7 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 		ESP_LOGE(TAG,"Failed to parse RX data \n\r");
 		goto free_bufs;
 	}
+	ESP_LOGV(TAG, "TLV parsed");
 
 	if (rx_buf_len < (init_read_len + buf_len)) {
 		ESP_LOGE(TAG,"Buf read on serial iface is smaller than expected len\n");
@@ -189,6 +192,7 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 	HOSTED_FREE(read_buf);
 
 	*out_nbyte = buf_len;
+	ESP_LOGV(TAG, "Serial payload size(after removing TLV): %" PRIu32, *out_nbyte);
 	return buf;
 
 free_bufs:

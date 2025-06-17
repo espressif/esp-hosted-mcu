@@ -266,8 +266,13 @@ idf.py set-target esp32c6
 idf.py menuconfig
 ```
 
-3. Under **Example Configuration**, ensure that the Hosted transport
-   selected is `SDIO`.
+3. Navigate and ensure SDIO is enabled. By default it should already be enabled.
+   ```
+   Example Configuration
+   └── Bus Config in between Host and Co-processor
+       └── Transport layer
+           └── Select "SDIO"
+   ```
 
 4. Build the firmware:
 

@@ -32,8 +32,11 @@ ESP_EVENT_DECLARE_BASE(WIFI_EVENT);
 #define MAX_PAYLOAD_SIZE (MAX_TRANSPORT_BUFFER_SIZE-H_ESP_PAYLOAD_HEADER_OFFSET)
 
 
-#define RPC__TIMER_ONESHOT                           0
-#define RPC__TIMER_PERIODIC                          1
+typedef enum {
+	H_TIMER_TYPE_ONESHOT = 0,
+	H_TIMER_TYPE_PERIODIC = 1,
+} esp_hosted_timer_type_t;
+
 
 #define HOSTED_BLOCKING                              -1
 #define HOSTED_NON_BLOCKING                          0
@@ -74,23 +77,8 @@ enum {
 	H_GPIO_MODE_INPUT_OUTPUT = ((H_GPIO_MODE_DEF_INPUT) | (H_GPIO_MODE_DEF_OUTPUT)),                         /*!< GPIO mode : output and input mode                */
 };
 
-#if 0
-#if 0 //defined OS_CMSIS
-#define thread_handle_t                        osThreadId
-#define osThreadId                             osThreadId
-#define semaphore_handle_t                     osSemaphoreId
-#define mutex_handle_t                         osMutexId
-#else //if defined OS_FREERTOS
-#define thread_handle_t                        TaskHandle_t
-#define queue_handle_t                         QueueHandle_t
-#define semaphore_handle_t                     SemaphoreHandle_t
-#define mutex_handle_t                         SemaphoreHandle_t
-#define osDelay                                vTaskDelay
-//#else
-//#error "Port the os calls to your system"
-#endif
-#endif
-
+#define H_GPIO_PULL_UP                             (1)
+#define H_GPIO_PULL_DOWN                           (0)
 
 #define RET_OK                                       0
 #define RET_FAIL                                     -1
@@ -111,7 +99,7 @@ enum {
 /** Enumeration **/
 enum hardware_type_e {
 	HARDWARE_TYPE_ESP32,
-	HARDWARE_TYPE_OTHER_ESP_CHIPS,
+	HARDWARE_TYPE_OTHER_ESP_CHIPSETS,
 	HARDWARE_TYPE_INVALID,
 };
 
@@ -124,23 +112,13 @@ enum hardware_type_e {
 #define TICKS_PER_SEC(x) (1000*(x) / portTICK_PERIOD_MS)
 #define SEC_TO_MILLISEC(x) (1000*(x))
 #define SEC_TO_MICROSEC(x) (1000*1000*(x))
-
+#define MILLISEC_TO_MICROSEC(x) (1000*(x))
 
 #define MEM_DUMP(s) \
 	printf("%s free:%lu min-free:%lu lfb-def:%u lfb-8bit:%u\n\n", s,	\
 			(unsigned long int)esp_get_free_heap_size(), (unsigned long int)esp_get_minimum_free_heap_size(), \
 			heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),		\
 			heap_caps_get_largest_free_block(MALLOC_CAP_8BIT))
-
-#if 0
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
-  #define ESP_MUTEX_INIT(mUtEx) portMUX_INITIALIZE(&(mUtEx));
-#else
-  #define ESP_MUTEX_INIT(mUtEx) vPortCPUInitializeMutex(&(mUtEx));
-#endif
-#endif
-
-
 
 
 /* -------- Create handle ------- */
@@ -150,6 +128,13 @@ enum hardware_type_e {
 		printf("%s:%u Mem alloc fail while create handle\n", __func__,__LINE__); \
 		return NULL;                                                           \
 	}                                                                          \
+}
+
+#define HOSTED_FREE_HANDLE(handle) { \
+	if (handle) { \
+		g_h.funcs->_h_free(handle); \
+		handle = NULL; \
+	} \
 }
 
 /* -------- Calloc, Free handle ------- */

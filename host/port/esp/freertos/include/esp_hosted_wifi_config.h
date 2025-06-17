@@ -52,4 +52,10 @@
 #define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 1
 #endif
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+  #define H_PRESENT_IN_ESP_IDF_6_0_0      1
+#else
+  #define H_PRESENT_IN_ESP_IDF_6_0_0      0
+#endif
+
 #endif /* __ESP_HOSTED_WIFI_CONFIG_H__ */

@@ -38,21 +38,18 @@ DEFINE_LOG_TAG(spi_wrapper);
 
 extern void * spi_handle;
 
-void * hosted_spi_init(void)
-{
 
 #ifdef CONFIG_IDF_TARGET_ESP32
-#define SENDER_HOST                                  HSPI_HOST
-
+    #define SENDER_HOST                                  HSPI_HOST
 #else
-#define SENDER_HOST                                  SPI2_HOST
-
+    #define SENDER_HOST                                  SPI2_HOST
 #endif
 
-
+void * hosted_spi_init(void)
+{
     esp_err_t ret;
     ESP_LOGI(TAG, "Transport: SPI, Mode:%u Freq:%uMHz TxQ:%u RxQ:%u\n GPIOs: CLK:%u MOSI:%u MISO:%u CS:%u HS:%u DR:%u SlaveReset:%u",
-            H_SPI_MODE, H_SPI_INIT_CLK_MHZ, H_SPI_TX_Q, H_SPI_RX_Q,
+            H_SPI_MODE, H_SPI_FD_CLK_MHZ, H_SPI_TX_Q, H_SPI_RX_Q,
             H_GPIO_SCLK_Pin, H_GPIO_MOSI_Pin, H_GPIO_MISO_Pin,
             H_GPIO_CS_Pin, H_GPIO_HANDSHAKE_Pin, H_GPIO_DATA_READY_Pin,
             H_GPIO_PIN_RESET_Pin);
@@ -78,7 +75,7 @@ void * hosted_spi_init(void)
 #ifdef CONFIG_IDF_TARGET_ESP32P4
         .clock_source = SPI_CLK_SRC_SPLL,
 #endif
-        .clock_speed_hz=MHZ_TO_HZ(H_SPI_INIT_CLK_MHZ),
+        .clock_speed_hz=MHZ_TO_HZ(H_SPI_FD_CLK_MHZ),
         .duty_cycle_pos=128,        //50% duty cycle
         .mode=H_SPI_MODE,
         .spics_io_num=H_GPIO_CS_Pin,
@@ -98,6 +95,38 @@ void * hosted_spi_init(void)
     gpio_set_drive_capability(H_GPIO_SCLK_Pin, GPIO_DRIVE_CAP_3);
     return spi_handle;
 }
+
+int hosted_spi_deinit(void *handle)
+{
+    if (!handle) {
+        ESP_LOGE(TAG, "Invalid handle for SPI deinit");
+        return -1;
+    }
+
+    spi_device_handle_t *spi_dev_handle = (spi_device_handle_t *)handle;
+
+    /* Remove device from SPI bus */
+    esp_err_t ret = spi_bus_remove_device(*spi_dev_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to remove SPI device: %d", ret);
+        return -1;
+    }
+
+    /* Free the SPI bus */
+    ret = spi_bus_free(SENDER_HOST);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to free SPI bus: %d", ret);
+        return -1;
+    }
+
+    /* Free the handle */
+    HOSTED_FREE_HANDLE(handle);
+    spi_handle = NULL;
+
+    ESP_LOGI(TAG, "SPI deinitialized");
+    return 0;
+}
+
 
 int hosted_do_spi_transfer(void *trans)
 {

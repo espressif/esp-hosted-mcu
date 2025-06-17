@@ -38,14 +38,23 @@ before_script:
         echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
         echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
+    # Copy specific sdkconfig.ci file if SDKCONFIG_CI_FILE is specified
+    - |
+      if [ ! -z "${SDKCONFIG_CI_FILE}" ]; then
+        cp ${OVERRIDE_PATH}/${SDKCONFIG_CI_FILE} ./sdkconfig.ci.custom
+        echo "Using custom sdkconfig: ${SDKCONFIG_CI_FILE}"
+        SDKCONFIG_PATTERN="sdkconfig.ci.custom"
+      else
+        SDKCONFIG_PATTERN="sdkconfig.ci*"
+      fi
     # Build with IDF pedantic flags and IDF build apps script
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
     # Remove the conflicting extconn config that disables hosted
     - rm -f sdkconfig.ci.*extconn*
-    - idf-build-apps find --config sdkconfig.ci* -vv --target ${IDF_TARGET}
-    - idf-build-apps build --config sdkconfig.ci* -vv --target ${IDF_TARGET}
+    - idf-build-apps find --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - idf-build-apps build --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
 #    - echo "----------- last sdkconfig.defaults,ci* used (${IDF_TARGET}-${IDF_SLAVE_TARGET}) --------------"
 #    - cat sdkconfig.defaults
 #    - cat sdkconfig.ci*
@@ -98,9 +107,19 @@ build_idf_v5.5:
 build_idf_master:
   extends: .build_template
   image: espressif/idf:latest
-  allow_failure: true
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5", "esp32", "esp32c2", "esp32c3", "esp32s3" ]
         IDF_EXAMPLE_PATH: [examples/protocols/mqtt/tcp, examples/wifi/iperf]
+
+
+build_all_features_enabled_master:
+  extends: .build_template
+  image: espressif/idf:latest
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_SLAVE_TARGET: ["esp32c5", "esp32c6"]
+        IDF_EXAMPLE_PATH: examples/wifi/iperf
+        SDKCONFIG_CI_FILE: "sdkconfig.ci.all_features_enabled"

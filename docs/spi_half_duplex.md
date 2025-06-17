@@ -507,11 +507,15 @@ idf.py menuconfig
 ```
 
 #### 9.2.1 Transport config
-  - Navigate to "Example configuration" -> "Transport layer"
-  - Select "SPI Half-duplex"
-
+Navigate and change as following:
+  ```
+  Example Configuration
+  └── Bus Config in between Host and Co-processor
+      └── Transport layer
+          └── Select "SPI Half-duplex"
+  ```
 #### 9.2.2 Any other config
-  - Optionally, Configure any additional SPI-specific settings like co-processor GPIOs, SPI mode, etc.
+  - Optionally, Configure any additional SPI-specific settings in the "SPI Half-duplex Configuration" menu, like co-processor GPIOs, SPI mode, etc.
 
 ###### Generated files
 - Generated config files are (1) `sdkconfig` file and (2) internal `sdkconfig.h` file.
@@ -692,7 +696,7 @@ Now that ESP-IDF is set up, follow these steps to prepare the host:
    1. Select "SPI Half-duplex" as the transport layer
    2. Change co-processor chipset to connect to under "Slave chipset to be used"
    3. Change Number of data lines to 2 or 4 based on the co-processor using "SPI Half-duplex Configuration" -> "Num Data Lines to use"
-   4. Optionally, Configure SPI-specific settings like
+   4. Optionally, Configure SPI-specific settings in the "SPI Half-duplex Configuration" menu, like:
      - SPI Clock Freq (MHz)
      - SPI Mode
      - SPI Host GPIO Pins

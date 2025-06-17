@@ -271,13 +271,17 @@ idf.py menuconfig
 ```
 
 #### 7.2.1 Transport config
-  - Navigate to "Example configuration" -> "Transport layer"
-  - Select "SPI Full-duplex"
-
+Navigate & change to following
+```
+-- "Example configuration"
+    └── "Bus Config in between Host and Co-processor"
+        └── "Transport layer"
+            └── Select "SPI Full-duplex"
+```
 #### 7.2.2 Any other config
    Optionally, configure any additional SPI-specific settings under "SPI Full-duplex"
   - Set the GPIO pins for SPI signals (MOSI, MISO, CLK, CS), Handshake, Data Ready, Reset
-  - Configure SPI mode (0, 1, 2, or 3)
+  - Configure SPI mode (1, 2, or 3)
   - Set the SPI clock frequency
   - Checksum enable/disable (Checksum is recommended to be enabled as spi hardware doesn't have any error detection)
 
@@ -447,7 +451,7 @@ If you happen to have both, host and co-processor as same ESP chipset type (for 
    ESP-Hosted-MCU host configurations are available under "Component config" -> "ESP-Hosted config"
    1. Select "SPI Full-duplex" as the transport layer
    2. Change co chipset to connect to under "slave chipset to be used"
-   3. Optionally, configure SPI-specific settings like
+   3. Optionally, configure SPI-specific settings in the "SPI Configuration" menu, like:
    - SPI Clock Freq (MHz)
    - SPI Mode
    - SPI Pins

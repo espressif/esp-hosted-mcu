@@ -19,15 +19,16 @@
 #endif
 #include "esp_private/wifi.h"
 #include "interface.h"
-#include "esp_wpa.h"
-#include "app_main.h"
+//#include "esp_wpa.h"
+#include "esp_hosted_coprocessor.h"
 #include "driver/gpio.h"
 
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#if CONFIG_BT_ENABLED
+#if defined(CONFIG_BT_ENABLED) && defined(CONFIG_SOC_BT_SUPPORTED)
 #include "esp_bt.h"
 #endif
+
 #include "endian.h"
 
 #include <protocomm.h>
@@ -40,30 +41,19 @@
 #include "mempool.h"
 
 #include "coprocessor_fw_version.h"
+#include "esp_hosted_cli.h"
+#include "host_power_save.h"
 
-static const char *TAG = "fg_mcu_slave";
+static const char *TAG = "co-pro-main";
 
+#define BYPASS_TX_PRIORITY_Q 1
 
-//#define BYPASS_TX_PRIORITY_Q 1
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
-#define STATS_TICKS                      pdMS_TO_TICKS(1000*2)
-#define ARRAY_SIZE_OFFSET                5
-#endif
+#define UNKNOWN_RPC_MSG_ID               0
 
-#define UNKNOWN_RPC_MSG_ID              0
-
-#if CONFIG_ESP_SPI_HOST_INTERFACE
-  #ifdef CONFIG_IDF_TARGET_ESP32S2
-    #define TO_HOST_QUEUE_SIZE           5
-  #else
-    #define TO_HOST_QUEUE_SIZE           20
-  #endif
-#else
-  #define TO_HOST_QUEUE_SIZE             20
-#endif
+#define TO_HOST_QUEUE_SIZE               10
 
 #define ETH_DATA_LEN                     1500
-#define MAX_WIFI_STA_TX_RETRY            6
+#define MAX_WIFI_STA_TX_RETRY            2
 
 volatile uint8_t datapath = 0;
 volatile uint8_t station_connected = 0;
@@ -79,8 +69,10 @@ static QueueHandle_t meta_to_host_queue = NULL;
 static QueueHandle_t to_host_queue[MAX_PRIORITY_QUEUES] = {NULL};
 #endif
 
+esp_netif_t *slave_sta_netif = NULL;
 
 static protocomm_t *pc_pserial;
+SemaphoreHandle_t host_reset_sem;
 
 static struct rx_data {
 	uint8_t valid;
@@ -99,7 +91,7 @@ static void print_firmware_version()
 {
 	ESP_LOGI(TAG, "*********************************************************************");
 	ESP_LOGI(TAG, "                ESP-Hosted-MCU Slave FW version :: %d.%d.%d                        ",
-			PROJECT_VERSION_MAJOR_1, PROJECT_VERSION_MINOR_1, PROJECT_VERSION_PATCH_1);
+			(int)PROJECT_VERSION_MAJOR_1, (int)PROJECT_VERSION_MINOR_1, (int)PROJECT_VERSION_PATCH_1);
 #if CONFIG_ESP_SPI_HOST_INTERFACE
   #if BLUETOOTH_UART
 	ESP_LOGI(TAG, "                Transport used :: SPI + UART                    ");
@@ -141,7 +133,9 @@ static uint8_t get_capabilities(void)
 	cap |= ESP_CHECKSUM_ENABLED;
 #endif
 
+#ifdef CONFIG_BT_ENABLED
 	cap |= get_bluetooth_capabilities();
+#endif
 	ESP_LOGI(TAG, "capabilities: 0x%x", cap);
 
 	return cap;
@@ -181,6 +175,31 @@ static uint32_t get_capabilities_ext(void)
 	return ext_cap;
 }
 
+static inline esp_err_t populate_buff_handle(interface_buffer_handle_t *buf_handle,
+		uint8_t if_type,
+		uint8_t *buf,
+		uint16_t len,
+		void (*free_buf_func)(void *data),
+		void *free_buf_handle,
+		uint8_t flag,
+		uint8_t if_num,
+		uint16_t seq_num)
+{
+	buf_handle->if_type = if_type;
+	buf_handle->payload = buf;
+	buf_handle->payload_len = len;
+	buf_handle->priv_buffer_handle = free_buf_handle;
+	buf_handle->free_buf_handle = free_buf_func;
+	buf_handle->flag = flag;
+	buf_handle->if_num = if_num;
+	buf_handle->seq_num = seq_num;
+
+	return ESP_OK;
+}
+
+#define populate_wifi_buffer_handle(Buf_hdL, TypE, BuF, LeN) \
+	populate_buff_handle(Buf_hdL, TypE, BuF, LeN, esp_wifi_internal_free_rx_buffer, eb, 0, 0, 0);
+
 esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb)
 {
 	interface_buffer_handle_t buf_handle = {0};
@@ -191,7 +210,7 @@ esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb)
 		}
 		return ESP_OK;
 	}
-	ESP_HEXLOGV("AP_Get", buffer, len);
+	ESP_HEXLOGV("AP_Get", buffer, len, 32);
 
 #if 0
 	/* Only enable this is you want to avoid multi and bradcast
@@ -206,12 +225,7 @@ esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb)
 	}
 #endif
 
-	buf_handle.if_type = ESP_AP_IF;
-	buf_handle.if_num = 0;
-	buf_handle.payload_len = len;
-	buf_handle.payload = buffer;
-	buf_handle.wlan_buf_handle = eb;
-	buf_handle.free_buf_handle = esp_wifi_internal_free_rx_buffer;
+	populate_wifi_buffer_handle(&buf_handle, ESP_AP_IF, buffer, len);
 
 	if (send_to_host_queue(&buf_handle, PRIO_Q_OTHERS))
 		goto DONE;
@@ -223,42 +237,53 @@ DONE:
 	return ESP_OK;
 }
 
+/* This function would check the incoming packet from AP
+ * to send it to local lwip or host lwip depending upon the
+ * destination port used in the packet
+ */
 esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
 {
 	interface_buffer_handle_t buf_handle = {0};
 
-	if (!buffer || !eb || !datapath) {
+	if (!buffer || !eb) {
 		if (eb) {
 			esp_wifi_internal_free_rx_buffer(eb);
 		}
 		return ESP_OK;
 	}
-	ESP_HEXLOGV("STA_Get", buffer, len);
 
-	buf_handle.if_type = ESP_STA_IF;
-	buf_handle.if_num = 0;
-	buf_handle.payload_len = len;
-	buf_handle.payload = buffer;
-	buf_handle.wlan_buf_handle = eb;
-	buf_handle.free_buf_handle = esp_wifi_internal_free_rx_buffer;
+	ESP_HEXLOGV("STA_Get", buffer, len, 32);
 
-#if ESP_PKT_STATS
-	pkt_stats.sta_sh_in++;
-#endif
+	if (!datapath) {
+		/* Drop packet */
+		if (eb) {
+			esp_wifi_internal_free_rx_buffer(eb);
+		}
+		return ESP_OK;
+	}
 
-	if (send_to_host_queue(&buf_handle, PRIO_Q_OTHERS))
+	/* default as co-processor mode */
+	populate_wifi_buffer_handle(&buf_handle, ESP_STA_IF, buffer, len);
+
+	if (unlikely(send_to_host_queue(&buf_handle, PRIO_Q_OTHERS)))
 		goto DONE;
 
-
+  #if ESP_PKT_STATS
+	pkt_stats.sta_sh_in++;
+  #endif
 	return ESP_OK;
 
 DONE:
-	esp_wifi_internal_free_rx_buffer(eb);
+	if (eb) {
+		esp_wifi_internal_free_rx_buffer(eb);
+	}
 	return ESP_OK;
 }
 
-void process_tx_pkt(interface_buffer_handle_t *buf_handle)
+static void process_tx_pkt(interface_buffer_handle_t *buf_handle)
 {
+	int host_awake = 1;
+
 	/* Check if data path is not yet open */
 	if (!datapath) {
 		/* Post processing */
@@ -267,12 +292,25 @@ void process_tx_pkt(interface_buffer_handle_t *buf_handle)
 			buf_handle->priv_buffer_handle = NULL;
 		}
 		ESP_LOGD(TAG, "Data path stopped");
-		usleep(100*1000);
+		vTaskDelay(pdMS_TO_TICKS(100));
 		return;
 	}
 	if (if_context && if_context->if_ops && if_context->if_ops->write) {
-		if_context->if_ops->write(if_handle, buf_handle);
+
+		if (is_host_power_saving() && is_host_wakeup_needed(buf_handle)) {
+			ESP_LOGI(TAG, "Host sleeping, trigger wake-up");
+			ESP_HEXLOGW("Wakeup_pkt", buf_handle->payload+H_ESP_PAYLOAD_HEADER_OFFSET,
+					buf_handle->payload_len, /*buf_handle->payload_len*/ 32);
+			host_awake = wakeup_host(portMAX_DELAY);
+			buf_handle->flag |= FLAG_WAKEUP_PKT;
+		}
+
+		if (host_awake)
+			if_context->if_ops->write(if_handle, buf_handle);
+		else
+			ESP_LOGI(TAG, "Host wakeup failed, drop packet");
 	}
+
 	/* Post processing */
 	if (buf_handle->free_buf_handle && buf_handle->priv_buffer_handle) {
 		buf_handle->free_buf_handle(buf_handle->priv_buffer_handle);
@@ -282,7 +320,7 @@ void process_tx_pkt(interface_buffer_handle_t *buf_handle)
 
 #if !BYPASS_TX_PRIORITY_Q
 /* Send data to host */
-void send_task(void* pvParameters)
+static void send_task(void* pvParameters)
 {
 	uint8_t queue_type = 0;
 	interface_buffer_handle_t buf_handle = {0};
@@ -290,7 +328,7 @@ void send_task(void* pvParameters)
 	while (1) {
 
 		if (!datapath) {
-			usleep(100*1000);
+			vTaskDelay(pdMS_TO_TICKS(100));
 			continue;
 		}
 
@@ -301,7 +339,33 @@ void send_task(void* pvParameters)
 }
 #endif
 
-void parse_protobuf_req(void)
+static void host_reset_task(void* pvParameters)
+{
+	uint8_t capa = 0;
+	uint32_t ext_capa = 0;
+
+	ESP_LOGI(TAG, "host reset handler task started");
+
+	while (1) {
+
+		if (host_reset_sem) {
+			xSemaphoreTake(host_reset_sem, portMAX_DELAY);
+		} else {
+			vTaskDelay(pdMS_TO_TICKS(100));
+			continue;
+		}
+
+		capa = get_capabilities();
+		ext_capa = get_capabilities_ext();
+
+		/* send capabilities to host */
+		ESP_LOGI(TAG,"host reconfig event");
+		generate_startup_event(capa, ext_capa);
+		send_event_to_host(RPC_ID__Event_ESPInit);
+	}
+}
+
+static void parse_protobuf_req(void)
 {
 	protocomm_pserial_data_ready(pc_pserial, r.data,
 		r.len, UNKNOWN_RPC_MSG_ID);
@@ -323,7 +387,7 @@ void send_event_data_to_host(int event_id, void *data, int size)
 	protocomm_pserial_data_ready(pc_pserial, data, size, event_id);
 }
 
-void process_serial_rx_pkt(uint8_t *buf)
+static void process_serial_rx_pkt(uint8_t *buf)
 {
 	struct esp_payload_header *header = NULL;
 	uint16_t payload_len = 0;
@@ -335,7 +399,7 @@ void process_serial_rx_pkt(uint8_t *buf)
 	payload = buf + le16toh(header->offset);
 	rem_buff_size = sizeof(r.data) - r.len;
 
-	ESP_HEXLOGV("serial_rx", payload, payload_len);
+	ESP_HEXLOGV("serial_rx", payload, payload_len, 32);
 
 	while (r.valid)
 	{
@@ -352,6 +416,7 @@ void process_serial_rx_pkt(uint8_t *buf)
 	if (header->seq_num != r.cur_seq_no) {
 		/* Sequence number mismatch */
 		r.valid = 1;
+		ESP_LOGV(TAG, "Final Frag: r.valid=1");
 		parse_protobuf_req();
 		return;
 	}
@@ -362,10 +427,10 @@ void process_serial_rx_pkt(uint8_t *buf)
 	if (!(header->flags & MORE_FRAGMENT)) {
 		/* Received complete buffer */
 		r.valid = 1;
+		ESP_LOGV(TAG, "no frag case: r.valid=1");
 		parse_protobuf_req();
 	}
 }
-
 
 static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 {
@@ -430,19 +495,19 @@ static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 		} else if (*pos == SLV_CONFIG_THROTTLE_HIGH_THRESHOLD) {
 
 			slv_cfg_g.throttle_high_threshold = *(pos + 2);
-			ESP_LOGI(TAG, "ESP<-Host high data throttle threshold [%u%%]",
+			ESP_LOGI(TAG, "ESP<-Host wifi flow ctl start thres [%u%%]",
 					slv_cfg_g.throttle_high_threshold);
 
 			/* Warn if FreeRTOS tick is small */
 			if ((slv_cfg_g.throttle_low_threshold > 0) &&
 			    (CONFIG_FREERTOS_HZ < 1000)) {
-				ESP_LOGW(TAG, "FreeRTOS tick[%d]<1000. Enabling throttling with lower FrerRTOS tick may result in lower peak data throughput", (int) CONFIG_FREERTOS_HZ);
+				ESP_LOGW(TAG, "FreeRTOS tick[%d]<1000. Enabling flow control with lower FrerRTOS tick may result in lower peak data throughput", (int) CONFIG_FREERTOS_HZ);
 			}
 
 		} else if (*pos == SLV_CONFIG_THROTTLE_LOW_THRESHOLD) {
 
 			slv_cfg_g.throttle_low_threshold = *(pos + 2);
-			ESP_LOGI(TAG, "ESP<-Host low data throttle threshold [%u%%]",
+			ESP_LOGI(TAG, "ESP<-Host wifi flow ctl clear thres [%u%%]",
 					slv_cfg_g.throttle_low_threshold);
 
 		} else {
@@ -454,7 +519,6 @@ static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 		pos += (tag_len+2);
 		len_left -= (tag_len+2);
 	}
-
 	return ESP_OK;
 }
 
@@ -471,7 +535,7 @@ static void process_priv_pkt(uint8_t *payload, uint16_t payload_len)
 	if (event->event_type == ESP_PRIV_EVENT_INIT) {
 
 		ESP_LOGI(TAG, "Slave init_config received from host");
-		ESP_HEXLOGD("init_config", event->event_data, event->event_len);
+		ESP_HEXLOGD("init_config", event->event_data, event->event_len, 32);
 
 		ret = host_to_slave_reconfig(event->event_data, event->event_len);
 		if (ret) {
@@ -482,7 +546,7 @@ static void process_priv_pkt(uint8_t *payload, uint16_t payload_len)
 	}
 }
 
-void process_rx_pkt(interface_buffer_handle_t *buf_handle)
+static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
 	struct esp_payload_header *header = NULL;
 	uint8_t *payload = NULL;
@@ -494,40 +558,33 @@ void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	payload = buf_handle->payload + le16toh(header->offset);
 	payload_len = le16toh(header->len);
 
-	ESP_HEXLOGD("rx_new", buf_handle->payload, min(32,buf_handle->payload_len));
+	ESP_HEXLOGD("bus_RX", buf_handle->payload, buf_handle->payload_len, 32);
 
 	if (buf_handle->if_type == ESP_STA_IF && station_connected) {
 		/* Forward data to wlan driver */
 		do {
-			ret = esp_wifi_internal_tx(ESP_IF_WIFI_STA, payload, payload_len);
-
-			/* Delay only if throttling is enabled */
-			if (ret &&
-			    slv_cfg_g.throttle_high_threshold &&
-			    (retry_wifi_tx<(MAX_WIFI_STA_TX_RETRY/2))) {
-				vTaskDelay(2);
+			ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
+			if (ret) {
+				vTaskDelay(pdMS_TO_TICKS(1));
 			}
 
 			retry_wifi_tx--;
 		} while (ret && retry_wifi_tx);
 
-		ESP_HEXLOGV("STA_Put", payload, payload_len);
-		if (ESP_OK == ret) {
+		ESP_HEXLOGV("STA_Put", payload, payload_len, 32);
 #if ESP_PKT_STATS
+		if (ret)
+			pkt_stats.hs_bus_sta_fail++;
+		else
 			pkt_stats.hs_bus_sta_out++;
 #endif
-		} else {
-#if ESP_PKT_STATS
-			pkt_stats.hs_bus_sta_fail++;
-#endif
-		}
 	} else if (buf_handle->if_type == ESP_AP_IF && softap_started) {
 		/* Forward data to wlan driver */
-		esp_wifi_internal_tx(ESP_IF_WIFI_AP, payload, payload_len);
-		ESP_HEXLOGV("AP_Put", payload, payload_len);
+		esp_wifi_internal_tx(WIFI_IF_AP, payload, payload_len);
+		ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
 	} else if (buf_handle->if_type == ESP_SERIAL_IF) {
 #if ESP_PKT_STATS
-			pkt_stats.serial_rx++;
+		pkt_stats.serial_rx++;
 #endif
 		process_serial_rx_pkt(buf_handle->payload);
 	} else if (buf_handle->if_type == ESP_PRIV_IF) {
@@ -549,18 +606,18 @@ void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		buf_handle->free_buf_handle(buf_handle->priv_buffer_handle);
 		buf_handle->priv_buffer_handle = NULL;
 	}
+
 }
 
 /* Get data from host */
-void recv_task(void* pvParameters)
+static void recv_task(void* pvParameters)
 {
 	interface_buffer_handle_t buf_handle = {0};
 
 	for (;;) {
 
-		if (!datapath) {
-			/* Datapath is not enabled by host yet*/
-			usleep(100*1000);
+		if (is_host_power_saving() || !datapath) {
+			vTaskDelay(pdMS_TO_TICKS(100));
 			continue;
 		}
 
@@ -568,7 +625,7 @@ void recv_task(void* pvParameters)
 		if (if_context && if_context->if_ops && if_context->if_ops->read) {
 			int len = if_context->if_ops->read(if_handle, &buf_handle);
 			if (len <= 0) {
-				usleep(10*1000);
+				vTaskDelay(pdMS_TO_TICKS(1));
 				continue;
 			}
 		}
@@ -602,6 +659,7 @@ int send_to_host_queue(interface_buffer_handle_t *buf_handle, uint8_t queue_type
 		ESP_LOGE(TAG, "Failed to send buffer into queue[%u]\n",queue_type);
 		return ESP_FAIL;
 	}
+
 	if (queue_type == PRIO_Q_SERIAL)
 		ret = xQueueSendToFront(meta_to_host_queue, &queue_type, portMAX_DELAY);
 	else
@@ -653,13 +711,22 @@ static esp_err_t serial_write_data(uint8_t* data, ssize_t len)
 			return ESP_FAIL;
 		}
 
-		ESP_HEXLOGV("serial_tx_create", data, frag_len);
+		ESP_HEXLOGV("serial_tx_create", data, frag_len, 32);
 
 		left_len -= frag_len;
 		pos += frag_len;
 	} while(left_len);
 
 	return ESP_OK;
+}
+
+// This new function will run in a temporary, separate task.
+static void power_save_alert_task(void *pvParameters)
+{
+    uint32_t event = (uint32_t)pvParameters;
+    host_power_save_alert(event);
+	/* The task deletes itself after running. */
+    vTaskDelete(NULL);
 }
 
 int event_handler(uint8_t val)
@@ -670,6 +737,11 @@ int event_handler(uint8_t val)
 				if_handle->state = ACTIVE;
 				datapath = 1;
 				ESP_EARLY_LOGI(TAG, "Start Data Path");
+				if (host_reset_sem) {
+					xSemaphoreGive(host_reset_sem);
+				} else {
+					ESP_EARLY_LOGI(TAG, "Failed to give host_reset_sem");
+				}
 			} else {
 				ESP_EARLY_LOGI(TAG, "Failed to Start Data Path");
 			}
@@ -684,118 +756,28 @@ int event_handler(uint8_t val)
 				ESP_EARLY_LOGI(TAG, "Failed to Stop Data Path");
 			}
 			break;
+
+		case ESP_POWER_SAVE_ON:
+			xTaskCreate(power_save_alert_task, "ps_alert_task", 3072, (void *)ESP_POWER_SAVE_ON, tskIDLE_PRIORITY + 5, NULL);
+			break;
+
+		case ESP_POWER_SAVE_OFF:
+			//if (if_handle && if_handle->state >= DEACTIVE) {
+				datapath = 1;
+				if_handle->state = ACTIVE;
+			/*} else {
+				ESP_EARLY_LOGI(TAG, "Failed to set state to ACTIVE");
+			}*/
+			xTaskCreate(power_save_alert_task, "ps_alert_task", 3072, (void *)ESP_POWER_SAVE_OFF, tskIDLE_PRIORITY + 5, NULL);
+			if (host_reset_sem) {
+				xSemaphoreGive(host_reset_sem);
+			}
+			break;
 	}
 	return 0;
 }
 
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
-/* These functions are only for debugging purpose
- * Please do not enable in production environments
- */
-static esp_err_t print_real_time_stats(TickType_t xTicksToWait)
-{
-	TaskStatus_t *start_array = NULL, *end_array = NULL;
-	UBaseType_t start_array_size, end_array_size;
-	uint32_t start_run_time, end_run_time;
-	esp_err_t ret;
-
-	/* Allocate array to store current task states */
-	start_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
-	start_array = malloc(sizeof(TaskStatus_t) * start_array_size);
-	if (start_array == NULL) {
-		ret = ESP_ERR_NO_MEM;
-		goto exit;
-	}
-	/* Get current task states */
-	start_array_size = uxTaskGetSystemState(start_array,
-			start_array_size, &start_run_time);
-	if (start_array_size == 0) {
-		ret = ESP_ERR_INVALID_SIZE;
-		goto exit;
-	}
-
-	vTaskDelay(xTicksToWait);
-
-	/* Allocate array to store tasks states post delay */
-	end_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
-	end_array = malloc(sizeof(TaskStatus_t) * end_array_size);
-	if (end_array == NULL) {
-		ret = ESP_ERR_NO_MEM;
-		goto exit;
-	}
-	/* Get post delay task states */
-	end_array_size = uxTaskGetSystemState(end_array, end_array_size, &end_run_time);
-	if (end_array_size == 0) {
-		ret = ESP_ERR_INVALID_SIZE;
-		goto exit;
-	}
-
-	/* Calculate total_elapsed_time in units of run time stats clock period */
-	uint32_t total_elapsed_time = (end_run_time - start_run_time);
-	if (total_elapsed_time == 0) {
-		ret = ESP_ERR_INVALID_STATE;
-		goto exit;
-	}
-
-	ESP_LOGI(TAG,"| Task | Run Time | Percentage");
-	/* Match each task in start_array to those in the end_array */
-	for (int i = 0; i < start_array_size; i++) {
-		int k = -1;
-		for (int j = 0; j < end_array_size; j++) {
-			if (start_array[i].xHandle == end_array[j].xHandle) {
-				k = j;
-				/* Mark that task have been matched by overwriting their handles */
-				start_array[i].xHandle = NULL;
-				end_array[j].xHandle = NULL;
-				break;
-			}
-		}
-		/* Check if matching task found */
-		if (k >= 0) {
-			uint32_t task_elapsed_time = end_array[k].ulRunTimeCounter -
-				start_array[i].ulRunTimeCounter;
-			uint32_t percentage_time = (task_elapsed_time * 100UL) /
-				(total_elapsed_time * portNUM_PROCESSORS);
-			ESP_LOGI(TAG,"| %s | %d | %d%%", start_array[i].pcTaskName,
-					task_elapsed_time, percentage_time);
-		}
-	}
-
-	/* Print unmatched tasks */
-	for (int i = 0; i < start_array_size; i++) {
-		if (start_array[i].xHandle != NULL) {
-			ESP_LOGI(TAG,"| %s | Deleted", start_array[i].pcTaskName);
-		}
-	}
-	for (int i = 0; i < end_array_size; i++) {
-		if (end_array[i].xHandle != NULL) {
-			ESP_LOGI(TAG,"| %s | Created", end_array[i].pcTaskName);
-		}
-	}
-	ret = ESP_OK;
-
-exit:    /* Common return path */
-	if (start_array)
-		free(start_array);
-	if (end_array)
-		free(end_array);
-	return ret;
-}
-
-void task_runtime_stats_task(void* pvParameters)
-{
-	while (1) {
-		ESP_LOGI(TAG,"\n\nGetting real time stats over %d ticks", STATS_TICKS);
-		if (print_real_time_stats(STATS_TICKS) == ESP_OK) {
-			ESP_LOGI(TAG,"Real time stats obtained");
-		} else {
-			ESP_LOGI(TAG,"Error getting real time stats");
-		}
-		vTaskDelay(pdMS_TO_TICKS(1000*2));
-	}
-}
-#endif
-
+#if defined(CONFIG_ESP_GPIO_SLAVE_RESET) && (CONFIG_ESP_GPIO_SLAVE_RESET != -1)
 static void IRAM_ATTR gpio_resetpin_isr_handler(void* arg)
 {
 
@@ -841,105 +823,260 @@ static void register_reset_pin(uint32_t gpio_num)
 		gpio_isr_handler_add(gpio_num, gpio_resetpin_isr_handler, NULL);
 	}
 }
+#endif
 
-void app_main()
+#ifdef CONFIG_ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG
+#define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
+#define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
+#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
+
+#if CONFIG_ESP_WPA3_SAE_PWE_HUNT_AND_PECK
+  #define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_HUNT_AND_PECK
+  #define EXAMPLE_H2E_IDENTIFIER ""
+#elif CONFIG_ESP_WPA3_SAE_PWE_HASH_TO_ELEMENT
+  #define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_HASH_TO_ELEMENT
+  #define EXAMPLE_H2E_IDENTIFIER CONFIG_ESP_WIFI_PW_ID
+#elif CONFIG_ESP_WPA3_SAE_PWE_BOTH
+  #define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_BOTH
+  #define EXAMPLE_H2E_IDENTIFIER CONFIG_ESP_WIFI_PW_ID
+#endif
+
+#if CONFIG_ESP_WIFI_AUTH_OPEN
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_OPEN
+#elif CONFIG_ESP_WIFI_AUTH_WEP
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WEP
+#elif CONFIG_ESP_WIFI_AUTH_WPA_PSK
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA2_PSK
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA_WPA2_PSK
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA_WPA2_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA3_PSK
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA3_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WPA2_WPA3_PSK
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_WPA3_PSK
+#elif CONFIG_ESP_WIFI_AUTH_WAPI_PSK
+  #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WAPI_PSK
+#endif
+
+static int fallback_to_sdkconfig_wifi_config(void)
 {
-	esp_err_t ret;
-	uint8_t capa = 0;
-	uint32_t ext_capa = 0;
-	uint8_t prio_q_idx = 0;
+	wifi_config_t wifi_config = {
+		.sta = {
+			.ssid = EXAMPLE_ESP_WIFI_SSID,
+			.password = EXAMPLE_ESP_WIFI_PASS,
+			/* Authmode threshold resets to WPA2 as default if password matches WPA2 standards (password len => 8).
+			 * If you want to connect the device to deprecated WEP/WPA networks, Please set the threshold value
+			 * to WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK and set the password with length and format matching to
+			 * WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK standards.
+			 */
+			.threshold.authmode = ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD,
+			.sae_pwe_h2e = ESP_WIFI_SAE_MODE,
+			.sae_h2e_identifier = EXAMPLE_H2E_IDENTIFIER,
+		},
+	};
+
+	ESP_ERROR_CHECK(esp_hosted_set_sta_config(WIFI_IF_STA, &wifi_config) );
+
+	return ESP_OK;
+}
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG
+static bool wifi_is_provisioned(void)
+{
+	wifi_config_t wifi_cfg = {0};
+
+	if (esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg) != ESP_OK) {
+		ESP_LOGI(TAG, "Wifi get config failed");
+		return false;
+	}
+
+	ESP_LOGI(TAG, "SSID: %s", wifi_cfg.sta.ssid);
+
+	if (strlen((const char *) wifi_cfg.sta.ssid)) {
+		ESP_LOGI(TAG, "Wifi provisioned");
+		return true;
+	}
+	ESP_LOGI(TAG, "Wifi not provisioned, Fallback to example config");
+
+	return false;
+}
+#endif
+
+#if defined(CONFIG_ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG)
+static int connect_sta(void)
+{
+	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+
+	ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+	ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
+	esp_hosted_register_wifi_event_handlers();
+
+	ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+
+#ifdef CONFIG_ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG
+#if CONFIG_WIFI_CMD_DEFAULT_COUNTRY_CN
+	/* Only set country once during first initialize wifi */
+	static bool country_code_has_set = false;
+	if (country_code_has_set == false) {
+		wifi_country_t country = {
+			.cc = "CN",
+			.schan = 1,
+			.nchan = 13,
+			.policy = 0
+		};
+		esp_wifi_set_country(&country);
+		country_code_has_set = true;
+	}
+#endif
+
+	if (! wifi_is_provisioned()) {
+		fallback_to_sdkconfig_wifi_config();
+	}
+#endif
+
+	ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+
+	ESP_ERROR_CHECK(esp_wifi_start() );
+
+#ifdef CONFIG_ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG
+#if CONFIG_ESP_WIFI_ENABLE_WIFI_RX_STATS
+  #if CONFIG_ESP_WIFI_ENABLE_WIFI_RX_MU_STATS
+	esp_wifi_enable_rx_statistics(true, true);
+  #else
+	esp_wifi_enable_rx_statistics(true, false);
+  #endif
+#endif
+
+#if CONFIG_ESP_WIFI_ENABLE_WIFI_TX_STATS
+	esp_wifi_enable_tx_statistics(ESP_WIFI_ACI_BE, true);
+#endif
+#endif
+
+	return ESP_OK;
+}
+#endif
+
+static void host_wakeup_callback(void)
+{
+#if H_HOST_PS_ALLOWED
+	/* Interrupt context */
+#endif
+}
+
+esp_err_t esp_hosted_coprocessor_init(void)
+{
+	static bool esp_hosted_rcp_init_done = false;
+	if (esp_hosted_rcp_init_done) {
+		return ESP_OK;
+	}
+	esp_hosted_rcp_init_done = true;
+
+	assert(host_reset_sem = xSemaphoreCreateBinary());
+	xSemaphoreTake(host_reset_sem, 0);
 
 	print_firmware_version();
-	register_reset_pin(CONFIG_ESP_GPIO_SLAVE_RESET);
 
-	capa = get_capabilities();
-	ext_capa = get_capabilities_ext();
-
-	/* Initialize NVS */
-	ret = nvs_flash_init();
-
-	if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-		ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-		ESP_ERROR_CHECK(nvs_flash_erase());
-		ret = nvs_flash_init();
+	if_context = interface_insert_driver(event_handler);
+	if (!if_context || !if_context->if_ops) {
+		ESP_LOGE(TAG, "Failed to insert driver\n");
+		return ESP_FAIL;
 	}
-	ESP_ERROR_CHECK( ret );
 
+	if_handle = if_context->if_ops->init();
+	if (!if_handle) {
+		ESP_LOGE(TAG, "Failed to initialize driver\n");
+		return ESP_FAIL;
+	}
+	assert(xTaskCreate(recv_task , "recv_task" ,
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL ,
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
+
+#if CONFIG_ESP_SPI_HOST_INTERFACE
+	datapath = 1;
+	if (host_reset_sem)
+		xSemaphoreGive(host_reset_sem);
+#endif
+
+	ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+#if defined(CONFIG_ESP_GPIO_SLAVE_RESET) && (CONFIG_ESP_GPIO_SLAVE_RESET != -1)
+	register_reset_pin(CONFIG_ESP_GPIO_SLAVE_RESET);
+#endif
+
+#if defined(CONFIG_BT_ENABLED) && defined(CONFIG_SOC_BT_SUPPORTED)
 	initialise_bluetooth();
+#endif
 
 	pc_pserial = protocomm_new();
 	if (pc_pserial == NULL) {
 		ESP_LOGE(TAG,"Failed to allocate memory for new instance of protocomm ");
-		return;
+		return ESP_FAIL;
 	}
 
 	/* Endpoint for control command responses */
 	if (protocomm_add_endpoint(pc_pserial, RPC_EP_NAME_RSP,
 				data_transfer_handler, NULL) != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to add enpoint");
-		return;
+		return ESP_FAIL;
 	}
 
 	/* Endpoint for control notifications for events subscribed by user */
 	if (protocomm_add_endpoint(pc_pserial, RPC_EP_NAME_EVT,
 				rpc_evt_handler, NULL) != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to add enpoint");
-		return;
+		return ESP_FAIL;
 	}
 
 	protocomm_pserial_start(pc_pserial, serial_write_data, serial_read_data);
 
-	if_context = interface_insert_driver(event_handler);
-
-#if CONFIG_ESP_SPI_HOST_INTERFACE
-	datapath = 1;
-#endif
-
-	if (!if_context || !if_context->if_ops) {
-		ESP_LOGE(TAG, "Failed to insert driver\n");
-		return;
-	}
-
-	if_handle = if_context->if_ops->init();
-
-	if (!if_handle) {
-		ESP_LOGE(TAG, "Failed to initialize driver\n");
-		return;
-	}
-
-
-	assert(xTaskCreate(recv_task , "recv_task" ,
-			CONFIG_ESP_DEFAULT_TASK_STACK_SIZE, NULL ,
-			CONFIG_ESP_DEFAULT_TASK_PRIO, NULL) == pdTRUE);
 #if !BYPASS_TX_PRIORITY_Q
 	meta_to_host_queue = xQueueCreate(TO_HOST_QUEUE_SIZE*3, sizeof(uint8_t));
 	assert(meta_to_host_queue);
-	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES; prio_q_idx++) {
+	for (uint8_t prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES; prio_q_idx++) {
 		to_host_queue[prio_q_idx] = xQueueCreate(TO_HOST_QUEUE_SIZE,
 				sizeof(interface_buffer_handle_t));
 		assert(to_host_queue[prio_q_idx]);
 	}
 	assert(xTaskCreate(send_task , "send_task" ,
-			CONFIG_ESP_DEFAULT_TASK_STACK_SIZE, NULL ,
-			CONFIG_ESP_DEFAULT_TASK_PRIO, NULL) == pdTRUE);
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL ,
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
 #endif
+
+#ifdef CONFIG_ESP_HOSTED_CLI_ENABLED
+	esp_hosted_cli_start();
+#endif
+
 	create_debugging_tasks();
 
-	ESP_ERROR_CHECK(esp_event_loop_create_default());
+#if defined(CONFIG_ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG)
+	connect_sta();
+#endif
 
-	while(!datapath) {
-		vTaskDelay(10);
+	ESP_LOGI(TAG, "Mandate host wakeup");
+	wakeup_host_mandate(100);
+	host_power_save_init(host_wakeup_callback);
+
+	assert(xTaskCreate(host_reset_task, "host_reset_task" ,
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL ,
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
+
+	return ESP_OK;
+}
+
+void app_main(void)
+{
+	/* Initialize NVS */
+	esp_err_t ret = nvs_flash_init();
+
+	if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+	    ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+		ESP_ERROR_CHECK(nvs_flash_erase());
+		ret = nvs_flash_init();
 	}
+	ESP_ERROR_CHECK( ret );
 
-	/* send capabilities to host */
-	generate_startup_event(capa, ext_capa);
-	ESP_LOGI(TAG,"Initial set up done");
-
-	send_event_to_host(RPC_ID__Event_ESPInit);
-
-	while (1) {
-		MEM_DUMP("mem_dump");
-		sleep(10);
-	}
+	esp_hosted_coprocessor_init();
 
 }

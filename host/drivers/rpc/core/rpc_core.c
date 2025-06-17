@@ -14,7 +14,7 @@
 #include "esp_hosted_config.h"
 
 
-DEFINE_LOG_TAG(rpc_core);
+static const char *TAG = "rpc_core";
 
 
 #define RPC_LIB_STATE_INACTIVE      0
@@ -119,17 +119,24 @@ static inline void set_rpc_lib_state(int state)
 	rpc_lib_ctxt.state = state;
 }
 
-static inline int is_rpc_lib_state(int state)
+static inline int is_rpc_lib_ready(void)
 {
-	if (rpc_lib_ctxt.state == state)
+	if (rpc_lib_ctxt.state >= RPC_LIB_STATE_READY)
 		return 1;
 	return 0;
 }
 
+static inline int is_rpc_lib_inactive(void)
+{
+	if (rpc_lib_ctxt.state == RPC_LIB_STATE_INACTIVE)
+		return 1;
+	return 0;
+}
 
 /* RPC TX indication */
 static void rpc_tx_ind(void)
 {
+	ESP_LOGV(TAG, "posting rpc tx semaphore");
 	g_h.funcs->_h_post_semaphore(rpc_tx_sem);
 }
 
@@ -194,6 +201,7 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 
 	/* 5. Assign response callback, if valid */
 	if (app_req->rpc_rsp_cb) {
+		ESP_LOGD(TAG, "setting async resp callback for req[%u]",req.msg_id);
 		ret = set_async_resp_callback(app_req, app_req->rpc_rsp_cb);
 		if (ret < 0) {
 			ESP_LOGE(TAG, "could not set callback for req[%u]",req.msg_id);
@@ -206,7 +214,8 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 	 * For sync procedures, g_h.funcs->_h_get_semaphore takes care to
 	 * handle timeout situations */
 	if (app_req->rpc_rsp_cb) {
-		async_timer_hdl = g_h.funcs->_h_timer_start(app_req->rsp_timeout_sec, RPC__TIMER_ONESHOT,
+		ESP_LOGD(TAG, "starting async resp timer for req[%u]",req.msg_id);
+		async_timer_hdl = g_h.funcs->_h_timer_start("rpc_async_timeout_timer", SEC_TO_MILLISEC(app_req->rsp_timeout_sec), H_TIMER_TYPE_ONESHOT,
 				rpc_async_timeout_handler, app_req);
 		if (!async_timer_hdl) {
 			ESP_LOGE(TAG, "Failed to start async resp timer");
@@ -217,6 +226,7 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 
 	/* 7. Pack in protobuf and send the request */
 	rpc__pack(&req, tx_data);
+	ESP_LOGD(TAG, "sending rpc req[%u]",req.msg_id);
 	if (transport_pserial_send(tx_data, tx_len)) {
 		ESP_LOGE(TAG, "Send RPC req[0x%x] failed",req.msg_id);
 		failure_status = RPC_ERR_TRANSPORT_SEND;
@@ -262,7 +272,7 @@ fail_req:
 		 * Prevents timeout waiting for a response that will never come
 		 * as request was never sent
 		 */
-		ESP_LOGV(TAG, "put failed response into rx queue");
+		ESP_LOGW(TAG, "RPC Sync proc failed");
 
 		ctrl_cmd_t *app_resp = NULL;
 
@@ -451,7 +461,7 @@ static void rpc_rx_thread(void const *arg)
 		Rpc *resp = NULL;
 
 		/* Block on read of protobuf encoded msg */
-		if (is_rpc_lib_state(RPC_LIB_STATE_INACTIVE)) {
+		if (!is_rpc_lib_ready()) {
 			g_h.funcs->_h_sleep(1);
 			continue;
 		}
@@ -471,7 +481,9 @@ static void rpc_rx_thread(void const *arg)
 		HOSTED_FREE(buf);
 
 		/* Send for further processing as event or response */
+		ESP_LOGV(TAG, "Before process_rpc_rx_msg");
 		process_rpc_rx_msg(resp, rpc_rx_func);
+		ESP_LOGV(TAG, "after process_rpc_rx_msg");
 		continue;
 
 		/* Failed - cleanup */
@@ -507,22 +519,27 @@ static void rpc_tx_thread(void const *arg)
 
 	/* Infinite loop to process incoming msg on serial interface */
 	while (1) {
+		ESP_LOGV(TAG, "Loop: Wait for next RPC request");
 
 		/* 4.1 Block on read of protobuf encoded msg */
-		if (is_rpc_lib_state(RPC_LIB_STATE_INACTIVE)) {
+		if (!is_rpc_lib_ready()) {
 			g_h.funcs->_h_sleep(1);
-			ESP_LOGV(TAG, "%s:%u rpc lib inactive",__func__,__LINE__);
+			ESP_LOGD(TAG, "%s:%u rpc lib not ready",__func__,__LINE__);
 			continue;
 		}
 
+		ESP_LOGV(TAG, "Waiting for RPC TX semaphore");
 		g_h.funcs->_h_get_semaphore(rpc_tx_sem, HOSTED_BLOCKING);
+		ESP_LOGV(TAG, "RPC TX semaphore acquired");
 
+		ESP_LOGV(TAG, "Dequeueing RPC TX Q");
 		if (g_h.funcs->_h_dequeue_item(rpc_tx_q, &app_req, HOSTED_BLOCK_MAX)) {
 			ESP_LOGE(TAG, "RPC TX Q Failed to dequeue");
 			continue;
 		}
 
 		if (app_req) {
+			ESP_LOGV(TAG, "Processing RPC TX msg");
 			process_rpc_tx_msg(app_req);
 		} else {
 			ESP_LOGE(TAG, "RPC Tx Q empty or uninitialised");
@@ -588,7 +605,7 @@ static ctrl_cmd_t * get_response(int *read_len, ctrl_cmd_t *app_req)
 	/* Wait for response */
 	ret = wait_for_sync_response(app_req);
 	if (ret) {
-		if (ret == RET_FAIL_TIMEOUT)
+		if ((ret == RET_FAIL_TIMEOUT) || (errno == ETIMEDOUT))
 			ESP_LOGW(TAG, "Timeout waiting for Resp for Req[0x%x]", app_req->msg_id);
 		else
 			ESP_LOGE(TAG, "ERR [%u] ret[%d] for Req[0x%x]", errno, ret, app_req->msg_id);
@@ -919,7 +936,7 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 		ESP_LOGE(TAG, "Invalid param in rpc_send_req");
 		return FAILURE;
 	}
-	ESP_LOGV(TAG, "app_req msgid[0x%x]", app_req->msg_id);
+
 
 	uid++;
 	// handle rollover in uid value
@@ -927,6 +944,7 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 		uid++;
 	app_req->uid = uid;
 
+	ESP_LOGD(TAG, "app_req msgid[0x%x] with uid %" PRIu32, app_req->msg_id, app_req->uid);
 	if (!app_req->rpc_rsp_cb) {
 		/* sync proc only */
 		if (set_sync_resp_sem(app_req)) {
@@ -937,6 +955,7 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 
 	app_req->msg_type = RPC_TYPE__Req;
 
+	ESP_LOGV(TAG, "queueing rpc tx q with uid %" PRIu32, app_req->uid);
 	if (g_h.funcs->_h_queue_item(rpc_tx_q, &app_req, HOSTED_BLOCK_MAX)) {
 	  ESP_LOGE(TAG, "Failed to new app rpc req[0x%x] in tx queue", app_req->msg_id);
 	  goto fail_req;
@@ -944,7 +963,8 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 
 	rpc_tx_ind();
 
-	H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
+	/* TODO : commenting, Review again to avoid duable free */
+	//H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
 
 	return SUCCESS;
 
@@ -963,7 +983,7 @@ int rpc_core_deinit(void)
 {
 	int ret = SUCCESS;
 
-	if (is_rpc_lib_state(RPC_LIB_STATE_INACTIVE))
+	if (is_rpc_lib_inactive())
 		return ret;
 
 	set_rpc_lib_state(RPC_LIB_STATE_INACTIVE);
@@ -1037,7 +1057,7 @@ int rpc_core_init(void)
 		goto free_bufs;
 
 	/* state init */
-	set_rpc_lib_state(RPC_LIB_STATE_READY);
+	set_rpc_lib_state(RPC_LIB_STATE_INIT);
 
 	return ret;
 
@@ -1047,4 +1067,14 @@ free_bufs:
 }
 
 
+int rpc_core_start(void)
+{
+	set_rpc_lib_state(RPC_LIB_STATE_READY);
+	return SUCCESS;
+}
 
+int rpc_core_stop(void)
+{
+	set_rpc_lib_state(RPC_LIB_STATE_INIT);
+	return SUCCESS;
+}

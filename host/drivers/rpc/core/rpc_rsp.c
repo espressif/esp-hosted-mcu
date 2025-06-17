@@ -626,6 +626,10 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			rpc_msg->resp_wifi_get_bandmode->bandmode;
 		break;
 #endif
+	} case RPC_ID__Resp_SetDhcpDnsStatus: {
+		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
+		RPC_ERR_IN_RESP(resp_set_dhcp_dns);
+		break;
 	} default: {
 		ESP_LOGE(TAG, "Unsupported rpc Resp[%u]", rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;

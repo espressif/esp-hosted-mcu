@@ -78,7 +78,7 @@ struct serial_ll_operations {
 	 * @param  serial_ll_hdl - handle
 	 *         wlen - number of bytes to write
 	 *         wbuffer - buffer to send
-	 * @retval STM_FAIL/STM_OK
+	 * @retval 0 on success, -1 on failure
 	 */
 	int        (*write) (const serial_ll_handle_t * serial_ll_hdl,
 		uint8_t * wbuffer, const uint16_t wlen);
@@ -99,7 +99,7 @@ struct serial_ll_operations {
   */
 serial_ll_handle_t * serial_ll_init(void(*rx_data_ind)(void));
 
-stm_ret_t serial_ll_rx_handler(interface_buffer_handle_t * buf_handle);
+int serial_ll_rx_handler(interface_buffer_handle_t * buf_handle);
 #ifdef __cplusplus
 }
 #endif

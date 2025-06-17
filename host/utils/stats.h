@@ -23,6 +23,7 @@ extern "C" {
 
 #include "common.h"
 #include "esp_hosted_config.h"
+#include "esp_hosted_header.h"
 
 /* Stats CONFIG:
  *
@@ -116,20 +117,50 @@ struct mem_stats {
 };
 
 extern struct mem_stats h_stats_g;
-#endif
+#endif /*H_MEM_STATS*/
+
+#ifdef ESP_PKT_NUM_DEBUG
+struct dbg_stats_t {
+	uint16_t tx_pkt_num;
+	uint16_t exp_rx_pkt_num;
+};
+
+extern struct dbg_stats_t dbg_stats;
+#define UPDATE_HEADER_TX_PKT_NO(h) h->pkt_num = htole16(dbg_stats.tx_pkt_num++)
+#define UPDATE_HEADER_RX_PKT_NO(h)                              \
+	do {                                                        \
+		uint16_t rcvd_pkt_num = le16toh(h->pkt_num);            \
+		if (dbg_stats.exp_rx_pkt_num != rcvd_pkt_num) {         \
+			ESP_LOGI(TAG, "exp_pkt_num[%u], rx_pkt_num[%u]",    \
+					dbg_stats.exp_rx_pkt_num, rcvd_pkt_num);    \
+			dbg_stats.exp_rx_pkt_num = rcvd_pkt_num;            \
+		}                                                       \
+		dbg_stats.exp_rx_pkt_num++;                             \
+	} while(0);
+
+#else /*ESP_PKT_NUM_DEBUG*/
+
+  #define UPDATE_HEADER_TX_PKT_NO(h)
+  #define UPDATE_HEADER_RX_PKT_NO(h)
+
+#endif /*ESP_PKT_NUM_DEBUG*/
 
 #if ESP_PKT_STATS
-#define ESP_PKT_STATS_REPORT_INTERVAL  10
 struct pkt_stats_t {
 	uint32_t sta_rx_in;
 	uint32_t sta_rx_out;
 	uint32_t sta_tx_in_pass;
-	uint32_t sta_tx_in_drop;
+	uint32_t sta_tx_trans_in;
+	uint32_t sta_tx_flowctrl_drop;
 	uint32_t sta_tx_out;
+	uint32_t sta_tx_out_drop;
+	uint32_t sta_flow_ctrl_on;
+	uint32_t sta_flow_ctrl_off;
 };
 
 extern struct pkt_stats_t pkt_stats;
-#endif
+#endif /*ESP_PKT_STATS*/
+
 #ifdef __cplusplus
 }
 #endif

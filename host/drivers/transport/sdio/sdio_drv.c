@@ -1,3 +1,62 @@
+/*
+ * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ *  SDIO Driver
+ *  ===========
+ *
+ *  TX Path (Host -> Slave):
+ *  ------------------------
+ *  1. `esp_hosted_tx()`: Higher-level modules call this function to send data.
+ *  2. `to_slave_queue`: The data is placed into a priority queue.
+ *  3. `sdio_write_task`: This thread waits for data on the queue, retrieves it,
+ *     and writes it to the SDIO bus.
+ *
+ *  RX Path (Slave -> Host):
+ *  ------------------------
+ *  1. `sdio_read_task`: This thread waits for an interrupt from the slave,
+ *     reads the raw data stream into a double buffer, and signals the next
+ *     thread.
+ *  2. `sdio_data_to_rx_buf_task`: Processes the stream from the double buffer,
+ *     extracts individual packets, and places them onto the `from_slave_queue`.
+ *  3. `sdio_process_rx_task`: Retrieves packets from the queue and dispatches
+ *     them to the appropriate higher-level handler (e.g., WiFi, BT).
+ *
+ *
+ *
+ *        Host MCU
+ *        +--------------------------------------------------------------------------------------------------+
+ *        | TX Path (Host -> Slave)                                    RX Path (Slave -> Host)               |
+ *        | +------------------------------------------------------+   +-----------------------------------+ |
+ *        | | Higher Layers (e.g. Wi-Fi)                           |   | SDIO Bus                          | |
+ *        | |      |                                               |   |    |                              | |
+ *        | |      v                                               |   |    v                              | |
+ *        | | esp_hosted_tx()                                      |   | sdio_read_task (Thread)           | |
+ *        | |      |                                               |   |    |                              | |
+ *        | |      v                                               |   |    | Data Stream                  | |
+ *        | | to_slave_queue (Queue)                               |   |    v                              | |
+ *        | |      |                                               |   | Double Buffer                     | |
+ *        | |      v                                               |   |    |                              | |
+ *        | | sdio_write_task (Thread)                             |   |    v                              | |
+ *        | |      |                                               |   | sdio_data_to_rx_buf_task (Thread) | |
+ *        | |      v                                               |   |    |                              | |
+ *        | | SDIO Bus                                             |   |    | Packets                      | |
+ *        | +------------------------------------------------------+   |    v                              | |
+ *        |                                                            | from_slave_queue (Queue)          | |
+ *        |                                                            |    |                              | |
+ *        |                                                            |    v                              | |
+ *        |                                                            | sdio_process_rx_task (Thread)     | |
+ *        |                                                            |    |                              | |
+ *        |                                                            |    v                              | |
+ *        |                                                            | Higher Layers (Wi-Fi, BT, etc)    | |
+ *        |                                                            +-----------------------------------+ |
+ *        +--------------------------------------------------------------------------------------------------+
+ *
+ *
+ */
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2015-2023 Espressif Systems (Shanghai) PTE LTD
 //
@@ -19,11 +78,15 @@
 #include "sdio_reg.h"
 #include "serial_drv.h"
 #include "stats.h"
-#include "esp_log.h"
 #include "esp_hosted_log.h"
 #include "hci_drv.h"
 #include "endian.h"
 #include "esp_hosted_transport_init.h"
+#include "power_save_drv.h"
+#include "esp_hosted_power_save.h"
+#include "esp_hosted_config.h"
+#include "esp_hosted_transport_config.h"
+
 
 static const char TAG[] = "H_SDIO_DRV";
 
@@ -37,9 +100,10 @@ static const char TAG[] = "H_SDIO_DRV";
 #define TO_SLAVE_QUEUE_SIZE               H_SDIO_TX_Q
 #define FROM_SLAVE_QUEUE_SIZE             H_SDIO_RX_Q
 
-#define RX_TASK_STACK_SIZE                4096
-#define TX_TASK_STACK_SIZE                4096
-#define PROCESS_RX_TASK_STACK_SIZE        4096
+#define RX_TASK_STACK_SIZE                CONFIG_ESP_HOSTED_DFLT_TASK_STACK
+#define TX_TASK_STACK_SIZE                CONFIG_ESP_HOSTED_DFLT_TASK_STACK
+#define PROCESS_RX_TASK_STACK_SIZE        CONFIG_ESP_HOSTED_DFLT_TASK_STACK
+#define RX_BUF_TASK_STACK_SIZE            CONFIG_ESP_HOSTED_DFLT_TASK_STACK
 #define RX_TIMEOUT_TICKS                  50
 
 #define BUFFER_AVAILABLE                  1
@@ -86,7 +150,6 @@ static uint8_t *reg_buf = NULL;
 /* Create mempool for cache mallocs */
 static struct mempool * buf_mp_g;
 
-/* TODO to move this in transport drv */
 extern transport_channel_t *chan_arr[ESP_MAX_IF];
 
 static void * sdio_handle = NULL;
@@ -126,7 +189,9 @@ typedef struct {
 	int write_index;
 } double_buf_t;
 
-static double_buf_t double_buf;
+static double_buf_t double_buf = {
+	.read_index = -1,
+};
 
 // sem to trigger sdio_data_to_rx_buf_task()
 static semaphore_handle_t sem_double_buf_xfer_data;
@@ -134,7 +199,7 @@ static semaphore_handle_t sem_double_buf_xfer_data;
 static void * sdio_rx_buf_thread;
 static void sdio_data_to_rx_buf_task(void const* pvParameters);
 
-static esp_err_t sdio_generate_slave_intr(uint8_t intr_no);
+static int sdio_generate_slave_intr(uint8_t intr_no);
 
 static void sdio_write_task(void const* pvParameters);
 static void sdio_read_task(void const* pvParameters);
@@ -164,9 +229,66 @@ static inline void sdio_buffer_free(void *buf)
 	mempool_free(buf_mp_g, buf);
 }
 
-void transport_deinit_internal(void)
+void bus_deinit_internal(void *bus_handle)
 {
-	/* TODO */
+	uint8_t prio_q_idx = 0;
+
+	if (sdio_read_thread) {
+		g_h.funcs->_h_thread_cancel(sdio_read_thread);
+		sdio_read_thread = NULL;
+	}
+
+	if (sdio_write_thread) {
+		g_h.funcs->_h_thread_cancel(sdio_write_thread);
+		sdio_write_thread = NULL;
+	}
+
+	if (sdio_process_rx_thread) {
+		g_h.funcs->_h_thread_cancel(sdio_process_rx_thread);
+		sdio_process_rx_thread = NULL;
+	}
+
+	if (sdio_rx_buf_thread) {
+		g_h.funcs->_h_thread_cancel(sdio_rx_buf_thread);
+		sdio_rx_buf_thread = NULL;
+	}
+
+	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
+		if (to_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(to_slave_queue[prio_q_idx]);
+			to_slave_queue[prio_q_idx] = NULL;
+		}
+		if (from_slave_queue[prio_q_idx]) {
+			g_h.funcs->_h_destroy_queue(from_slave_queue[prio_q_idx]);
+			from_slave_queue[prio_q_idx] = NULL;
+		}
+	}
+
+	if (sem_to_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_to_slave_queue);
+		sem_to_slave_queue = NULL;
+	}
+	if (sem_from_slave_queue) {
+		g_h.funcs->_h_destroy_semaphore(sem_from_slave_queue);
+		sem_from_slave_queue = NULL;
+	}
+	if (sem_double_buf_xfer_data) {
+		g_h.funcs->_h_destroy_semaphore(sem_double_buf_xfer_data);
+		sem_double_buf_xfer_data = NULL;
+	}
+
+#if defined(USE_DRIVER_LOCK)
+	if (sdio_bus_lock) {
+		g_h.funcs->_h_destroy_mutex(sdio_bus_lock);
+		sdio_bus_lock = NULL;
+	}
+#endif
+
+	sdio_mempool_destroy();
+	if (bus_handle) {
+		g_h.funcs->_h_bus_deinit(bus_handle);
+	}
+	sdio_handle = NULL;
 }
 
 static int sdio_generate_slave_intr(uint8_t intr_no)
@@ -370,6 +492,7 @@ static void sdio_write_task(void const* pvParameters)
 	uint32_t len_to_send;
 	uint32_t buf_needed;
 	uint8_t tx_needed = 1;
+	uint8_t flag = 0;
 
 	while (!sdio_start_write_thread)
 		g_h.funcs->_h_msleep(10);
@@ -385,13 +508,19 @@ static void sdio_write_task(void const* pvParameters)
 					tx_needed = 0; /* No Tx msg */
 				}
 
-		if (tx_needed)
+		if (tx_needed) {
 			len = buf_handle.payload_len;
+			flag = buf_handle.flag;
+		}
 
-		if (!len) {
+		if (!flag && !len) {
 			ESP_LOGE(TAG, "%s: Empty len", __func__);
 			goto done;
 		}
+#if ESP_PKT_STATS
+		if (buf_handle.if_type == ESP_STA_IF)
+			pkt_stats.sta_tx_trans_in++;
+#endif
 
 		if (!buf_handle.payload_zcopy) {
 			sendbuf = sdio_buffer_alloc(MEMSET_REQUIRED);
@@ -425,6 +554,8 @@ static void sdio_write_task(void const* pvParameters)
 		payload_header->seq_num = htole16(buf_handle.seq_num);
 		payload_header->flags = buf_handle.flag;
 
+		UPDATE_HEADER_TX_PKT_NO(payload_header);
+
 		if (payload_header->if_type == ESP_HCI_IF) {
 			// special handling for HCI
 			if (!buf_handle.payload_zcopy) {
@@ -452,13 +583,17 @@ static void sdio_write_task(void const* pvParameters)
 		ret = sdio_is_write_buffer_available(buf_needed);
 		if (ret != BUFFER_AVAILABLE) {
 			ESP_LOGV(TAG, "no SDIO write buffers on slave device");
+#if ESP_PKT_STATS
+			if (payload_header->if_type == ESP_STA_IF)
+				pkt_stats.sta_tx_out_drop++;
+#endif
 			goto unlock_done;
 		}
 
 		pos = sendbuf;
 		data_left = len + sizeof(struct esp_payload_header);
 
-		ESP_HEXLOGV("h_sdio_tx", sendbuf, min(32,data_left));
+		ESP_HEXLOGV("bus_TX", sendbuf, data_left, 32);
 
 		len_to_send = 0;
 		retries = 0;
@@ -502,8 +637,8 @@ static void sdio_write_task(void const* pvParameters)
 		sdio_tx_buf_count = sdio_tx_buf_count % ESP_TX_BUFFER_MAX;
 
 #if ESP_PKT_STATS
-			if (buf_handle.if_type == ESP_STA_IF)
-				pkt_stats.sta_tx_out++;
+		if (buf_handle.if_type == ESP_STA_IF)
+			pkt_stats.sta_tx_out++;
 #endif
 
 unlock_done:
@@ -524,13 +659,21 @@ static int is_valid_sdio_rx_packet(uint8_t *rxbuff_a, uint16_t *len_a, uint16_t 
 #if H_SDIO_CHECKSUM
 	uint16_t rx_checksum = 0, checksum = 0;
 #endif
+	uint8_t is_wakeup_pkt = 0;
 
+	UPDATE_HEADER_RX_PKT_NO(h);
 	if (!h || !len_a || !offset_a)
 		return 0;
 
 	/* Fetch length and offset from payload header */
 	len = le16toh(h->len);
 	offset = le16toh(h->offset);
+	is_wakeup_pkt = h->flags & FLAG_WAKEUP_PKT;
+
+	if (is_wakeup_pkt && len<1500) {
+		ESP_LOGI(TAG, "Host wakeup triggered, len: %u ", len);
+		ESP_HEXLOGW("Wakeup_pkt", rxbuff_a+offset, len, min(len,128));
+	}
 
 	if ((!len) ||
 		(len > MAX_PAYLOAD_SIZE) ||
@@ -542,6 +685,12 @@ static int is_valid_sdio_rx_packet(uint8_t *rxbuff_a, uint16_t *len_a, uint16_t 
 		 * 3. payload header size mismatch,
 		 * wrong header/bit packing?
 		 * */
+
+		if (len) {
+			ESP_LOGE(TAG, "len[%u]>max[%u] OR offset[%u] != exp[%u], Drop",
+				len, MAX_PAYLOAD_SIZE, offset, sizeof(struct esp_payload_header));
+		}
+
 		return 0;
 
 	}
@@ -595,6 +744,11 @@ static esp_err_t sdio_push_pkt_to_queue(uint8_t * rxbuff, uint16_t len, uint16_t
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
+	if( (!from_slave_queue[pkt_prio]) || (!sem_from_slave_queue)) {
+		ESP_LOGI(TAG, "uninitialised from_slave_queue or sem_from_slave_queue");
+		return ESP_FAIL;
+	}
+
 	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_from_slave_queue);
 
@@ -639,7 +793,7 @@ static esp_err_t sdio_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 		 * 3. payload header size mismatch,
 		 * wrong header/bit packing?
 		 * */
-		ESP_LOGE(TAG, "Dropping packet");
+		ESP_LOGW(TAG, "Dropping packet");
 		HOSTED_FREE(buf);
 		return ESP_FAIL;
 	}
@@ -698,6 +852,7 @@ static esp_err_t sdio_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 			/* Have to drop packets in the stream as we cannot decode
 			 * them after this error */
 			ESP_LOGE(TAG, "Dropping packet(s) from stream");
+			/* TODO: Free by caller? */
 			return ESP_FAIL;
 		}
 		/* Allocate rx buffer */
@@ -731,6 +886,8 @@ static void sdio_data_to_rx_buf_task(void const* pvParameters)
 	uint8_t * buf;
 	uint32_t len;
 
+	ESP_LOGI(TAG, "sdio_data_to_rx_buf_task started");
+
 	while (1) {
 		g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, HOSTED_BLOCK_MAX);
 
@@ -750,9 +907,11 @@ static void sdio_data_to_rx_buf_task(void const* pvParameters)
 	}
 }
 
+
+
 static void sdio_read_task(void const* pvParameters)
 {
-	esp_err_t res;
+	esp_err_t res = ESP_OK;
 	uint8_t *rxbuff = NULL;
 	int ret;
 	uint32_t len_from_slave;
@@ -777,13 +936,6 @@ static void sdio_read_task(void const* pvParameters)
 		}
 	}
 
-	res = g_h.funcs->_h_sdio_card_init(sdio_handle);
-	if (res != ESP_OK) {
-		ESP_LOGE(TAG, "sdio card init failed");
-		return;
-	}
-
-	create_debugging_tasks();
 
 #if DO_COMBINED_REG_READ
 	reg_buf = MEM_ALLOC(REG_BUF_LEN);
@@ -797,16 +949,18 @@ static void sdio_read_task(void const* pvParameters)
 	ESP_LOGI(TAG, "SDIO Host operating in PACKET MODE");
 #endif
 
-	ESP_LOGI(TAG, "generate slave intr");
+	ESP_LOGI(TAG, "Open data path at slave");
 
-	// inform the slave device that we are ready
+
 	sdio_generate_slave_intr(ESP_OPEN_DATA_PATH);
 
 	for (;;) {
 
 		// wait for sdio interrupt from slave
-		// call will block until there is an interrupt, timeout or error
+		/* call will block until there is an interrupt, timeout or error */
+		ESP_LOGD(TAG, "--- Wait for SDIO intr ---");
 		res = g_h.funcs->_h_sdio_wait_slave_intr(sdio_handle, HOSTED_BLOCK_MAX);
+		ESP_LOGD(TAG, "--- SDIO intr received ---");
 
 		if (res != ESP_OK) {
 			ESP_LOGE(TAG, "wait_slave_intr error: %d", res);
@@ -820,6 +974,8 @@ static void sdio_read_task(void const* pvParameters)
 			ESP_LOGE(TAG, "failed to read registers");
 
 			SDIO_DRV_UNLOCK();
+			ESP_LOGI(TAG, "Host is reseting itself, to avoid any sdio race condition");
+			g_h.funcs->_h_restart_host();
 			continue;
 		}
 
@@ -871,10 +1027,12 @@ static void sdio_read_task(void const* pvParameters)
 		ret = sdio_get_len_from_slave(&len_from_slave, ACQUIRE_LOCK);
 #endif
 		if (ret || !len_from_slave) {
-			ESP_LOGD(TAG, "invalid ret or len_from_slave: %d %ld", ret, len_from_slave);
+			ESP_LOGW(TAG, "invalid ret or len_from_slave: %d %ld", ret, len_from_slave);
 
 			SDIO_DRV_UNLOCK();
 			continue;
+		} else {
+			ESP_LOGD(TAG, "len_from_slave: %ld", len_from_slave);
 		}
 #endif
 
@@ -937,9 +1095,6 @@ static void sdio_read_task(void const* pvParameters)
 	}
 }
 
-/**
- * TODO: unify sdio_process_rx_task() and spi_process_rx_task()
- */
 static void sdio_process_rx_task(void const* pvParameters)
 {
 	interface_buffer_handle_t buf_handle_l = {0};
@@ -968,8 +1123,9 @@ static void sdio_process_rx_task(void const* pvParameters)
 
 		buf_handle = &buf_handle_l;
 
-		ESP_LOGV(TAG, "h_sdio_rx: iftype:%d", (int)buf_handle->if_type);
-		ESP_HEXLOGV("h_sdio_rx", buf_handle->payload, min(buf_handle->payload_len,32));
+		ESP_LOGV(TAG, "bus_rx: iftype:%d", (int)buf_handle->if_type);
+		ESP_HEXLOGV("bus_rx", buf_handle->priv_buffer_handle,
+				buf_handle->payload_len+H_ESP_PAYLOAD_HEADER_OFFSET, 32);
 
 		if (buf_handle->if_type == ESP_SERIAL_IF) {
 			/* serial interface path */
@@ -986,6 +1142,10 @@ static void sdio_process_rx_task(void const* pvParameters)
 				memcpy(copy_payload, buf_handle->payload, buf_handle->payload_len);
 				H_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle, buf_handle->priv_buffer_handle);
 
+#if ESP_PKT_STATS
+				if (buf_handle->if_type == ESP_STA_IF)
+					pkt_stats.sta_rx_out++;
+#endif
 				ret = chan_arr[buf_handle->if_type]->rx(chan_arr[buf_handle->if_type]->api_chan,
 						copy_payload, copy_payload, buf_handle->payload_len);
 				if (unlikely(ret))
@@ -998,16 +1158,20 @@ static void sdio_process_rx_task(void const* pvParameters)
 			}
 #endif
 		} else if (buf_handle->if_type == ESP_PRIV_IF) {
+			ESP_LOGI(TAG, "Received ESP_PRIV_IF type message");
 			process_priv_communication(buf_handle);
 			hci_drv_show_configuration();
 			/* priv transaction received */
 			ESP_LOGI(TAG, "Received INIT event");
-			sdio_start_write_thread = true;
 
 			event = (struct esp_priv_event *) (buf_handle->payload);
+			ESP_LOGI(TAG, "Event type: 0x%x", event->event_type);
 			if (event->event_type != ESP_PRIV_EVENT_INIT) {
 				/* User can re-use this type of transaction */
+				ESP_LOGW(TAG, "Not an ESP_PRIV_EVENT_INIT event: 0x%x", event->event_type);
 			}
+			ESP_LOGI(TAG, "Write thread started");
+			sdio_start_write_thread = true;
 		} else if (buf_handle->if_type == ESP_HCI_IF) {
 			hci_rx_handler(buf_handle);
 		} else if (buf_handle->if_type == ESP_TEST_IF) {
@@ -1018,11 +1182,6 @@ static void sdio_process_rx_task(void const* pvParameters)
 		} else {
 			ESP_LOGW(TAG, "unknown type %d ", buf_handle->if_type);
 		}
-
-#if ESP_PKT_STATS
-		if (buf_handle->if_type == ESP_STA_IF)
-			pkt_stats.sta_rx_out++;
-#endif
 
 		/* Free buffer handle */
 		/* When buffer offloaded to other module, that module is
@@ -1036,7 +1195,7 @@ static void sdio_process_rx_task(void const* pvParameters)
 	}
 }
 
-void transport_init_internal(void)
+void *bus_init_internal(void)
 {
 	uint8_t prio_q_idx = 0;
 	/* register callback */
@@ -1082,10 +1241,10 @@ void transport_init_internal(void)
 
 	sem_double_buf_xfer_data = g_h.funcs->_h_create_semaphore(1);
 	assert(sem_double_buf_xfer_data);
-	g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, HOSTED_BLOCK_MAX);
+	g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, 0);
 
 	sdio_rx_buf_thread = g_h.funcs->_h_thread_create("sdio_rx_buf",
-		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, sdio_data_to_rx_buf_task, NULL);
+		DFLT_TASK_PRIO, RX_BUF_TASK_STACK_SIZE, sdio_data_to_rx_buf_task, NULL);
 
 	sdio_read_thread = g_h.funcs->_h_thread_create("sdio_read",
 		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, sdio_read_task, NULL);
@@ -1101,11 +1260,14 @@ void transport_init_internal(void)
 	sdio_bus_lock = g_h.funcs->_h_create_mutex();
 	assert(sdio_bus_lock);
 #endif
+	ESP_LOGD(TAG, "sdio bus init done");
+
+	return sdio_handle;
 }
 
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		uint8_t * wbuffer, uint16_t wlen, uint8_t buff_zcopy,
-		void (*free_wbuf_fun)(void* ptr))
+		void (*free_wbuf_fun)(void* ptr), uint8_t flag)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	void (*free_func)(void* ptr) = NULL;
@@ -1115,9 +1277,9 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	if (free_wbuf_fun)
 		free_func = free_wbuf_fun;
 
-	if (!wbuffer || !wlen ||
-		(wlen > MAX_PAYLOAD_SIZE) ||
-		!transport_up) {
+
+	if ((!wbuffer || !wlen || (wlen > MAX_PAYLOAD_SIZE) || !transport_up)) {
+
 		ESP_LOGE(TAG, "tx fail: NULL buff, invalid len (%u) or len > max len (%u), transport_up(%u))",
 				wlen, MAX_PAYLOAD_SIZE, transport_up);
 		H_FREE_PTR_WITH_FUNC(free_func, wbuffer);
@@ -1130,6 +1292,7 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	buf_handle.payload = wbuffer;
 	buf_handle.priv_buffer_handle = wbuffer;
 	buf_handle.free_buf_handle = free_func;
+	buf_handle.flag = flag;
 
 	if (buf_handle.if_type == ESP_SERIAL_IF)
 		pkt_prio = PRIO_Q_SERIAL;
@@ -1137,13 +1300,129 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
-	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
-
 #if ESP_PKT_STATS
 	if (buf_handle.if_type == ESP_STA_IF)
 		pkt_stats.sta_tx_in_pass++;
 #endif
 
+	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
+	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
+
+
 	return ESP_OK;
+}
+
+void check_if_max_freq_used(uint8_t chip_type)
+{
+#ifdef CONFIG_IDF_TARGET
+	if (H_SDIO_CLOCK_FREQ_KHZ < 40000) {
+		ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 40000KHz", H_SDIO_CLOCK_FREQ_KHZ);
+	}
+#else
+	if (H_SDIO_CLOCK_FREQ_KHZ < 50000) {
+		ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 50000KHz", H_SDIO_CLOCK_FREQ_KHZ);
+	}
+#endif
+}
+
+
+static esp_err_t transport_card_init(void *bus_handle)
+{
+	return g_h.funcs->_h_sdio_card_init(bus_handle);
+}
+
+static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
+{
+	g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
+	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	g_h.funcs->_h_msleep(1200);
+	return ESP_OK;
+}
+
+int ensure_slave_bus_ready(void *bus_handle)
+{
+	int res = -1;
+	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
+
+	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
+		ESP_LOGE(TAG, "Unable to get RESET config for transport");
+		return -1;
+	}
+
+	assert(reset_pin.pin != -1);
+
+	release_slave_reset_gpio_post_wakeup();
+
+#if H_SLAVE_RESET_ONLY_IF_NECESSARY
+	{
+		/* Reset will be done later if needed during communication initialization */
+		res = transport_card_init(bus_handle);
+		if (res) {
+			ESP_LOGE(TAG, "card init failed");
+		} else {
+			ESP_LOGI(TAG, "Card init success, TRANSPORT_RX_ACTIVE");
+			set_transport_state(TRANSPORT_RX_ACTIVE);
+			return 0;
+		}
+
+		/* Give a chance to reset and recover the slave */
+		if (res) {
+			ESP_LOGI(TAG, "Attempt slave reset");
+			transport_gpio_reset(bus_handle, reset_pin);
+		}
+
+		res = transport_card_init(bus_handle);
+		if (res) {
+			ESP_LOGE(TAG, "card init failed even after slave reset");
+		} else {
+			ESP_LOGI(TAG, "Card init success");
+			set_transport_state(TRANSPORT_RX_ACTIVE);
+			return 0;
+		}
+	}
+#else /* H_RESET_ON_EVERY_BOOTUP */
+	if (esp_hosted_woke_from_deep_sleep()) {
+		ESP_LOGI(TAG, "Host woke up from deep sleep");
+
+		g_h.funcs->_h_msleep(500);
+		set_transport_state(TRANSPORT_RX_ACTIVE);
+
+		res = transport_card_init(bus_handle);
+		if (res) {
+			ESP_LOGE(TAG, "card init failed");
+		} else {
+			ESP_LOGI(TAG, "Card init success, TRANSPORT_RX_ACTIVE");
+			stop_host_power_save();
+		}
+	} else {
+		/* Always reset slave on host bootup */
+		ESP_LOGW(TAG, "Reset slave using GPIO[%u]", reset_pin.pin);
+		transport_gpio_reset(bus_handle, reset_pin);
+
+		res = transport_card_init(bus_handle);
+		if (res) {
+			ESP_LOGE(TAG, "card init failed");
+		} else {
+			ESP_LOGI(TAG, "Card init success, TRANSPORT_RX_ACTIVE");
+			set_transport_state(TRANSPORT_RX_ACTIVE);
+		}
+	}
+#endif
+	return res;
+}
+
+int bus_inform_slave_host_power_save_start(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is started");
+	return sdio_generate_slave_intr(ESP_POWER_SAVE_ON);
+}
+
+int bus_inform_slave_host_power_save_stop(void)
+{
+	ESP_LOGI(TAG, "Inform slave, host power save is stopped");
+	return sdio_generate_slave_intr(ESP_POWER_SAVE_OFF);
 }

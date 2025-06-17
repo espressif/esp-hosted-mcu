@@ -512,6 +512,23 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->bandmode = app_req->u.wifi_band_mode;
 		break;
 #endif
+	} case RPC_ID__Req_SetDhcpDnsStatus: {
+		RPC_ALLOC_ASSIGN(RpcReqSetDhcpDnsStatus, req_set_dhcp_dns,
+				rpc__req__set_dhcp_dns_status__init);
+		RpcReqSetDhcpDnsStatus *p_c = req_payload;
+		rpc_set_dhcp_dns_status_t* p_a = &app_req->u.slave_dhcp_dns_status;
+
+		p_c->iface = p_a->iface;
+		p_c->dhcp_up = p_a->dhcp_up;
+		p_c->dns_up = p_a->dns_up;
+		p_c->dns_type = p_a->dns_type;
+		p_c->net_link_up = p_a->net_link_up;
+
+		RPC_REQ_COPY_STR(p_c->dhcp_ip, p_a->dhcp_ip, 64);
+		RPC_REQ_COPY_STR(p_c->dhcp_nm, p_a->dhcp_nm, 64);
+		RPC_REQ_COPY_STR(p_c->dhcp_gw, p_a->dhcp_gw, 64);
+		RPC_REQ_COPY_STR(p_c->dns_ip, p_a->dns_ip, 64);
+		break;
 	} default: {
 		*failure_status = RPC_ERR_UNSUPPORTED_MSG;
 		ESP_LOGE(TAG, "Unsupported RPC Req[%u]",req->msg_id);

@@ -81,4 +81,4 @@ esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t
 }
 #endif
 
-#endif /* __ESP_HOSTED_API_PRIV_H__ */ 
+#endif /* __ESP_HOSTED_API_PRIV_H__ */

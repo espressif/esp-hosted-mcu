@@ -34,6 +34,8 @@ extern "C" {
 
 /** Exported Functions **/
 esp_err_t rpc_init(void);
+esp_err_t rpc_start(void);
+esp_err_t rpc_stop(void);
 esp_err_t rpc_deinit(void);
 esp_err_t rpc_unregister_event_callbacks(void);
 esp_err_t rpc_register_event_callbacks(void);
@@ -98,6 +100,10 @@ esp_err_t rpc_wifi_get_protocols(wifi_interface_t ifx, wifi_protocols_t *protoco
 esp_err_t rpc_wifi_set_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw);
 esp_err_t rpc_wifi_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw);
 #endif
+
+esp_err_t rpc_set_dhcp_dns_status(wifi_interface_t interface, uint8_t link_up,
+		uint8_t dhcp_up, char *dhcp_ip, char *dhcp_nm, char *dhcp_gw,
+		uint8_t dns_up, char *dns_ip, uint8_t dns_type);
 
 #ifdef __cplusplus
 }

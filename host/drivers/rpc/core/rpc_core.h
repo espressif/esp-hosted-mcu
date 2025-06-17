@@ -93,6 +93,8 @@ typedef struct q_element {
 }
 
 int rpc_core_init(void);
+int rpc_core_start(void);
+int rpc_core_stop(void);
 int rpc_core_deinit(void);
 /*
  * Allows user app to create low level protobuf request

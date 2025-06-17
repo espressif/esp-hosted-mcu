@@ -174,14 +174,15 @@ static void start_rx_data_throttling_if_needed(void)
 			return;
 
 		queue_load = uxQueueMessagesWaiting(uart_rx_queue[PRIO_Q_OTHERS]);
-#if ESP_PKT_STATS
-		pkt_stats.slave_wifi_rx_msg_loaded = queue_load;
-#endif
+
 
 		load_percent = (queue_load*100/HOSTED_UART_RX_QUEUE_SIZE);
 		if (load_percent > slv_cfg_g.throttle_high_threshold) {
 			slv_state_g.current_throttling = 1;
 			wifi_flow_ctrl = 1;
+#if ESP_PKT_STATS
+		pkt_stats.sta_flowctrl_on++;
+#endif
 			TRIGGER_FLOW_CTRL();
 		}
 	}
@@ -195,14 +196,15 @@ static void stop_rx_data_throttling_if_needed(void)
 	if (slv_state_g.current_throttling) {
 
 		queue_load = uxQueueMessagesWaiting(uart_rx_queue[PRIO_Q_OTHERS]);
-#if ESP_PKT_STATS
-		pkt_stats.slave_wifi_rx_msg_loaded = queue_load;
-#endif
+
 
 		load_percent = (queue_load*100/HOSTED_UART_RX_QUEUE_SIZE);
 		if (load_percent < slv_cfg_g.throttle_low_threshold) {
 			slv_state_g.current_throttling = 0;
 			wifi_flow_ctrl = 0;
+#if ESP_PKT_STATS
+		pkt_stats.sta_flowctrl_off++;
+#endif
 			TRIGGER_FLOW_CTRL();
 		}
 	}
@@ -229,6 +231,7 @@ static void uart_rx_task(void* pvParameters)
 #endif
 	int bytes_read;
 	int total_len;
+	uint8_t flags = 0;
 
 	// delay for a while to let app main threads start and become ready
 	vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -256,6 +259,19 @@ static void uart_rx_task(void* pvParameters)
 			continue;
 		}
 
+		flags = header->flags;
+
+		if (flags & FLAG_POWER_SAVE_STARTED) {
+			ESP_LOGI(TAG, "Host informed starting to power sleep");
+			if (context.event_handler) {
+				context.event_handler(ESP_POWER_SAVE_ON);
+			}
+		} else if (flags & FLAG_POWER_SAVE_STOPPED) {
+			ESP_LOGI(TAG, "Host informed that it waken up");
+			if (context.event_handler) {
+				context.event_handler(ESP_POWER_SAVE_OFF);
+			}
+		}
 		len = le16toh(header->len);
 		offset = le16toh(header->offset);
 		total_len = len + sizeof(struct esp_payload_header);
@@ -397,7 +413,7 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 #endif
 
 	ESP_LOGD(TAG, "sending %"PRIu32 " bytes", total_len);
-	ESP_HEXLOGD("spi_hd_tx", sendbuf, total_len);
+	ESP_HEXLOGD("uart_tx", sendbuf, total_len, 32);
 
 	tx_len = uart_write_bytes(HOSTED_UART, (const char*)sendbuf, total_len);
 
@@ -424,6 +440,10 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 
 static interface_handle_t * h_uart_init(void)
 {
+	if (if_handle_g.state >= DEACTIVE) {
+		return &if_handle_g;
+	}
+
 	uint16_t prio_q_idx = 0;
 	uart_word_length_t uart_word_length;
 	uart_parity_t parity;
@@ -506,23 +526,29 @@ static interface_handle_t * h_uart_init(void)
 
 	// start up tasks
 	assert(xTaskCreate(uart_rx_task, "uart_rx_task" ,
-			CONFIG_ESP_DEFAULT_TASK_STACK_SIZE, NULL,
-			CONFIG_ESP_DEFAULT_TASK_PRIO, NULL) == pdTRUE);
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
 
 	assert(xTaskCreate(flow_ctrl_task, "flow_ctrl_task" ,
-			CONFIG_ESP_DEFAULT_TASK_STACK_SIZE, NULL ,
-			CONFIG_ESP_DEFAULT_TASK_PRIO, NULL) == pdTRUE);
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL ,
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
 
 	// data path opened
 	memset(&if_handle_g, 0, sizeof(if_handle_g));
-	if_handle_g.state = INIT;
+	if_handle_g.state = ACTIVE;
 
 	return &if_handle_g;
 }
 
 static void h_uart_deinit(interface_handle_t * handle)
 {
+#if H_HOST_PS_ALLOWED && H_PS_UNLOAD_BUS_WHILE_PS
 	esp_err_t ret;
+	if (if_handle_g.state == DEINIT) {
+		ESP_LOGW(TAG, "UART already deinitialized");
+		return;
+	}
+	if_handle_g.state = DEINIT;
 
 	h_uart_mempool_destroy();
 
@@ -538,6 +564,7 @@ static void h_uart_deinit(interface_handle_t * handle)
 	if (ret != ESP_OK)
 		ESP_LOGE(TAG, "%s: Failed to flush uart Tx", __func__);
 	uart_driver_delete(HOSTED_UART);
+#endif
 }
 
 static esp_err_t h_uart_reset(interface_handle_t *handle)

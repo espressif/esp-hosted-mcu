@@ -32,6 +32,13 @@
 #include "errno.h"
 #include "hci_drv.h"
 
+#if H_HOST_PS_ALLOWED
+#include "esp_hosted_power_save.h"
+#endif
+
+#include "esp_hosted_cli.h"
+#include "rpc_wrap.h"
+
 /**
  * @brief  Slave capabilities are parsed
  *         Currently no added functionality to that
@@ -44,12 +51,24 @@ static char chip_type = ESP_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
 void(*transport_esp_hosted_up_cb)(void) = NULL;
 transport_channel_t *chan_arr[ESP_MAX_IF];
 volatile uint8_t wifi_tx_throttling;
+void *bus_handle = NULL;
 
 
-static uint8_t transport_state = TRANSPORT_INACTIVE;
+static volatile uint8_t transport_state = TRANSPORT_INACTIVE;
 
 static void process_event(uint8_t *evt_buf, uint16_t len);
+static int process_init_event(uint8_t *evt_buf, uint16_t len);
 
+
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+static void *init_timeout_timer = NULL;
+
+static void init_timeout_cb(void *arg)
+{
+	ESP_LOGE(TAG, "Init event not received within timeout, Reseting myself");
+	g_h.funcs->_h_restart_host();
+}
+#endif
 
 uint8_t is_transport_rx_ready(void)
 {
@@ -61,27 +80,6 @@ uint8_t is_transport_tx_ready(void)
 	return (transport_state >= TRANSPORT_TX_ACTIVE);
 }
 
-static void reset_slave(void)
-{
-	gpio_pin_t reset_pin = { 0 };
-	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
-		ESP_LOGE(TAG, "Unable to get RESET config for transport");
-		return;
-	}
-
-	ESP_LOGI(TAG, "Reset slave using GPIO[%u]", reset_pin.pin);
-	g_h.funcs->_h_config_gpio(H_GPIO_PIN_RESET_Port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
-
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-	g_h.funcs->_h_msleep(50);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-	g_h.funcs->_h_msleep(50);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-
-	/* stop spi transactions short time to avoid slave sync issues */
-	g_h.funcs->_h_msleep(1500);
-}
-
 static void transport_driver_event_handler(uint8_t event)
 {
 	switch(event)
@@ -89,30 +87,59 @@ static void transport_driver_event_handler(uint8_t event)
 		case TRANSPORT_TX_ACTIVE:
 		{
 			/* Initiate control path now */
-			ESP_LOGI(TAG, "Base transport is set-up\n\r");
+			ESP_LOGI(TAG, "Base transport is set-up, TRANSPORT_TX_ACTIVE");
 			if (transport_esp_hosted_up_cb)
 				transport_esp_hosted_up_cb();
 			transport_state = TRANSPORT_TX_ACTIVE;
 			break;
 		}
 
+		case TRANSPORT_INACTIVE:
+		case TRANSPORT_RX_ACTIVE:
+			transport_state = event;
+			break;
+
 		default:
-		break;
+			break;
 	}
 }
 
-esp_err_t transport_drv_deinit(void)
+void set_transport_state(uint8_t state)
 {
-	transport_deinit_internal();
+	ESP_LOGI(TAG, "set_transport_state: %u", state);
+	transport_driver_event_handler(state);
+}
+
+static void transport_drv_init(void)
+{
+	bus_handle = bus_init_internal();
+	ESP_LOGD(TAG, "Bus handle: %p", bus_handle);
+	assert(bus_handle);
+	hci_drv_init();
+}
+
+esp_err_t teardown_transport(void)
+{
+	#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+	/* Stop and cleanup init timeout timer if still active */
+	if (init_timeout_timer) {
+		g_h.funcs->_h_timer_stop(init_timeout_timer);
+		init_timeout_timer = NULL;
+	}
+	#endif
+
+	if (bus_handle) {
+		bus_deinit_internal(bus_handle);
+	}
+	ESP_LOGI(TAG, "TRANSPORT_INACTIVE");
 	transport_state = TRANSPORT_INACTIVE;
 	return ESP_OK;
 }
 
-esp_err_t transport_drv_init(void(*esp_hosted_up_cb)(void))
+esp_err_t setup_transport(void(*esp_hosted_up_cb)(void))
 {
 	g_h.funcs->_h_hosted_init_hook();
-	transport_init_internal();
-	hci_drv_init();
+	transport_drv_init();
 	transport_esp_hosted_up_cb = esp_hosted_up_cb;
 
 	return ESP_OK;
@@ -122,27 +149,56 @@ esp_err_t transport_drv_reconfigure(void)
 {
 	static int retry_slave_connection = 0;
 
-	ESP_LOGI(TAG, "Attempt connection with slave: retry[%u]",retry_slave_connection);
-	if (!is_transport_tx_ready()) {
-		reset_slave();
-		transport_state = TRANSPORT_RX_ACTIVE;
+	ESP_LOGI(TAG, "Attempt connection with slave: retry[%u]", retry_slave_connection);
 
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+	/* Start init timeout timer if not already started */
+	if (!init_timeout_timer) {
+		init_timeout_timer = g_h.funcs->_h_timer_start("slave_unresponsive_timer", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT, H_TIMER_TYPE_ONESHOT, init_timeout_cb, NULL);
+		if (!init_timeout_timer) {
+			ESP_LOGE(TAG, "Failed to create init timeout timer");
+			return ESP_FAIL;
+		}
+		ESP_LOGI(TAG, "Started host communication init timer of %u seconds", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT);
+	}
+#endif
+
+	int retry_power_save_recover = 5;
+	if (esp_hosted_woke_from_deep_sleep()) {
+		ESP_LOGI(TAG, "Waiting for power save to be off");
+		g_h.funcs->_h_msleep(700);
+
+		while (retry_power_save_recover) {
+			if (is_transport_tx_ready()) {
+				break;
+			}
+			retry_power_save_recover--;
+		}
+	}
+
+	/* This would come into picture, only if the host has
+	 * reset pin connected to slave's 'EN' or 'RST' GPIO */
+	if (!is_transport_tx_ready()) {
+		ensure_slave_bus_ready(bus_handle);
+		transport_state = TRANSPORT_RX_ACTIVE;
+		ESP_LOGI(TAG, "Waiting for esp_hosted slave to be ready");
 		while (!is_transport_tx_ready()) {
 			if (retry_slave_connection < MAX_RETRY_TRANSPORT_ACTIVE) {
 				retry_slave_connection++;
-				if (retry_slave_connection%10==0) {
-					ESP_LOGE(TAG, "Not able to connect with ESP-Hosted slave device");
-					reset_slave();
+				if (retry_slave_connection%50==0) {
+					ESP_LOGI(TAG, "Not able to connect with ESP-Hosted slave device");
+					ensure_slave_bus_ready(bus_handle);
 				}
 			} else {
-				ESP_LOGE(TAG, "Failed to get ESP_Hosted slave transport up");
+				ESP_LOGW(TAG, "Failed to get ESP_Hosted slave transport up");
 				return ESP_FAIL;
 			}
-			g_h.funcs->_h_sleep(1);
+			g_h.funcs->_h_msleep(200);
 		}
 	} else {
 		ESP_LOGI(TAG, "Transport is already up");
 	}
+
 	retry_slave_connection = 0;
 	return ESP_OK;
 }
@@ -174,29 +230,6 @@ esp_err_t transport_drv_remove_channel(transport_channel_t *channel)
 	return ESP_OK;
 }
 
-#if 0
-esp_err_t transport_drv_tx(void *h, void *buffer, size_t len)
-{
-	if (!h) {
-		esp_wifi_internal_free_rx_buffer(buffer);
-		return ESP_FAIL;
-	}
-
-	/* Buffer will be freed always in the called function */
-	return esp_hosted_tx(h->if_type, 0, buffer, len, H_BUFF_NO_ZEROCOPY, esp_wifi_internal_free_rx_buffer);
-
-}
-#endif
-
-#if 0
-static esp_err_t transport_drv_sta_tx(void *h, void *buffer, transport_free_cb_t free_cb, size_t len)
-{
-	ESP_LOGI(TAG, "%s", __func__);
-	assert(h && h==chan_arr[ESP_STA_IF]->api_chan);
-	return esp_hosted_tx(ESP_STA_IF, 0, buffer, len, H_BUFF_NO_ZEROCOPY, free_cb);
-}
-#endif
-
 static void transport_sta_free_cb(void *buf)
 {
 	mempool_free(chan_arr[ESP_STA_IF]->memp, buf);
@@ -221,7 +254,7 @@ static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 
 	if (unlikely(wifi_tx_throttling)) {
 	#if ESP_PKT_STATS
-		pkt_stats.sta_tx_in_drop++;
+		pkt_stats.sta_tx_flowctrl_drop++;
 	#endif
 		errno = -ENOBUFS;
 		//return ESP_ERR_NO_BUFFS;
@@ -239,7 +272,7 @@ static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 	assert(copy_buff);
 	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
-	return esp_hosted_tx(ESP_STA_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, transport_sta_free_cb);
+	return esp_hosted_tx(ESP_STA_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, transport_sta_free_cb, 0);
 }
 
 static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
@@ -256,14 +289,14 @@ static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 	assert(copy_buff);
 	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
-	return esp_hosted_tx(ESP_AP_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, transport_ap_free_cb);
+	return esp_hosted_tx(ESP_AP_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, transport_ap_free_cb, 0);
 }
 
 esp_err_t transport_drv_serial_tx(void *h, void *buffer, size_t len)
 {
 	/* TODO */
 	assert(h && h==chan_arr[ESP_SERIAL_IF]->api_chan);
-	return esp_hosted_tx(ESP_SERIAL_IF, 0, buffer, len, H_BUFF_NO_ZEROCOPY, transport_serial_free_cb);
+	return esp_hosted_tx(ESP_SERIAL_IF, 0, buffer, len, H_BUFF_NO_ZEROCOPY, transport_serial_free_cb, 0);
 }
 
 
@@ -271,6 +304,7 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 		esp_hosted_if_type_t if_type, uint8_t secure,
 		transport_channel_tx_fn_t *tx, const transport_channel_rx_fn_t rx)
 {
+	ESP_LOGD(TAG, "Adding channel IF[%u]: S[%u] Tx[%p] Rx[%p]", if_type, secure, tx, rx);
 	transport_channel_t *channel = NULL;
 
 	ESP_ERROR_CHECK(if_type >= ESP_MAX_IF);
@@ -329,7 +363,7 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 	return channel;
 }
 
-void process_capabilities(uint8_t cap)
+static void process_capabilities(uint8_t cap)
 {
 	ESP_LOGI(TAG, "capabilities: 0x%x",cap);
 }
@@ -356,7 +390,7 @@ void process_priv_communication(interface_buffer_handle_t *buf_handle)
 	process_event(buf_handle->payload, buf_handle->payload_len);
 }
 
-void print_capabilities(uint32_t cap)
+static void print_capabilities(uint32_t cap)
 {
 	ESP_LOGI(TAG, "Features supported are:");
 	if (cap & ESP_WLAN_SDIO_SUPPORT)
@@ -418,11 +452,16 @@ static void process_event(uint8_t *evt_buf, uint16_t len)
 	if (event->event_type == ESP_PRIV_EVENT_INIT) {
 
 		ESP_LOGI(TAG, "Received INIT event from ESP32 peripheral");
-		ESP_HEXLOGD("Slave_init_evt", event->event_data, event->event_len);
+		ESP_HEXLOGD("Slave_init_evt", event->event_data, event->event_len, 32);
 
 		ret = process_init_event(event->event_data, event->event_len);
 		if (ret) {
 			ESP_LOGE(TAG, "failed to init event\n\r");
+		} else {
+
+#if H_HOST_PS_ALLOWED && H_HOST_WAKEUP_GPIO
+			esp_hosted_power_save_init();
+#endif
 		}
 	} else {
 		ESP_LOGW(TAG, "Drop unknown event\n\r");
@@ -487,17 +526,18 @@ static void verify_host_config_for_slave(uint8_t chip_type)
 #else
 	ESP_LOGW(TAG, "Incorrect host config for ESP slave chipset[%x]", chip_type);
 #endif
+	char slave_str[20] = {0};
+	get_chip_str_from_id(chip_type, slave_str);
+
 	if (chip_type!=exp_chip_id) {
-		char slave_str[20], exp_str[20];
-
-		memset(slave_str, '\0', 20);
-		memset(exp_str, '\0', 20);
-
-		get_chip_str_from_id(chip_type, slave_str);
+		char exp_str[20] = {0};
 		get_chip_str_from_id(exp_chip_id, exp_str);
 		ESP_LOGE(TAG, "Identified slave [%s] != Expected [%s]\n\t\trun 'idf.py menuconfig' at host to reselect the slave?\n\t\tAborting.. ", slave_str, exp_str);
 		g_h.funcs->_h_sleep(10);
 		assert(0!=0);
+	} else {
+		ESP_LOGI(TAG, "Identified slave [%s]", slave_str);
+		check_if_max_freq_used(chip_type);
 	}
 }
 
@@ -539,13 +579,19 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
 	*pos = raw_tp_direction;                           pos++;len++;
 
-	*pos = SLV_CONFIG_THROTTLE_HIGH_THRESHOLD;         pos++;len++;
+	*pos = SLV_CONFIG_THROTTLE_HIGH_THRESHOLD;           pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
 	*pos = high_thr_thesh;                             pos++;len++;
 
-	*pos = SLV_CONFIG_THROTTLE_LOW_THRESHOLD;          pos++;len++;
+	*pos = SLV_CONFIG_THROTTLE_LOW_THRESHOLD;           pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
 	*pos = low_thr_thesh;                              pos++;len++;
+
+	ESP_LOGI(TAG, "raw_tp_dir[%s], flow_ctrl: low[%u] high[%u]",
+			raw_tp_direction == ESP_TEST_RAW_TP__HOST_TO_ESP? "h2s":
+			raw_tp_direction == ESP_TEST_RAW_TP__ESP_TO_HOST? "s2h":
+			raw_tp_direction == ESP_TEST_RAW_TP__BIDIRECTIONAL? "bi-dir":
+			"-", low_thr_thesh, high_thr_thesh);
 
 	/* TLVs end */
 
@@ -554,10 +600,24 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	/* payload len = Event len + sizeof(event type) + sizeof(event len) */
 	len += 2;
 
-	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, g_h.funcs->_h_free);
+	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, g_h.funcs->_h_free, 0);
 }
 
-int process_init_event(uint8_t *evt_buf, uint16_t len)
+static int transport_delayed_init(void)
+{
+	ESP_LOGI(TAG, "transport_delayed_init");
+	rpc_start();
+	/* Add up cli */
+#ifdef H_ESP_HOSTED_CLI_ENABLED
+	esp_hosted_cli_start();
+#endif
+	create_debugging_tasks();
+
+	return 0;
+}
+
+
+static int process_init_event(uint8_t *evt_buf, uint16_t len)
 {
 	uint8_t len_left = len, tag_len;
 	uint8_t *pos;
@@ -566,6 +626,15 @@ int process_init_event(uint8_t *evt_buf, uint16_t len)
 
 	if (!evt_buf)
 		return ESP_FAIL;
+
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+	/* Stop and delete the init timeout timer since we received the init event */
+	if (init_timeout_timer) {
+		g_h.funcs->_h_timer_stop(init_timeout_timer);
+		init_timeout_timer = NULL;
+		ESP_LOGI(TAG, "Init event received within timeout, cleared timer");
+	}
+#endif
 
 	pos = evt_buf;
 	ESP_LOGD(TAG, "Init event length: %u", len);
@@ -655,9 +724,14 @@ int process_init_event(uint8_t *evt_buf, uint16_t len)
 	}
 
 	transport_driver_event_handler(TRANSPORT_TX_ACTIVE);
-	return send_slave_config(0, chip_type, raw_tp_config,
+
+	ESP_ERROR_CHECK(send_slave_config(0, chip_type, raw_tp_config,
 		H_WIFI_TX_DATA_THROTTLE_LOW_THRESHOLD,
-		H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD);
+		H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD));
+
+	transport_delayed_init();
+
+	return 0;
 }
 
 int serial_rx_handler(interface_buffer_handle_t * buf_handle)

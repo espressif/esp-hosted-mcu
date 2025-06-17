@@ -17,11 +17,12 @@
 /** Includes **/
 
 #include "stats.h"
+#include "esp_hosted_header.h"
 #include "esp_hosted_config.h"
 #if TEST_RAW_TP
-#include "os_wrapper.h"
 #include "transport_drv.h"
 #endif
+#include "os_wrapper.h"
 #include "esp_log.h"
 #include "esp_hosted_transport_init.h"
 
@@ -31,11 +32,14 @@
 #if ESP_PKT_STATS
 struct pkt_stats_t pkt_stats;
 void *pkt_stats_thread = NULL;
-extern volatile uint8_t wifi_tx_throttling;
+#endif
+
+#ifdef ESP_PKT_NUM_DEBUG
+struct dbg_stats_t dbg_stats;
 #endif
 
 #if ESP_PKT_STATS || TEST_RAW_TP
-DEFINE_LOG_TAG(stats);
+static const char *TAG = "stats";
 #endif
 
 /** Constants/Macros **/
@@ -92,7 +96,6 @@ void raw_tp_timer_func(void * arg)
 #endif
 	int32_t div = 1024;
 
-
 	actual_bandwidth_tx = (test_raw_tx_len*8)/TEST_RAW_TP__TIMEOUT;
 	actual_bandwidth_rx = (test_raw_rx_len*8)/TEST_RAW_TP__TIMEOUT;
 #if USE_FLOATING_POINT
@@ -127,7 +130,7 @@ static void raw_tp_tx_task(void const* pvParameters)
 		for (i=0; i<(TEST_RAW_TP__BUF_SIZE/4-1); i++, ptr++)
 			*ptr = 0xBAADF00D;
 
-		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, H_DEFLT_FREE_FUNC);
+		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
 
 #else
 		raw_tp_tx_buf = mempool_alloc(buf_mp_g, MAX_TRANSPORT_BUFFER_SIZE, true);
@@ -136,9 +139,9 @@ static void raw_tp_tx_task(void const* pvParameters)
 		for (i=0; i<(TEST_RAW_TP__BUF_SIZE/4-1); i++, ptr++)
 			*ptr = 0xBAADF00D;
 
-		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, stats_mempool_free);
+		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, stats_mempool_free, 0);
 #endif
-		if (ret != STM_OK) {
+		if (ret) {
 			ESP_LOGE(TAG, "Failed to send to queue\n");
 			continue;
 		}
@@ -155,8 +158,8 @@ static void process_raw_tp_flags(uint8_t cap)
 	test_raw_tp_cleanup();
 
 	if (test_raw_tp) {
-		hosted_timer_handler = g_h.funcs->_h_timer_start(TEST_RAW_TP__TIMEOUT,
-				RPC__TIMER_PERIODIC, raw_tp_timer_func, NULL);
+		hosted_timer_handler = g_h.funcs->_h_timer_start("raw_tp_timer", SEC_TO_MILLISEC(TEST_RAW_TP__TIMEOUT),
+				HOSTED_TIMER_PERIODIC, raw_tp_timer_func, NULL);
 		if (!hosted_timer_handler) {
 			ESP_LOGE(TAG, "Failed to create timer\n\r");
 			return;
@@ -209,10 +212,10 @@ struct mem_stats h_stats_g;
 #if ESP_PKT_STATS
 void stats_timer_func(void * arg)
 {
-	ESP_LOGI(TAG, "slave: sta_rx_in: %lu sta_rx_out: %lu sta_tx_in [pass: %lu drop: %lu] sta_tx_out: %lu, throttling %u",
+	ESP_LOGI(TAG, "STA: s2h{in[%lu] out[%lu]} h2s{in(flowctrl_drop[%lu] in[%lu or %lu]) out(ok[%lu] drop[%lu])} flwctl{on[%lu] off[%lu]}",
 			pkt_stats.sta_rx_in,pkt_stats.sta_rx_out,
-			pkt_stats.sta_tx_in_pass, pkt_stats.sta_tx_in_drop, pkt_stats.sta_tx_out,
-			wifi_tx_throttling);
+			pkt_stats.sta_tx_flowctrl_drop, pkt_stats.sta_tx_in_pass, pkt_stats.sta_tx_trans_in,  pkt_stats.sta_tx_out, pkt_stats.sta_tx_out_drop,
+			pkt_stats.sta_flow_ctrl_on, pkt_stats.sta_flow_ctrl_off);
 	ESP_LOGI(TAG, "internal: free %d l-free %d min-free %d, psram: free %d l-free %d min-free %d",
 			heap_caps_get_free_size(MALLOC_CAP_8BIT) - heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
 			heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL),
@@ -228,8 +231,8 @@ void create_debugging_tasks(void)
 #if ESP_PKT_STATS
 	if (ESP_PKT_STATS_REPORT_INTERVAL) {
 		ESP_LOGI(TAG, "Start Pkt_stats reporting thread [timer: %u sec]", ESP_PKT_STATS_REPORT_INTERVAL);
-		pkt_stats_thread = g_h.funcs->_h_timer_start(ESP_PKT_STATS_REPORT_INTERVAL,
-				RPC__TIMER_PERIODIC, stats_timer_func, NULL);
+		pkt_stats_thread = g_h.funcs->_h_timer_start("pkt_stats_timer", SEC_TO_MILLISEC(ESP_PKT_STATS_REPORT_INTERVAL),
+				HOSTED_TIMER_PERIODIC, stats_timer_func, NULL);
 		assert(pkt_stats_thread);
 	}
 #endif

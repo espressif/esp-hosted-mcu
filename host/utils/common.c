@@ -90,7 +90,7 @@ int min(int x, int y) {
   * @brief  get numbers from string
   * @param  val - return integer value,
   *         arg - input string
-  * @retval STM_OK on success, else STM_FAIL
+  * @retval 0 on success, else -1
   */
 int get_num_from_string(int *val, char *arg)
 {
@@ -99,12 +99,12 @@ int get_num_from_string(int *val, char *arg)
 
   if (!arg || (arg[0]=='\0')) {
     ESP_LOGE(TAG, "No number Identified \n");
-    return STM_FAIL;
+    return -1;
   }
 
   if (!val) {
     ESP_LOGE(TAG, "No memory allocated \n");
-    return STM_FAIL;
+    return -1;
   }
 
   errno = 0;
@@ -114,16 +114,16 @@ int get_num_from_string(int *val, char *arg)
   if (endptr == str) {
     ESP_LOGE(TAG, "No digits found \n");
     *val = 0;
-    return STM_FAIL;
+    return -1;
   }
 
   if ((errno == ERANGE) && ((*val == INT32_MAX) || (*val == INT32_MIN))) {
     perror("strtol");
     *val = 0;
-    return STM_FAIL;
+    return -1;
   }
 
-  return STM_OK;
+  return 0;
 }
 #endif
 

@@ -20,7 +20,7 @@ typedef enum {
 /* GPIO pin configuration structure */
 typedef struct {
 	void *port;
-	uint8_t pin;
+	int pin;
 } gpio_pin_t;
 
 /* New Configuration Structures */
@@ -178,7 +178,7 @@ struct esp_hosted_transport_config {
         .tx_queue_size = H_SPI_TX_Q, \
         .rx_queue_size = H_SPI_RX_Q, \
         .mode = H_SPI_MODE, \
-        .clk_mhz = H_SPI_INIT_CLK_MHZ, \
+        .clk_mhz = H_SPI_FD_CLK_MHZ, \
     }
 #endif
 

@@ -167,6 +167,18 @@ typedef struct {
 } rpc_wifi_bandwidths_t;
 
 typedef struct {
+	int iface;
+	int net_link_up;
+	int dhcp_up;
+	uint8_t dhcp_ip[64];
+	uint8_t dhcp_nm[64];
+	uint8_t dhcp_gw[64];
+	int dns_up;
+	uint8_t dns_ip[64];
+	int dns_type;
+} rpc_set_dhcp_dns_status_t;
+
+typedef struct {
 	/* event */
 	uint32_t hb_num;
 	/* Req */
@@ -248,6 +260,8 @@ typedef struct Ctrl_cmd_t {
 
 		wifi_band_mode_t            wifi_band_mode;
 #endif
+
+		rpc_set_dhcp_dns_status_t   slave_dhcp_dns_status;
 
 		event_heartbeat_t           e_heartbeat;
 
@@ -376,6 +390,10 @@ int rpc_slaveif_init(void);
  **/
 int rpc_slaveif_deinit(void);
 
+int rpc_slaveif_start(void);
+
+int rpc_slaveif_stop(void);
+
 /* Get the MAC address of station or softAP interface of ESP32 */
 ctrl_cmd_t * rpc_slaveif_wifi_get_mac(ctrl_cmd_t *req);
 
@@ -463,6 +481,7 @@ ctrl_cmd_t * rpc_slaveif_wifi_set_band(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_band(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_band_mode(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_band_mode(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_set_slave_dhcp_dns_status(ctrl_cmd_t *req);
 
 #ifdef __cplusplus
 }

@@ -25,6 +25,7 @@
 #include <protocomm_priv.h>
 #include "protocomm_pserial.h"
 #include "esp_hosted_transport.h"
+#include "esp_hosted_log.h"
 
 static const char TAG[] = "protocomm_pserial";
 
@@ -92,7 +93,7 @@ static esp_err_t compose_tlv(char *epname, uint8_t **out, size_t *outlen)
 		ep_len + SIZE_OF_TYPE + SIZE_OF_LENGTH + *outlen;
 	uint8_t *buf = (uint8_t *)calloc(1, buf_len);
 	if (buf == NULL) {
-		ESP_LOGE(TAG,"%s Failed to allocate memory", __func__);
+		ESP_LOGE(TAG,"%s Mem Alloc Failed [%d]bytes", __func__, (int)buf_len);
 		return ESP_FAIL;
 	}
 	buf[len] = PROTO_PSER_TLV_T_EPNAME;
@@ -283,6 +284,7 @@ static void pserial_task(void *params)
 		if ((arg.msg_id > RPC_ID__Event_Base) &&
 				(arg.msg_id < RPC_ID__Event_Max)) {
 			/* Events */
+			ESP_HEXLOGV("pserial_evt_rx", arg.data, arg.len, 32);
 			ret = rpc_evt_handler(pc, arg.data, arg.len, arg.msg_id);
 			if (ret)
 				ESP_LOGI(TAG, "protobuf rpc event handling failed %d\n", ret);
@@ -290,7 +292,7 @@ static void pserial_task(void *params)
 			/* Request */
 			len = pserial_cfg->recv(arg.data, arg.len);
 			if (len) {
-				/*ESP_LOG_BUFFER_HEXDUMP("serial_rx", arg.data, len<16?len:16, ESP_LOG_INFO);*/
+				ESP_HEXLOGV("pserial_req_rx", arg.data, arg.len, 32);
 				ret = rpc_req_handler(pc, arg.data, len);
 				if (ret)
 					ESP_LOGI(TAG, "protocom rpc req handling failed %d\n", ret);
@@ -326,8 +328,11 @@ esp_err_t protocomm_pserial_start(protocomm_t *pc,
 
 	pc->priv = pserial_cfg;
 
-	xTaskCreate(pserial_task, "pserial_task", 1024*5,
-			(void *) pc, CONFIG_ESP_DEFAULT_TASK_PRIO, NULL);
+#define ESP_HOSTED_PROTOBUF_TASK_STACK_SIZE (CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE+1024)
+
+	xTaskCreate(pserial_task, "pserial_task",
+			ESP_HOSTED_PROTOBUF_TASK_STACK_SIZE,
+			(void *) pc, CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL);
 
 	return ESP_OK;
 }

@@ -168,15 +168,15 @@ char * ipv4_addr_ntoa(uint32_t addr, char *buf, int buflen)
   * @brief  Convert mac string to byte stream
   * @param  out - output mac in bytes
   *         s - input mac string
-  * @retval STM_OK/STM_FAIL
+  * @retval 0 on success, else -1
   */
-stm_ret_t convert_mac_to_bytes(uint8_t *out, const char *s)
+int convert_mac_to_bytes(uint8_t *out, const char *s)
 {
 	int mac[MAC_LEN] = {0};
 	int num_bytes = 0;
 
 	if (!s || (strlen(s) < MIN_MAC_STRING_LEN))  {
-		return STM_FAIL;
+		return -1;
 	}
 
 	num_bytes =  sscanf(s, "%2x:%2x:%2x:%2x:%2x:%2x",
@@ -189,7 +189,7 @@ stm_ret_t convert_mac_to_bytes(uint8_t *out, const char *s)
 		(mac[3] > 0xFF) ||
 		(mac[4] > 0xFF) ||
 		(mac[5] > 0xFF)) {
-		return STM_FAIL;
+		return -1;
 	}
 
 	out[0] = mac[0]&0xff;
@@ -199,7 +199,7 @@ stm_ret_t convert_mac_to_bytes(uint8_t *out, const char *s)
 	out[4] = mac[4]&0xff;
 	out[5] = mac[5]&0xff;
 
-	return STM_OK;
+	return 0;
 }
 
 /**
@@ -240,16 +240,16 @@ uint8_t is_same_buff(void *buff1, void *buff2, uint16_t len)
   * @brief  Get ip in 32bit from dotted string notation
   * @param  ip_s - input ip address in string
   *         ip_x - output ip address in 32 bit
-  * @retval STM_OK/STM_FAIL
+  * @retval 0 on success, else -1
   */
-stm_ret_t get_ipaddr_from_str(const char *ip_s, uint32_t *ip_x)
+int get_ipaddr_from_str(const char *ip_s, uint32_t *ip_x)
 {
 	uint32_t ip_nw = 0;
 	if (! ipv4_addr_aton(ip_s, &ip_nw))
 	{
-		return STM_FAIL;
+		return -1;
 	}
 	/* ipv4_addr_aton does conversion in network order. reverse */
 	*ip_x = ntoh_long(ip_nw);
-	return STM_OK;
+	return 0;
 }

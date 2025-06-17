@@ -24,11 +24,7 @@ extern "C" {
 /** Includes **/
 
 #include "common.h"
-#if 0
-#include "os_wrapper.h"
-#include "trace.h"
-#endif
-//#include "netdev_if.h"
+
 #include "esp_hosted_transport.h"
 #include "esp_hosted_config.h"
 #include "esp_hosted_api_types.h"
@@ -64,9 +60,9 @@ struct esp_private {
 };
 
 struct hosted_transport_context_t {
-    uint8_t  *tx_buf;
-    uint32_t  tx_buf_size;
-    uint8_t  *rx_buf;
+	uint8_t  *tx_buf;
+	uint32_t  tx_buf_size;
+	uint8_t  *rx_buf;
 };
 
 extern volatile uint8_t wifi_tx_throttling;
@@ -80,36 +76,27 @@ typedef esp_err_t (*transport_channel_rx_fn_t)(void *h, void *buffer, void * buf
 typedef struct {
 	void * api_chan;
 	esp_hosted_if_type_t if_type;
-    uint8_t secure;
+	uint8_t secure;
 	transport_channel_tx_fn_t tx;
 	transport_channel_rx_fn_t rx;
 	void *memp;
 } transport_channel_t;
 
-#if 0
-/* netdev APIs*/
-int esp_netdev_open(netdev_handle_t netdev);
-int esp_netdev_close(netdev_handle_t netdev);
-int esp_netdev_xmit(netdev_handle_t netdev, struct pbuf *net_buf);
-#endif
 
-
-esp_err_t transport_drv_init(void(*esp_hosted_up_cb)(void));
-esp_err_t transport_drv_deinit(void);
+esp_err_t setup_transport(void(*esp_hosted_up_cb)(void));
+esp_err_t teardown_transport(void);
 esp_err_t transport_drv_reconfigure(void);
 transport_channel_t *transport_drv_add_channel(void *api_chan,
 		esp_hosted_if_type_t if_type, uint8_t secure,
 		transport_channel_tx_fn_t *tx, const transport_channel_rx_fn_t rx);
 esp_err_t transport_drv_remove_channel(transport_channel_t *channel);
 
-/* TODO To move to private header */
-void process_capabilities(uint8_t cap);
-void transport_init_internal(void);
-void transport_deinit_internal(void);
+
+void *bus_init_internal(void);
+void bus_deinit_internal(void *bus_handle);
 
 void process_priv_communication(interface_buffer_handle_t *buf_handle);
-void print_capabilities(uint32_t cap);
-int process_init_event(uint8_t *evt_buf, uint16_t len);
+
 esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 		uint8_t raw_tp_direction, uint8_t low_thr_thesh, uint8_t high_thr_thesh);
 
@@ -121,16 +108,21 @@ uint8_t is_transport_tx_ready(void);
 
 #define H_DEFLT_FREE_FUNC g_h.funcs->_h_free
 
-#define MAX_RETRY_TRANSPORT_ACTIVE 1000
+#define MAX_RETRY_TRANSPORT_ACTIVE 100
 
 
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
-		uint8_t * buffer, uint16_t len, uint8_t buff_zerocopy, void (*free_buf_fun)(void* ptr));
-
-int esp_hosted_register_wifi_rxcb(int ifx, hosted_rxcb_t fn);
-int esp_hosted_register_wifi_txcb(int ifx, hosted_rxcb_t fn);
+		uint8_t * buffer, uint16_t len, uint8_t buff_zerocopy, void (*free_buf_fun)(void* ptr), uint8_t flag);
 
 int serial_rx_handler(interface_buffer_handle_t * buf_handle);
+void set_transport_state(uint8_t state);
+
+int ensure_slave_bus_ready(void *bus_handle);
+void check_if_max_freq_used(uint8_t chip_type);
+
+int bus_inform_slave_host_power_save_start(void);
+int bus_inform_slave_host_power_save_stop(void);
+
 #ifdef __cplusplus
 }
 #endif
