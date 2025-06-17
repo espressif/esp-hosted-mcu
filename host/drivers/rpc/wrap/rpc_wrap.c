@@ -53,7 +53,7 @@ static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
   assert(new_req);
   new_req->msg_type = RPC_TYPE__Req;
   new_req->rpc_rsp_cb = NULL;
-  new_req->rsp_timeout_sec = DEFAULT_RPC_RSP_TIMEOUT; /* 5 sec */
+  new_req->rsp_timeout_sec = DEFAULT_RPC_RSP_TIMEOUT;
   /* new_req->wait_prev_cmd_completion = WAIT_TIME_B2B_RPC_REQ; */
   return new_req;
 }
@@ -955,7 +955,10 @@ int rpc_wifi_scan_start(const wifi_scan_config_t *config, bool block)
 	}
 
 	req->u.wifi_scan_config.block = block;
-
+	if (req->u.wifi_scan_config.block) {
+		// blocking while doing scan may take a long time: increase timeout value
+		req->rsp_timeout_sec = DEFAULT_RPC_RSP_SCAN_TIMEOUT;
+	}
 	resp = rpc_slaveif_wifi_scan_start(req);
 
 	return rpc_rsp_callback(resp);

@@ -46,7 +46,7 @@ extern "C" {
  * */
 //#define WAIT_TIME_B2B_RPC_REQ               5
 #define DEFAULT_RPC_RSP_TIMEOUT             5
-
+#define DEFAULT_RPC_RSP_SCAN_TIMEOUT        30
 
 #define SUCCESS_STR                          "success"
 #define FAILURE_STR                          "failure"
