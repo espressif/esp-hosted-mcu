@@ -25,7 +25,6 @@ extern "C" {
 #include "common.h"
 #include "esp_wifi.h"
 #include "esp_hosted_wifi_config.h"
-#include "esp_hosted_api.h"
 #include "esp_hosted_api_types.h"
 
 /** Exported variables **/

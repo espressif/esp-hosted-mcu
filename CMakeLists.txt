@@ -8,7 +8,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	# only these directories are public. Others are private
 	set(COMPONENT_ADD_PUBLIC_INCLUDEDIRS "${host_dir}" "${host_dir}/api/include")
 
-	set(COMPONENT_ADD_INCLUDEDIRS "${host_dir}/drivers/transport" "${host_dir}/drivers/transport/spi" "${host_dir}/drivers/transport/sdio" "${host_dir}/drivers/serial" "${host_dir}/utils")
+	set(COMPONENT_ADD_INCLUDEDIRS "${host_dir}/drivers/transport" "${host_dir}/drivers/transport/spi" "${host_dir}/drivers/transport/sdio" "${host_dir}/drivers/serial" "${host_dir}/utils" "${host_dir}/api/priv")
 
 	# rpc files - wrap -> slaveif -> core
 	set(rpc_dir "${host_dir}/drivers/rpc")

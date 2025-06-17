@@ -7,7 +7,7 @@
 #include "os_header.h"
 #include "os_wrapper.h"
 #include "esp_log.h"
-#include "esp_hosted_api.h"
+#include "esp_hosted.h"
 #include "esp_private/startup_internal.h"
 
 DEFINE_LOG_TAG(host_init);

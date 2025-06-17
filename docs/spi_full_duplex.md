@@ -343,7 +343,7 @@ You can re-use your existing web server or create a new locally for testing. Bel
 5. On the **host side**, use the `esp_hosted_slave_ota` function to initiate the OTA update:
 
    ```c
-   #include "esp_hosted_api.h"
+   #include "esp_hosted.h"
 
    const char* image_url = "http://example.com/path/to/network_adapter.bin"; //web server full url
    esp_err_t ret = esp_hosted_slave_ota(image_url);
