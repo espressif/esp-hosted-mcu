@@ -16,10 +16,6 @@
 #define H_TRANSPORT_SPI 3
 #define H_TRANSPORT_UART 4
 
-#ifdef CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE
-#include "driver/sdmmc_host.h"
-#endif
-
 #ifdef CONFIG_ESP_HOSTED_UART_HOST_INTERFACE
 #include "hal/uart_types.h"
 #endif
