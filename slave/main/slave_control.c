@@ -25,22 +25,7 @@
 #include "esp_hosted_rpc.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
-#include "esp_idf_version.h"
-
-/* ESP-IDF 5.5.0: renamed reserved fields to reserved1/reserved2 */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
-#define H_WIFI_NEW_RESERVED_FIELD_NAMES 1
-#define H_PRESENT_IN_ESP_IDF_5_5_0      1
-#else
-#define H_WIFI_NEW_RESERVED_FIELD_NAMES 0
-#define H_PRESENT_IN_ESP_IDF_5_5_0      0
-#endif
-
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
-#define H_PRESENT_IN_ESP_IDF_5_4_0      1
-#else
-#define H_PRESENT_IN_ESP_IDF_5_4_0      0
-#endif
+#include "slave_wifi_config.h"
 
 /* Slave-side: Always support reserved field decoding for maximum compatibility
  * The host may or may not have CONFIG_ESP_HOSTED_DECODE_WIFI_RESERVED_FIELD enabled
@@ -969,7 +954,9 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 			p_a_ap->pmf_cfg.required = p_c_ap->pmf_cfg->required;
 		}
 		p_a_ap->sae_pwe_h2e = p_c_ap->sae_pwe_h2e;
+#if H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
 		p_a_ap->transition_disable = p_c_ap->transition_disable;
+#endif
 #if H_PRESENT_IN_ESP_IDF_5_5_0
 		p_a_ap->sae_ext = p_c_ap->sae_ext;
 		if (p_c_ap->bss_max_idle_cfg) {
@@ -1133,7 +1120,9 @@ static esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_c_ap->pmf_cfg->capable = p_a_ap->pmf_cfg.capable;
 		p_c_ap->pmf_cfg->required = p_a_ap->pmf_cfg.required;
 		p_c_ap->sae_pwe_h2e = p_a_ap->sae_pwe_h2e;
+#if H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
 		p_c_ap->transition_disable = p_a_ap->transition_disable;
+#endif
 #if H_PRESENT_IN_ESP_IDF_5_5_0
 		p_c_ap->sae_ext = p_a_ap->sae_ext;
 		RPC_ALLOC_ELEMENT(WifiBssMaxIdleConfig, p_c_ap->bss_max_idle_cfg, wifi_bss_max_idle_config__init);

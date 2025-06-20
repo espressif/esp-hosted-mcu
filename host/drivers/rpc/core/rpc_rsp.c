@@ -334,7 +334,9 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 				p_a_ap->pmf_cfg.required = p_c_ap->pmf_cfg->required;
 			}
 			p_a_ap->sae_pwe_h2e = p_c_ap->sae_pwe_h2e;
+#if H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
 			p_a_ap->transition_disable = p_c_ap->transition_disable;
+#endif
 #if H_PRESENT_IN_ESP_IDF_5_5_0
 			p_a_ap->sae_ext = p_c_ap->sae_ext;
 			if (p_c_ap->bss_max_idle_cfg) {

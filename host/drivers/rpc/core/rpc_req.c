@@ -333,7 +333,9 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			p_c_ap->pmf_cfg->capable = p_a_ap->pmf_cfg.capable;
 			p_c_ap->pmf_cfg->required = p_a_ap->pmf_cfg.required;
 			p_c_ap->sae_pwe_h2e = p_a_ap->sae_pwe_h2e;
+#if H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
 			p_c_ap->transition_disable = p_a_ap->transition_disable;
+#endif
 #if H_PRESENT_IN_ESP_IDF_5_5_0
 			p_c_ap->sae_ext = p_a_ap->sae_ext;
 			RPC_ALLOC_ELEMENT(WifiBssMaxIdleConfig, p_c_ap->bss_max_idle_cfg, wifi_bss_max_idle_config__init);

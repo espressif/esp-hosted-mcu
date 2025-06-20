@@ -9,6 +9,10 @@
 #include "esp_idf_version.h"
 #include "esp_hosted_config.h"
 
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 1)
+#error ESP-IDF version used is not supported
+#endif
+
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
   /* dual band API support available */
   #define H_WIFI_DUALBAND_SUPPORT 1
@@ -36,6 +40,16 @@
   #define H_DECODE_WIFI_RESERVED_FIELD 1
 #else
   #define H_DECODE_WIFI_RESERVED_FIELD 0
+#endif
+
+/* wifi_ap_config_t::transition_disable only found in
+ * IDF v5.3.3 and above, or
+ * IDF v5.4.1 and above
+ */
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 3)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 1))
+#define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 0
+#else
+#define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 1
 #endif
 
 #endif /* __ESP_HOSTED_WIFI_CONFIG_H__ */
