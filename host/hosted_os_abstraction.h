@@ -19,7 +19,7 @@ typedef struct {
 /* 8 */   void   (*_h_free_align)(void* ptr);
 
           /* Thread */
-/* 11 */   void*  (*_h_thread_create)(char *tname, uint32_t tprio, uint32_t tstack_size, void (*start_routine)(void const *), void *sr_arg);
+/* 11 */   void*  (*_h_thread_create)(const char *tname, uint32_t tprio, uint32_t tstack_size, void (*start_routine)(void const *), void *sr_arg);
 /* 12 */   int    (*_h_thread_cancel)(void *thread_handle);
 
           /* Sleeps */
