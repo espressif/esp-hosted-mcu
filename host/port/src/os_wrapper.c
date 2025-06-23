@@ -129,18 +129,7 @@ void *hosted_realloc(void *mem, size_t newsize)
 
 void *hosted_malloc_align(size_t size, size_t align)
 {
-	esp_dma_mem_info_t dma_mem_info = {
-		.extra_heap_caps = 0,
-		.dma_alignment_bytes = align,
-	};
-	void *tmp_buf = NULL;
-	size_t actual_size = 0;
-	esp_err_t err = ESP_OK;
-
-	err = esp_dma_capable_malloc((size), &dma_mem_info, &tmp_buf, &actual_size);
-	if (err) tmp_buf = NULL;
-
-	return tmp_buf;
+	return heap_caps_aligned_alloc(align, size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
 }
 
 void hosted_free_align(void* ptr)

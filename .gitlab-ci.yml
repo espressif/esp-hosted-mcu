@@ -65,30 +65,33 @@ before_script:
 
 build_idf_v5.3:
   extends: .build_template
-  image: espressif/idf:release-v5.3
+  image: espressif/idf:${IDF_VER}
   parallel:
     matrix:
-      - IDF_TARGET: ["esp32p4", "esp32h2"]
+      - IDF_VER: ["v5.3.1", "v5.3.2", "v5.3.3", "release-v5.3"]
+        IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6"]
         IDF_EXAMPLE_PATH: examples/protocols/mqtt/tcp
         #IDF_EXAMPLE_PATH: [examples/wifi/iperf]
 
 build_idf_v5.4:
   extends: .build_template
-  image: espressif/idf:release-v5.4
+  image: espressif/idf:${IDF_VER}
   parallel:
     matrix:
-      - IDF_TARGET: ["esp32p4", "esp32h2"]
+      - IDF_VER: ["v5.4", "v5.4.1", "release-v5.4"]
+        IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6"]
         IDF_EXAMPLE_PATH: examples/protocols/mqtt/tcp
         #IDF_EXAMPLE_PATH: [examples/wifi/iperf]
 
 build_idf_v5.5:
   extends: .build_template
-  image: espressif/idf:release-v5.5
+  image: espressif/idf:${IDF_VER}
   parallel:
     matrix:
-      - IDF_TARGET: ["esp32p4", "esp32h2"]
+      - IDF_VER: ["release-v5.5"]
+        IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5", "esp32", "esp32c2", "esp32c3", "esp32s3" ]
         IDF_EXAMPLE_PATH: [examples/wifi/iperf]
 
