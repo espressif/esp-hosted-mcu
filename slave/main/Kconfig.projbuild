@@ -124,6 +124,7 @@ menu "Example Configuration"
 				int "Slave GPIO pin for Host CLK"
 				default 19 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
 				default 3 if IDF_TARGET_ESP32C5
+				default 0 if IDF_TARGET_ESP32C2
 				default 14 if IDF_TARGET_ESP32
 				default 12 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 				default 6
@@ -191,8 +192,8 @@ menu "Example Configuration"
 			config ESP_SPI_GPIO_HANDSHAKE
 				int "Slave GPIO pin for handshake"
 				default 22 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
-				default 4 if IDF_TARGET_ESP32C5
-				default 3 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
+				default 4 if IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32C2
+				default 3 if IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
 				default 17 if IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S2
 				default 26
 				help
@@ -201,8 +202,8 @@ menu "Example Configuration"
 			config ESP_SPI_GPIO_DATA_READY
 				int "Slave GPIO pin for data ready interrupt"
 				default 23 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
-				default 0  if IDF_TARGET_ESP32C5
-				default 13 if IDF_TARGET_ESP32C5
+				default 0 if IDF_TARGET_ESP32C5
+				default 1 if IDF_TARGET_ESP32C2
 				default 4
 				help
 					Slave GPIO pin for indicating host that SPI slave has data to be read by host
@@ -434,6 +435,7 @@ menu "Example Configuration"
 				int "Slave GPIO pin for Host CLK"
 				default 19 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
 				default 3 if IDF_TARGET_ESP32C5
+				default 0 if IDF_TARGET_ESP32C2
 				default 6
 				help
 					SPI HD controller Host CS
@@ -472,6 +474,7 @@ menu "Example Configuration"
 				int "Slave GPIO pin for Data Ready"
 				default 2 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
 				default 0 if IDF_TARGET_ESP32C5
+				default 1 if IDF_TARGET_ESP32C2
 				default 11
 				help
 					Slave GPIO pin for indicating host that SPI slave has data to be read by host
