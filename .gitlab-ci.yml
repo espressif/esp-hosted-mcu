@@ -79,7 +79,7 @@ build_idf_v5.4:
   image: espressif/idf:${IDF_VER}
   parallel:
     matrix:
-      - IDF_VER: ["v5.4", "v5.4.1", "release-v5.4"]
+      - IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4"]
         IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6"]
         IDF_EXAMPLE_PATH: examples/protocols/mqtt/tcp
