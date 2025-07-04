@@ -706,7 +706,8 @@ static esp_err_t sdio_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 
 		packet_size = len + offset;
 		if (packet_size > buf_len) {
-			ESP_LOGE(TAG, "packet size too big for remaining stream data");
+			ESP_LOGE(TAG, "packet size[%lu]>[%lu] too big for remaining stream data",
+					packet_size, buf_len);
 			return ESP_FAIL;
 		}
 		memcpy(pkt_rxbuff, buf, packet_size);
@@ -770,7 +771,7 @@ static void sdio_read_task(void const* pvParameters)
 
 	// wait for transport to be in reset state
 	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(100));
+		g_h.funcs->_h_msleep(100);
 		if (is_transport_rx_ready()) {
 			break;
 		}
@@ -929,6 +930,7 @@ static void sdio_read_task(void const* pvParameters)
 			g_h.funcs->_h_post_semaphore(sem_double_buf_xfer_data);
 		} else {
 			// error: task to copy data to queue still running
+			sdio_rx_free_buffer(rxbuff);
 			ESP_LOGE(TAG, "task still writing Rx data to queue!");
 			// don't send data to task, or update write_index
 		}
