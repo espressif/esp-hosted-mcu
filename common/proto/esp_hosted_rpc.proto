@@ -581,6 +581,10 @@ message wifi_init_config {
 	bool           sta_disconnected_pm = 18;    /**< WiFi Power Management for station at disconnected status */
 	int32          espnow_max_encrypt_num = 19; /**< Maximum encrypt number of peers supported by espnow */
 	int32          magic = 20;                  /**< WiFi init magic number, it should be the last field */
+	int32          rx_mgmt_buf_type = 21;       /**< WiFi RX MGMT buffer type */
+	int32          rx_mgmt_buf_num = 22;        /**< WiFi RX MGMT buffer number */
+	int32          tx_hetb_queue_num = 23;      /**< WiFi TX HE TB QUEUE number for STA HE TB PPDU transmission */
+	int32          dump_hesigb_enable = 24;     /**< enable dump sigb field */
 }
 
 message wifi_country {

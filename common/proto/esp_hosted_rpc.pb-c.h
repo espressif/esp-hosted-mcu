@@ -803,10 +803,26 @@ struct  WifiInitConfig
    **< WiFi init magic number, it should be the last field 
    */
   int32_t magic;
+  /*
+   **< WiFi RX MGMT buffer type 
+   */
+  int32_t rx_mgmt_buf_type;
+  /*
+   **< WiFi RX MGMT buffer number 
+   */
+  int32_t rx_mgmt_buf_num;
+  /*
+   **< WiFi TX HE TB QUEUE number for STA HE TB PPDU transmission 
+   */
+  int32_t tx_hetb_queue_num;
+  /*
+   **< enable dump sigb field 
+   */
+  int32_t dump_hesigb_enable;
 };
 #define WIFI_INIT_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_init_config__descriptor) \
-    , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+    , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  WifiCountry

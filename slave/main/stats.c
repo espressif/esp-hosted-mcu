@@ -19,7 +19,7 @@
 #include "esp_log.h"
 #include "esp_hosted_transport_init.h"
 
-#if TEST_RAW_TP || ESP_PKT_STATS
+#if TEST_RAW_TP || ESP_PKT_STATS || CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
 static const char TAG[] = "stats";
 #endif
 

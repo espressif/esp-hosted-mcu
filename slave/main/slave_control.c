@@ -739,6 +739,103 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 	}
 }
 
+// macros to format output
+#define PRINT_HEADER() ESP_LOGI(TAG, "     Wifi Init Param | Default |    Host |  Actual");
+#define PRINT_FOOTER() ESP_LOGI(TAG, " End Wifi Init Param |");
+#define PRINT_USE_HOST_VALUE(param_str, default, host, final)        \
+	ESP_LOGD(TAG, "% 20s | % 7d | % 7d | % 7d", param_str, default, host, final);
+#define PRINT_USE_DEFAULT_VALUE(param_str, default, host, final)     \
+	ESP_LOGW(TAG, "% 20s | % 7d | % 7d | % 7d", param_str, default, host, final);
+#define PRINT_HEX64_USE_HOST_VALUE(param_str, default, host, final)    \
+	ESP_LOGD(TAG, "% 20s | 0x% 5"PRIx32" | 0x% 5"PRIx64" | 0x% 5"PRIx64, param_str, default, host, final);
+#define PRINT_HEX64_USE_DEFAULT_VALUE(param_str, default, host, final) \
+	ESP_LOGW(TAG, "% 20s | % 7"PRIx32" | % 7"PRIx64" | % 7"PRIx64, param_str, default, host, final);
+
+// macros to copy host or default value
+#define USE_HOST_VALUE(PARAM_STR, DEFAULT, PARAM) \
+	do {                                          \
+		dst_config->PARAM = src_config->PARAM;    \
+		PRINT_USE_HOST_VALUE(PARAM_STR,           \
+				DEFAULT,                          \
+				src_config->PARAM,                \
+				dst_config->PARAM);               \
+	} while(0);
+
+#define USE_DEFAULT_VALUE(PARAM_STR, DEFAULT, PARAM) \
+	do {                                             \
+		dst_config->PARAM = DEFAULT;                 \
+		PRINT_USE_DEFAULT_VALUE(PARAM_STR,           \
+				DEFAULT,                             \
+				src_config->PARAM,                   \
+				dst_config->PARAM);                  \
+	} while(0);
+
+/** Returns the merged wifi init config
+ * Compares the src config from the host with our Wi-Fi defaults
+ * and adjust dst_config as necessary.
+ *
+ * Also displays the changed configs.
+ */
+static wifi_init_config_t * get_merged_init_config(wifi_init_config_t *dst_config, WifiInitConfig *src_config)
+{
+	/* always use value from host, except for
+	 * - cache_tx_buf_num
+	 * - feature_caps
+	 */
+	PRINT_HEADER();
+	USE_HOST_VALUE("static_rx_buf", CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM, static_rx_buf_num);
+	USE_HOST_VALUE("dynamic_rx_buf", CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM, dynamic_rx_buf_num);
+	USE_HOST_VALUE("tx_buf_type", CONFIG_ESP_WIFI_TX_BUFFER_TYPE, tx_buf_type);
+	USE_HOST_VALUE("static_tx_buf", WIFI_STATIC_TX_BUFFER_NUM, static_tx_buf_num);
+	USE_HOST_VALUE("dynamic_tx_buf", WIFI_DYNAMIC_TX_BUFFER_NUM, dynamic_tx_buf_num);
+	USE_HOST_VALUE("rx_mgmt_buf_type", CONFIG_ESP_WIFI_DYNAMIC_RX_MGMT_BUF, rx_mgmt_buf_type);
+	USE_HOST_VALUE("rx_mgmt_buf", WIFI_RX_MGMT_BUF_NUM_DEF, rx_mgmt_buf_num);
+
+	if (WIFI_ENABLE_CACHE_TX_BUFFER) {
+		// use setting from host
+		USE_HOST_VALUE("cache_tx_buf", WIFI_CACHE_TX_BUFFER_NUM, cache_tx_buf_num);
+		dst_config->feature_caps = src_config->feature_caps;
+		PRINT_HEX64_USE_HOST_VALUE("feature_caps", WIFI_FEATURE_CAPS,
+				src_config->feature_caps,
+				dst_config->feature_caps);
+	} else {
+		if (WIFI_FEATURE_CAPS != src_config->feature_caps) {
+			// don't use host setting, which may have enabled CACHE_TX_BUFFER
+			USE_DEFAULT_VALUE("cache_tx_buf", WIFI_CACHE_TX_BUFFER_NUM, cache_tx_buf_num);
+			dst_config->feature_caps = WIFI_FEATURE_CAPS;
+			PRINT_HEX64_USE_DEFAULT_VALUE("feature_caps", WIFI_FEATURE_CAPS,
+					src_config->feature_caps,
+					dst_config->feature_caps);
+		} else {
+			USE_HOST_VALUE("cache_tx_buf", WIFI_CACHE_TX_BUFFER_NUM, cache_tx_buf_num);
+			dst_config->feature_caps = src_config->feature_caps;
+			PRINT_HEX64_USE_HOST_VALUE("feature_caps", WIFI_FEATURE_CAPS,
+					src_config->feature_caps,
+					dst_config->feature_caps);
+		}
+	}
+
+	USE_HOST_VALUE("csi_enable", WIFI_CSI_ENABLED, csi_enable);
+	USE_HOST_VALUE("ampdu_rx_enable", WIFI_AMPDU_RX_ENABLED, ampdu_rx_enable);
+	USE_HOST_VALUE("ampdu_tx_enable", WIFI_AMPDU_TX_ENABLED, ampdu_tx_enable);
+	USE_HOST_VALUE("amsdu_tx_enable", WIFI_AMSDU_TX_ENABLED, amsdu_tx_enable);
+	USE_HOST_VALUE("nvs_enable", WIFI_NVS_ENABLED, nvs_enable);
+	USE_HOST_VALUE("nano_enable", WIFI_NANO_FORMAT_ENABLED, nano_enable);
+	USE_HOST_VALUE("rx_ba_win", WIFI_DEFAULT_RX_BA_WIN, rx_ba_win);
+	USE_HOST_VALUE("wifi_task_core", WIFI_TASK_CORE_ID, wifi_task_core_id);
+	USE_HOST_VALUE("beacon_max_len", WIFI_SOFTAP_BEACON_MAX_LEN, beacon_max_len);
+	USE_HOST_VALUE("mgmt_sbuf_num", WIFI_MGMT_SBUF_NUM, mgmt_sbuf_num);
+	USE_HOST_VALUE("sta_disconnected_pm", WIFI_STA_DISCONNECTED_PM_ENABLED, sta_disconnected_pm);
+	USE_HOST_VALUE("espnow_max_encrypt",CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM, espnow_max_encrypt_num);
+	USE_HOST_VALUE("tx_hetb_queue", WIFI_TX_HETB_QUEUE_NUM, tx_hetb_queue_num);
+	USE_HOST_VALUE("dump_hesigb_enable", WIFI_DUMP_HESIGB_ENABLED, dump_hesigb_enable);
+	PRINT_FOOTER();
+
+	dst_config->magic = src_config->magic;
+
+	return dst_config;
+}
+
 static esp_err_t req_wifi_init(Rpc *req, Rpc *resp, void *priv_data)
 {
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -748,28 +845,7 @@ static esp_err_t req_wifi_init(Rpc *req, Rpc *resp, void *priv_data)
 			rpc__resp__wifi_init__init);
 
 	RPC_RET_FAIL_IF(!req_payload->cfg);
-	cfg.static_rx_buf_num       = req_payload->cfg->static_rx_buf_num      ;
-	cfg.dynamic_rx_buf_num      = req_payload->cfg->dynamic_rx_buf_num     ;
-	cfg.tx_buf_type             = req_payload->cfg->tx_buf_type            ;
-	cfg.static_tx_buf_num       = req_payload->cfg->static_tx_buf_num      ;
-	cfg.dynamic_tx_buf_num      = req_payload->cfg->dynamic_tx_buf_num     ;
-	cfg.cache_tx_buf_num        = req_payload->cfg->cache_tx_buf_num       ;
-	cfg.csi_enable              = req_payload->cfg->csi_enable             ;
-	cfg.ampdu_rx_enable         = req_payload->cfg->ampdu_rx_enable        ;
-	cfg.ampdu_tx_enable         = req_payload->cfg->ampdu_tx_enable        ;
-	cfg.amsdu_tx_enable         = req_payload->cfg->amsdu_tx_enable        ;
-	cfg.nvs_enable              = req_payload->cfg->nvs_enable             ;
-	cfg.nano_enable             = req_payload->cfg->nano_enable            ;
-	cfg.rx_ba_win               = req_payload->cfg->rx_ba_win              ;
-	cfg.wifi_task_core_id       = req_payload->cfg->wifi_task_core_id      ;
-	cfg.beacon_max_len          = req_payload->cfg->beacon_max_len         ;
-	cfg.mgmt_sbuf_num           = req_payload->cfg->mgmt_sbuf_num          ;
-	cfg.feature_caps            = req_payload->cfg->feature_caps           ;
-	cfg.sta_disconnected_pm     = req_payload->cfg->sta_disconnected_pm    ;
-	cfg.espnow_max_encrypt_num  = req_payload->cfg->espnow_max_encrypt_num ;
-	cfg.magic                   = req_payload->cfg->magic                  ;
-
-	RPC_RET_FAIL_IF(esp_wifi_init(&cfg));
+	RPC_RET_FAIL_IF(esp_wifi_init(get_merged_init_config(&cfg, req_payload->cfg)));
 
 	ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
 			ESP_EVENT_ANY_ID,

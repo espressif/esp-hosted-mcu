@@ -168,6 +168,8 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->cfg->tx_buf_type            = p_a->tx_buf_type             ;
 		req_payload->cfg->static_tx_buf_num      = p_a->static_tx_buf_num       ;
 		req_payload->cfg->dynamic_tx_buf_num     = p_a->dynamic_tx_buf_num      ;
+		req_payload->cfg->rx_mgmt_buf_type       = p_a->rx_mgmt_buf_type        ;
+		req_payload->cfg->rx_mgmt_buf_num        = p_a->rx_mgmt_buf_num         ;
 		req_payload->cfg->cache_tx_buf_num       = p_a->cache_tx_buf_num        ;
 		req_payload->cfg->csi_enable             = p_a->csi_enable              ;
 		req_payload->cfg->ampdu_rx_enable        = p_a->ampdu_rx_enable         ;
@@ -178,9 +180,12 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->cfg->rx_ba_win              = p_a->rx_ba_win               ;
 		req_payload->cfg->wifi_task_core_id      = p_a->wifi_task_core_id       ;
 		req_payload->cfg->beacon_max_len         = p_a->beacon_max_len          ;
+		req_payload->cfg->feature_caps           = p_a->feature_caps            ;
 		req_payload->cfg->mgmt_sbuf_num          = p_a->mgmt_sbuf_num           ;
 		req_payload->cfg->sta_disconnected_pm    = p_a->sta_disconnected_pm     ;
 		req_payload->cfg->espnow_max_encrypt_num = p_a->espnow_max_encrypt_num  ;
+		req_payload->cfg->tx_hetb_queue_num      = p_a->tx_hetb_queue_num       ;
+		req_payload->cfg->dump_hesigb_enable     = p_a->dump_hesigb_enable      ;
 		req_payload->cfg->magic                  = p_a->magic                   ;
 
 		/* uint64 - TODO: portable? */

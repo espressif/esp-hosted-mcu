@@ -7387,7 +7387,7 @@ void   rpc__free_unpacked
   assert(message->base.descriptor == &rpc__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor wifi_init_config__field_descriptors[20] =
+static const ProtobufCFieldDescriptor wifi_init_config__field_descriptors[24] =
 {
   {
     "static_rx_buf_num",
@@ -7629,6 +7629,54 @@ static const ProtobufCFieldDescriptor wifi_init_config__field_descriptors[20] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "rx_mgmt_buf_type",
+    21,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, rx_mgmt_buf_type),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "rx_mgmt_buf_num",
+    22,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, rx_mgmt_buf_num),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "tx_hetb_queue_num",
+    23,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, tx_hetb_queue_num),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "dump_hesigb_enable",
+    24,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, dump_hesigb_enable),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_init_config__field_indices_by_name[] = {
   7,   /* field[7] = ampdu_rx_enable */
@@ -7637,6 +7685,7 @@ static const unsigned wifi_init_config__field_indices_by_name[] = {
   14,   /* field[14] = beacon_max_len */
   5,   /* field[5] = cache_tx_buf_num */
   6,   /* field[6] = csi_enable */
+  23,   /* field[23] = dump_hesigb_enable */
   1,   /* field[1] = dynamic_rx_buf_num */
   4,   /* field[4] = dynamic_tx_buf_num */
   18,   /* field[18] = espnow_max_encrypt_num */
@@ -7646,16 +7695,19 @@ static const unsigned wifi_init_config__field_indices_by_name[] = {
   11,   /* field[11] = nano_enable */
   10,   /* field[10] = nvs_enable */
   12,   /* field[12] = rx_ba_win */
+  21,   /* field[21] = rx_mgmt_buf_num */
+  20,   /* field[20] = rx_mgmt_buf_type */
   17,   /* field[17] = sta_disconnected_pm */
   0,   /* field[0] = static_rx_buf_num */
   3,   /* field[3] = static_tx_buf_num */
   2,   /* field[2] = tx_buf_type */
+  22,   /* field[22] = tx_hetb_queue_num */
   13,   /* field[13] = wifi_task_core_id */
 };
 static const ProtobufCIntRange wifi_init_config__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 20 }
+  { 0, 24 }
 };
 const ProtobufCMessageDescriptor wifi_init_config__descriptor =
 {
@@ -7665,7 +7717,7 @@ const ProtobufCMessageDescriptor wifi_init_config__descriptor =
   "WifiInitConfig",
   "",
   sizeof(WifiInitConfig),
-  20,
+  24,
   wifi_init_config__field_descriptors,
   wifi_init_config__field_indices_by_name,
   1,  wifi_init_config__number_ranges,
