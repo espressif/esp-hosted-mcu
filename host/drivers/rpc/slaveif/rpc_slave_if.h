@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include "esp_hosted_rpc.pb-c.h"
 #include "esp_wifi.h"
+#include "esp_mac.h"
 #include "esp_wifi_types.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
@@ -30,6 +31,8 @@ extern "C" {
 #define PASSWORD_LENGTH                      64
 #define STATUS_LENGTH                        14
 #define VENDOR_OUI_BUF                       3
+
+#define IFACE_MAC_SIZE                       8 // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
 
 /*
 #define SUCCESS 0
@@ -61,7 +64,34 @@ extern "C" {
 #define RPC_RX_QUEUE_SIZE 3
 #define RPC_TX_QUEUE_SIZE 5
 
+typedef enum {
+	FEATURE_NONE,
+	FEATURE_BT,
+	// add additional features here
+} rpc_feature;
+
+typedef enum {
+	FEATURE_COMMAND_NONE,
+	FEATURE_COMMAND_BT_INIT,
+	FEATURE_COMMAND_BT_DEINIT,
+	FEATURE_COMMAND_BT_ENABLE,
+	FEATURE_COMMAND_BT_DISABLE,
+	// add additional feature commands here
+} rpc_feature_command;
+
+typedef enum {
+	FEATURE_OPTION_NONE,
+	FEATURE_OPTION_BT_DEINIT_RELEASE_MEMORY,
+	// add additional feature options here
+} rpc_feature_option;
+
 /*---- Control structures ----*/
+
+typedef struct {
+	rpc_feature feature;
+	rpc_feature_command command;
+	rpc_feature_option option;
+} rcp_feature_control_t;
 
 typedef struct {
 	int mode;
@@ -183,6 +213,18 @@ typedef struct {
 	uint8_t dns_ip[64];
 	int dns_type;
 } rpc_set_dhcp_dns_status_t;
+
+typedef struct {
+	bool set;
+	esp_mac_type_t type;
+	size_t mac_len;
+	uint8_t mac[IFACE_MAC_SIZE];
+} rpc_iface_mac_t;
+
+typedef struct {
+	size_t len;
+	esp_mac_type_t type;
+} rpc_iface_mac_len_t;
 
 typedef struct {
 	wifi_interface_t ifx;
@@ -355,6 +397,14 @@ typedef struct Ctrl_cmd_t {
 		rpc_wifi_inactive_time_t    wifi_inactive_time;
 
 		rpc_coprocessor_fwversion_t coprocessor_fwversion;
+
+		rpc_iface_mac_t             iface_mac;
+
+		rpc_iface_mac_len_t         iface_mac_len;
+
+		bool                        bt_mem_release;
+
+		rcp_feature_control_t       feature_control;
 
 #if H_WIFI_HE_SUPPORT
 		wifi_twt_config_t           wifi_twt_config;
@@ -658,6 +708,12 @@ ctrl_cmd_t * rpc_slaveif_wifi_get_band(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_band_mode(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_band_mode(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_set_slave_dhcp_dns_status(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req);
+
+ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slave_feature_command(ctrl_cmd_t *req);;
+ctrl_cmd_t * rpc_slaveif_iface_mac_addr_len_get(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_inactive_time(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_inactive_time(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_twt_config(ctrl_cmd_t *req);

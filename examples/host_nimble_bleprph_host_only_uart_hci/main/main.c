@@ -16,6 +16,8 @@
 #include "bleprph.h"
 #include "uart_driver.h"
 
+#include "esp_hosted.h"
+
 #if CONFIG_EXAMPLE_EXTENDED_ADV
 static uint8_t ext_adv_pattern_1[] = {
     0x02, 0x01, 0x06,
@@ -493,12 +495,27 @@ app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    // initialise connection to co-processor
+    esp_hosted_connect_to_slave();
+
+    // init bt controller
+    if (ESP_OK != esp_hosted_bt_controller_init()) {
+        ESP_LOGW("INFO", "failed to init bt controller");
+    }
+
+    // enable bt controller
+    if (ESP_OK != esp_hosted_bt_controller_enable()) {
+        ESP_LOGW("INFO", "failed to enable bt controller");
+    }
+
     hci_uart_open();
+
     ret = nimble_port_init();
     if (ret != ESP_OK) {
         ESP_LOGE(tag, "Failed to init nimble %d ", ret);
         return;
     }
+
     /* Initialize the NimBLE host configuration. */
     ble_hs_cfg.reset_cb = bleprph_on_reset;
     ble_hs_cfg.sync_cb = bleprph_on_sync;

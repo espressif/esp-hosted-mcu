@@ -205,6 +205,12 @@ typedef struct RpcReqSuppDppStartListen RpcReqSuppDppStartListen;
 typedef struct RpcRespSuppDppStartListen RpcRespSuppDppStartListen;
 typedef struct RpcReqSuppDppStopListen RpcReqSuppDppStopListen;
 typedef struct RpcRespSuppDppStopListen RpcRespSuppDppStopListen;
+typedef struct RpcReqIfaceMacAddrSetGet RpcReqIfaceMacAddrSetGet;
+typedef struct RpcRespIfaceMacAddrSetGet RpcRespIfaceMacAddrSetGet;
+typedef struct RpcReqIfaceMacAddrLenGet RpcReqIfaceMacAddrLenGet;
+typedef struct RpcRespIfaceMacAddrLenGet RpcRespIfaceMacAddrLenGet;
+typedef struct RpcReqFeatureControl RpcReqFeatureControl;
+typedef struct RpcRespFeatureControl RpcRespFeatureControl;
 typedef struct RpcEventWifiEventNoArgs RpcEventWifiEventNoArgs;
 typedef struct RpcEventESPInit RpcEventESPInit;
 typedef struct RpcEventHeartbeat RpcEventHeartbeat;
@@ -320,6 +326,42 @@ typedef enum _RpcType {
   RPC_TYPE__MsgType_Max = 4
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_TYPE)
 } RpcType;
+typedef enum _RpcFeature {
+  RPC_FEATURE__Feature_None = 0,
+  /*
+   * Bluetooth (BT) Feature
+   */
+  /*
+   * add additional features here
+   */
+  RPC_FEATURE__Feature_Bluetooth = 1
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_FEATURE)
+} RpcFeature;
+typedef enum _RpcFeatureCommand {
+  RPC_FEATURE_COMMAND__Feature_Command_None = 0,
+  /*
+   * Bluetooth (BT) Feature Commands
+   */
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Init = 1,
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit = 2,
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Enable = 3,
+  /*
+   * add additional feature commands here
+   */
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Disable = 4
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_FEATURE_COMMAND)
+} RpcFeatureCommand;
+typedef enum _RpcFeatureOption {
+  RPC_FEATURE_OPTION__Feature_Option_None = 0,
+  /*
+   * Bluetooth (BT) Feature Options
+   */
+  /*
+   * release memory when deinit BT
+   */
+  RPC_FEATURE_OPTION__Feature_Option_BT_Deinit_Release_Memory = 1
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_FEATURE_OPTION)
+} RpcFeatureOption;
 typedef enum _RpcId {
   RPC_ID__MsgId_Invalid = 0,
   /*
@@ -827,17 +869,34 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_EapSetDisableTimeCheck = 383,
   /*
-   * 0x180
+   *0x180
    */
   RPC_ID__Req_EapSetEapMethods = 384,
+  /*
+   *0x181
+   */
+  RPC_ID__Req_IfaceMacAddrSetGet = 385,
+  /*
+   *0x182
+   */
+  RPC_ID__Req_IfaceMacAddrLenGet = 386,
+  /*
+   * Common RPC to handle simple feature control with one optional parameter
+   * Supported Features:
+   * - BT Init/Deinit/Enable/Disable
+   */
+  /*
+   *0x183
+   */
+  RPC_ID__Req_FeatureControl = 387,
   /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   * 0x181
+   *0x184
    */
-  RPC_ID__Req_Max = 385,
+  RPC_ID__Req_Max = 388,
   /*
    ** Response Msgs *
    */
@@ -977,11 +1036,14 @@ typedef enum _RpcId {
   RPC_ID__Resp_EapSetDomainName = 638,
   RPC_ID__Resp_EapSetDisableTimeCheck = 639,
   RPC_ID__Resp_EapSetEapMethods = 640,
+  RPC_ID__Resp_IfaceMacAddrSetGet = 641,
+  RPC_ID__Resp_IfaceMacAddrLenGet = 642,
+  RPC_ID__Resp_FeatureControl = 643,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 641,
+  RPC_ID__Resp_Max = 644,
   /*
    ** Event Msgs *
    */
@@ -3919,6 +3981,81 @@ struct  RpcRespSuppDppStopListen
     , 0 }
 
 
+struct  RpcReqIfaceMacAddrSetGet
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean set;
+  uint32_t type;
+  /*
+   * only valid for set
+   */
+  ProtobufCBinaryData mac;
+};
+#define RPC__REQ__IFACE_MAC_ADDR_SET_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__iface_mac_addr_set_get__descriptor) \
+    , 0, 0, {0,NULL} }
+
+
+struct  RpcRespIfaceMacAddrSetGet
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  protobuf_c_boolean set;
+  uint32_t type;
+  ProtobufCBinaryData mac;
+};
+#define RPC__RESP__IFACE_MAC_ADDR_SET_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__iface_mac_addr_set_get__descriptor) \
+    , 0, 0, 0, {0,NULL} }
+
+
+struct  RpcReqIfaceMacAddrLenGet
+{
+  ProtobufCMessage base;
+  uint32_t type;
+};
+#define RPC__REQ__IFACE_MAC_ADDR_LEN_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__iface_mac_addr_len_get__descriptor) \
+    , 0 }
+
+
+struct  RpcRespIfaceMacAddrLenGet
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  uint32_t type;
+  uint32_t len;
+};
+#define RPC__RESP__IFACE_MAC_ADDR_LEN_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__iface_mac_addr_len_get__descriptor) \
+    , 0, 0, 0 }
+
+
+struct  RpcReqFeatureControl
+{
+  ProtobufCMessage base;
+  RpcFeature feature;
+  RpcFeatureCommand command;
+  RpcFeatureOption option;
+};
+#define RPC__REQ__FEATURE_CONTROL__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__feature_control__descriptor) \
+    , RPC_FEATURE__Feature_None, RPC_FEATURE_COMMAND__Feature_Command_None, RPC_FEATURE_OPTION__Feature_Option_None }
+
+
+struct  RpcRespFeatureControl
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  RpcFeature feature;
+  RpcFeatureCommand command;
+  RpcFeatureOption option;
+};
+#define RPC__RESP__FEATURE_CONTROL__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__feature_control__descriptor) \
+    , 0, RPC_FEATURE__Feature_None, RPC_FEATURE_COMMAND__Feature_Command_None, RPC_FEATURE_OPTION__Feature_Option_None }
+
+
 struct  RpcEventWifiEventNoArgs
 {
   ProtobufCMessage base;
@@ -4742,6 +4879,9 @@ typedef enum {
   RPC__PAYLOAD_REQ_EAP_SET_DOMAIN_NAME = 382,
   RPC__PAYLOAD_REQ_EAP_SET_DISABLE_TIME_CHECK = 383,
   RPC__PAYLOAD_REQ_EAP_SET_EAP_METHODS = 384,
+  RPC__PAYLOAD_REQ_IFACE_MAC_ADDR_SET_GET = 385,
+  RPC__PAYLOAD_REQ_IFACE_MAC_ADDR_LEN_GET = 386,
+  RPC__PAYLOAD_REQ_FEATURE_CONTROL = 387,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -4837,6 +4977,9 @@ typedef enum {
   RPC__PAYLOAD_RESP_EAP_SET_DOMAIN_NAME = 638,
   RPC__PAYLOAD_RESP_EAP_SET_DISABLE_TIME_CHECK = 639,
   RPC__PAYLOAD_RESP_EAP_SET_EAP_METHODS = 640,
+  RPC__PAYLOAD_RESP_IFACE_MAC_ADDR_SET_GET = 641,
+  RPC__PAYLOAD_RESP_IFACE_MAC_ADDR_LEN_GET = 642,
+  RPC__PAYLOAD_RESP_FEATURE_CONTROL = 643,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -4974,6 +5117,9 @@ struct  Rpc
     RpcReqEapSetDomainName *req_eap_set_domain_name;
     RpcReqEapSetDisableTimeCheck *req_eap_set_disable_time_check;
     RpcReqEapSetEapMethods *req_eap_set_eap_methods;
+    RpcReqIfaceMacAddrSetGet *req_iface_mac_addr_set_get;
+    RpcReqIfaceMacAddrLenGet *req_iface_mac_addr_len_get;
+    RpcReqFeatureControl *req_feature_control;
     /*
      ** Responses *
      */
@@ -5072,6 +5218,9 @@ struct  Rpc
     RpcRespEapSetDomainName *resp_eap_set_domain_name;
     RpcRespEapSetDisableTimeCheck *resp_eap_set_disable_time_check;
     RpcRespEapSetEapMethods *resp_eap_set_eap_methods;
+    RpcRespIfaceMacAddrSetGet *resp_iface_mac_addr_set_get;
+    RpcRespIfaceMacAddrLenGet *resp_iface_mac_addr_len_get;
+    RpcRespFeatureControl *resp_feature_control;
     /*
      ** Notifications *
      */
@@ -8711,6 +8860,120 @@ RpcRespSuppDppStopListen *
 void   rpc__resp__supp_dpp_stop_listen__free_unpacked
                      (RpcRespSuppDppStopListen *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqIfaceMacAddrSetGet methods */
+void   rpc__req__iface_mac_addr_set_get__init
+                     (RpcReqIfaceMacAddrSetGet         *message);
+size_t rpc__req__iface_mac_addr_set_get__get_packed_size
+                     (const RpcReqIfaceMacAddrSetGet   *message);
+size_t rpc__req__iface_mac_addr_set_get__pack
+                     (const RpcReqIfaceMacAddrSetGet   *message,
+                      uint8_t             *out);
+size_t rpc__req__iface_mac_addr_set_get__pack_to_buffer
+                     (const RpcReqIfaceMacAddrSetGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqIfaceMacAddrSetGet *
+       rpc__req__iface_mac_addr_set_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__iface_mac_addr_set_get__free_unpacked
+                     (RpcReqIfaceMacAddrSetGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespIfaceMacAddrSetGet methods */
+void   rpc__resp__iface_mac_addr_set_get__init
+                     (RpcRespIfaceMacAddrSetGet         *message);
+size_t rpc__resp__iface_mac_addr_set_get__get_packed_size
+                     (const RpcRespIfaceMacAddrSetGet   *message);
+size_t rpc__resp__iface_mac_addr_set_get__pack
+                     (const RpcRespIfaceMacAddrSetGet   *message,
+                      uint8_t             *out);
+size_t rpc__resp__iface_mac_addr_set_get__pack_to_buffer
+                     (const RpcRespIfaceMacAddrSetGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespIfaceMacAddrSetGet *
+       rpc__resp__iface_mac_addr_set_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__iface_mac_addr_set_get__free_unpacked
+                     (RpcRespIfaceMacAddrSetGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqIfaceMacAddrLenGet methods */
+void   rpc__req__iface_mac_addr_len_get__init
+                     (RpcReqIfaceMacAddrLenGet         *message);
+size_t rpc__req__iface_mac_addr_len_get__get_packed_size
+                     (const RpcReqIfaceMacAddrLenGet   *message);
+size_t rpc__req__iface_mac_addr_len_get__pack
+                     (const RpcReqIfaceMacAddrLenGet   *message,
+                      uint8_t             *out);
+size_t rpc__req__iface_mac_addr_len_get__pack_to_buffer
+                     (const RpcReqIfaceMacAddrLenGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqIfaceMacAddrLenGet *
+       rpc__req__iface_mac_addr_len_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__iface_mac_addr_len_get__free_unpacked
+                     (RpcReqIfaceMacAddrLenGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespIfaceMacAddrLenGet methods */
+void   rpc__resp__iface_mac_addr_len_get__init
+                     (RpcRespIfaceMacAddrLenGet         *message);
+size_t rpc__resp__iface_mac_addr_len_get__get_packed_size
+                     (const RpcRespIfaceMacAddrLenGet   *message);
+size_t rpc__resp__iface_mac_addr_len_get__pack
+                     (const RpcRespIfaceMacAddrLenGet   *message,
+                      uint8_t             *out);
+size_t rpc__resp__iface_mac_addr_len_get__pack_to_buffer
+                     (const RpcRespIfaceMacAddrLenGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespIfaceMacAddrLenGet *
+       rpc__resp__iface_mac_addr_len_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__iface_mac_addr_len_get__free_unpacked
+                     (RpcRespIfaceMacAddrLenGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqFeatureControl methods */
+void   rpc__req__feature_control__init
+                     (RpcReqFeatureControl         *message);
+size_t rpc__req__feature_control__get_packed_size
+                     (const RpcReqFeatureControl   *message);
+size_t rpc__req__feature_control__pack
+                     (const RpcReqFeatureControl   *message,
+                      uint8_t             *out);
+size_t rpc__req__feature_control__pack_to_buffer
+                     (const RpcReqFeatureControl   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqFeatureControl *
+       rpc__req__feature_control__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__feature_control__free_unpacked
+                     (RpcReqFeatureControl *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespFeatureControl methods */
+void   rpc__resp__feature_control__init
+                     (RpcRespFeatureControl         *message);
+size_t rpc__resp__feature_control__get_packed_size
+                     (const RpcRespFeatureControl   *message);
+size_t rpc__resp__feature_control__pack
+                     (const RpcRespFeatureControl   *message,
+                      uint8_t             *out);
+size_t rpc__resp__feature_control__pack_to_buffer
+                     (const RpcRespFeatureControl   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespFeatureControl *
+       rpc__resp__feature_control__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__feature_control__free_unpacked
+                     (RpcRespFeatureControl *message,
+                      ProtobufCAllocator *allocator);
 /* RpcEventWifiEventNoArgs methods */
 void   rpc__event__wifi_event_no_args__init
                      (RpcEventWifiEventNoArgs         *message);
@@ -10575,6 +10838,24 @@ typedef void (*RpcReqSuppDppStopListen_Closure)
 typedef void (*RpcRespSuppDppStopListen_Closure)
                  (const RpcRespSuppDppStopListen *message,
                   void *closure_data);
+typedef void (*RpcReqIfaceMacAddrSetGet_Closure)
+                 (const RpcReqIfaceMacAddrSetGet *message,
+                  void *closure_data);
+typedef void (*RpcRespIfaceMacAddrSetGet_Closure)
+                 (const RpcRespIfaceMacAddrSetGet *message,
+                  void *closure_data);
+typedef void (*RpcReqIfaceMacAddrLenGet_Closure)
+                 (const RpcReqIfaceMacAddrLenGet *message,
+                  void *closure_data);
+typedef void (*RpcRespIfaceMacAddrLenGet_Closure)
+                 (const RpcRespIfaceMacAddrLenGet *message,
+                  void *closure_data);
+typedef void (*RpcReqFeatureControl_Closure)
+                 (const RpcReqFeatureControl *message,
+                  void *closure_data);
+typedef void (*RpcRespFeatureControl_Closure)
+                 (const RpcRespFeatureControl *message,
+                  void *closure_data);
 typedef void (*RpcEventWifiEventNoArgs_Closure)
                  (const RpcEventWifiEventNoArgs *message,
                   void *closure_data);
@@ -10790,6 +11071,9 @@ extern const ProtobufCEnumDescriptor    rpc__wifi_power_save__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__wifi_sec_prot__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__status__descriptor;
 extern const ProtobufCEnumDescriptor    rpc_type__descriptor;
+extern const ProtobufCEnumDescriptor    rpc_feature__descriptor;
+extern const ProtobufCEnumDescriptor    rpc_feature_command__descriptor;
+extern const ProtobufCEnumDescriptor    rpc_feature_option__descriptor;
 extern const ProtobufCEnumDescriptor    rpc_id__descriptor;
 extern const ProtobufCMessageDescriptor wifi_init_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_country__descriptor;
@@ -10981,6 +11265,12 @@ extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_start_listen__descrip
 extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_start_listen__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_stop_listen__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_stop_listen__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__iface_mac_addr_set_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__iface_mac_addr_set_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__iface_mac_addr_len_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__iface_mac_addr_len_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__feature_control__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__feature_control__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_event_no_args__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__espinit__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__heartbeat__descriptor;

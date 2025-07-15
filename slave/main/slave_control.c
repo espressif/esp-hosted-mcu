@@ -13,11 +13,13 @@
 #include "slave_control.h"
 #include "esp_hosted_rpc.pb-c.h"
 #include "esp_ota_ops.h"
+#include "esp_mac.h"
 #include "esp_hosted_rpc.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
 #include "slave_wifi_config.h"
 #include "esp_hosted_log.h"
+#include "slave_bt.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
 
 #if H_DPP_SUPPORT
@@ -42,6 +44,8 @@
 #define FAILURE                     -1
 #define MIN_TX_POWER                8
 #define MAX_TX_POWER                84
+
+#define IFACE_MAC_SIZE              8 // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
 
 #define MAX_STA_CONNECT_ATTEMPTS    3
 
@@ -2857,6 +2861,104 @@ static esp_err_t req_get_coprocessor_fw_version(Rpc *req, Rpc *resp, void *priv_
 	return ESP_OK;
 }
 
+static esp_err_t req_iface_mac_addr_len_get(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespIfaceMacAddrLenGet, resp_iface_mac_addr_len_get,
+			RpcReqIfaceMacAddrLenGet, req_iface_mac_addr_len_get,
+			rpc__resp__iface_mac_addr_len_get__init);
+
+	size_t len = esp_mac_addr_len_get(req_payload->type);
+
+	resp_payload->type = req_payload->type;
+	resp_payload->len = len;
+
+	return ESP_OK;
+}
+
+static esp_err_t req_iface_mac_addr_set_get(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespIfaceMacAddrSetGet, resp_iface_mac_addr_set_get,
+			RpcReqIfaceMacAddrSetGet, req_iface_mac_addr_set_get,
+			rpc__resp__iface_mac_addr_set_get__init);
+
+	// copy the incoming request to the outgoing response
+	resp_payload->set = req_payload->set;
+	resp_payload->type = req_payload->type;
+
+	// get the expected len based on the type
+	size_t len = esp_mac_addr_len_get(req_payload->type);
+
+	if (req_payload->set) {
+		// set the interface mac address
+		if (req_payload->mac.len) {
+			if (req_payload->mac.len == len) {
+				RPC_RET_FAIL_IF(esp_iface_mac_addr_set(req_payload->mac.data, req_payload->type));
+				// copy the mac address that was set in the response
+				RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->mac, req_payload->mac.data, len);
+			} else {
+				ESP_LOGE(TAG, "expected mac length %" PRIu16 ", but got %" PRIu16, len, req_payload->mac.len);
+				resp_payload->resp = ESP_ERR_INVALID_ARG;
+			}
+		} else {
+			// no mac data provided
+			ESP_LOGE(TAG, "error: set iface mac address without mac data");
+			resp_payload->resp = ESP_ERR_INVALID_ARG;
+		}
+	} else {
+		// get the interface mac address
+		uint8_t iface_mac[IFACE_MAC_SIZE] = {0};
+		RPC_RET_FAIL_IF(esp_read_mac(iface_mac, req_payload->type));
+
+		RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->mac, iface_mac, len);
+	}
+
+	return ESP_OK;
+}
+
+static esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespFeatureControl, resp_feature_control,
+			RpcReqFeatureControl, req_feature_control,
+			rpc__resp__feature_control__init);
+
+	// copy the incoming request to the outgoing response
+	resp_payload->feature = req_payload->feature;
+	resp_payload->command = req_payload->command;
+	resp_payload->option  = req_payload->option;
+
+	if (req_payload->feature == RPC_FEATURE__Feature_Bluetooth) {
+		// decode the requested Bluetooth control
+		switch (req_payload->command) {
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Init:
+			RPC_RET_FAIL_IF(init_bluetooth());
+			break;
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit:
+			bool mem_release = false;
+			if (req_payload->option == RPC_FEATURE_OPTION__Feature_Option_BT_Deinit_Release_Memory) {
+				mem_release = true;
+			}
+			RPC_RET_FAIL_IF(deinit_bluetooth(mem_release));
+			break;
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Enable:
+			RPC_RET_FAIL_IF(enable_bluetooth());
+			break;
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Disable:
+			RPC_RET_FAIL_IF(disable_bluetooth());
+			break;
+		default:
+			// invalid Bluetooth control feature
+			ESP_LOGE(TAG, "error: invalid Bluetooth Feature Control");
+			resp_payload->resp = ESP_ERR_INVALID_ARG;
+			break;
+		}
+	} else {
+		// invalid feature
+		ESP_LOGE(TAG, "error: invalid Feature Control");
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+	}
+	return ESP_OK;
+}
+
 #if CONFIG_SOC_WIFI_HE_SUPPORT
 static esp_err_t req_wifi_sta_twt_config(Rpc *req, Rpc *resp, void *priv_data)
 {
@@ -3455,6 +3557,18 @@ static esp_rpc_req_t req_table[] = {
 		.command_handler = req_supp_dpp_stop_listen,
 	},
 #endif
+	{
+		.req_num = RPC_ID__Req_IfaceMacAddrSetGet,
+		.command_handler = req_iface_mac_addr_set_get
+	},
+	{
+		.req_num = RPC_ID__Req_IfaceMacAddrLenGet,
+		.command_handler = req_iface_mac_addr_len_get
+	},
+	{
+		.req_num = RPC_ID__Req_FeatureControl,
+		.command_handler = req_feature_control
+	},
 };
 
 static int lookup_req_handler(int req_id)

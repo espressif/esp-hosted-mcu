@@ -196,8 +196,10 @@ ble_hs_rx_data(struct os_mbuf *om, void *arg)
 #endif
 #endif
 
-esp_err_t initialise_bluetooth(void)
+esp_err_t init_bluetooth(void)
 {
+	esp_err_t ret = ESP_FAIL;
+
 #if CONFIG_BT_ENABLED
 	uint8_t mac[BSSID_BYTES_SIZE] = {0};
 	esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
@@ -210,30 +212,13 @@ esp_err_t initialise_bluetooth(void)
 	slave_bt_init_uart(&bt_cfg);
 #endif
 
-	ESP_ERROR_CHECK( esp_bt_controller_init(&bt_cfg) );
-#if BLUETOOTH_BLE
-	ESP_ERROR_CHECK( esp_bt_controller_enable(ESP_BT_MODE_BLE) );
-#elif BLUETOOTH_BT
-	ESP_ERROR_CHECK( esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT) );
-#elif BLUETOOTH_BT_BLE
-	ESP_ERROR_CHECK( esp_bt_controller_enable(ESP_BT_MODE_BTDM) );
-#endif
-
-#if BLUETOOTH_HCI
-	esp_err_t ret = ESP_OK;
-
-#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0))
-    ble_hci_trans_cfg_hs((ble_hci_trans_rx_cmd_fn *)ble_hs_hci_rx_evt,NULL,
-                         (ble_hci_trans_rx_acl_fn *)ble_hs_rx_data,NULL);
-#else
-	ret = esp_vhci_host_register_callback(&vhci_host_cb);
-#endif
-
+	ret = esp_bt_controller_init(&bt_cfg);
 	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to register VHCI callback");
+		ESP_LOGE(TAG, "esp_bt_controller_init() FAILED");
 		return ret;
 	}
 
+#if BLUETOOTH_HCI
 	vhci_send_sem = xSemaphoreCreateBinary();
 	if (vhci_send_sem == NULL) {
 		ESP_LOGE(TAG, "Failed to create VHCI send sem");
@@ -244,11 +229,13 @@ esp_err_t initialise_bluetooth(void)
 #endif
 #endif
 
-	return ESP_OK;
+	return ret;
 }
 
-void deinitialize_bluetooth(void)
+esp_err_t deinit_bluetooth(bool mem_release)
 {
+	esp_err_t result = ESP_FAIL;
+
 #ifdef CONFIG_BT_ENABLED
 #if BLUETOOTH_HCI
 	if (vhci_send_sem) {
@@ -258,9 +245,84 @@ void deinitialize_bluetooth(void)
 		vSemaphoreDelete(vhci_send_sem);
 		vhci_send_sem = NULL;
 	}
-	esp_bt_controller_disable();
-	esp_bt_controller_deinit();
 #endif
+	result = esp_bt_controller_deinit();
+	if (result != ESP_OK) {
+		ESP_LOGE(TAG, "esp_bt_controller_deinit FAILED");
+		return result;
+	}
+
+	if (mem_release) {
+		result = ESP_OK;
+#if BLUETOOTH_BLE
+		result = esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+#elif BLUETOOTH_BT
+		result = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+#elif BLUETOOTH_BT_BLE
+		result = esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
+#endif
+		if (result != ESP_OK) {
+			ESP_LOGE(TAG, "esp_bt_controller_mem_release FAILED");
+			return result;
+		}
+	}
+#endif
+	return result;
+}
+
+esp_err_t enable_bluetooth(void)
+{
+	esp_err_t ret = ESP_FAIL;
+
+#ifdef CONFIG_BT_ENABLED
+#if BLUETOOTH_BLE
+	ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
+#elif BLUETOOTH_BT
+	ret = esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
+#elif BLUETOOTH_BT_BLE
+	ret = esp_bt_controller_enable(ESP_BT_MODE_BTDM);
+#endif
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "esp_bt_controller_enable FAILED (or not called)");
+		return ret;
+	}
+
+#if BLUETOOTH_HCI
+#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0))
+    ble_hci_trans_cfg_hs((ble_hci_trans_rx_cmd_fn *)ble_hs_hci_rx_evt,NULL,
+                         (ble_hci_trans_rx_acl_fn *)ble_hs_rx_data,NULL);
+#else
+	ret = esp_vhci_host_register_callback(&vhci_host_cb);
+
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to register VHCI callback");
+		return ret;
+	}
+#endif
+#endif // BLUETOOTH_HCI
+#endif // CONFIG_BT_ENABLED
+
+	return ret;
+}
+
+esp_err_t disable_bluetooth(void)
+{
+#ifdef CONFIG_BT_ENABLED
+#if BLUETOOTH_HCI
+// unregister callback functions
+#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0))
+    ble_hci_trans_cfg_hs(NULL, NULL,
+                         NULL, NULL);
+#else
+	esp_vhci_host_callback_t null_cb = {
+		NULL, NULL };
+	esp_vhci_host_register_callback(&null_cb);
+#endif
+#endif
+
+	return esp_bt_controller_disable();
+#else
+	return ESP_FAIL;
 #endif
 }
 

@@ -19,6 +19,7 @@
 
 #include "esp_err.h"
 #include "esp_idf_version.h"
+#include <stdbool.h>
 
 #ifdef CONFIG_BT_ENABLED
 
@@ -160,8 +161,11 @@
 #endif
 
 #endif /* CONFIG_BT_ENABLED */
-void deinitialize_bluetooth(void);
-esp_err_t initialise_bluetooth(void);
+esp_err_t init_bluetooth(void);
+esp_err_t enable_bluetooth(void);
+esp_err_t disable_bluetooth(void);
+esp_err_t deinit_bluetooth(bool mem_release);
+
 uint8_t get_bluetooth_capabilities(void);
 uint32_t get_bluetooth_ext_capabilities(void);
 
