@@ -19,6 +19,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
+#include "esp_hosted.h"
 #include "esp_hosted_bluedroid.h"
 
 #define REPORT_PROTOCOL_MOUSE_REPORT_SIZE      (4)
@@ -404,7 +405,19 @@ void app_main(void)
     }
     ESP_ERROR_CHECK( ret );
 
-    /* initialize TRANSPORT first */
+    // initialise connection to co-processor
+    esp_hosted_connect_to_slave();
+
+    // init bt controller
+    if (ESP_OK != esp_hosted_bt_controller_init()) {
+        ESP_LOGE("INFO", "failed to init bt controller");
+    }
+
+    // enable bt controller
+    if (ESP_OK != esp_hosted_bt_controller_enable()) {
+        ESP_LOGE("INFO", "failed to enable bt controller");
+    }
+
     hosted_hci_bluedroid_open();
 
     /* get HCI driver operations */

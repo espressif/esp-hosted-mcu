@@ -14,6 +14,7 @@ extern "C" {
 #include "esp_hosted_wifi_remote_glue.h"
 #include "port_esp_hosted_host_wifi_config.h"
 #include "port_esp_hosted_host_os.h"
+#include "esp_hosted_misc.h"
 #include "esp_check.h"
 #include "transport_drv.h"
 #include "rpc_wrap.h"
@@ -733,6 +734,71 @@ esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods)
 }
 #endif
 #endif
+
+esp_err_t esp_hosted_bt_controller_init(void)
+{
+	return rpc_bt_controller_init();
+}
+
+esp_err_t esp_hosted_bt_controller_deinit(bool mem_release)
+{
+	return rpc_bt_controller_deinit(mem_release);
+}
+
+esp_err_t esp_hosted_bt_controller_enable(void)
+{
+	return rpc_bt_controller_enable();
+}
+
+esp_err_t esp_hosted_bt_controller_disable(void)
+{
+	return rpc_bt_controller_disable();
+}
+
+static bool check_mac_len(size_t mac_len, esp_mac_type_t type)
+{
+	if (((type == ESP_MAC_IEEE802154) && (mac_len == 8)) ||
+			((type == ESP_MAC_EFUSE_EXT) && (mac_len == 2)) ||
+			(mac_len == 6)) {
+		return true;
+	}
+	return false;
+}
+
+esp_err_t esp_hosted_iface_mac_addr_set(uint8_t *mac, size_t mac_len, esp_mac_type_t type)
+{
+	// check that incoming mac_len is correct for the provided type
+	if (!check_mac_len(mac_len, type)) {
+		ESP_LOGE(TAG, "Invalid mac length for provided MAC type");
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	return rpc_iface_mac_addr_set_get(true, mac, mac_len, type);
+}
+
+esp_err_t esp_hosted_iface_mac_addr_get(uint8_t *mac, size_t mac_len, esp_mac_type_t type)
+{
+	// check that incoming mac_len is correct for the provided type
+	if (!check_mac_len(mac_len, type)) {
+		ESP_LOGE(TAG, "Invalid mac length for provided MAC type");
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	return rpc_iface_mac_addr_set_get(false, mac, mac_len, type);
+}
+
+size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type)
+{
+	// NOTE: this API returns size_t, not esp_err_t
+	// to match size_t esp_mac_addr_len_get(esp_mac_type_t type)
+	size_t len;
+
+	if (ESP_OK != rpc_iface_mac_addr_len_get(&len, type)) {
+		return 0;
+	} else {
+		return len;
+	}
+}
 
 /* esp_err_t esp_wifi_remote_scan_get_ap_record(wifi_ap_record_t *ap_record)
 esp_err_t esp_wifi_remote_set_csi(_Bool en)

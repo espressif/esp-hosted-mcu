@@ -1,9 +1,9 @@
 # Holds jobs that run from a merge request
 
-check_ver:
+premerge_check:
   rules:
     - !reference [.default_rules, rules]
-  extends: .check_ver_template
+  extends: .premerge_check_template
   image: espressif/idf:latest
 
 build_idf_v5.5:

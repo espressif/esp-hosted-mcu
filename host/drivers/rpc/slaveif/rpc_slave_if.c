@@ -396,6 +396,24 @@ ctrl_cmd_t * rpc_slaveif_get_coprocessor_fwversion(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 
+ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_IfaceMacAddrSetGet);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_FeatureControl);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_iface_mac_addr_len_get(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_IfaceMacAddrLenGet);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
 #if H_WIFI_DUALBAND_SUPPORT
 ctrl_cmd_t * rpc_slaveif_wifi_get_protocols(ctrl_cmd_t *req)
 {

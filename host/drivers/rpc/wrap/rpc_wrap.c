@@ -37,9 +37,11 @@ uint8_t restart_after_slave_ota = 0;
 #define OTA_BEGIN_RSP_TIMEOUT_SEC                         15
 #define WIFI_INIT_RSP_TIMEOUT_SEC                         10
 #define OTA_FROM_WEB_URL                                  1
+#define GET_FWVERSION_TIMEOUT_SEC                         1
 
 /* Forward declarations */
 static int rpc_wifi_connect_async(void);
+static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_control);
 
 static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
 {
@@ -641,6 +643,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_SetDhcpDnsStatus:
 	case RPC_ID__Resp_WifiSetInactiveTime:
 	case RPC_ID__Resp_WifiGetInactiveTime:
+	case RPC_ID__Resp_IfaceMacAddrSetGet:
+	case RPC_ID__Resp_IfaceMacAddrLenGet:
+	case RPC_ID__Resp_FeatureControl:
 #if H_WIFI_HE_SUPPORT
 	case RPC_ID__Resp_WifiStaTwtConfig:
 	case RPC_ID__Resp_WifiStaItwtSetup:
@@ -836,6 +841,8 @@ esp_err_t rpc_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info
 {
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	// change timeout value for this call
+	req->rsp_timeout_sec = GET_FWVERSION_TIMEOUT_SEC;
 	ctrl_cmd_t *resp = NULL;
 
 	resp = rpc_slaveif_get_coprocessor_fwversion(req);
@@ -2044,6 +2051,7 @@ esp_err_t rpc_eap_client_set_eap_methods(esp_eap_method_t methods)
 }
 #endif
 #endif
+
 #if H_DPP_SUPPORT
 esp_err_t rpc_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
 {
@@ -2240,3 +2248,105 @@ static void rpc_supp_thread(void const *arg)
 }
 #endif // H_SUPP_DPP_SUPPORT
 #endif // H_DPP_SUPPORT
+
+esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp_mac_type_t type)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.iface_mac.set = set;
+	req->u.iface_mac.type = type;
+	req->u.iface_mac.mac_len = mac_len;
+	memset(req->u.iface_mac.mac, 0, sizeof(req->u.iface_mac.mac));
+
+	if (set) {
+		memcpy(req->u.iface_mac.mac, mac, mac_len);
+	}
+
+	resp = rpc_slaveif_iface_mac_addr_set_get(req);
+
+	// copy mac address for get
+	if (!set && resp && resp->resp_event_status == SUCCESS) {
+		memcpy(mac, resp->u.iface_mac.mac, mac_len);
+	}
+	return rpc_rsp_callback(resp);
+}
+
+int rpc_bt_controller_init(void)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_INIT;
+	feature_control.option  = FEATURE_OPTION_NONE;
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+int rpc_bt_controller_deinit(bool mem_release)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_DEINIT;
+	if (mem_release) {
+		feature_control.option = FEATURE_OPTION_BT_DEINIT_RELEASE_MEMORY;
+	} else {
+		feature_control.option = FEATURE_OPTION_NONE;
+	}
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+int rpc_bt_controller_enable(void)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_ENABLE;
+	feature_control.option  = FEATURE_OPTION_NONE;
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+int rpc_bt_controller_disable(void)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_DISABLE;
+	feature_control.option  = FEATURE_OPTION_NONE;
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.iface_mac_len.type = type;
+	resp = rpc_slaveif_iface_mac_addr_len_get(req);
+
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*len = resp->u.iface_mac_len.len;
+	}
+	return rpc_rsp_callback(resp);
+}
+
+static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_control)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.feature_control.feature = feature_control->feature;
+	req->u.feature_control.command = feature_control->command;
+	req->u.feature_control.option  = feature_control->option;
+
+	resp = rpc_slaveif_feature_control(req);
+
+	return rpc_rsp_callback(resp);
+}

@@ -29,6 +29,7 @@ This can be any generic microcontroller (MCU). We demonstrate any ESP as host. U
 - Host extends the capabilities of the Hosted co-processor through Remote Procedure Calls (RPCs). The Host MCU sends these RPC commands to the Hosted co-processor using a reliable communication bus, like SPI, SDIO, or UART. The Hosted co-processor then handles the RPC and provides the requested functionality to the Host MCU.
 - The data (network or Bluetooth) is packaged efficiently at the transport layer to minimize overhead and delays when passing between the Host and co-processor.
 - This modular design allows any MCU to be used as the Host, and any ESP chip with Wi-Fi and/or Bluetooth to be used as the Hosted co-processor. The RPC calls can also be extended to provide any function required by the Host, as long as the co-processor can support it.
+- The RPCs implemented are [listed in this document](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/implemented_rpcs.md), including the ESP-Hosted release version that implements the RPCs.
 
 ## 3 Solution Flexibility
 
@@ -271,6 +272,8 @@ Check [examples](https://github.com/espressif/esp-hosted-mcu/tree/main/examples)
 If you encounter issues with using ESP-Hosted, see the following guide:
 
 - [Troubleshooting Guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/troubleshooting.md)
+- [Migration Guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/migration_guide.md)
+- if you are upgrading to ESP-Hosted version V2.5.2 (or later) from an earlier version, there has been a change in the operation of the Bluetooth Controller on the co-processor. See [Migrating to V2.5.2](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/migration_guide.md#migrating-to-v252) in the Migration Guide for more information.
 
 ## 11 References
 

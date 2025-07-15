@@ -574,7 +574,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 				rpc__req__wifi_sta_itwt_set_target_wake_time_offset__init);
 		req_payload->offset_us = app_req->u.wifi_itwt_set_target_wake_time_offset_us;
 		break;
-#endif
+#endif // H_WIFI_HE_SUPPORT
 #if H_WIFI_DUALBAND_SUPPORT
 	} case RPC_ID__Req_WifiSetProtocols: {
 		RPC_ALLOC_ASSIGN(RpcReqWifiSetProtocols, req_wifi_set_protocols,
@@ -614,7 +614,60 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 				rpc__req__wifi_set_band_mode__init);
 		req_payload->bandmode = app_req->u.wifi_band_mode;
 		break;
-#endif
+#endif // H_WIFI_DUALBAND_SUPPORT
+	} case RPC_ID__Req_IfaceMacAddrSetGet: {
+		RPC_ALLOC_ASSIGN(RpcReqIfaceMacAddrSetGet, req_iface_mac_addr_set_get,
+				rpc__req__iface_mac_addr_set_get__init);
+		req_payload->set = app_req->u.iface_mac.set;
+		req_payload->type = app_req->u.iface_mac.type;
+		if (req_payload->set) {
+			RPC_REQ_COPY_BYTES(req_payload->mac, app_req->u.iface_mac.mac,
+					app_req->u.iface_mac.mac_len);
+		}
+		break;
+	} case RPC_ID__Req_FeatureControl: {
+		RPC_ALLOC_ASSIGN(RpcReqFeatureControl, req_feature_control,
+				rpc__req__feature_control__init);
+		// convert from rpc_slave_if.h enums to proto enums
+		switch (app_req->u.feature_control.feature) {
+		case FEATURE_BT:
+			req_payload->feature = RPC_FEATURE__Feature_Bluetooth;
+			break;
+		default:
+			req_payload->feature = RPC_FEATURE__Feature_None;
+			break;
+		}
+		switch (app_req->u.feature_control.command) {
+		case FEATURE_COMMAND_BT_INIT:
+			req_payload->command = RPC_FEATURE_COMMAND__Feature_Command_BT_Init;
+			break;
+		case FEATURE_COMMAND_BT_DEINIT:
+			req_payload->command = RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit;
+			break;
+		case FEATURE_COMMAND_BT_ENABLE:
+			req_payload->command = RPC_FEATURE_COMMAND__Feature_Command_BT_Enable;
+			break;
+		case FEATURE_COMMAND_BT_DISABLE:
+			req_payload->command = RPC_FEATURE_COMMAND__Feature_Command_BT_Disable;
+			break;
+		default:
+			req_payload->command = RPC_FEATURE_COMMAND__Feature_Command_None;
+			break;
+		}
+		switch (app_req->u.feature_control.option) {
+		case FEATURE_OPTION_BT_DEINIT_RELEASE_MEMORY:
+			req_payload->option = RPC_FEATURE_OPTION__Feature_Option_BT_Deinit_Release_Memory;
+			break;
+		default:
+			req_payload->option = RPC_FEATURE_OPTION__Feature_Option_None;
+			break;
+		}
+		break;
+	} case RPC_ID__Req_IfaceMacAddrLenGet: {
+		RPC_ALLOC_ASSIGN(RpcReqIfaceMacAddrLenGet, req_iface_mac_addr_len_get,
+				rpc__req__iface_mac_addr_len_get__init);
+		req_payload->type = app_req->u.iface_mac_len.type;
+		break;
 	} case RPC_ID__Req_SetDhcpDnsStatus: {
 		RPC_ALLOC_ASSIGN(RpcReqSetDhcpDnsStatus, req_set_dhcp_dns,
 				rpc__req__set_dhcp_dns_status__init);
