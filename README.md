@@ -172,18 +172,15 @@ Legends:
 | Standard SPI | FD | 6 | jumper or PCB | Any_Slave | udp: 24 tcp: 22 | udp: 25 tcp: 22| Simplest solution for quick test |
 | Dual SPI | HD | 5 | jumper or PCB | Any_Slave [1] | udp: 32 tcp: 26 (O) | udp: 33 tcp: 25 (O) | Better throughput, but half duplex |
 | Quad SPI | HD | 7 | PCB only | Any_Slave [1] | udp: 41 tcp: 29 (O) | udp: 42 tcp: 28 (O) | Due to signal integrity, PCB is mandatory |
-| SDIO 1-Bit | HD | 4  | jumper or PCB | ESP32, ESP32-C6, ESP32-C5 [3] | TBD | TBD | Stepping stone for PCB based SDIO 4-bit |
-| SDIO 4-Bit | HD | 6 | PCB only | ESP32, ESP32-C6, ESP32-C5 [3] | udp: 79.5 tcp: 53.4 (S) | udp: 68.1 tcp: 44 (S) | Highest performance |
+| SDIO 1-Bit | HD | 4  | jumper or PCB | ESP32, ESP32-C6, ESP32-C5, ESP32-C61 | TBD | TBD | Stepping stone for PCB based SDIO 4-bit |
+| SDIO 4-Bit | HD | 6 | PCB only | ESP32, ESP32-C6, ESP32-C5, ESP32-C61 | udp: 79.5 tcp: 53.4 (S) | udp: 68.1 tcp: 44 (S) | Highest performance |
 | Only BT over UART | FD | 2 or 4 | jumper or PCB | Any_Slave | NA | NA | Dedicated Bluetooth over UART pins |
 | UART | FD | 2 | jumper or PCB | Any_Slave | udp: 0.68 tcp: 0.67 (O) | udp: 0.68 tcp: 0.60 (O) | UART dedicated for BT & Wi-Fi [2] |
 | Dedicated platforms | FD | Extra 2 or 4 | jumper or PCB | Any_Slave | NA | NA | UART dedicated for BT & Wi-Fi on any other transport |
 
 > [!NOTE]
 > - [1] Dual/Quad SPI is not supported on ESP32
->
-> - [2] UART is only suitable for low throughput environments
->
-> - [3] Currently in BETA support for ESP32-C5 (`--preview` in ESP-IDF master branch)
+> - [2] UART is suitable only for low throughput environments. Throughput was obtained with a baud rate of 921600. On the ESP32-P4 + C6 development board, a baud rate of 4 Mbits/s can be achieved, giving TCP/UDP throughput of around 3.3 MBits/s.
 
 With jumper cables, 'Standard SPI' and 'Dual SPI' solutions are easiest to evaluate, without much of hardware dependencies. SDIO 1-Bit can be tested with jumper cables, but it needs some additional hardware config, such as installation of external pull-up registers.
 

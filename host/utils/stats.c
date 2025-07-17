@@ -126,7 +126,7 @@ static void raw_tp_tx_task(void const* pvParameters)
 		for (i=0; i<(TEST_RAW_TP__BUF_SIZE/4-1); i++, ptr++)
 			*ptr = 0xBAADF00D;
 
-		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, stats_mempool_free, 0);
+		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, raw_tp_tx_buf, stats_mempool_free, 0);
 #endif
 		if (ret) {
 			ESP_LOGE(TAG, "Failed to send to queue\n");
@@ -146,7 +146,7 @@ static void process_raw_tp_flags(uint8_t cap)
 
 	if (test_raw_tp) {
 		hosted_timer_handler = g_h.funcs->_h_timer_start("raw_tp_timer", SEC_TO_MILLISEC(TEST_RAW_TP__TIMEOUT),
-				HOSTED_TIMER_PERIODIC, raw_tp_timer_func, NULL);
+				H_TIMER_TYPE_PERIODIC, raw_tp_timer_func, NULL);
 		if (!hosted_timer_handler) {
 			ESP_LOGE(TAG, "Failed to create timer\n\r");
 			return;
