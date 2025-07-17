@@ -1,5 +1,7 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "stats.h"
@@ -16,8 +18,13 @@ static const char TAG[] = "stats";
 struct dbg_stats_t dbg_stats;
 #endif /* ESP_PKT_NUM_DEBUG */
 
-#if ESP_PKT_STATS
+#if TEST_RAW_TP
+  #define ESP_PKT_STATS_REPORT_INTERVAL  CONFIG_ESP_RAW_TP_REPORT_INTERVAL
+#elif ESP_PKT_STATS
   #define ESP_PKT_STATS_REPORT_INTERVAL  CONFIG_ESP_PKT_STATS_INTERVAL_SEC
+#endif
+
+#if ESP_PKT_STATS
   struct pkt_stats_t pkt_stats;
 #endif /* ESP_PKT_STATS */
 
