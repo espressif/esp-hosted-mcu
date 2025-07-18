@@ -92,7 +92,7 @@ static esp_err_t log_real_time_stats(TickType_t xTicksToWait) {
         if (k >= 0) {
             uint32_t task_elapsed_time = end_array[k].ulRunTimeCounter - start_array[i].ulRunTimeCounter;
             uint32_t percentage_time = (task_elapsed_time * 100UL) / (total_elapsed_time * portNUM_PROCESSORS);
-            ESP_LOGI(TAG,"| %s | %d | %d%%\n", start_array[i].pcTaskName, task_elapsed_time, percentage_time);
+			ESP_LOGI(TAG,"| %s | %" PRIu32 " | %" PRIu32 "%%\n", start_array[i].pcTaskName, task_elapsed_time, percentage_time);
         }
     }
 
