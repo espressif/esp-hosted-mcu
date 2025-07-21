@@ -246,10 +246,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			RPC_RSP_COPY_BYTES(p_a_sta->password, p_c_sta->password);
 			p_a_sta->scan_method = p_c_sta->scan_method;
 			p_a_sta->bssid_set = p_c_sta->bssid_set;
-
-			if (p_a_sta->bssid_set)
-				RPC_RSP_COPY_BYTES(p_a_sta->bssid, p_c_sta->bssid);
-
+			RPC_RSP_COPY_BYTES(p_a_sta->bssid, p_c_sta->bssid);
 			p_a_sta->channel = p_c_sta->channel;
 			p_a_sta->listen_interval = p_c_sta->listen_interval;
 			p_a_sta->sort_method = p_c_sta->sort_method;

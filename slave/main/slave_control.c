@@ -1076,11 +1076,7 @@ static esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 		RPC_RESP_COPY_STR(p_c_sta->password, p_a_sta->password, PASSWORD_LENGTH);
 		p_c_sta->scan_method = p_a_sta->scan_method;
 		p_c_sta->bssid_set = p_a_sta->bssid_set;
-
-		//TODO: Expected to break python for bssid
-		if (p_c_sta->bssid_set)
-			RPC_RESP_COPY_BYTES(p_c_sta->bssid, p_a_sta->bssid, BSSID_BYTES_SIZE);
-
+		RPC_RESP_COPY_BYTES(p_c_sta->bssid, p_a_sta->bssid, BSSID_BYTES_SIZE);
 		p_c_sta->channel = p_a_sta->channel;
 		p_c_sta->listen_interval = p_a_sta->listen_interval;
 		p_c_sta->sort_method = p_a_sta->sort_method;
