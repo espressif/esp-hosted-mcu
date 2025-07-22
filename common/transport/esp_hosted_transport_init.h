@@ -57,6 +57,12 @@ typedef enum {
 	ESP_PRIV_RX_Q_SIZE,
 	ESP_PRIV_TX_Q_SIZE,
 	ESP_PRIV_CAP_EXT, // extended capability (4 bytes)
+	ESP_PRIV_FIRMWARE_VERSION,
 } ESP_PRIV_TAG_TYPE;
+
+/**
+ * Macro to convert version number into an integer
+ */
+#define ESP_HOSTED_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 
 #endif

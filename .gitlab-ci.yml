@@ -1,9 +1,19 @@
 stages:
+  - pre
   - build_coprocessor
   - build
 
 before_script:
   - git submodule update --init --recursive
+
+.check_ver_template:
+  stage: pre
+  tags:
+    - build
+  script:
+    - source ${IDF_PATH}/export.sh
+    # check the exported fw versions
+    - python tools/check_fw_versions.py
 
 .build_template_coprocessor:
   stage: build_coprocessor
@@ -92,6 +102,10 @@ before_script:
     - echo "Cleaned up esp_hosted component symlink"
     # Rename back, since post scripts expect the original name
     - cd ${OVERRIDE_PATH} && cd .. && mv esp_hosted esp_hosted_mcu
+
+check_ver:
+  extends: .check_ver_template
+  image: espressif/idf:latest
 
 build_idf_v5.3:
   extends: .build_template

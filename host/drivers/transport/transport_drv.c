@@ -21,6 +21,7 @@
 #include "esp_hosted_transport.h"
 #include "esp_hosted_transport_init.h"
 #include "esp_hosted_transport_config.h"
+#include "esp_hosted_host_fw_ver.h"
 #include "stats.h"
 #include "esp_log.h"
 #include "esp_hosted_log.h"
@@ -541,6 +542,43 @@ static void verify_host_config_for_slave(uint8_t chip_type)
 	}
 }
 
+/** return values:
+ * - 0 if versions as the same
+ * - -1 if host version is smaller than slave version
+ * - 1 if host version is bigger than slave version
+ */
+static int compare_fw_version(uint32_t slave_version)
+{
+	uint32_t host_version = ESP_HOSTED_VERSION_VAL(ESP_HOSTED_VERSION_MAJOR_1,
+			ESP_HOSTED_VERSION_MINOR_1,
+			ESP_HOSTED_VERSION_PATCH_1);
+
+	// mask out patch level
+	// compare major.minor only
+	slave_version &= 0xFFFFFF00;
+	host_version &= 0xFFFFFF00;
+
+	if (host_version == slave_version) {
+		// versions match
+		return 0;
+	} else if (host_version > slave_version) {
+	    // host version > slave version
+		ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
+		printf("Version on Host is NEWER than version on co-processor\n");
+		printf("RPC requests sent by host may encounter timeout errors\n");
+		printf("or may not be supported by co-processor\n");
+		ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
+		return -1;
+	} else {
+	    // host version < slave version
+		ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
+		printf("Version on Host is OLDER than version on co-processor\n");
+		printf("Host may not be compatible with co-processor\n");
+		ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
+		return 1;
+	}
+}
+
 esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 		uint8_t raw_tp_direction, uint8_t low_thr_thesh, uint8_t high_thr_thesh)
 {
@@ -623,6 +661,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	uint8_t *pos;
 	uint8_t raw_tp_config = H_TEST_RAW_TP_DIR;
 	uint32_t ext_cap = 0;
+	uint32_t slave_fw_version = 0;
 
 	if (!evt_buf)
 		return ESP_FAIL;
@@ -673,12 +712,23 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 			ESP_LOGD(TAG, "slave rx queue size: %u", *(pos + 2));
 		} else if (*pos == ESP_PRIV_TX_Q_SIZE) {
 			ESP_LOGD(TAG, "slave tx queue size: %u", *(pos + 2));
+		} else if (*pos == ESP_PRIV_FIRMWARE_VERSION) {
+			// fw_version sent as a little-endian uint32_t
+			slave_fw_version =
+				*(pos + 2) |
+				(*(pos + 3) << 8) |
+				(*(pos + 4) << 16) |
+				(*(pos + 5) << 24);
+			ESP_LOGD(TAG, "slave fw version: 0x%08" PRIx32, slave_fw_version);
 		} else {
 			ESP_LOGD(TAG, "Unsupported EVENT: %2x", *pos);
 		}
 		pos += (tag_len+2);
 		len_left -= (tag_len+2);
 	}
+
+	// if ESP_PRIV_FIRMWARE_VERSION was not received, slave version will be 0.0.0
+	compare_fw_version(slave_fw_version);
 
 	if ((chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32) &&
 		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32S2) &&

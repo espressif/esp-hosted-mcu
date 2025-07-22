@@ -40,7 +40,7 @@
 #include "esp_timer.h"
 #include "mempool.h"
 
-#include "coprocessor_fw_version.h"
+#include "esp_hosted_coprocessor_fw_ver.h"
 #include "esp_hosted_cli.h"
 #include "host_power_save.h"
 

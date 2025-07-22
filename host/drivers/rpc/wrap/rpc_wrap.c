@@ -374,7 +374,8 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 		goto fail_resp;
 	}
 
-	if ((app_resp->msg_id <= RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
+	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
+	if ((app_resp->msg_id < RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
 		ESP_LOGE(TAG, "Response Msg ID[0x%x] is not correct",app_resp->msg_id);
 		goto fail_resp;
 	}
@@ -385,7 +386,10 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	}
 
 	switch(app_resp->msg_id) {
-
+	case RPC_ID__Resp_Base : {
+		ESP_LOGV(TAG, "RPC Request is not supported");
+		break;
+	}
 	case RPC_ID__Resp_GetMACAddress: {
 		ESP_LOGV(TAG, "mac address is [" MACSTR "]", MAC2STR(app_resp->u.wifi_mac.mac));
 		break;

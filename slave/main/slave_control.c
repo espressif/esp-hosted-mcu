@@ -27,13 +27,12 @@
 #include "esp_hosted_bitmasks.h"
 #include "slave_wifi_config.h"
 #include "esp_hosted_log.h"
+#include "esp_hosted_coprocessor_fw_ver.h"
 
 /* Slave-side: Always support reserved field decoding for maximum compatibility
  * The host may or may not have CONFIG_ESP_HOSTED_DECODE_WIFI_RESERVED_FIELD enabled
  */
 #define H_DECODE_WIFI_RESERVED_FIELD 1
-
-#include "coprocessor_fw_version.h"
 
 #define MAC_STR_LEN                 17
 #define MAC2STR(a)                  (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
@@ -2663,6 +2662,7 @@ static esp_err_t esp_rpc_command_dispatcher(
 	if ((req->msg_id <= RPC_ID__Req_Base) ||
 		(req->msg_id >= RPC_ID__Req_Max)) {
 		ESP_LOGE(TAG, "Invalid command request lookup");
+		goto err_not_supported;
 	}
 
 	ESP_LOGI(TAG, "Received Req [0x%x]", req->msg_id);
@@ -2670,15 +2670,20 @@ static esp_err_t esp_rpc_command_dispatcher(
 	req_index = lookup_req_handler(req->msg_id);
 	if (req_index < 0) {
 		ESP_LOGE(TAG, "Invalid command handler lookup");
-		return ESP_FAIL;
+		goto err_not_supported;
 	}
 
 	ret = req_table[req_index].command_handler(req, resp, priv_data);
 	if (ret) {
 		ESP_LOGE(TAG, "Error executing command handler");
-		return ESP_FAIL;
+		goto err_cmd_error;
 	}
 
+	return ESP_OK;
+ err_not_supported:
+	// response ID Resp_Base means RPC Request was not supported
+	resp->msg_id = RPC_ID__Resp_Base;
+ err_cmd_error:
 	return ESP_OK;
 }
 
