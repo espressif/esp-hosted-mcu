@@ -550,7 +550,7 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	uint16_t len = 0;
 	uint8_t *sendbuf = NULL;
 
-	sendbuf = g_h.funcs->_h_malloc(512);
+	sendbuf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(256), MEMPOOL_ALIGNMENT_BYTES);
 	assert(sendbuf);
 
 	/* Populate event data */

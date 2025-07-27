@@ -877,6 +877,10 @@ int rpc_wifi_init(const wifi_init_config_t *arg)
 		return FAILURE;
 
 	g_h.funcs->_h_memcpy(&req->u.wifi_init_config, (void*)arg, sizeof(wifi_init_config_t));
+
+#ifdef CONFIG_ESP_WIFI_NVS_ENABLED
+	req->u.wifi_init_config.nvs_enable = YES;
+#endif
 	resp = rpc_slaveif_wifi_init(req);
 
 	return rpc_rsp_callback(resp);

@@ -1665,13 +1665,11 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 	config ESP_HOSTED_HOST_POWER_SAVE_ENABLED
 		bool "Allow host to power save"
 		depends on SOC_LIGHT_SLEEP_SUPPORTED || (SOC_DEEP_SLEEP_SUPPORTED && SOC_GPIO_SUPPORT_DEEPSLEEP_WAKEUP)
-		depends on ESP_HOSTED_SDIO_HOST_INTERFACE # by the time, light sleep is not added
 		default n
 
 	config ESP_HOSTED_HOST_DEEP_SLEEP_ALLOWED
 		bool "Allow host to enter deep sleep. Slave will wakeup host using GPIO"
 		depends on ESP_HOSTED_HOST_POWER_SAVE_ENABLED && (SOC_GPIO_SUPPORT_DEEPSLEEP_WAKEUP && SOC_DEEP_SLEEP_SUPPORTED)
-		depends on ESP_HOSTED_SDIO_HOST_INTERFACE
 		default y
 		help
 			Allow host to deep sleep for highest power saving. Only RTC memory and RTC GPIOs remain

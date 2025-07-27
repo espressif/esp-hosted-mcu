@@ -887,7 +887,6 @@ menu "Example Configuration"
 
 	config ESP_HOSTED_HOST_POWER_SAVE_ENABLED
 		bool "Allow host to power save"
-		depends on ESP_SDIO_HOST_INTERFACE # by the time light sleep not added
 		default n
 		help
 			Allow host to enter power save mode.
@@ -898,7 +897,6 @@ menu "Example Configuration"
 
 		config ESP_HOSTED_HOST_DEEP_SLEEP_ALLOWED
 		depends on ESP_HOSTED_HOST_POWER_SAVE_ENABLED
-		depends on ESP_SDIO_HOST_INTERFACE
 			bool "Allow host to enter deep sleep. Slave will wakeup host using GPIO when needed"
 			default y if ESP_HOSTED_HOST_POWER_SAVE_ENABLED
 			select ESP_HOSTED_CLI_ENABLED

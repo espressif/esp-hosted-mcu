@@ -35,19 +35,7 @@ static queue_handle_t rpc_tx_q = NULL;
 static void * rpc_rx_thread_hdl;
 static void * rpc_tx_thread_hdl;
 static void * rpc_tx_sem;
-static void * async_timer_hdl;
 static struct rpc_lib_context rpc_lib_ctxt;
-
-static int call_event_callback(ctrl_cmd_t *app_event);
-static int is_async_resp_callback_available(ctrl_cmd_t *app_resp);
-static int is_sync_resp_sem_available(uint32_t uid);
-static int clear_async_resp_callback(ctrl_cmd_t *app_resp);
-static int call_async_resp_callback(ctrl_cmd_t *app_resp);
-static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb);
-static int set_sync_resp_sem(ctrl_cmd_t *app_req);
-static int wait_for_sync_response(ctrl_cmd_t *app_req);
-static void rpc_async_timeout_handler(void *arg);
-static int post_sync_resp_sem(ctrl_cmd_t *app_resp);
 
 /* uid to link between requests and responses */
 /* uids are incrementing values from 1 onwards.
@@ -64,6 +52,7 @@ typedef struct {
 typedef struct {
 	uint32_t uid;
 	rpc_rsp_cb_t cb;
+	void * timer_hdl;
 } async_rsp_t;
 
 /* rpc response callbacks
@@ -93,6 +82,19 @@ static async_rsp_t async_rsp_table[MAX_ASYNC_RPC_TRANSACTIONS] = { 0 };
  *    event callback will be called asynchronously
  */
 static rpc_evt_cb_t rpc_evt_cb_table[RPC_ID__Event_Max - RPC_ID__Event_Base] = { NULL };
+
+
+static int call_event_callback(ctrl_cmd_t *app_event);
+static int is_async_resp_callback_available(ctrl_cmd_t *app_resp);
+static int is_sync_resp_sem_available(uint32_t uid);
+static int clear_async_resp_callback(async_rsp_t *async_rsp_item);
+static int call_async_resp_callback(ctrl_cmd_t *app_resp);
+static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb, void *timer_hdl);
+static int set_sync_resp_sem(ctrl_cmd_t *app_req);
+static int wait_for_sync_response(ctrl_cmd_t *app_req);
+static void rpc_async_timeout_handler(void *arg);
+static int post_sync_resp_sem(ctrl_cmd_t *app_resp);
+
 
 /* Open serial interface
  * This function may fail if the ESP32 kernel module is not loaded
@@ -201,28 +203,27 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 
 	/* 5. Assign response callback, if valid */
 	if (app_req->rpc_rsp_cb) {
+
+		/* 5.1 Start timeout for response for async only
+		* For sync procedures, g_h.funcs->_h_get_semaphore takes care to
+		* handle timeout situations */
+		ESP_LOGI(TAG, "starting async resp timer for req[%u]",req.msg_id);
+		void *timer_hdl = g_h.funcs->_h_timer_start("rpc_async_timeout_timer", SEC_TO_MILLISEC(app_req->rsp_timeout_sec), H_TIMER_TYPE_ONESHOT,
+				rpc_async_timeout_handler, app_req);
+		if (!timer_hdl) {
+			ESP_LOGE(TAG, "Failed to start async resp timer");
+			goto fail_req;
+		}
+
+		/* 5.2 set async resp callback */
 		ESP_LOGD(TAG, "setting async resp callback for req[%u]",req.msg_id);
-		ret = set_async_resp_callback(app_req, app_req->rpc_rsp_cb);
+		ret = set_async_resp_callback(app_req, app_req->rpc_rsp_cb, timer_hdl);
 		if (ret < 0) {
 			ESP_LOGE(TAG, "could not set callback for req[%u]",req.msg_id);
 			failure_status = RPC_ERR_SET_ASYNC_CB;
 			goto fail_req;
 		}
 	}
-
-	/* 6. Start timeout for response for async only
-	 * For sync procedures, g_h.funcs->_h_get_semaphore takes care to
-	 * handle timeout situations */
-	if (app_req->rpc_rsp_cb) {
-		ESP_LOGD(TAG, "starting async resp timer for req[%u]",req.msg_id);
-		async_timer_hdl = g_h.funcs->_h_timer_start("rpc_async_timeout_timer", SEC_TO_MILLISEC(app_req->rsp_timeout_sec), H_TIMER_TYPE_ONESHOT,
-				rpc_async_timeout_handler, app_req);
-		if (!async_timer_hdl) {
-			ESP_LOGE(TAG, "Failed to start async resp timer");
-			goto fail_req;
-		}
-	}
-
 
 	/* 7. Pack in protobuf and send the request */
 	rpc__pack(&req, tx_data);
@@ -359,17 +360,6 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 		/* Allocate app struct for response */
 		HOSTED_CALLOC(ctrl_cmd_t, app_resp, sizeof(ctrl_cmd_t), free_buffers);
 
-
-		/* If this was async procedure, timer would have
-		 * been running for response.
-		 * As response received, stop timer */
-		if (async_timer_hdl) {
-			ESP_LOGD(TAG, "Stopping the asyn timer for resp");
-			/* async_timer_hdl will be cleaned in g_h.funcs->_h_timer_stop */
-			g_h.funcs->_h_timer_stop(async_timer_hdl);
-			async_timer_hdl = NULL;
-		}
-
 		/* Decode protobuf buffer of response and
 		 * copy into app structures */
 		if (rpc_parse_rsp(proto_msg, app_resp)) {
@@ -388,7 +378,6 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 			 * return to select
 			 */
 			call_async_resp_callback(app_resp);
-			clear_async_resp_callback(app_resp);
 		} else {
 
 			/* as RPC async response callback function is
@@ -632,19 +621,22 @@ static ctrl_cmd_t * get_response(int *read_len, ctrl_cmd_t *app_req)
 	return NULL;
 }
 
-static int clear_async_resp_callback(ctrl_cmd_t *app_resp)
+static int clear_async_resp_callback(async_rsp_t *async_rsp_item)
 {
-	int i;
+	if (async_rsp_item->uid != 0) {
 
-	for (i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
-		if (async_rsp_table[i].uid == app_resp->uid) {
-			async_rsp_table[i].uid = 0;
-			async_rsp_table[i].cb = NULL;
-			return ESP_OK;
+		if (async_rsp_item->timer_hdl) {
+			g_h.funcs->_h_timer_stop(async_rsp_item->timer_hdl);
+			async_rsp_item->timer_hdl = NULL;
 		}
-	}
 
-	return CALLBACK_NOT_REGISTERED;
+		async_rsp_item->uid = 0;
+		async_rsp_item->cb = NULL;
+		return SUCCESS;
+	} else {
+		ESP_LOGW(TAG, "async_rsp_item to be cleared already has uid 0");
+	}
+	return FAILURE;
 }
 
 /* Check and call rpc response asynchronous callback if available
@@ -663,7 +655,11 @@ static int call_async_resp_callback(ctrl_cmd_t *app_resp)
 
 	for (i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 		if (async_rsp_table[i].uid == app_resp->uid) {
-			return async_rsp_table[i].cb(app_resp);
+			int ret = async_rsp_table[i].cb(app_resp);
+
+			clear_async_resp_callback(&async_rsp_table[i]);
+
+			return ret;
 		}
 	}
 
@@ -711,7 +707,7 @@ static int call_event_callback(ctrl_cmd_t *app_event)
 
 /* Set asynchronous rpc response callback from rpc **request**
  */
-static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb)
+static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb, void *timer_hdl)
 {
 	int i;
 
@@ -725,6 +721,7 @@ static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb)
 		if (!async_rsp_table[i].uid) {
 			async_rsp_table[i].uid = app_req->uid;
 			async_rsp_table[i].cb = resp_cb;
+			async_rsp_table[i].timer_hdl = timer_hdl;
 			return CALLBACK_SET_SUCCESS;
 		}
 	}
@@ -978,6 +975,29 @@ fail_req:
 	return FAILURE;
 }
 
+static int cleanup_sync_async_timer_table(void)
+{
+	for (int i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
+		if (async_rsp_table[i].timer_hdl) {
+			g_h.funcs->_h_timer_stop(async_rsp_table[i].timer_hdl);
+		}
+		async_rsp_table[i].timer_hdl = NULL;
+		async_rsp_table[i].uid = 0;
+		async_rsp_table[i].cb = NULL;
+	}
+
+	for (int i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
+		if (sync_rsp_table[i].sem) {
+			g_h.funcs->_h_get_semaphore(sync_rsp_table[i].sem, 0);
+			g_h.funcs->_h_destroy_semaphore(sync_rsp_table[i].sem);
+		}
+		sync_rsp_table[i].uid = 0;
+		sync_rsp_table[i].sem = NULL;
+	}
+
+	return SUCCESS;
+}
+
 /* De-init hosted rpc lib */
 int rpc_core_deinit(void)
 {
@@ -1001,11 +1021,7 @@ int rpc_core_deinit(void)
 		ESP_LOGE(TAG, "read sem tx deinit failed");
 	}
 
-	if (async_timer_hdl) {
-		/* async_timer_hdl will be cleaned in g_h.funcs->_h_timer_stop */
-		g_h.funcs->_h_timer_stop(async_timer_hdl);
-		async_timer_hdl = NULL;
-	}
+	cleanup_sync_async_timer_table();
 
 	if (serial_deinit()) {
 		ret = FAILURE;

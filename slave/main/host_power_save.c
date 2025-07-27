@@ -254,6 +254,7 @@ int wakeup_host(uint32_t timeout_ms)
 		return 0;
 	}
 
+	ESP_LOGI(TAG, "if_handle->state: %u", if_handle->state);
 	if (if_handle->state < DEACTIVE) {
 		ESP_LOGI(TAG, "%s:%u Re-Initializing driver\n", __func__, __LINE__);
 

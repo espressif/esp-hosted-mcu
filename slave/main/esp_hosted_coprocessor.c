@@ -361,7 +361,7 @@ static void host_reset_task(void* pvParameters)
 		/* send capabilities to host */
 		ESP_LOGI(TAG,"host reconfig event");
 		generate_startup_event(capa, ext_capa);
-		send_event_to_host(RPC_ID__Event_ESPInit);
+		//send_event_to_host(RPC_ID__Event_ESPInit);
 	}
 }
 
@@ -726,6 +726,12 @@ static void power_save_alert_task(void *pvParameters)
     uint32_t event = (uint32_t)pvParameters;
     host_power_save_alert(event);
 	/* The task deletes itself after running. */
+	if (event == ESP_POWER_SAVE_OFF) {
+		sleep(2);
+		if (host_reset_sem) {
+			xSemaphoreGive(host_reset_sem);
+		}
+	}
     vTaskDelete(NULL);
 }
 
@@ -751,7 +757,9 @@ int event_handler(uint8_t val)
 			datapath = 0;
 			if (if_handle) {
 				ESP_EARLY_LOGI(TAG, "Stop Data Path");
-				if_handle->state = DEACTIVE;
+				if (if_handle->state > DEACTIVE) {
+					if_handle->state = DEACTIVE;
+				}
 			} else {
 				ESP_EARLY_LOGI(TAG, "Failed to Stop Data Path");
 			}
@@ -769,9 +777,6 @@ int event_handler(uint8_t val)
 				ESP_EARLY_LOGI(TAG, "Failed to set state to ACTIVE");
 			}*/
 			xTaskCreate(power_save_alert_task, "ps_alert_task", 3072, (void *)ESP_POWER_SAVE_OFF, tskIDLE_PRIORITY + 5, NULL);
-			if (host_reset_sem) {
-				xSemaphoreGive(host_reset_sem);
-			}
 			break;
 	}
 	return 0;

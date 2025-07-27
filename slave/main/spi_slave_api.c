@@ -65,6 +65,7 @@ static const char TAG[] = "SPI_DRIVER";
 #else
     #define DMA_CHAN               SPI_DMA_CH_AUTO
 #endif
+static uint8_t hosted_constructs_init_done = 0;
 
 
 #if ESP_SPI_MODE==0
@@ -187,11 +188,11 @@ static inline void spi_trans_free(spi_slave_transaction_t *trans)
 {
 	hosted_mempool_free(trans_mp_g, trans);
 }
-
-#define set_handshake_gpio()     gpio_set_level(GPIO_HANDSHAKE, 1);
-#define reset_handshake_gpio()   gpio_set_level(GPIO_HANDSHAKE, 0);
-#define set_dataready_gpio()     gpio_set_level(GPIO_DATA_READY, 1);
-#define reset_dataready_gpio()   gpio_set_level(GPIO_DATA_READY, 0);
+volatile uint8_t data_ready_flag = 0;
+#define set_handshake_gpio()     ESP_EARLY_LOGD(TAG, "+ set handshake gpio");gpio_set_level(GPIO_HANDSHAKE, 1);
+#define reset_handshake_gpio()   ESP_EARLY_LOGD(TAG, "- reset handshake gpio");gpio_set_level(GPIO_HANDSHAKE, 0);
+#define set_dataready_gpio()     if (!data_ready_flag) {ESP_EARLY_LOGD(TAG, "+ set dataready gpio");gpio_set_level(GPIO_DATA_READY, 1);data_ready_flag = 1;}
+#define reset_dataready_gpio()   if (data_ready_flag) {ESP_EARLY_LOGD(TAG, "- reset dataready gpio");gpio_set_level(GPIO_DATA_READY, 0);data_ready_flag = 0;}
 
 interface_context_t *interface_insert_driver(int (*event_handler)(uint8_t val))
 {
@@ -532,46 +533,9 @@ static void spi_transaction_post_process_task(void* pvParameters)
 		/* Check if interface is being deinitialized */
 #if H_PS_UNLOAD_BUS_WHILE_PS
 		if (if_handle_g.state == DEINIT) {
-			ESP_LOGI(TAG, "SPI deinit requested, cleaning up and exiting task...");
-
-			xSemaphoreGive(spi_rx_sem);
-			gpio_set_level(GPIO_HANDSHAKE, 0);
-			gpio_set_level(GPIO_DATA_READY, 0);			/* Perform all resource cleanup from the task itself */
-			gpio_uninstall_isr_service();
-			spi_slave_disable(ESP_SPI_CONTROLLER);
-			spi_slave_free(ESP_SPI_CONTROLLER);
-
-			if (spi_rx_sem) {
-				xSemaphoreGive(spi_rx_sem);
-				vSemaphoreDelete(spi_rx_sem);
-				spi_rx_sem = NULL;
-			}
-			for (int i = 0; i < MAX_PRIORITY_QUEUES; i++) {
-				if (spi_rx_queue[i]) {
-					vQueueDelete(spi_rx_queue[i]);
-					spi_rx_queue[i] = NULL;
-				}
-			}
-			if (spi_tx_sem) {
-				xSemaphoreGive(spi_tx_sem);
-				vSemaphoreDelete(spi_tx_sem);
-				spi_tx_sem = NULL;
-			}
-			for (int i = 0; i < MAX_PRIORITY_QUEUES; i++) {
-				if (spi_tx_queue[i]) {
-					vQueueDelete(spi_tx_queue[i]);
-					spi_tx_queue[i] = NULL;
-				}
-			}
-			spi_mempool_destroy();
-
-			// Allow re-initialization on next wakeup
-			spi_init_done = 0;
-			if_handle_g.state = DEINIT;
-
-			ESP_LOGI(TAG, "SPI cleanup complete. Task terminating.");
-			vTaskDelete(NULL);
-			return;
+			vTaskDelay(pdMS_TO_TICKS(10));
+			ESP_LOGI(TAG, "spi deinit");
+			continue;
 		}
 #endif
 
@@ -665,6 +629,13 @@ static interface_handle_t * esp_spi_init(void)
 	if (unlikely(if_handle_g.state >= DEACTIVE)) {
 		return &if_handle_g;
 	}
+
+	if (hosted_constructs_init_done) {
+		spi_slave_enable(ESP_SPI_CONTROLLER);
+		if_handle_g.state = ACTIVE;
+		return &if_handle_g;
+	}
+
 	esp_err_t ret = ESP_OK;
 	uint16_t prio_q_idx = 0;
 
@@ -695,89 +666,96 @@ static interface_handle_t * esp_spi_init(void)
 		.post_trans_cb=spi_post_trans_cb
 	};
 
-	/* Configuration for the handshake line */
-	gpio_config_t io_conf={
-		.intr_type=GPIO_INTR_DISABLE,
-		.mode=GPIO_MODE_OUTPUT,
-		.pin_bit_mask=GPIO_MASK_HANDSHAKE
-	};
+	if (!hosted_constructs_init_done) {
+		/* Configuration for the handshake line */
+		gpio_config_t io_conf={
+			.intr_type=GPIO_INTR_DISABLE,
+			.mode=GPIO_MODE_OUTPUT,
+			.pin_bit_mask=GPIO_MASK_HANDSHAKE
+		};
 
-	/* Configuration for data_ready line */
-	gpio_config_t io_data_ready_conf={
-		.intr_type=GPIO_INTR_DISABLE,
-		.mode=GPIO_MODE_OUTPUT,
-		.pin_bit_mask=GPIO_MASK_DATA_READY
-	};
+		/* Configuration for data_ready line */
+		gpio_config_t io_data_ready_conf={
+			.intr_type=GPIO_INTR_DISABLE,
+			.mode=GPIO_MODE_OUTPUT,
+			.pin_bit_mask=GPIO_MASK_DATA_READY
+		};
 
-	spi_mempool_create();
+		spi_mempool_create();
 
-	/* Configure handshake and data_ready lines as output */
-	gpio_config(&io_conf);
-	gpio_config(&io_data_ready_conf);
-	reset_handshake_gpio();
-	reset_dataready_gpio();
+		/* Configure handshake and data_ready lines as output */
+		gpio_config(&io_conf);
+		gpio_config(&io_data_ready_conf);
+		reset_handshake_gpio();
+		reset_dataready_gpio();
 
-	/* Enable pull-ups on SPI lines
-	 * so that no rogue pulses when no master is connected
-	 */
-	gpio_set_pull_mode(CONFIG_ESP_SPI_GPIO_HANDSHAKE, H_HS_PULL_REGISTER);
-	gpio_set_pull_mode(CONFIG_ESP_SPI_GPIO_DATA_READY, H_DR_PULL_REGISTER);
-	gpio_set_pull_mode(GPIO_MOSI, GPIO_PULLUP_ONLY);
-	gpio_set_pull_mode(GPIO_SCLK, GPIO_PULLUP_ONLY);
-	gpio_set_pull_mode(GPIO_CS, GPIO_PULLUP_ONLY);
+		/* Enable pull-ups on SPI lines
+		 * so that no rogue pulses when no master is connected
+		 */
+		gpio_set_pull_mode(CONFIG_ESP_SPI_GPIO_HANDSHAKE, H_HS_PULL_REGISTER);
+		gpio_set_pull_mode(CONFIG_ESP_SPI_GPIO_DATA_READY, H_DR_PULL_REGISTER);
+		gpio_set_pull_mode(GPIO_MOSI, GPIO_PULLUP_ONLY);
+		gpio_set_pull_mode(GPIO_SCLK, GPIO_PULLUP_ONLY);
+		gpio_set_pull_mode(GPIO_CS, GPIO_PULLUP_ONLY);
 
-	ESP_LOGI(TAG, "SPI Ctrl:%u mode: %u, Freq:ConfigAtHost\nGPIOs: CLK:%u MOSI:%u MISO:%u CS:%u HS:%u DR:%u\n",
-			ESP_SPI_CONTROLLER, slvcfg.mode,
-			GPIO_SCLK, GPIO_MOSI, GPIO_MISO, GPIO_CS,
-			GPIO_HANDSHAKE, GPIO_DATA_READY);
+		ESP_LOGI(TAG, "SPI Ctrl:%u mode: %u, Freq:ConfigAtHost\nGPIOs: CLK:%u MOSI:%u MISO:%u CS:%u HS:%u DR:%u\n",
+				ESP_SPI_CONTROLLER, slvcfg.mode,
+				GPIO_SCLK, GPIO_MOSI, GPIO_MISO, GPIO_CS,
+				GPIO_HANDSHAKE, GPIO_DATA_READY);
 
-	ESP_LOGI(TAG, "Hosted SPI queue size: Tx:%u Rx:%u", SPI_TX_QUEUE_SIZE, SPI_RX_QUEUE_SIZE);
-	register_hs_disable_pin(GPIO_CS);
+		ESP_LOGI(TAG, "Hosted SPI queue size: Tx:%u Rx:%u", SPI_TX_QUEUE_SIZE, SPI_RX_QUEUE_SIZE);
+		register_hs_disable_pin(GPIO_CS);
 
 #if !H_HANDSHAKE_ACTIVE_HIGH
-	ESP_LOGI(TAG, "Handshake: Active Low");
+		ESP_LOGI(TAG, "Handshake: Active Low");
 #endif
 
 #if !H_DATAREADY_ACTIVE_HIGH
-	ESP_LOGI(TAG, "DataReady: Active Low");
+		ESP_LOGI(TAG, "DataReady: Active Low");
 #endif
+	}
 
 
 	/* Initialize SPI slave interface */
 	ret=spi_slave_initialize(ESP_SPI_CONTROLLER, &buscfg, &slvcfg, DMA_CHAN);
 	assert(ret==ESP_OK);
 
-	//gpio_set_drive_capability(CONFIG_ESP_SPI_GPIO_HANDSHAKE, GPIO_DRIVE_CAP_3);
-	//gpio_set_drive_capability(CONFIG_ESP_SPI_GPIO_DATA_READY, GPIO_DRIVE_CAP_3);
-	gpio_set_drive_capability(GPIO_SCLK, GPIO_DRIVE_CAP_3);
-	gpio_set_drive_capability(GPIO_MISO, GPIO_DRIVE_CAP_3);
-	gpio_set_pull_mode(GPIO_MISO, GPIO_PULLDOWN_ONLY);
+	if (!hosted_constructs_init_done) {
+		//gpio_set_drive_capability(CONFIG_ESP_SPI_GPIO_HANDSHAKE, GPIO_DRIVE_CAP_3);
+		//gpio_set_drive_capability(CONFIG_ESP_SPI_GPIO_DATA_READY, GPIO_DRIVE_CAP_3);
+		gpio_set_drive_capability(GPIO_SCLK, GPIO_DRIVE_CAP_3);
+		gpio_set_drive_capability(GPIO_MISO, GPIO_DRIVE_CAP_3);
+		gpio_set_pull_mode(GPIO_MISO, GPIO_PULLDOWN_ONLY);
 
 #if HS_DEASSERT_ON_CS
-	wait_cs_deassert_sem = xSemaphoreCreateBinary();
-	assert(wait_cs_deassert_sem!= NULL);
-	ret = xSemaphoreTake(wait_cs_deassert_sem, 0);
+		wait_cs_deassert_sem = xSemaphoreCreateBinary();
+		assert(wait_cs_deassert_sem!= NULL);
+		ret = xSemaphoreTake(wait_cs_deassert_sem, 0);
 #endif
+	}
 
 	memset(&if_handle_g, 0, sizeof(if_handle_g));
 	if_handle_g.state = ACTIVE;
 
-	spi_tx_sem = xSemaphoreCreateCounting(SPI_TX_QUEUE_SIZE*3, 0);
-	assert(spi_tx_sem != NULL);
-	spi_rx_sem = xSemaphoreCreateCounting(SPI_RX_QUEUE_SIZE*3, 0);
-	assert(spi_rx_sem != NULL);
+	if (!hosted_constructs_init_done) {
+		spi_tx_sem = xSemaphoreCreateCounting(SPI_TX_QUEUE_SIZE*3, 0);
+		assert(spi_tx_sem != NULL);
+		spi_rx_sem = xSemaphoreCreateCounting(SPI_RX_QUEUE_SIZE*3, 0);
+		assert(spi_rx_sem != NULL);
 
-	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
-		spi_rx_queue[prio_q_idx] = xQueueCreate(SPI_RX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
-		assert(spi_rx_queue[prio_q_idx] != NULL);
+		for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
+			spi_rx_queue[prio_q_idx] = xQueueCreate(SPI_RX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
+			assert(spi_rx_queue[prio_q_idx] != NULL);
 
-		spi_tx_queue[prio_q_idx] = xQueueCreate(SPI_TX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
-		assert(spi_tx_queue[prio_q_idx] != NULL);
+			spi_tx_queue[prio_q_idx] = xQueueCreate(SPI_TX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
+			assert(spi_tx_queue[prio_q_idx] != NULL);
+		}
+
+		assert(xTaskCreate(spi_transaction_post_process_task , "spi_post_process_task" ,
+					CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
+					CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
+		hosted_constructs_init_done = 1;
 	}
-
-	assert(xTaskCreate(spi_transaction_post_process_task , "spi_post_process_task" ,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
 
 
 	return &if_handle_g;
@@ -917,6 +895,7 @@ static void esp_spi_deinit(interface_handle_t *handle)
 		ESP_LOGW(TAG, "SPI already deinitialized");
 		return;
 	}
+	spi_slave_disable(ESP_SPI_CONTROLLER);
 	handle->state = DEINIT;
 	ESP_LOGI(TAG, "SPI deinit requested. Signaling spi task to exit.");
 #endif

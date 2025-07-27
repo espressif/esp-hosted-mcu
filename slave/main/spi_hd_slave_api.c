@@ -96,11 +96,11 @@ static const char TAG[] = "SPI_HD_DRIVER";
 #endif
 
 #if H_DATAREADY_ACTIVE_HIGH
-  #define set_dataready_gpio()     { data_ready_gpio_active = true; gpio_set_level(GPIO_DATA_READY, 1); }
-  #define reset_dataready_gpio()   { gpio_set_level(GPIO_DATA_READY, 0); data_ready_gpio_active = false; }
+  #define set_dataready_gpio()     { ESP_EARLY_LOGV(TAG, "set_dataready_gpio"); data_ready_gpio_active = true; gpio_set_level(GPIO_DATA_READY, 1); }
+  #define reset_dataready_gpio()   { ESP_EARLY_LOGV(TAG, "reset_dataready_gpio"); gpio_set_level(GPIO_DATA_READY, 0); data_ready_gpio_active = false; }
 #else
-  #define set_dataready_gpio()     { data_ready_gpio_active = true; gpio_set_level(GPIO_DATA_READY, 0); }
-  #define reset_dataready_gpio()   { gpio_set_level(GPIO_DATA_READY, 1); data_ready_gpio_active = false; }
+  #define set_dataready_gpio()     { ESP_EARLY_LOGV(TAG, "set_dataready_gpio"); data_ready_gpio_active = true; gpio_set_level(GPIO_DATA_READY, 0); }
+  #define reset_dataready_gpio()   { ESP_EARLY_LOGV(TAG, "reset_dataready_gpio"); gpio_set_level(GPIO_DATA_READY, 1); data_ready_gpio_active = false; }
 #endif
 
 // for flow control
@@ -214,6 +214,7 @@ static inline void spi_hd_trans_rx_free(spi_slave_hd_data_t *trans)
 static bool cb_rx_ready(void *arg, spi_slave_hd_event_t *event, BaseType_t *awoken)
 {
 	// rx dma buffer ready
+	ESP_EARLY_LOGV(TAG, "cb_rx_ready");
 
 	// update count
 	rx_ready_buf_num++;
@@ -226,7 +227,7 @@ static bool cb_rx_ready(void *arg, spi_slave_hd_event_t *event, BaseType_t *awok
 static bool cb_tx_ready(void *arg, spi_slave_hd_event_t *event, BaseType_t *awoken)
 {
 	// tx buffer loaded to DMA
-
+	ESP_EARLY_LOGD(TAG, "cb_tx_ready %u (current %u)", event->trans->len, tx_ready_buf_size);
 	// save the int mask
 	uint32_t int_mask = tx_ready_buf_size & SPI_HD_INT_MASK;
 
@@ -251,6 +252,7 @@ static bool cb_cmd9_recv(void *arg, spi_slave_hd_event_t *event, BaseType_t *awo
 	// clear the mask
 	tx_ready_buf_size &= SPI_HD_TX_BUF_LEN_MASK;
 
+	ESP_EARLY_LOGD(TAG, "cb_cmd9_recv %u", tx_ready_buf_size);
 	// clear Data Ready
 	reset_dataready_gpio();
 
@@ -444,6 +446,7 @@ static void spi_hd_rx_task(void* pvParameters)
 	}
 
 	while (1) {
+
 		// wait for incoming transactions
 		res = spi_slave_hd_get_trans_res(SPI_HOST, SPI_SLAVE_CHAN_RX,
 				&ret_trans, portMAX_DELAY);
@@ -469,6 +472,8 @@ static void spi_hd_rx_task(void* pvParameters)
 		offset = le16toh(header->offset);
 		flags = header->flags;
 
+		ESP_LOGV(TAG, "Received flags: 0x%02x", flags);
+
 		if (flags & FLAG_POWER_SAVE_STARTED) {
 			ESP_LOGI(TAG, "Host informed starting to power sleep");
 			if (context.event_handler) {
@@ -476,6 +481,7 @@ static void spi_hd_rx_task(void* pvParameters)
 			}
 		} else if (flags & FLAG_POWER_SAVE_STOPPED) {
 			ESP_LOGI(TAG, "Host informed that it waken up");
+			tx_ready_buf_size = 0;
 			if (context.event_handler) {
 				context.event_handler(ESP_POWER_SAVE_OFF);
 			}
@@ -671,7 +677,8 @@ static interface_handle_t * esp_spi_hd_init(void)
 
 static void esp_spi_hd_deinit(interface_handle_t * handle)
 {
-#if H_HOST_PS_ALLOWED && H_PS_UNLOAD_BUS_WHILE_PS
+#if H_PS_UNLOAD_BUS_WHILE_PS
+
 	if (if_handle_g.state == DEINIT) {
 		ESP_LOGW(TAG, "SPI HD already deinitialized");
 		return;
@@ -755,6 +762,7 @@ static int32_t esp_spi_hd_write(interface_handle_t *handle, interface_buffer_han
 	header->seq_num = htole16(buf_handle->seq_num);
 	header->flags = buf_handle->flag;
 	header->throttle_cmd = buf_handle->wifi_flow_ctrl_en;
+	header->flags = buf_handle->flag;
 
 	memcpy(sendbuf + offset, buf_handle->payload, buf_handle->payload_len);
 
@@ -763,7 +771,7 @@ static int32_t esp_spi_hd_write(interface_handle_t *handle, interface_buffer_han
 				offset+buf_handle->payload_len));
 #endif
 
-	ESP_LOGD(TAG, "sending %"PRIu32 " bytes", total_len);
+	ESP_LOGD(TAG, "sending %"PRIu32 " bytes, flag: 0x%02x", total_len, buf_handle->flag);
 	ESP_HEXLOGD("spi_hd_tx", sendbuf, total_len, 32);
 
 	tx_trans = spi_hd_trans_tx_alloc(MEMSET_REQUIRED);

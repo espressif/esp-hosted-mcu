@@ -193,22 +193,18 @@ static int spi_hd_is_write_buffer_available(uint32_t buf_needed)
 	return BUFFER_AVAILABLE;
 }
 
+/* Forward declaration */
+static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle);
+
 static void spi_hd_write_task(void const* pvParameters)
 {
-	uint16_t len = 0;
-	uint8_t *sendbuf = NULL;
-	void (*free_func)(void* ptr) = NULL;
 	interface_buffer_handle_t buf_handle = {0};
-	uint8_t * payload  = NULL;
-	struct esp_payload_header * payload_header = NULL;
-
-	int ret = 0;
-	uint32_t data_left;
-	uint32_t buf_needed;
 	uint8_t tx_needed = 1;
 
 	while (!spi_hd_start_write_thread)
 		g_h.funcs->_h_msleep(10);
+
+	ESP_LOGD(TAG, "spi_hd_write_task: write thread started");
 
 	for (;;) {
 		/* Check if higher layers have anything to transmit */
@@ -221,103 +217,131 @@ static void spi_hd_write_task(void const* pvParameters)
 					tx_needed = 0; /* No Tx msg */
 				}
 
-		if (tx_needed)
-			len = buf_handle.payload_len;
+		if (!tx_needed)
+			continue;
 
-		if (!buf_handle.flag && !len) {
-			ESP_LOGE(TAG, "%s: Empty len", __func__);
-			goto done;
-		}
+		/* Send the packet */
+		spi_hd_write_packet(&buf_handle);
+	}
+}
 
-		if (!buf_handle.payload_zcopy) {
-			sendbuf = spi_hd_buffer_alloc(MEMSET_REQUIRED);
-			assert(sendbuf);
-			free_func = spi_hd_buffer_free;
-		} else {
-			sendbuf = buf_handle.payload;
-			free_func = buf_handle.free_buf_handle;
-		}
+/*
+ * Write a packet to the SPI HD bus
+ * Returns ESP_OK on success, ESP_FAIL on failure
+ */
+static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle)
+{
+	uint16_t len = 0;
+	uint8_t *sendbuf = NULL;
+	void (*free_func)(void* ptr) = NULL;
+	uint8_t * payload  = NULL;
+	struct esp_payload_header * payload_header = NULL;
+	int ret = 0;
+	uint32_t data_left;
+	uint32_t buf_needed;
+	int result = ESP_OK;
 
+	if (unlikely(!buf_handle))
+		return ESP_FAIL;
+
+	len = buf_handle->payload_len;
+
+	if (unlikely(!buf_handle->flag && !len)) {
+		ESP_LOGE(TAG, "%s: Empty len", __func__);
+		return ESP_FAIL;
+	}
+
+	if (!buf_handle->payload_zcopy) {
+		sendbuf = spi_hd_buffer_alloc(MEMSET_REQUIRED);
 		if (!sendbuf) {
 			ESP_LOGE(TAG, "spi_hd buff malloc failed");
-			free_func = NULL;
-			goto done;
+			return ESP_FAIL;
 		}
+		free_func = spi_hd_buffer_free;
+	} else {
+		sendbuf = buf_handle->payload;
+		free_func = buf_handle->free_buf_handle;
+	}
 
-		if (buf_handle.payload_len > MAX_SPI_HD_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
-			ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
-					buf_handle.payload_len, MAX_SPI_HD_BUFFER_SIZE - sizeof(struct esp_payload_header));
-			goto done;
+	if (buf_handle->payload_len > MAX_SPI_HD_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
+		ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
+				buf_handle->payload_len, MAX_SPI_HD_BUFFER_SIZE - sizeof(struct esp_payload_header));
+		result = ESP_FAIL;
+		goto done;
+	}
+
+	/* Form Tx header */
+	payload_header = (struct esp_payload_header *) sendbuf;
+	payload  = sendbuf + sizeof(struct esp_payload_header);
+
+	payload_header->len = htole16(len);
+	payload_header->offset = htole16(sizeof(struct esp_payload_header));
+	payload_header->if_type = buf_handle->if_type;
+	payload_header->if_num = buf_handle->if_num;
+	payload_header->seq_num = htole16(buf_handle->seq_num);
+	payload_header->flags = buf_handle->flag;
+
+	if (payload_header->if_type == ESP_HCI_IF) {
+		// special handling for HCI
+		if (!buf_handle->payload_zcopy) {
+			// copy first byte of payload into header
+			payload_header->hci_pkt_type = buf_handle->payload[0];
+			// adjust actual payload len
+			len -= 1;
+			payload_header->len = htole16(len);
+			g_h.funcs->_h_memcpy(payload, &buf_handle->payload[1], len);
 		}
-
-		/* Form Tx header */
-		payload_header = (struct esp_payload_header *) sendbuf;
-		payload  = sendbuf + sizeof(struct esp_payload_header);
-
-		payload_header->len = htole16(len);
-		payload_header->offset = htole16(sizeof(struct esp_payload_header));
-		payload_header->if_type = buf_handle.if_type;
-		payload_header->if_num = buf_handle.if_num;
-		payload_header->seq_num = htole16(buf_handle.seq_num);
-		payload_header->flags = buf_handle.flag;
-
-		if (payload_header->if_type == ESP_HCI_IF) {
-			// special handling for HCI
-			if (!buf_handle.payload_zcopy) {
-				// copy first byte of payload into header
-				payload_header->hci_pkt_type = buf_handle.payload[0];
-				// adjust actual payload len
-				len -= 1;
-				payload_header->len = htole16(len);
-				g_h.funcs->_h_memcpy(payload, &buf_handle.payload[1], len);
-			}
-		} else
-		if (!buf_handle.payload_zcopy)
-			g_h.funcs->_h_memcpy(payload, buf_handle.payload, len);
+	} else {
+		if (!buf_handle->payload_zcopy) {
+			g_h.funcs->_h_memcpy(payload, buf_handle->payload, len);
+		}
+	}
 
 #if H_SPI_HD_CHECKSUM
-		payload_header->checksum = htole16(compute_checksum(sendbuf,
-			sizeof(struct esp_payload_header) + len));
+	payload_header->checksum = htole16(compute_checksum(sendbuf,
+		sizeof(struct esp_payload_header) + len));
 #endif
 
-		buf_needed = (len + sizeof(struct esp_payload_header) + MAX_SPI_HD_BUFFER_SIZE - 1)
-			/ MAX_SPI_HD_BUFFER_SIZE;
+	buf_needed = (len + sizeof(struct esp_payload_header) + MAX_SPI_HD_BUFFER_SIZE - 1)
+		/ MAX_SPI_HD_BUFFER_SIZE;
 
-		SPI_HD_DRV_LOCK();
+	SPI_HD_DRV_LOCK();
 
-		// ESP_LOGW(TAG, "spi_hd_is_write_buffer_available()");
-		ret = spi_hd_is_write_buffer_available(buf_needed);
-		if (ret != BUFFER_AVAILABLE) {
-			ESP_LOGV(TAG, "no SPI_HD write buffers on slave device");
-			goto unlock_done;
-		}
+	ret = spi_hd_is_write_buffer_available(buf_needed);
+	if (ret != BUFFER_AVAILABLE) {
+		ESP_LOGW(TAG, "no SPI_HD write buffers on slave device, drop pkt");
+		result = ESP_FAIL;
+		goto unlock_done;
+	}
 
-		data_left = len + sizeof(struct esp_payload_header);
+	data_left = len + sizeof(struct esp_payload_header);
 
-		ESP_HEXLOGD("h_spi_hd_tx", sendbuf, data_left, 32);
+	ESP_HEXLOGD("h_spi_hd_tx", sendbuf, data_left, 32);
 
-		ret = g_h.funcs->_h_spi_hd_write_dma(sendbuf, data_left, ACQUIRE_LOCK);
-		if (ret) {
-			ESP_LOGE(TAG, "%s: Failed to send data", __func__);
-			goto unlock_done;
-		}
+	ret = g_h.funcs->_h_spi_hd_write_dma(sendbuf, data_left, ACQUIRE_LOCK);
+	if (ret) {
+		ESP_LOGE(TAG, "%s: Failed to send data", __func__);
+		result = ESP_FAIL;
+		goto unlock_done;
+	}
 
-		spi_hd_tx_buf_count += buf_needed;
+	spi_hd_tx_buf_count += buf_needed;
 
 #if ESP_PKT_STATS
-		if (buf_handle.if_type == ESP_STA_IF)
-			pkt_stats.sta_tx_out++;
+	if (buf_handle->if_type == ESP_STA_IF)
+		pkt_stats.sta_tx_out++;
 #endif
 
 unlock_done:
-		SPI_HD_DRV_UNLOCK();
+	SPI_HD_DRV_UNLOCK();
 done:
-		if (len && !buf_handle.payload_zcopy) {
-			/* free allocated buffer, only if zerocopy is not requested */
-			H_FREE_PTR_WITH_FUNC(buf_handle.free_buf_handle, buf_handle.priv_buffer_handle);
-		}
-		H_FREE_PTR_WITH_FUNC(free_func, sendbuf);
+	if (len && !buf_handle->payload_zcopy) {
+		/* free allocated buffer, only if zerocopy is not requested */
+		H_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle, buf_handle->priv_buffer_handle);
 	}
+	H_FREE_PTR_WITH_FUNC(free_func, sendbuf);
+
+	return result;
 }
 
 static int is_valid_spi_hd_rx_packet(uint8_t *rxbuff_a, uint16_t *len_a, uint16_t *offset_a)
@@ -428,7 +452,7 @@ static esp_err_t spi_hd_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 	if (update_flow_ctrl(buf)) {
 		// detected and updated flow control
 		// no need to further process the packet
-		HOSTED_FREE(buf);
+		spi_hd_buffer_free(buf);
 		return ESP_OK;
 	}
 
@@ -441,12 +465,13 @@ static esp_err_t spi_hd_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 		 * wrong header/bit packing?
 		 * */
 		ESP_LOGE(TAG, "Dropping packet");
-		HOSTED_FREE(buf);
+		spi_hd_buffer_free(buf);
 		return ESP_FAIL;
 	}
 
 	if (spi_hd_push_pkt_to_queue(buf, len, offset)) {
 		ESP_LOGE(TAG, "Failed to push Rx packet to queue");
+		spi_hd_buffer_free(buf);
 		return ESP_FAIL;
 	}
 
@@ -476,14 +501,14 @@ static void spi_hd_read_task(void const* pvParameters)
 		res = g_h.funcs->_h_spi_hd_read_reg(SPI_HD_REG_SLAVE_READY, &data, POLLING_READ, ACQUIRE_LOCK);
 		if (res) {
 			ESP_LOGE(TAG, "Error reading slave register");
-		}
-		else if (data == SPI_HD_STATE_SLAVE_READY) {
+		} else if (data == SPI_HD_STATE_SLAVE_READY) {
 			ESP_LOGI(TAG, "Slave is ready");
 			break;
 		}
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 
+	ESP_LOGD(TAG, "Open Data path");
 	// slave is ready: initialise Data Ready as interrupt input
 	g_h.funcs->_h_config_gpio_as_interrupt(H_SPI_HD_GPIO_DATA_READY_Port, H_SPI_HD_PIN_DATA_READY,
 			H_SPI_HD_DR_INTR_EDGE, gpio_dr_isr_handler, NULL);
@@ -492,11 +517,12 @@ static void spi_hd_read_task(void const* pvParameters)
 	data = SPI_HD_CTRL_DATAPATH_ON;
 	g_h.funcs->_h_spi_hd_write_reg(SPI_HD_REG_SLAVE_CTRL, &data, ACQUIRE_LOCK);
 
+	ESP_LOGD(TAG, "spi_hd_read_task: post open data path");
 	// we are now ready to receive data from slave
 	while (1) {
 		// wait for read semaphore to trigger
 		g_h.funcs->_h_get_semaphore(spi_hd_data_ready_sem, HOSTED_BLOCK_MAX);
-		ESP_LOGV(TAG, "spi_hd_read_task: data ready intr");
+		ESP_LOGV(TAG, "spi_hd_read_task: data ready intr received");
 
 		SPI_HD_DRV_LOCK();
 
@@ -510,6 +536,7 @@ static void spi_hd_read_task(void const* pvParameters)
 		// send cmd9 to clear the interrupts on the slave
 		g_h.funcs->_h_spi_hd_send_cmd9();
 
+		ESP_LOGV(TAG, "spi_hd_read_task: sent cmd9");
 		// save the int mask
 		int_mask = curr_rx_value & SPI_HD_INT_MASK;
 
@@ -551,11 +578,22 @@ static void spi_hd_read_task(void const* pvParameters)
 			continue;
 		}
 
+		/* Validate transfer size to prevent buffer overflow */
+		if (size_to_xfer > MAX_SPI_HD_BUFFER_SIZE) {
+			ESP_LOGE(TAG, "read_bytes[%"PRIu32"] > MAX_SPI_HD_BUFFER_SIZE[%d]. Ignoring read request",
+					size_to_xfer, MAX_SPI_HD_BUFFER_SIZE);
+
+			SPI_HD_DRV_UNLOCK();
+			continue;
+		}
+
 		// allocate rx buffer
 		rxbuff = spi_hd_buffer_alloc(MEMSET_REQUIRED);
 		assert(rxbuff);
 
-		ESP_LOGV(TAG, "spi_hd_read_task: trigger spi hd dma read");
+		ESP_LOGV(TAG, "spi_hd_read_task: spi hd dma read: read_bytes[%"PRIu32"], curr_rx[%"PRIu32"], rx_count[%"PRIu32"]",
+				size_to_xfer, curr_rx_value & SPI_HD_TX_BUF_LEN_MASK, spi_hd_rx_byte_count);
+
 		// read data
 		res = g_h.funcs->_h_spi_hd_read_dma(rxbuff, size_to_xfer, ACQUIRE_LOCK);
 
@@ -566,6 +604,7 @@ static void spi_hd_read_task(void const* pvParameters)
 
 		if (res) {
 			ESP_LOGE(TAG, "error reading data");
+			spi_hd_buffer_free(rxbuff);
 			continue;
 		}
 
@@ -855,13 +894,15 @@ int ensure_slave_bus_ready(void *bus_handle)
 
 	if (!esp_hosted_woke_from_deep_sleep()) {
 		/* Reset the slave */
-		ESP_LOGI(TAG, "Resetting slave on SPI HD bus with pin %d", reset_pin.pin);
+		ESP_LOGI(TAG, "Reseting slave on SPI HD bus with pin %d", reset_pin.pin);
 		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 		g_h.funcs->_h_msleep(1);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
 		g_h.funcs->_h_msleep(1);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	} else {
+		stop_host_power_save();
 	}
 
 	return res;
@@ -871,8 +912,32 @@ int bus_inform_slave_host_power_save_start(void)
 {
 	ESP_LOGI(TAG, "Inform slave, host power save is started");
 	int ret = ESP_OK;
-	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+
+	/*
+	 * If the write thread is not started yet (which happens after receiving INIT event),
+	 * we need to send the power save message directly to avoid deadlock.
+	 * Otherwise, use the normal queue mechanism.
+	 */
+	if (!spi_hd_start_write_thread) {
+		interface_buffer_handle_t buf_handle = {0};
+
+		buf_handle.payload_zcopy = H_BUFF_NO_ZEROCOPY;
+		buf_handle.if_type = ESP_SERIAL_IF;
+		buf_handle.if_num = 0;
+		buf_handle.payload_len = 0;
+		buf_handle.payload = NULL;
+		buf_handle.priv_buffer_handle = NULL;
+		buf_handle.free_buf_handle = NULL;
+		buf_handle.flag = FLAG_POWER_SAVE_STARTED;
+
+		ESP_LOGI(TAG, "Sending power save start message directly");
+		ret = spi_hd_write_packet(&buf_handle);
+	} else {
+		/* Use normal queue mechanism */
+		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+	}
+
 	return ret;
 }
 
@@ -880,7 +945,31 @@ int bus_inform_slave_host_power_save_stop(void)
 {
 	ESP_LOGI(TAG, "Inform slave, host power save is stopped");
 	int ret = ESP_OK;
-	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+
+	/*
+	 * If the write thread is not started yet (which happens after receiving INIT event),
+	 * we need to send the power save message directly to avoid deadlock.
+	 * Otherwise, use the normal queue mechanism.
+	 */
+	if (!spi_hd_start_write_thread) {
+		interface_buffer_handle_t buf_handle = {0};
+
+		buf_handle.payload_zcopy = H_BUFF_NO_ZEROCOPY;
+		buf_handle.if_type = ESP_SERIAL_IF;
+		buf_handle.if_num = 0;
+		buf_handle.payload_len = 0;
+		buf_handle.payload = NULL;
+		buf_handle.priv_buffer_handle = NULL;
+		buf_handle.free_buf_handle = NULL;
+		buf_handle.flag = FLAG_POWER_SAVE_STOPPED;
+
+		ESP_LOGI(TAG, "Sending power save stop message directly");
+		ret = spi_hd_write_packet(&buf_handle);
+	} else {
+		/* Use normal queue mechanism */
+		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+	}
+
 	return ret;
 }

@@ -857,8 +857,8 @@ int hosted_get_host_wakeup_or_reboot_reason(void)
 	uint32_t wakeup_causes = esp_sleep_get_wakeup_causes();
 	wakeup_due_to_gpio = (wakeup_causes & BIT(ESP_SLEEP_WAKEUP_GPIO));
 #else
-	uint32_t wakeup_causes = esp_sleep_get_wakeup_cause();
-	wakeup_due_to_gpio = (wakeup_reason == ESP_SLEEP_WAKEUP_GPIO);
+	uint32_t wakeup_cause = esp_sleep_get_wakeup_cause();
+	wakeup_due_to_gpio = (wakeup_cause == ESP_SLEEP_WAKEUP_GPIO);
 #endif
 
 	if (reboot_reason == ESP_RST_POWERON) {

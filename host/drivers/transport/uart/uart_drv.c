@@ -25,6 +25,7 @@
 #include "stats.h"
 #include "esp_hosted_power_save.h"
 #include "esp_hosted_transport_config.h"
+#include "power_save_drv.h"
 
 
 static const char TAG[] = "H_UART_DRV";
@@ -77,22 +78,114 @@ static inline void h_uart_buffer_free(void *buf)
 	mempool_free(buf_mp_g, buf);
 }
 
-static void h_uart_write_task(void const* pvParameters)
+/*
+ * Write a packet to the UART bus
+ * Returns ESP_OK on success, ESP_FAIL on failure
+ */
+static int h_uart_write_packet(interface_buffer_handle_t *buf_handle)
 {
 	uint16_t len = 0;
 	uint8_t *sendbuf = NULL;
 	void (*free_func)(void* ptr) = NULL;
-	interface_buffer_handle_t buf_handle = {0};
 	uint8_t * payload  = NULL;
 	struct esp_payload_header * payload_header = NULL;
-
-	uint8_t tx_needed = 1;
-
 	int tx_len_to_send;
 	int tx_len;
+	int result = ESP_OK;
+
+	if (unlikely(!buf_handle))
+		return ESP_FAIL;
+
+	len = buf_handle->payload_len;
+
+	if (unlikely(!buf_handle->flag && !len)) {
+		ESP_LOGE(TAG, "%s: Empty len", __func__);
+		return ESP_FAIL;
+	}
+
+	if (!buf_handle->payload_zcopy) {
+		sendbuf = h_uart_buffer_alloc(MEMSET_REQUIRED);
+		if (!sendbuf) {
+			ESP_LOGE(TAG, "uart buff malloc failed");
+			return ESP_FAIL;
+		}
+		free_func = h_uart_buffer_free;
+	} else {
+		sendbuf = buf_handle->payload;
+		free_func = buf_handle->free_buf_handle;
+	}
+
+	if (buf_handle->payload_len > MAX_UART_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
+		ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
+				buf_handle->payload_len, MAX_UART_BUFFER_SIZE - sizeof(struct esp_payload_header));
+		result = ESP_FAIL;
+		goto done;
+	}
+
+	/* Form Tx header */
+	payload_header = (struct esp_payload_header *) sendbuf;
+	payload  = sendbuf + sizeof(struct esp_payload_header);
+
+	payload_header->len = htole16(len);
+	payload_header->offset = htole16(sizeof(struct esp_payload_header));
+	payload_header->if_type = buf_handle->if_type;
+	payload_header->if_num = buf_handle->if_num;
+	payload_header->seq_num = htole16(buf_handle->seq_num);
+	payload_header->flags = buf_handle->flag;
+
+	if (payload_header->if_type == ESP_HCI_IF) {
+		// special handling for HCI
+		if (!buf_handle->payload_zcopy) {
+			// copy first byte of payload into header
+			payload_header->hci_pkt_type = buf_handle->payload[0];
+			// adjust actual payload len
+			len -= 1;
+			payload_header->len = htole16(len);
+			g_h.funcs->_h_memcpy(payload, &buf_handle->payload[1], len);
+		}
+	} else {
+		if (!buf_handle->payload_zcopy) {
+			g_h.funcs->_h_memcpy(payload, buf_handle->payload, len);
+		}
+	}
+
+#if H_UART_CHECKSUM
+	payload_header->checksum = htole16(compute_checksum(sendbuf,
+		sizeof(struct esp_payload_header) + len));
+#endif
+
+	tx_len_to_send = len + sizeof(struct esp_payload_header);
+	tx_len = g_h.funcs->_h_uart_write(uart_handle, sendbuf, tx_len_to_send);
+	if (tx_len != tx_len_to_send) {
+		ESP_LOGE(TAG, "failed to send uart data");
+		result = ESP_FAIL;
+		goto done;
+	}
+
+#if ESP_PKT_STATS
+	if (buf_handle->if_type == ESP_STA_IF)
+		pkt_stats.sta_tx_out++;
+#endif
+
+done:
+	if (len && !buf_handle->payload_zcopy) {
+		/* free allocated buffer, only if zerocopy is not requested */
+		H_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle, buf_handle->priv_buffer_handle);
+	}
+	H_FREE_PTR_WITH_FUNC(free_func, sendbuf);
+
+	return result;
+}
+
+static void h_uart_write_task(void const* pvParameters)
+{
+	interface_buffer_handle_t buf_handle = {0};
+	uint8_t tx_needed = 1;
 
 	while (!uart_start_write_thread)
 		g_h.funcs->_h_msleep(10);
+
+	ESP_LOGD(TAG, "h_uart_write_task: write thread started");
 
 	while (1) {
 		/* Check if higher layers have anything to transmit */
@@ -105,82 +198,11 @@ static void h_uart_write_task(void const* pvParameters)
 					tx_needed = 0; /* No Tx msg */
 				}
 
-		if (tx_needed)
-			len = buf_handle.payload_len;
+		if (!tx_needed)
+			continue;
 
-		if (!len) {
-			ESP_LOGE(TAG, "%s: Empty len", __func__);
-			goto done;
-		}
-
-		if (!buf_handle.payload_zcopy) {
-			sendbuf = h_uart_buffer_alloc(MEMSET_REQUIRED);
-			assert(sendbuf);
-			free_func = h_uart_buffer_free;
-		} else {
-			sendbuf = buf_handle.payload;
-			free_func = buf_handle.free_buf_handle;
-		}
-
-		if (!sendbuf) {
-			ESP_LOGE(TAG, "uart buff malloc failed");
-			free_func = NULL;
-			goto done;
-		}
-
-		if (buf_handle.payload_len > MAX_UART_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
-			ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
-					buf_handle.payload_len, MAX_UART_BUFFER_SIZE - sizeof(struct esp_payload_header));
-			goto done;
-		}
-
-		/* Form Tx header */
-		payload_header = (struct esp_payload_header *) sendbuf;
-		payload  = sendbuf + sizeof(struct esp_payload_header);
-
-		payload_header->len = htole16(len);
-		payload_header->offset = htole16(sizeof(struct esp_payload_header));
-		payload_header->if_type = buf_handle.if_type;
-		payload_header->if_num = buf_handle.if_num;
-		payload_header->seq_num = htole16(buf_handle.seq_num);
-		payload_header->flags = buf_handle.flag;
-
-		if (payload_header->if_type == ESP_HCI_IF) {
-			// special handling for HCI
-			if (!buf_handle.payload_zcopy) {
-				// copy first byte of payload into header
-				payload_header->hci_pkt_type = buf_handle.payload[0];
-				// adjust actual payload len
-				len -= 1;
-				payload_header->len = htole16(len);
-				g_h.funcs->_h_memcpy(payload, &buf_handle.payload[1], len);
-			}
-		} else
-		if (!buf_handle.payload_zcopy)
-			g_h.funcs->_h_memcpy(payload, buf_handle.payload, len);
-
-#if H_UART_CHECKSUM
-		payload_header->checksum = htole16(compute_checksum(sendbuf,
-			sizeof(struct esp_payload_header) + len));
-#endif
-
-		tx_len_to_send = len + sizeof(struct esp_payload_header);
-		tx_len = g_h.funcs->_h_uart_write(uart_handle, sendbuf, tx_len_to_send);
-		if (tx_len != tx_len_to_send) {
-			ESP_LOGE(TAG, "failed to send uart data");
-		}
-
-#if ESP_PKT_STATS
-		if (buf_handle.if_type == ESP_STA_IF)
-			pkt_stats.sta_tx_out++;
-#endif
-
-done:
-		if (len && !buf_handle.payload_zcopy) {
-			/* free allocated buffer, only if zerocopy is not requested */
-			H_FREE_PTR_WITH_FUNC(buf_handle.free_buf_handle, buf_handle.priv_buffer_handle);
-		}
-		H_FREE_PTR_WITH_FUNC(free_func, sendbuf);
+		/* Send the packet */
+		h_uart_write_packet(&buf_handle);
 	}
 }
 
@@ -525,9 +547,8 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	if (free_wbuf_fun)
 		free_func = free_wbuf_fun;
 
-	if (!wbuffer || !wlen ||
-		(wlen > MAX_PAYLOAD_SIZE) ||
-		!transport_up) {
+	if ((!flag) &&
+	     (!wbuffer || !wlen ||(wlen > MAX_PAYLOAD_SIZE) || !transport_up)) {
 		ESP_LOGE(TAG, "tx fail: NULL buff, invalid len (%u) or len > max len (%u), transport_up(%u))",
 				wlen, MAX_PAYLOAD_SIZE, transport_up);
 		H_FREE_PTR_WITH_FUNC(free_func, wbuffer);
@@ -632,7 +653,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 
 	release_slave_reset_gpio_post_wakeup();
 
-	if (!esp_hosted_is_reboot_due_to_deep_sleep()) {
+	if (!esp_hosted_woke_from_deep_sleep()) {
 		/* Reset the slave */
 		ESP_LOGI(TAG, "Resetting slave on UART bus with pin %d", reset_pin.pin);
 		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
@@ -643,7 +664,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 		g_h.funcs->_h_msleep(1500);
 	} else {
-		g_h.funcs->_h_msleep(700);
+		stop_host_power_save();
 	}
 
 	return res;
@@ -653,8 +674,32 @@ int bus_inform_slave_host_power_save_start(void)
 {
 	ESP_LOGI(TAG, "Inform slave, host power save is started");
 	int ret = ESP_OK;
-	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+
+	/*
+	 * If the write thread is not started yet (which happens after receiving INIT event),
+	 * we need to send the power save message directly to avoid deadlock.
+	 * Otherwise, use the normal queue mechanism.
+	 */
+	if (!uart_start_write_thread) {
+		interface_buffer_handle_t buf_handle = {0};
+
+		buf_handle.payload_zcopy = H_BUFF_NO_ZEROCOPY;
+		buf_handle.if_type = ESP_SERIAL_IF;
+		buf_handle.if_num = 0;
+		buf_handle.payload_len = 0;
+		buf_handle.payload = NULL;
+		buf_handle.priv_buffer_handle = NULL;
+		buf_handle.free_buf_handle = NULL;
+		buf_handle.flag = FLAG_POWER_SAVE_STARTED;
+
+		ESP_LOGI(TAG, "Sending power save start message directly");
+		ret = h_uart_write_packet(&buf_handle);
+	} else {
+		/* Use normal queue mechanism */
+		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+	}
+
 	return ret;
 }
 
@@ -662,8 +707,33 @@ int bus_inform_slave_host_power_save_stop(void)
 {
 	ESP_LOGI(TAG, "Inform slave, host power save is stopped");
 	int ret = ESP_OK;
-	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+
+
+	/*
+	 * If the write thread is not started yet (which happens after receiving INIT event),
+	 * we need to send the power save message directly to avoid deadlock.
+	 * Otherwise, use the normal queue mechanism.
+	 */
+	if (!uart_start_write_thread) {
+		interface_buffer_handle_t buf_handle = {0};
+
+		buf_handle.payload_zcopy = H_BUFF_NO_ZEROCOPY;
+		buf_handle.if_type = ESP_SERIAL_IF;
+		buf_handle.if_num = 0;
+		buf_handle.payload_len = 0;
+		buf_handle.payload = NULL;
+		buf_handle.priv_buffer_handle = NULL;
+		buf_handle.free_buf_handle = NULL;
+		buf_handle.flag = FLAG_POWER_SAVE_STOPPED;
+
+		ESP_LOGI(TAG, "Sending power save start message directly");
+		ret = h_uart_write_packet(&buf_handle);
+	} else {
+		/* Use normal queue mechanism */
+		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+	}
+
 	return ret;
 }
 

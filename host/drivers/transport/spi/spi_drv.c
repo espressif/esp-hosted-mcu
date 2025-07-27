@@ -33,6 +33,7 @@ DEFINE_LOG_TAG(spi);
 
 void * spi_handle = NULL;
 semaphore_handle_t spi_trans_ready_sem;
+static volatile uint8_t dr_isr_triggered = 0;
 
 static uint8_t schedule_dummy_rx = 0;
 
@@ -114,6 +115,7 @@ This ISR is called when the handshake or data_ready line goes high.
 static void FAST_RAM_ATTR gpio_dr_isr_handler(void* arg)
 {
 	g_h.funcs->_h_post_semaphore_from_isr(spi_trans_ready_sem);
+	dr_isr_triggered = 1;
 	ESP_EARLY_LOGV(TAG, "%s", __func__);
 }
 
@@ -271,6 +273,8 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 	if (!rxbuff)
 		return -1;
 
+	ESP_HEXLOGD("h_spi_rx", rxbuff, 32, 32);
+
 	/* create buffer rx handle, used for processing */
 	h = (struct esp_payload_header *) rxbuff;
 
@@ -283,8 +287,6 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 		ESP_LOGW(TAG, "Host wakeup triggered, if_type: %u, len: %u ", h->if_type, len);
 		//ESP_HEXLOGW("Wakeup_pkt", rxbuff+offset, len, min(len, 128));
 	}
-
-	ESP_HEXLOGD("h_spi_rx", rxbuff, len, 32);
 
 	if (ESP_MAX_IF == h->if_type)
 		schedule_dummy_rx = 0;
@@ -309,6 +311,7 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 		goto done;
 
 	} else {
+		dr_isr_triggered = 0;
 		rx_checksum = le16toh(h->checksum);
 		h->checksum = 0;
 
@@ -323,7 +326,7 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 			buf_handle.payload     = rxbuff + offset;
 			buf_handle.seq_num     = le16toh(h->seq_num);
 			buf_handle.flag        = h->flags;
-			wifi_tx_throttling = h->throttle_cmd;
+			wifi_tx_throttling     = h->throttle_cmd;
 #if 0
 #if CONFIG_H_LOWER_MEMCOPY
 			if ((buf_handle.if_type == ESP_STA_IF) ||
@@ -390,12 +393,14 @@ static int check_and_execute_spi_transaction(void)
 	gpio_rx_data_ready = g_h.funcs->_h_read_gpio(H_GPIO_DATA_READY_Port,
 			H_GPIO_DATA_READY_Pin);
 
+	uint8_t data_ready_active = (gpio_rx_data_ready == H_DR_VAL_ACTIVE) || dr_isr_triggered;
+
 	if (gpio_handshake == H_HS_VAL_ACTIVE) {
 
 		/* Get next tx buffer to be sent */
 		txbuff = get_next_tx_buffer(&is_valid_tx_buf, &tx_buff_free_func);
 
-		if ( (gpio_rx_data_ready == H_DR_VAL_ACTIVE) ||
+		if ( (data_ready_active) ||
 				(is_valid_tx_buf) || schedule_dummy_tx || schedule_dummy_rx ) {
 
 			if (!txbuff) {
@@ -417,7 +422,7 @@ static int check_and_execute_spi_transaction(void)
 				ESP_HEXLOGD("h_spi_tx", txbuff, 32, 32);
 			}
 
-			ESP_LOGV(TAG, "dr %u tx_valid %u\n", gpio_rx_data_ready, is_valid_tx_buf);
+			ESP_LOGD(TAG, "dr %u tx_valid %u\n", gpio_rx_data_ready, is_valid_tx_buf);
 			/* Allocate rx buffer */
 			rxbuff = spi_buffer_alloc(MEMSET_REQUIRED);
 			assert(rxbuff);
@@ -490,7 +495,6 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		H_FREE_PTR_WITH_FUNC(free_func, wbuffer);
 		return -1;
 	}
-
 	//g_h.funcs->_h_memset(&buf_handle, 0, sizeof(buf_handle));
 	buf_handle.payload_zcopy = buff_zcopy;
 	buf_handle.if_type = iface_type;
@@ -556,7 +560,6 @@ static void spi_transaction_task(void const* pvParameters)
 
 		if ((!is_transport_rx_ready()) ||
 			(!spi_trans_ready_sem)) {
-			ESP_LOGD(TAG, "SPI transaction task sleep");
 			g_h.funcs->_h_msleep(100);
 			continue;
 		}
@@ -566,8 +569,7 @@ static void spi_transaction_task(void const* pvParameters)
 		 * on Either Data ready and Handshake pin
 		 */
 
-		if (!g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, HOSTED_BLOCK_MAX)) {
-
+		if (g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, HOSTED_BLOCK_MAX) == SUCCESS) {
 			check_and_execute_spi_transaction();
 		}
 	}
@@ -583,14 +585,6 @@ static void spi_process_rx_task(void const* pvParameters)
 	interface_buffer_handle_t buf_handle_l = {0};
 	interface_buffer_handle_t *buf_handle = NULL;
 	int ret = 0;
-
-#if H_HOST_PS_ALLOWED
-	if (esp_hosted_woke_from_deep_sleep()) {
-		ESP_LOGW(TAG, "Host Woke-up");
-		/* Inform slave, host power save is stopped */
-		stop_host_power_save();
-	}
-#endif
 
 	while (1) {
 
@@ -610,6 +604,7 @@ static void spi_process_rx_task(void const* pvParameters)
 		/* process received buffer for all possible interface types */
 		if (buf_handle->if_type == ESP_SERIAL_IF) {
 
+			schedule_dummy_rx = 1;
 			/* serial interface path */
 			serial_rx_handler(buf_handle);
 
@@ -777,7 +772,6 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 	}
 
 done:
-/* TODO: check if this is needed for only flag */
 	if (len && !buf_handle.payload_zcopy) {
 		/* free allocated buffer, only if zerocopy is not requested */
 		H_FREE_PTR_WITH_FUNC(buf_handle.free_buf_handle, buf_handle.priv_buffer_handle);
@@ -842,10 +836,9 @@ int ensure_slave_bus_ready(void *bus_handle)
 	release_slave_reset_gpio_post_wakeup();
 
 	if (esp_hosted_woke_from_deep_sleep()) {
-		g_h.funcs->_h_msleep(700);
 		stop_host_power_save();
 	} else {
-		ESP_LOGI(TAG, "Resetting slave");
+		ESP_LOGI(TAG, "Reseting slave");
 		transport_gpio_reset(bus_handle, reset_pin);
 	}
 
@@ -856,8 +849,57 @@ int bus_inform_slave_host_power_save_start(void)
 {
 	ESP_LOGI(TAG, "Inform slave, host power save is started");
 	int ret = ESP_OK;
-	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+
+	/*
+	 * If the transport is not ready yet (which happens before receiving INIT event),
+	 * we need to send the power save message directly to avoid deadlock.
+	 * Otherwise, use the normal queue mechanism.
+	 */
+	if (!is_transport_rx_ready()) {
+		uint8_t *txbuff = NULL;
+		uint8_t *rxbuff = NULL;
+		struct esp_payload_header *h = NULL;
+		struct hosted_transport_context_t spi_trans = {0};
+
+		ESP_LOGI(TAG, "Sending power save start message directly");
+
+		/* Create tx buffer with power save flag */
+		txbuff = spi_buffer_alloc(MEMSET_REQUIRED);
+		assert(txbuff);
+
+		h = (struct esp_payload_header *) txbuff;
+		h->if_type = ESP_SERIAL_IF;
+		h->if_num = 0;
+		h->len = htole16(0);
+		h->offset = htole16(sizeof(struct esp_payload_header));
+		h->seq_num = htole16(0);
+		h->flags = FLAG_POWER_SAVE_STARTED;
+
+		/* Allocate rx buffer for transaction */
+		rxbuff = spi_buffer_alloc(MEMSET_REQUIRED);
+		assert(rxbuff);
+
+		/* Set up SPI transaction */
+		spi_trans.tx_buf = txbuff;
+		spi_trans.tx_buf_size = MAX_SPI_BUFFER_SIZE;
+		spi_trans.rx_buf = rxbuff;
+
+		/* Execute direct SPI transaction - bypass all queues */
+		g_h.funcs->_h_lock_mutex(spi_bus_lock, HOSTED_BLOCK_MAX);
+		ret = g_h.funcs->_h_do_bus_transfer(&spi_trans);
+		g_h.funcs->_h_unlock_mutex(spi_bus_lock);
+
+		/* Free buffers */
+		spi_buffer_free(txbuff);
+		if (!ret) {
+			process_spi_rx_buf(spi_trans.rx_buf);
+		}
+	} else {
+		/* Use normal queue mechanism */
+		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+	}
+
 	return ret;
 }
 
@@ -865,7 +907,56 @@ int bus_inform_slave_host_power_save_stop(void)
 {
 	ESP_LOGI(TAG, "Inform slave, host power save is stopped");
 	int ret = ESP_OK;
-	ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-		H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+
+	/*
+	 * If the transport is not ready yet (which happens before receiving INIT event),
+	 * we need to send the power save message directly to avoid deadlock.
+	 * Otherwise, use the normal queue mechanism.
+	 */
+	if (!is_transport_rx_ready()) {
+		uint8_t *txbuff = NULL;
+		uint8_t *rxbuff = NULL;
+		struct esp_payload_header *h = NULL;
+		struct hosted_transport_context_t spi_trans = {0};
+
+		ESP_LOGI(TAG, "Sending power save stop message directly");
+
+		/* Create tx buffer with power save flag */
+		txbuff = spi_buffer_alloc(MEMSET_REQUIRED);
+		assert(txbuff);
+
+		h = (struct esp_payload_header *) txbuff;
+		h->if_type = ESP_SERIAL_IF;
+		h->if_num = 0;
+		h->len = htole16(0);
+		h->offset = htole16(sizeof(struct esp_payload_header));
+		h->seq_num = htole16(0);
+		h->flags = FLAG_POWER_SAVE_STOPPED;
+
+		/* Allocate rx buffer for transaction */
+		rxbuff = spi_buffer_alloc(MEMSET_REQUIRED);
+		assert(rxbuff);
+
+		/* Set up SPI transaction */
+		spi_trans.tx_buf = txbuff;
+		spi_trans.tx_buf_size = MAX_SPI_BUFFER_SIZE;
+		spi_trans.rx_buf = rxbuff;
+
+		/* Execute direct SPI transaction - bypass all queues */
+		g_h.funcs->_h_lock_mutex(spi_bus_lock, HOSTED_BLOCK_MAX);
+		ret = g_h.funcs->_h_do_bus_transfer(&spi_trans);
+		g_h.funcs->_h_unlock_mutex(spi_bus_lock);
+
+		/* Free buffers */
+		spi_buffer_free(txbuff);
+		if (!ret) {
+			process_spi_rx_buf(spi_trans.rx_buf);
+		}
+	} else {
+		/* Use normal queue mechanism */
+		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
+			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+	}
+
 	return ret;
 }
