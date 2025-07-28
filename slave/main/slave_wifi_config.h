@@ -37,4 +37,12 @@
 #define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 1
 #endif
 
+/* WIFI_ENABLE_CACHE_TX_BUFFER only found in
+ * IDF 5.3.3 and above
+ * reused config for WIFI_ENABLE_SPIRAM
+ */
+#ifndef WIFI_ENABLE_CACHE_TX_BUFFER
+#define WIFI_ENABLE_CACHE_TX_BUFFER WIFI_ENABLE_SPIRAM
+#endif
+
 #endif

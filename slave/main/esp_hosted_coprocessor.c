@@ -87,7 +87,7 @@ uint8_t ap_mac[BSSID_BYTES_SIZE] = {0};
 #error "Hosted UART Interface cannot be used with Bluetooth HCI over UART"
 #endif
 
-static void print_firmware_version()
+static void print_firmware_version(void)
 {
 	ESP_LOGI(TAG, "*********************************************************************");
 	ESP_LOGI(TAG, "                ESP-Hosted-MCU Slave FW version :: %d.%d.%d                        ",

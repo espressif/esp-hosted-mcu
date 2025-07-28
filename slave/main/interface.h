@@ -125,7 +125,7 @@ typedef struct {
 } slave_state_t;
 
 interface_context_t * interface_insert_driver(int (*callback)(uint8_t val));
-int interface_remove_driver();
+int interface_remove_driver(void);
 void generate_startup_event(uint8_t cap, uint32_t ext_cap);
 int send_to_host_queue(interface_buffer_handle_t *buf_handle, uint8_t queue_type);
 void send_dhcp_dns_info_to_host(uint8_t network_up, uint8_t send_wifi_connected);
