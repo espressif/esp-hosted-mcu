@@ -15,6 +15,7 @@ before_script:
     expire_in: 4 days
   script:
     - source ${IDF_PATH}/export.sh
+    - pip install idf-ci
     - pip install idf-component-manager idf-build-apps --upgrade
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
     - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
