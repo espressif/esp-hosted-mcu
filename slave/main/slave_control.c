@@ -137,19 +137,19 @@ static esp_err_t req_wifi_get_mode(Rpc *req,
 static esp_err_t req_wifi_set_mode(Rpc *req,
 		Rpc *resp, void *priv_data)
 {
-    wifi_mode_t current_mode = WIFI_MODE_NULL;
-    RPC_TEMPLATE(RpcRespSetMode, resp_set_wifi_mode,
-            RpcReqSetMode, req_set_wifi_mode,
-            rpc__resp__set_mode__init);
+	wifi_mode_t current_mode = WIFI_MODE_NULL;
+	RPC_TEMPLATE(RpcRespSetMode, resp_set_wifi_mode,
+			RpcReqSetMode, req_set_wifi_mode,
+			rpc__resp__set_mode__init);
 
-    /* Get current mode first */
-    RPC_RET_FAIL_IF(esp_wifi_get_mode(&current_mode));
+	/* Get current mode first */
+	RPC_RET_FAIL_IF(esp_wifi_get_mode(&current_mode));
 
-    /* Only set if different */
-    if (current_mode != req_payload->mode) {
-        RPC_RET_FAIL_IF(esp_wifi_set_mode(req_payload->mode));
-    }
-    return ESP_OK;
+	/* Only set if different */
+	if (current_mode != req_payload->mode) {
+		RPC_RET_FAIL_IF(esp_wifi_set_mode(req_payload->mode));
+	}
+	return ESP_OK;
 }
 
 /* Function sets MAC address for station/softap */
@@ -182,20 +182,20 @@ static esp_err_t req_wifi_set_mac(Rpc *req,
 static esp_err_t req_wifi_set_ps(Rpc *req,
 		Rpc *resp, void *priv_data)
 {
-    wifi_ps_type_t current_ps = WIFI_PS_NONE;
+	wifi_ps_type_t current_ps = WIFI_PS_NONE;
 
-    RPC_TEMPLATE(RpcRespSetPs, resp_wifi_set_ps,
-            RpcReqSetPs, req_wifi_set_ps,
-            rpc__resp__set_ps__init);
+	RPC_TEMPLATE(RpcRespSetPs, resp_wifi_set_ps,
+			RpcReqSetPs, req_wifi_set_ps,
+			rpc__resp__set_ps__init);
 
-    /* Get current power save type first */
-    RPC_RET_FAIL_IF(esp_wifi_get_ps(&current_ps));
+	/* Get current power save type first */
+	RPC_RET_FAIL_IF(esp_wifi_get_ps(&current_ps));
 
-    /* Only set if different */
-    if (current_ps != req_payload->type) {
-        RPC_RET_FAIL_IF(esp_wifi_set_ps(req_payload->type));
-    }
-    return ESP_OK;
+	/* Only set if different */
+	if (current_ps != req_payload->type) {
+		RPC_RET_FAIL_IF(esp_wifi_set_ps(req_payload->type));
+	}
+	return ESP_OK;
 }
 
 /* Function returns current power save mode */
@@ -382,8 +382,8 @@ static esp_err_t req_set_softap_vender_specific_ie_handler (Rpc *req,
 		ESP_LOGI(TAG,"Enable softap vendor IE\n");
 
 		if (!p_vid ||
-		    !p_vid->payload.len ||
-		    !p_vid->payload.data) {
+			!p_vid->payload.len ||
+			!p_vid->payload.data) {
 			ESP_LOGE(TAG, "Invalid parameters");
 			return ESP_FAIL;
 		}
@@ -470,7 +470,7 @@ static void heartbeat_timer_cb(TimerHandle_t xTimer)
 static void stop_heartbeat(void)
 {
 	if (handle_heartbeat_task &&
-	    xTimerIsTimerActive(handle_heartbeat_task)) {
+		xTimerIsTimerActive(handle_heartbeat_task)) {
 		ESP_LOGI(TAG, "Stopping HB timer");
 		xTimerStop(handle_heartbeat_task, portMAX_DELAY);
 		xTimerDelete(handle_heartbeat_task, portMAX_DELAY);
@@ -633,33 +633,60 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 // macros to format output
 #define PRINT_HEADER() ESP_LOGI(TAG, "     Wifi Init Param | Default |    Host |  Actual");
 #define PRINT_FOOTER() ESP_LOGI(TAG, " End Wifi Init Param |");
+
+// need several ESP_LOGx formats due to different sizes of variables to be printed
+// int (PRI16), int32_t (PRI32), bool (PRI16)
 #define PRINT_USE_HOST_VALUE(param_str, default, host, final)        \
-	ESP_LOGD(TAG, "% 20s | % 7d | % 7d | % 7d", param_str, default, host, final);
+	ESP_LOGD(TAG, "%20s | %7"PRIu16" | %7"PRIi32" | %7"PRIi16, param_str, default, host, final);
 #define PRINT_USE_DEFAULT_VALUE(param_str, default, host, final)     \
-	ESP_LOGW(TAG, "% 20s | % 7d | % 7d | % 7d", param_str, default, host, final);
-#define PRINT_HEX64_USE_HOST_VALUE(param_str, default, host, final)    \
-	ESP_LOGD(TAG, "% 20s | 0x% 5"PRIx32" | 0x% 5"PRIx64" | 0x% 5"PRIx64, param_str, default, host, final);
+	ESP_LOGW(TAG, "%20s | %7"PRIu16" | %7"PRIi32" | %7"PRIi16, param_str, default, host, final);
+
+#define PRINT_USE_HOST_VALUE_BOOL(param_str, default, host, final)		\
+	ESP_LOGD(TAG, "%20s | %7"PRIu16" | %7"PRIi16" | %7"PRIi16, param_str, default, host, final);
+#define PRINT_USE_DEFAULT_VALUE_BOOL(param_str, default, host, final)	\
+	ESP_LOGI(TAG, "%20s | %7"PRIu16" | %7"PRIi16" | %7"PRIi16, param_str, default, host, final);
+
+#define PRINT_HEX64_USE_HOST_VALUE(param_str, default, host, final)		\
+	ESP_LOGD(TAG, "%20s | 0x%5"PRIx16" | 0x%5"PRIx64" | 0x%5"PRIx64, param_str, default, host, final);
 #define PRINT_HEX64_USE_DEFAULT_VALUE(param_str, default, host, final) \
-	ESP_LOGW(TAG, "% 20s | % 7"PRIx32" | % 7"PRIx64" | % 7"PRIx64, param_str, default, host, final);
+	ESP_LOGW(TAG, "%20s | %7"PRIx16" | %7"PRIx64" | %7"PRIx64, param_str, default, host, final);
 
 // macros to copy host or default value
 #define USE_HOST_VALUE(PARAM_STR, DEFAULT, PARAM) \
-	do {                                          \
-		dst_config->PARAM = src_config->PARAM;    \
-		PRINT_USE_HOST_VALUE(PARAM_STR,           \
-				DEFAULT,                          \
-				src_config->PARAM,                \
-				dst_config->PARAM);               \
-	} while(0);
+  do {                                            \
+    dst_config->PARAM = src_config->PARAM;        \
+    PRINT_USE_HOST_VALUE(PARAM_STR,               \
+        DEFAULT,                                  \
+        src_config->PARAM,                        \
+        dst_config->PARAM);                       \
+  } while(0);
+
+#define USE_HOST_VALUE_BOOL(PARAM_STR, DEFAULT, PARAM) \
+  do {                                                 \
+    dst_config->PARAM = src_config->PARAM;             \
+    PRINT_USE_HOST_VALUE_BOOL(PARAM_STR,               \
+        DEFAULT,                                       \
+        src_config->PARAM,                             \
+        dst_config->PARAM);                            \
+  } while(0);
 
 #define USE_DEFAULT_VALUE(PARAM_STR, DEFAULT, PARAM) \
-	do {                                             \
-		dst_config->PARAM = DEFAULT;                 \
-		PRINT_USE_DEFAULT_VALUE(PARAM_STR,           \
-				DEFAULT,                             \
-				src_config->PARAM,                   \
-				dst_config->PARAM);                  \
-	} while(0);
+  do {                                               \
+    dst_config->PARAM = DEFAULT;                     \
+    PRINT_USE_DEFAULT_VALUE(PARAM_STR,               \
+        DEFAULT,                                     \
+        src_config->PARAM,                           \
+        dst_config->PARAM);                          \
+  } while(0);
+
+#define USE_DEFAULT_VALUE_BOOL(PARAM_STR, DEFAULT, PARAM) \
+  do {                                                    \
+    dst_config->PARAM = DEFAULT;                          \
+    PRINT_USE_DEFAULT_VALUE_BOOL(PARAM_STR,               \
+        DEFAULT,                                          \
+        src_config->PARAM,                                \
+        dst_config->PARAM);                               \
+  } while(0);
 
 /** Returns the merged wifi init config
  * Compares the src config from the host with our Wi-Fi defaults
@@ -716,7 +743,7 @@ static wifi_init_config_t * get_merged_init_config(wifi_init_config_t *dst_confi
 	USE_HOST_VALUE("wifi_task_core", WIFI_TASK_CORE_ID, wifi_task_core_id);
 	USE_HOST_VALUE("beacon_max_len", WIFI_SOFTAP_BEACON_MAX_LEN, beacon_max_len);
 	USE_HOST_VALUE("mgmt_sbuf_num", WIFI_MGMT_SBUF_NUM, mgmt_sbuf_num);
-	USE_HOST_VALUE("sta_disconnected_pm", WIFI_STA_DISCONNECTED_PM_ENABLED, sta_disconnected_pm);
+	USE_HOST_VALUE_BOOL("sta_disconnected_pm", WIFI_STA_DISCONNECTED_PM_ENABLED, sta_disconnected_pm);
 	USE_HOST_VALUE("espnow_max_encrypt",CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM, espnow_max_encrypt_num);
 	USE_HOST_VALUE("tx_hetb_queue", WIFI_TX_HETB_QUEUE_NUM, tx_hetb_queue_num);
 	USE_HOST_VALUE("dump_hesigb_enable", WIFI_DUMP_HESIGB_ENABLED, dump_hesigb_enable);
@@ -760,135 +787,135 @@ extern esp_err_t __real_esp_wifi_init(const wifi_init_config_t *config);
  */
 static bool wifi_init_config_changed(const wifi_init_config_t *new_cfg, const wifi_init_config_t *cached_cfg)
 {
-    if (!new_cfg || !cached_cfg) {
-        ESP_LOGI(TAG, "WiFi init config comparison: One of the configs is NULL");
-        return true;
-    }
+	if (!new_cfg || !cached_cfg) {
+		ESP_LOGI(TAG, "WiFi init config comparison: One of the configs is NULL");
+		return true;
+	}
 
-    /* Compare only the fields that are explicitly set in req_wifi_init */
-    bool changed = false;
+	/* Compare only the fields that are explicitly set in req_wifi_init */
+	bool changed = false;
 
-    if (new_cfg->static_rx_buf_num != cached_cfg->static_rx_buf_num) {
-        ESP_LOGI(TAG, "WiFi init config: static_rx_buf_num changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->static_rx_buf_num, (unsigned long)new_cfg->static_rx_buf_num);
-        changed = true;
-    }
+	if (new_cfg->static_rx_buf_num != cached_cfg->static_rx_buf_num) {
+		ESP_LOGI(TAG, "WiFi init config: static_rx_buf_num changed: %lu -> %lu",
+				(unsigned long)cached_cfg->static_rx_buf_num, (unsigned long)new_cfg->static_rx_buf_num);
+		changed = true;
+	}
 
-    if (new_cfg->dynamic_rx_buf_num != cached_cfg->dynamic_rx_buf_num) {
-        ESP_LOGI(TAG, "WiFi init config: dynamic_rx_buf_num changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->dynamic_rx_buf_num, (unsigned long)new_cfg->dynamic_rx_buf_num);
-        changed = true;
-    }
+	if (new_cfg->dynamic_rx_buf_num != cached_cfg->dynamic_rx_buf_num) {
+		ESP_LOGI(TAG, "WiFi init config: dynamic_rx_buf_num changed: %lu -> %lu",
+				(unsigned long)cached_cfg->dynamic_rx_buf_num, (unsigned long)new_cfg->dynamic_rx_buf_num);
+		changed = true;
+	}
 
-    if (new_cfg->tx_buf_type != cached_cfg->tx_buf_type) {
-        ESP_LOGI(TAG, "WiFi init config: tx_buf_type changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->tx_buf_type, (unsigned long)new_cfg->tx_buf_type);
-        changed = true;
-    }
+	if (new_cfg->tx_buf_type != cached_cfg->tx_buf_type) {
+		ESP_LOGI(TAG, "WiFi init config: tx_buf_type changed: %lu -> %lu",
+				(unsigned long)cached_cfg->tx_buf_type, (unsigned long)new_cfg->tx_buf_type);
+		changed = true;
+	}
 
-    if (new_cfg->static_tx_buf_num != cached_cfg->static_tx_buf_num) {
-        ESP_LOGI(TAG, "WiFi init config: static_tx_buf_num changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->static_tx_buf_num, (unsigned long)new_cfg->static_tx_buf_num);
-        changed = true;
-    }
+	if (new_cfg->static_tx_buf_num != cached_cfg->static_tx_buf_num) {
+		ESP_LOGI(TAG, "WiFi init config: static_tx_buf_num changed: %lu -> %lu",
+				(unsigned long)cached_cfg->static_tx_buf_num, (unsigned long)new_cfg->static_tx_buf_num);
+		changed = true;
+	}
 
-    if (new_cfg->dynamic_tx_buf_num != cached_cfg->dynamic_tx_buf_num) {
-        ESP_LOGI(TAG, "WiFi init config: dynamic_tx_buf_num changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->dynamic_tx_buf_num, (unsigned long)new_cfg->dynamic_tx_buf_num);
-        changed = true;
-    }
+	if (new_cfg->dynamic_tx_buf_num != cached_cfg->dynamic_tx_buf_num) {
+		ESP_LOGI(TAG, "WiFi init config: dynamic_tx_buf_num changed: %lu -> %lu",
+				(unsigned long)cached_cfg->dynamic_tx_buf_num, (unsigned long)new_cfg->dynamic_tx_buf_num);
+		changed = true;
+	}
 
-    if (new_cfg->cache_tx_buf_num != cached_cfg->cache_tx_buf_num) {
-        ESP_LOGI(TAG, "WiFi init config: cache_tx_buf_num changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->cache_tx_buf_num, (unsigned long)new_cfg->cache_tx_buf_num);
-        changed = true;
-    }
+	if (new_cfg->cache_tx_buf_num != cached_cfg->cache_tx_buf_num) {
+		ESP_LOGI(TAG, "WiFi init config: cache_tx_buf_num changed: %lu -> %lu",
+				(unsigned long)cached_cfg->cache_tx_buf_num, (unsigned long)new_cfg->cache_tx_buf_num);
+		changed = true;
+	}
 
-    if (new_cfg->csi_enable != cached_cfg->csi_enable) {
-        ESP_LOGI(TAG, "WiFi init config: csi_enable changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->csi_enable, (unsigned long)new_cfg->csi_enable);
-        changed = true;
-    }
+	if (new_cfg->csi_enable != cached_cfg->csi_enable) {
+		ESP_LOGI(TAG, "WiFi init config: csi_enable changed: %lu -> %lu",
+				(unsigned long)cached_cfg->csi_enable, (unsigned long)new_cfg->csi_enable);
+		changed = true;
+	}
 
-    if (new_cfg->ampdu_rx_enable != cached_cfg->ampdu_rx_enable) {
-        ESP_LOGI(TAG, "WiFi init config: ampdu_rx_enable changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->ampdu_rx_enable, (unsigned long)new_cfg->ampdu_rx_enable);
-        changed = true;
-    }
+	if (new_cfg->ampdu_rx_enable != cached_cfg->ampdu_rx_enable) {
+		ESP_LOGI(TAG, "WiFi init config: ampdu_rx_enable changed: %lu -> %lu",
+				(unsigned long)cached_cfg->ampdu_rx_enable, (unsigned long)new_cfg->ampdu_rx_enable);
+		changed = true;
+	}
 
-    if (new_cfg->ampdu_tx_enable != cached_cfg->ampdu_tx_enable) {
-        ESP_LOGI(TAG, "WiFi init config: ampdu_tx_enable changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->ampdu_tx_enable, (unsigned long)new_cfg->ampdu_tx_enable);
-        changed = true;
-    }
+	if (new_cfg->ampdu_tx_enable != cached_cfg->ampdu_tx_enable) {
+		ESP_LOGI(TAG, "WiFi init config: ampdu_tx_enable changed: %lu -> %lu",
+				(unsigned long)cached_cfg->ampdu_tx_enable, (unsigned long)new_cfg->ampdu_tx_enable);
+		changed = true;
+	}
 
-    if (new_cfg->amsdu_tx_enable != cached_cfg->amsdu_tx_enable) {
-        ESP_LOGI(TAG, "WiFi init config: amsdu_tx_enable changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->amsdu_tx_enable, (unsigned long)new_cfg->amsdu_tx_enable);
-        changed = true;
-    }
+	if (new_cfg->amsdu_tx_enable != cached_cfg->amsdu_tx_enable) {
+		ESP_LOGI(TAG, "WiFi init config: amsdu_tx_enable changed: %lu -> %lu",
+				(unsigned long)cached_cfg->amsdu_tx_enable, (unsigned long)new_cfg->amsdu_tx_enable);
+		changed = true;
+	}
 
-    if (new_cfg->nvs_enable != cached_cfg->nvs_enable) {
-        ESP_LOGI(TAG, "WiFi init config: nvs_enable changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->nvs_enable, (unsigned long)new_cfg->nvs_enable);
-        changed = true;
-    }
+	if (new_cfg->nvs_enable != cached_cfg->nvs_enable) {
+		ESP_LOGI(TAG, "WiFi init config: nvs_enable changed: %lu -> %lu",
+				(unsigned long)cached_cfg->nvs_enable, (unsigned long)new_cfg->nvs_enable);
+		changed = true;
+	}
 
-    if (new_cfg->nano_enable != cached_cfg->nano_enable) {
-        ESP_LOGI(TAG, "WiFi init config: nano_enable changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->nano_enable, (unsigned long)new_cfg->nano_enable);
-        changed = true;
-    }
+	if (new_cfg->nano_enable != cached_cfg->nano_enable) {
+		ESP_LOGI(TAG, "WiFi init config: nano_enable changed: %lu -> %lu",
+				(unsigned long)cached_cfg->nano_enable, (unsigned long)new_cfg->nano_enable);
+		changed = true;
+	}
 
-    if (new_cfg->rx_ba_win != cached_cfg->rx_ba_win) {
-        ESP_LOGI(TAG, "WiFi init config: rx_ba_win changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->rx_ba_win, (unsigned long)new_cfg->rx_ba_win);
-        changed = true;
-    }
+	if (new_cfg->rx_ba_win != cached_cfg->rx_ba_win) {
+		ESP_LOGI(TAG, "WiFi init config: rx_ba_win changed: %lu -> %lu",
+				(unsigned long)cached_cfg->rx_ba_win, (unsigned long)new_cfg->rx_ba_win);
+		changed = true;
+	}
 
-    if (new_cfg->wifi_task_core_id != cached_cfg->wifi_task_core_id) {
-        ESP_LOGI(TAG, "WiFi init config: wifi_task_core_id changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->wifi_task_core_id, (unsigned long)new_cfg->wifi_task_core_id);
-        changed = true;
-    }
+	if (new_cfg->wifi_task_core_id != cached_cfg->wifi_task_core_id) {
+		ESP_LOGI(TAG, "WiFi init config: wifi_task_core_id changed: %lu -> %lu",
+				(unsigned long)cached_cfg->wifi_task_core_id, (unsigned long)new_cfg->wifi_task_core_id);
+		changed = true;
+	}
 
-    if (new_cfg->beacon_max_len != cached_cfg->beacon_max_len) {
-        ESP_LOGI(TAG, "WiFi init config: beacon_max_len changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->beacon_max_len, (unsigned long)new_cfg->beacon_max_len);
-        changed = true;
-    }
+	if (new_cfg->beacon_max_len != cached_cfg->beacon_max_len) {
+		ESP_LOGI(TAG, "WiFi init config: beacon_max_len changed: %lu -> %lu",
+				(unsigned long)cached_cfg->beacon_max_len, (unsigned long)new_cfg->beacon_max_len);
+		changed = true;
+	}
 
-    if (new_cfg->mgmt_sbuf_num != cached_cfg->mgmt_sbuf_num) {
-        ESP_LOGI(TAG, "WiFi init config: mgmt_sbuf_num changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->mgmt_sbuf_num, (unsigned long)new_cfg->mgmt_sbuf_num);
-        changed = true;
-    }
+	if (new_cfg->mgmt_sbuf_num != cached_cfg->mgmt_sbuf_num) {
+		ESP_LOGI(TAG, "WiFi init config: mgmt_sbuf_num changed: %lu -> %lu",
+				(unsigned long)cached_cfg->mgmt_sbuf_num, (unsigned long)new_cfg->mgmt_sbuf_num);
+		changed = true;
+	}
 
-    if (new_cfg->feature_caps != cached_cfg->feature_caps) {
-        ESP_LOGI(TAG, "WiFi init config: feature_caps changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->feature_caps, (unsigned long)new_cfg->feature_caps);
-        changed = true;
-    }
+	if (new_cfg->feature_caps != cached_cfg->feature_caps) {
+		ESP_LOGI(TAG, "WiFi init config: feature_caps changed: %lu -> %lu",
+				(unsigned long)cached_cfg->feature_caps, (unsigned long)new_cfg->feature_caps);
+		changed = true;
+	}
 
-    if (new_cfg->sta_disconnected_pm != cached_cfg->sta_disconnected_pm) {
-        ESP_LOGI(TAG, "WiFi init config: sta_disconnected_pm changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->sta_disconnected_pm, (unsigned long)new_cfg->sta_disconnected_pm);
-        changed = true;
-    }
+	if (new_cfg->sta_disconnected_pm != cached_cfg->sta_disconnected_pm) {
+		ESP_LOGI(TAG, "WiFi init config: sta_disconnected_pm changed: %lu -> %lu",
+				(unsigned long)cached_cfg->sta_disconnected_pm, (unsigned long)new_cfg->sta_disconnected_pm);
+		changed = true;
+	}
 
-    if (new_cfg->espnow_max_encrypt_num != cached_cfg->espnow_max_encrypt_num) {
-        ESP_LOGI(TAG, "WiFi init config: espnow_max_encrypt_num changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->espnow_max_encrypt_num, (unsigned long)new_cfg->espnow_max_encrypt_num);
-        changed = true;
-    }
+	if (new_cfg->espnow_max_encrypt_num != cached_cfg->espnow_max_encrypt_num) {
+		ESP_LOGI(TAG, "WiFi init config: espnow_max_encrypt_num changed: %lu -> %lu",
+				(unsigned long)cached_cfg->espnow_max_encrypt_num, (unsigned long)new_cfg->espnow_max_encrypt_num);
+		changed = true;
+	}
 
-    if (new_cfg->magic != cached_cfg->magic) {
-        ESP_LOGI(TAG, "WiFi init config: magic changed: %lu -> %lu",
-                 (unsigned long)cached_cfg->magic, (unsigned long)new_cfg->magic);
-        changed = true;
-    }
+	if (new_cfg->magic != cached_cfg->magic) {
+		ESP_LOGI(TAG, "WiFi init config: magic changed: %lu -> %lu",
+				(unsigned long)cached_cfg->magic, (unsigned long)new_cfg->magic);
+		changed = true;
+	}
 
-    return changed;
+	return changed;
 }
 
 /**
@@ -900,42 +927,42 @@ static bool wifi_init_config_changed(const wifi_init_config_t *new_cfg, const wi
  */
 esp_err_t __wrap_esp_wifi_init(const wifi_init_config_t *config)
 {
-    esp_err_t ret;
-    bool should_reinit = false;
-    ESP_LOGI(TAG, "=== __wrap_esp_wifi_init called ===");
+	esp_err_t ret;
+	bool should_reinit = false;
+	ESP_LOGI(TAG, "=== __wrap_esp_wifi_init called ===");
 
-    if (wifi_initialized) {
-        /* Compare with cached config */
-        if (has_cached_config && wifi_init_config_changed(config, &cached_wifi_init_config)) {
-            ESP_LOGI(TAG, "WiFi init config changed, reinitializing");
-            esp_wifi_stop();
-            esp_wifi_deinit();
-            wifi_initialized = false;
-            should_reinit = true;
-        } else {
-            ESP_LOGW(TAG, "WiFi already initialized with same parameters");
-            return ESP_OK;
-        }
-    } else {
-        ESP_LOGI(TAG, "First-time WiFi initialization");
-    }
+	if (wifi_initialized) {
+		/* Compare with cached config */
+		if (has_cached_config && wifi_init_config_changed(config, &cached_wifi_init_config)) {
+			ESP_LOGI(TAG, "WiFi init config changed, reinitializing");
+			esp_wifi_stop();
+			esp_wifi_deinit();
+			wifi_initialized = false;
+			should_reinit = true;
+		} else {
+			ESP_LOGW(TAG, "WiFi already initialized with same parameters");
+			return ESP_OK;
+		}
+	} else {
+		ESP_LOGI(TAG, "First-time WiFi initialization");
+	}
 
-    /* Cache the config for future comparisons */
-    if (config) {
-        memcpy(&cached_wifi_init_config, config, sizeof(wifi_init_config_t));
-        has_cached_config = true;
-    }
+	/* Cache the config for future comparisons */
+	if (config) {
+		memcpy(&cached_wifi_init_config, config, sizeof(wifi_init_config_t));
+		has_cached_config = true;
+	}
 
-    /* Call the real init function */
-    ESP_LOGI(TAG, "Calling __real_esp_wifi_init...");
-    ret = __real_esp_wifi_init(config);
-    ESP_LOGI(TAG, "__real_esp_wifi_init returned: %d", ret);
+	/* Call the real init function */
+	ESP_LOGI(TAG, "Calling __real_esp_wifi_init...");
+	ret = __real_esp_wifi_init(config);
+	ESP_LOGI(TAG, "__real_esp_wifi_init returned: %d", ret);
 
-    if (ret == ESP_OK && !should_reinit) {
-        wifi_initialized = true;
-    }
+	if (ret == ESP_OK && !should_reinit) {
+		wifi_initialized = true;
+	}
 
-    return ret;
+	return ret;
 }
 
 static esp_err_t req_wifi_init(Rpc *req, Rpc *resp, void *priv_data)
@@ -1160,28 +1187,28 @@ static bool is_wifi_config_equal(const wifi_config_t *cfg1, const wifi_config_t 
 /* Function to handle WiFi configuration */
 esp_err_t esp_hosted_set_sta_config(wifi_interface_t iface, wifi_config_t *cfg)
 {
-    wifi_config_t current_config = {0};
-    if (!wifi_is_provisioned(&current_config)) {
-        if (esp_wifi_set_config(WIFI_IF_STA, cfg) != ESP_OK) {
-            ESP_LOGW(TAG, "not provisioned and failed to set wifi config");
-        } else {
-            ESP_LOGI(TAG, "Provisioned new Wi-Fi config");
-            new_config_recvd = true;
+	wifi_config_t current_config = {0};
+	if (!wifi_is_provisioned(&current_config)) {
+		if (esp_wifi_set_config(WIFI_IF_STA, cfg) != ESP_OK) {
+			ESP_LOGW(TAG, "not provisioned and failed to set wifi config");
+		} else {
+			ESP_LOGI(TAG, "Provisioned new Wi-Fi config");
+			new_config_recvd = true;
 			station_connecting = false;
-        }
-    }
+		}
+	}
 
-    if (!is_wifi_config_equal(cfg, &current_config)) {
-        new_config_recvd = true;
+	if (!is_wifi_config_equal(cfg, &current_config)) {
+		new_config_recvd = true;
 		station_connecting = false;
-        ESP_LOGI(TAG, "Setting new WiFi config SSID: %s", cfg->sta.ssid);
-        memcpy(&new_wifi_config, cfg, sizeof(wifi_config_t));
-    } else {
-        ESP_LOGI(TAG, "WiFi config unchanged, keeping current connection");
-        new_config_recvd = false;
-    }
+		ESP_LOGI(TAG, "Setting new WiFi config SSID: %s", cfg->sta.ssid);
+		memcpy(&new_wifi_config, cfg, sizeof(wifi_config_t));
+	} else {
+		ESP_LOGI(TAG, "WiFi config unchanged, keeping current connection");
+		new_config_recvd = false;
+	}
 
-    return ESP_OK;
+	return ESP_OK;
 }
 
 static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
@@ -1864,19 +1891,19 @@ static esp_err_t req_wifi_set_storage(Rpc *req, Rpc *resp, void *priv_data)
 
 static esp_err_t req_wifi_set_bandwidth(Rpc *req, Rpc *resp, void *priv_data)
 {
-    wifi_bandwidth_t current_bw = 0;
-    RPC_TEMPLATE(RpcRespWifiSetBandwidth, resp_wifi_set_bandwidth,
-            RpcReqWifiSetBandwidth, req_wifi_set_bandwidth,
-            rpc__resp__wifi_set_bandwidth__init);
+	wifi_bandwidth_t current_bw = 0;
+	RPC_TEMPLATE(RpcRespWifiSetBandwidth, resp_wifi_set_bandwidth,
+			RpcReqWifiSetBandwidth, req_wifi_set_bandwidth,
+			rpc__resp__wifi_set_bandwidth__init);
 
-    /* Get current bandwidth first */
-    RPC_RET_FAIL_IF(esp_wifi_get_bandwidth(req_payload->ifx, &current_bw));
+	/* Get current bandwidth first */
+	RPC_RET_FAIL_IF(esp_wifi_get_bandwidth(req_payload->ifx, &current_bw));
 
-    /* Only set if different */
-    if (current_bw != req_payload->bw) {
-        RPC_RET_FAIL_IF(esp_wifi_set_bandwidth(req_payload->ifx, req_payload->bw));
-    }
-    return ESP_OK;
+	/* Only set if different */
+	if (current_bw != req_payload->bw) {
+		RPC_RET_FAIL_IF(esp_wifi_set_bandwidth(req_payload->ifx, req_payload->bw));
+	}
+	return ESP_OK;
 }
 
 static esp_err_t req_wifi_get_bandwidth(Rpc *req, Rpc *resp, void *priv_data)
@@ -1894,20 +1921,20 @@ static esp_err_t req_wifi_get_bandwidth(Rpc *req, Rpc *resp, void *priv_data)
 
 static esp_err_t req_wifi_set_channel(Rpc *req, Rpc *resp, void *priv_data)
 {
-    uint8_t current_primary = 0;
-    wifi_second_chan_t current_second = 0;
-    RPC_TEMPLATE(RpcRespWifiSetChannel, resp_wifi_set_channel,
-            RpcReqWifiSetChannel, req_wifi_set_channel,
-            rpc__resp__wifi_set_channel__init);
+	uint8_t current_primary = 0;
+	wifi_second_chan_t current_second = 0;
+	RPC_TEMPLATE(RpcRespWifiSetChannel, resp_wifi_set_channel,
+			RpcReqWifiSetChannel, req_wifi_set_channel,
+			rpc__resp__wifi_set_channel__init);
 
-    /* Get current channel config first */
-    RPC_RET_FAIL_IF(esp_wifi_get_channel(&current_primary, &current_second));
+	/* Get current channel config first */
+	RPC_RET_FAIL_IF(esp_wifi_get_channel(&current_primary, &current_second));
 
-    /* Only set if different */
-    if (current_primary != req_payload->primary || current_second != req_payload->second) {
-        RPC_RET_FAIL_IF(esp_wifi_set_channel(req_payload->primary, req_payload->second));
-    }
-    return ESP_OK;
+	/* Only set if different */
+	if (current_primary != req_payload->primary || current_second != req_payload->second) {
+		RPC_RET_FAIL_IF(esp_wifi_set_channel(req_payload->primary, req_payload->second));
+	}
+	return ESP_OK;
 }
 
 static esp_err_t req_wifi_get_channel(Rpc *req, Rpc *resp, void *priv_data)
