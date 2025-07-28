@@ -906,7 +906,7 @@ menu "Example Configuration"
 		menu "Host deep sleep - wakeup config"
 			depends on ESP_HOSTED_HOST_DEEP_SLEEP_ALLOWED
 			config ESP_HOSTED_HOST_WAKEUP_GPIO
-				int "Host wakeup GPIO"
+				int "Slave out: Host wakeup GPIO"
 				default 2 if IDF_TARGET_ESP32C6 && !ESP_SPI_HD_HOST_INTERFACE
 				default 9 if IDF_TARGET_ESP32C6 && ESP_SPI_HD_HOST_INTERFACE
 				default 1 if IDF_TARGET_ESP32C3

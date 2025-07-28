@@ -20,10 +20,10 @@ In host example project, run `idf.py menuconfig` and Enable `Allow host to power
 Component config
   └── ESP-Hosted config
        └── [*] Allow host to power save                      <== Enable This
-               └── [*] Allow host to enter deep sleep.         ─┐
-                       ├── (<gpio_num>) Host Wakeup GPIO        │
-                       └── Host Wakeup GPIO Level               ├── Default config (No change)
-                           └── (X) High                        ─┘
+               └── [*] Allow host to enter deep sleep.             ─┐
+                       ├── (<gpio_num>) Host in: Host Wakeup GPIO   │
+                       └── Host Wakeup GPIO Level                   ├── Default config (No change)
+                           └── (X) High                            ─┘
 ```
 > [!NOTE]
 > 1. The wakeup GPIO number must be an RTC-capable GPIO.
@@ -37,14 +37,14 @@ In slave project, run `idf.py menuconfig` and Enable `Allow host to power save`
 # Slave side kconfig
 Example Configuration
 └── [*] Allow host to power save                         <== Enable This
-        └── [*] Allow host to enter deep sleep.                ─┐
-                ├── (<gpio_num>) Host wakeup GPIO               │
-                └── Host Wakeup GPIO Level                      ├── Default config (No change)
-                    └── (X) High                               ─┘
+        └── [*] Allow host to enter deep sleep.                    ─┐
+                ├── (<gpio_num>) Slave out: Host wakeup GPIO        │
+                └── Host Wakeup GPIO Level                          ├── Default config (No change)
+                    └── (X) High                                   ─┘
 ```
 
 ---
-## High Level Understanding
+## High Level Overview
 
 The power management system coordinates between the host MCU and ESP slave to ensure smooth transitions between active and sleep states.
 
@@ -55,7 +55,7 @@ sequenceDiagram
     participant Network as Network/WiFi
 
     Host->>Slave: Power Save Start Signal
-    Note over Slave: Slave takes over network operations
+    Note over Slave:  Slave takes over network operations 
     Host->>Host: Enter Deep Sleep
 
     Network->>Slave: Incoming packets
@@ -109,7 +109,7 @@ stateDiagram
 
 ```
 ---
-## Low Level Understanding
+## Deep Dive
 
 ### 💤 Host Enters Deep Sleep
 
