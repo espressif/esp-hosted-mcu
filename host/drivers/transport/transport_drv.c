@@ -164,7 +164,7 @@ esp_err_t transport_drv_reconfigure(void)
 #endif
 
 	int retry_power_save_recover = 5;
-	if (esp_hosted_woke_from_deep_sleep()) {
+	if (esp_hosted_woke_from_power_save()) {
 		ESP_LOGI(TAG, "Waiting for power save to be off");
 		g_h.funcs->_h_msleep(700);
 

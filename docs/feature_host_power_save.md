@@ -1,12 +1,16 @@
-# Host Deep Sleep Wake-up (ESP-Hosted MCU)
+# Host Power Save (ESP-Hosted MCU)
 
 ## Overview
 
-The Host Deep Sleep feature allows the host MCU to enter a low-power deep sleep mode while the ESP slave handles network continuity. This enables efficient power usage in battery-operated devices.
+The **Host Power Save** feature allows the host MCU to enter low-power states while the ESP slave maintains network connectivity. This enables efficient power usage in battery-operated devices.
+
+**Host Power Save Modes:**
+- **Deep Sleep at Host**: Ultra-low power consumption with GPIO wake-up
+- **Light Sleep at Host**: *(Coming Soon)* Faster wake-up with reduced power savings
 
 Key features include:
-- Host sleeps, network stays online
-- Slave intelligently wakes host
+- Host enters power save mode, network stays online
+- Slave intelligently wakes host when needed
 - Power state synchronization between host and slave
 
 ---
@@ -46,7 +50,7 @@ Example Configuration
 ---
 ## High Level Overview
 
-The power management system coordinates between the host MCU and ESP slave to ensure smooth transitions between active and sleep states.
+The power management system coordinates between the host MCU and ESP slave to ensure smooth transitions between active and power save states.
 
 ```mermaid
 sequenceDiagram
@@ -55,13 +59,13 @@ sequenceDiagram
     participant Network as Network/WiFi
 
     Host->>Slave: Power Save Start Signal
-    Note over Slave:  Slave takes over network operations 
-    Host->>Host: Enter Deep Sleep
+    Note over Slave:  Slave takes over network operations
+    Host->>Host: Enter Power Save Mode
 
     Network->>Slave: Incoming packets
     Slave->>Slave: Packet needs host
     Slave->>Host: Trigger Wake-up GPIO
-    Host->>Host: Exit Deep Sleep
+    Host->>Host: Exit Power Save Mode
     Host->>Slave: Power Save Stop Signal
     Slave->>Slave: Resume packet delivery
 ```
@@ -76,7 +80,7 @@ The slave initiates a wake-up by toggling a dedicated GPIO line to the host when
 
 ```mermaid
 flowchart TD
-    A[💤 Host in Deep Sleep] --> B{⏱️ Trigger on Slave?}
+    A[💤 Host in Power Save Mode] --> B{⏱️ Trigger on Slave?}
     B -->|🕒 Timer Expired| C[🔔 Send Wake-up GPIO]
     B -->|🧑‍💻 CLI Command| C
     B -->|🌐 Network Packet| C
@@ -94,26 +98,26 @@ flowchart TD
 
 ### State transitions
 
-- Active → PreparingSleep: Host prepares (notifies slave, configures GPIO)
-- PreparingSleep → Sleeping: Host sleeps; slave handles network
-- Sleeping → Waking: Slave triggers wakeup on event (timer/packet/CLI)
+- Active → Preparing: Host prepares (notifies slave, configures GPIO)
+- Preparing → PowerSave: Host enters power save mode; slave handles network
+- PowerSave → Waking: Slave triggers wakeup on event (timer/packet/CLI)
 - Waking → Active: Host re-inits system, syncs with slave
 
 ```mermaid
 stateDiagram
     [*] --> Active
-    Active --> PreparingSleep: 🥱 start_host_power_save()
-    PreparingSleep --> Sleeping: 😴 Deep Sleep Entry
-    Sleeping --> Waking: 😳 Wake Event
+    Active --> Preparing: 🥱 start_host_power_save()
+    Preparing --> PowerSave: 😴 Power Save Entry
+    PowerSave --> Waking: 😳 Wake Event
     Waking --> Active: 😊 Slave sync-up complete
 
 ```
 ---
 ## Deep Dive
 
-### 💤 Host Enters Deep Sleep
+### 💤 Host Enters Power Save Mode
 
-When the host application initiates deep sleep, the following function sequence occurs to safely coordinate with the slave.
+When the host application initiates power save mode, the following function sequence occurs to safely coordinate with the slave.
 
 ```mermaid
 sequenceDiagram
@@ -127,13 +131,13 @@ sequenceDiagram
     TransportDrv->>Slave: bus_inform_slave_host_power_save_start()
     Slave-->>TransportDrv: Ack
     TransportDrv-->>PowerSaveDrv: Ack
-    Note right of TransportDrv: Slave is now aware<br/>host is going to sleep.
-    PowerSaveDrv->>PowerSaveDrv: hold_slave_reset_gpio_pre_deep_sleep()
+    Note right of TransportDrv: Slave is now aware<br/>host is entering power save.
+    PowerSaveDrv->>PowerSaveDrv: hold_slave_reset_gpio_pre_power_save()
     Note right of PowerSaveDrv: Prevents slave from resetting.
     PowerSaveDrv->>PowerSaveDrv: _h_config_host_power_save_hal_impl()
     Note right of PowerSaveDrv: Configures wakeup GPIO.
     PowerSaveDrv->>PowerSaveDrv: _h_start_host_power_save_hal_impl()
-    Note right of PowerSaveDrv: Host enters deep sleep.
+    Note right of PowerSaveDrv: Host enters power save mode.
 ```
 
 ### Host Wake-up and Synchronization Sequence
@@ -153,10 +157,10 @@ sequenceDiagram
     SlavePS->>HostHW: Toggles Wake-up GPIO
     Note over SlavePS: Now blocks, waiting<br/>for wakeup_sem.
 
-    HostHW-->>HostTransport: Host reboots from deep sleep
+    HostHW-->>HostTransport: Host wakes from power save
     Note over HostTransport: esp_hosted_init() is called,<br/>which calls transport_drv_reconfigure().
 
-    HostTransport->>HostPS: is_host_reboot_due_to_deep_sleep()
+    HostTransport->>HostPS: esp_hosted_woke_from_power_save()
     HostPS-->>HostTransport: Returns true
 
     HostTransport->>HostPS: stop_host_power_save()
@@ -179,9 +183,9 @@ sequenceDiagram
 #### Host Files
 
 -   `host/api/include/esp_hosted_power_save.h`: enums and APIs
--   `host/drivers/power_save/power_save_drv.c`: deep sleep logic
+-   `host/drivers/power_save/power_save_drv.c`: power save logic
 -   `host/drivers/transport/transport_drv.c`: slave communication
--   `host/drivers/transport/{sdio,spi}/...`: bus specific deep sleep hooks
+-   `host/drivers/transport/{sdio,spi}/...`: bus specific power save hooks
 
 #### Slave Files
 
@@ -196,14 +200,14 @@ sequenceDiagram
 /* Power save driver APIs (host side) */
 int esp_hosted_power_save_enabled(void);
 int esp_hosted_power_save_init(void);
-int esp_hosted_woke_from_deep_sleep(void);
+int esp_hosted_woke_from_power_save(void);
 int esp_hosted_power_saving(void);
 int esp_hosted_power_save_start(esp_hosted_power_save_type_t power_save_type);
 int esp_hosted_power_save_timer_start(uint32_t time_ms, int timer_type);
 int esp_hosted_power_save_timer_stop(void);
 
-/* Retain GPIO during sleep */
-int hold_slave_reset_gpio_pre_deep_sleep(void);
+/* Retain GPIO during power save */
+int hold_slave_reset_gpio_pre_power_save(void);
 int release_slave_reset_gpio_post_wakeup(void);
 ```
 
@@ -224,21 +228,21 @@ int host_power_save_alert(uint32_t ps_evt);
 
 ##  CLI Demo
 
-### Enter Deep Sleep
+### Enter Power Save Mode
 
 1.  **Enable CLI**: Ensure `ESP_HOSTED_CLI_ENABLED` is enabled in the host's `menuconfig`.
 2.  **Start the CLI**: The CLI starts automatically when `esp_hosted_init()` is called.
-3.  **Enter the command**: At the `host>` prompt, type the `deep_sleep` command.
+3.  **Enter the command**: At the `host>` prompt, type the `power_save` command.
 
 ```sh
-host> deep_sleep
-I (11147) esp_cli: Putting ESP32-P4 into deep sleep...
+host> host-power-save
+I (11147) esp_cli: Putting ESP32-P4 into power save mode...
 I (11147) H_power_save: Inform slave: Host PS start
 I (11148) H_SDIO_DRV: Inform slave, host power save is started
 ESP-ROM:esp32p4...
 ...
 ```
-This command calls `start_host_power_save()`, which signals the slave and puts the host into deep sleep. The host will not execute any further code until it is woken up.
+This command calls `esp_hosted_power_save_start()`, which signals the slave and puts the host into the configured power save mode. If it is deep sleep power save, The host would not be able to execute any further code until it is woken up.
 
 ### Wake-up from Slave
 
@@ -249,7 +253,7 @@ The host can be woken up by the slave under several conditions, such as receivin
 
 **Slave Log:**
 ```sh
-coprocessor> wake-up
+coprocessor> wake-up-host
 I (13730) esp_cli: Asking P4 to wake-up...
 I (13730) host_ps: WAKE UP Host!!!!!
 I (13741) host_ps: Cleared wakeup gpio, IO2
@@ -261,22 +265,22 @@ I (15543) host_ps: host  woke up
 **Host Log (After Wake-up):**
 ```sh
 ...
-I (430) H_power_save: Wakeup using deep sleep
+I (430) H_power_save: Wakeup from power save
 I (432) transport: Waiting for power save to be off
-I (1137) H_SDIO_DRV: Host woke up from deep sleep
+I (1137) H_SDIO_DRV: Host woke up from power save
 ...
 ```
-When the host wakes up, checks boot-up reason, and re-establish slave connectivity automatically.
+When the host wakes up, checks wake-up reason, and re-establishes slave connectivity automatically.
 
 ---
 
 ## Coding Example
 
-While the CLI provides a easy demo, most applications would trigger sleep - wake ups using deep sleep APIs.
+While the CLI provides an easy demo, most applications would trigger power save modes using the power save APIs.
 
 ### Host example
 
-The example below shows how to check wake-up reason and enter deep sleep programmatically:
+The example below shows how to check wake-up reason and enter power save mode programmatically:
 
 ```c
 #include "esp_hosted.h"
@@ -286,9 +290,9 @@ static const char* TAG = "HOST_APP";
 
 void app_main(void)
 {
-    /* First, check the reason for this boot cycle */
-    if (esp_hosted_woke_from_deep_sleep()) {
-        ESP_LOGI(TAG, "Host woke up from deep sleep.");
+    /* First, check the reason of host bootup. is it deep sleep? */
+    if (esp_hosted_woke_from_power_save()) {
+        ESP_LOGI(TAG, "Host woke up from power save mode.");
     }
 
     esp_hosted_init();
@@ -300,12 +304,12 @@ void app_main(void)
      * stop_host_power_save() is needed here.
      */
 
-    ESP_LOGI(TAG, "Application running. Entering deep sleep in 15 seconds.");
+    ESP_LOGI(TAG, "Application running. Entering power save in 15 seconds.");
     vTaskDelay(pdMS_TO_TICKS(15000));
 
-    ESP_LOGI(TAG, "Initiating deep sleep now.");
-    /* This function does not return. The host will enter deep sleep
-     * and reboot from app_main upon wake-up. */
+    ESP_LOGI(TAG, "Initiating power save now.");
+    /* This function does not return. The host will enter power save mode
+     * and wake up from app_main upon wake-up event. */
     esp_hosted_power_save_start(HOSTED_POWER_SAVE_TYPE_DEEP_SLEEP);
 }
 ```

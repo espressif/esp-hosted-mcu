@@ -298,9 +298,13 @@ static void process_tx_pkt(interface_buffer_handle_t *buf_handle)
 	if (if_context && if_context->if_ops && if_context->if_ops->write) {
 
 		if (is_host_power_saving() && is_host_wakeup_needed(buf_handle)) {
-			ESP_LOGI(TAG, "Host sleeping, trigger wake-up");
+			uint16_t wakeup_pkt_display_len = 32;
+			ESP_LOGI(TAG, "Host sleeping, trigger host wake-up");
+	#ifdef CONFIG_PRINT_HOST_WAKEUP_PACKET_FULL_PKT
+			wakeup_pkt_display_len = buf_handle->payload_len>1600?1600:buf_handle->payload_len;
+	#endif
 			ESP_HEXLOGW("Wakeup_pkt", buf_handle->payload+H_ESP_PAYLOAD_HEADER_OFFSET,
-					buf_handle->payload_len, /*buf_handle->payload_len*/ 32);
+					buf_handle->payload_len, wakeup_pkt_display_len);
 			host_awake = wakeup_host(portMAX_DELAY);
 			buf_handle->flag |= FLAG_WAKEUP_PKT;
 		}

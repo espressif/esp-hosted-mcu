@@ -1385,8 +1385,8 @@ int ensure_slave_bus_ready(void *bus_handle)
 		}
 	}
 #else /* H_RESET_ON_EVERY_BOOTUP */
-	if (esp_hosted_woke_from_deep_sleep()) {
-		ESP_LOGI(TAG, "Host woke up from deep sleep");
+	if (esp_hosted_woke_from_power_save()) {
+		ESP_LOGI(TAG, "Host woke up from power save");
 
 		g_h.funcs->_h_msleep(500);
 		set_transport_state(TRANSPORT_RX_ACTIVE);

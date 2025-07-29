@@ -22,6 +22,7 @@
 #include "esp_hosted_header.h"
 #include "host_power_save.h"
 #include "esp_hosted_interface.h"
+#include "slave_wifi_config.h"
 
 static const char TAG[] = "SPI_DRIVER";
 /* SPI settings */
@@ -630,11 +631,16 @@ static interface_handle_t * esp_spi_init(void)
 		return &if_handle_g;
 	}
 
+#if H_PS_UNLOAD_BUS_WHILE_PS
 	if (hosted_constructs_init_done) {
+
+  #if H_IF_AVAILABLE_SPI_SLAVE_ENABLE_DISABLE
 		spi_slave_enable(ESP_SPI_CONTROLLER);
+  #endif
 		if_handle_g.state = ACTIVE;
 		return &if_handle_g;
 	}
+#endif
 
 	esp_err_t ret = ESP_OK;
 	uint16_t prio_q_idx = 0;
@@ -895,7 +901,9 @@ static void esp_spi_deinit(interface_handle_t *handle)
 		ESP_LOGW(TAG, "SPI already deinitialized");
 		return;
 	}
+  #if H_IF_AVAILABLE_SPI_SLAVE_ENABLE_DISABLE
 	spi_slave_disable(ESP_SPI_CONTROLLER);
+  #endif
 	handle->state = DEINIT;
 	ESP_LOGI(TAG, "SPI deinit requested. Signaling spi task to exit.");
 #endif

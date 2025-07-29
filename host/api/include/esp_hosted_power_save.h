@@ -43,7 +43,7 @@ int esp_hosted_power_save_enabled(void);
  *
  * @return int Returns 1 if the host rebooted due to deep sleep, 0 otherwise.
  */
-int esp_hosted_woke_from_deep_sleep(void);
+int esp_hosted_woke_from_power_save(void);
 
 /**
  * @brief Checks if the host is currently in power saving mode.

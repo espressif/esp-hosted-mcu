@@ -938,13 +938,9 @@ menu "Example Configuration"
 			bool "Unload low level BUS driver during host deep sleep"
 			default n
 
-		config PRINT_HOST_WAKEUP_PACKET_PORT
-			bool "Print the wakeup packet port"
-			default y
-
 		config PRINT_HOST_WAKEUP_PACKET_FULL_PKT
 			bool "Print the full wakeup packet"
-			default y
+			default n
 
 	endmenu
 

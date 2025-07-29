@@ -120,12 +120,12 @@ int esp_hosted_power_save_enabled(void)
 }
 
 
-int esp_hosted_woke_from_deep_sleep(void)
+int esp_hosted_woke_from_power_save(void)
 {
 #if H_HOST_PS_ALLOWED
 	int reason = g_h.funcs->_h_get_host_wakeup_or_reboot_reason();
 	if (reason == HOSTED_WAKEUP_DEEP_SLEEP) {
-		ESP_LOGI(TAG, "Wakeup using deep sleep");
+		ESP_LOGI(TAG, "Wakeup from power save");
 		return 1;
 	} else {
 		ESP_LOGI(TAG, "Wakeup using reason: %d", reason);
@@ -163,7 +163,7 @@ static int notify_slave_host_power_save_stop(void)
 }
 #endif
 
-int hold_slave_reset_gpio_pre_deep_sleep(void)
+int hold_slave_reset_gpio_pre_power_save(void)
 {
 #if H_HOST_PS_ALLOWED
 	gpio_pin_t reset_pin = { .port = H_GPIO_PIN_RESET_Port, .pin = H_GPIO_PIN_RESET_Pin };
@@ -240,7 +240,7 @@ int esp_hosted_power_save_start(esp_hosted_power_save_type_t power_save_type)
 	g_h.funcs->_h_teardown_gpio_interrupt(sleep_gpio_port, sleep_gpio);
 
 	/* Hold reset pin of slave */
-	if (hold_slave_reset_gpio_pre_deep_sleep()) {
+	if (hold_slave_reset_gpio_pre_power_save()) {
 		ESP_LOGE(TAG, "Failed to hold reset pin of slave");
 		return -1;
 	}
@@ -270,7 +270,7 @@ int esp_hosted_power_save_start(esp_hosted_power_save_type_t power_save_type)
 
 	power_save_on = 1;
 
-	/* Start deep sleep */
+	/* Start host power save with port layer */
 	g_h.funcs->_h_start_host_power_save_hal_impl(power_save_type);
 
 
@@ -301,9 +301,9 @@ int stop_host_power_save(void)
 #if H_HOST_PS_ALLOWED
 static esp_timer_handle_t timer_handle = NULL;
 
-static void deep_sleep_timer_callback(void *arg)
+static void power_save_timer_callback(void *arg)
 {
-	ESP_LOGI(TAG, "Firing deep sleep as timer expiry");
+	ESP_LOGI(TAG, "Firing power save as timer expiry");
 	esp_hosted_power_save_start(HOSTED_POWER_SAVE_TYPE_DEEP_SLEEP);
 }
 #endif
@@ -335,7 +335,7 @@ int esp_hosted_power_save_timer_start(uint32_t time_ms, int type)
 	}
 
 
-	timer_handle = g_h.funcs->_h_timer_start("deep_sleep_timer", time_ms, type, deep_sleep_timer_callback, NULL);
+	timer_handle = g_h.funcs->_h_timer_start("power_save_timer", time_ms, type, power_save_timer_callback, NULL);
 	if (err != 0) {
 		ESP_LOGE(TAG, "Failed to start timer");
 	}

@@ -254,9 +254,9 @@ static int sock_dump_cli_handler(int argc, char *argv[])
 
 #if defined(H_HOST_PS_ALLOWED)
 #ifdef H_ESP_HOSTED_HOST
-static int deep_sleep_cli_handler(int argc, char *argv[])
+static int power_save_cli_handler(int argc, char *argv[])
 {
-	ESP_LOGI(TAG, "Putting ESP32-P4 into deep sleep...");
+	ESP_LOGI(TAG, "Putting ESP32-P4 into power save...");
 	esp_hosted_power_save_start(HOSTED_POWER_SAVE_TYPE_DEEP_SLEEP);
 	return 0;
 }
@@ -265,7 +265,7 @@ static int deep_sleep_cli_handler(int argc, char *argv[])
 #ifdef CONFIG_ESP_HOSTED_COPROCESSOR
 static int wakeup_cli_handler(int argc, char *argv[])
 {
-	ESP_LOGI(TAG, "Asking P4 to wake-up...");
+	ESP_LOGI(TAG, "Asking host to wake-up...");
 	wakeup_host(portMAX_DELAY);
 	return 0;
 }
@@ -312,15 +312,15 @@ static esp_console_cmd_t diag_cmds[] = {
 #if defined(H_HOST_PS_ALLOWED)
 #ifdef H_ESP_HOSTED_HOST
 	{
-		.command = "deep-sleep",
-		.help = "Put P4 into deep sleep",
-		.func = deep_sleep_cli_handler,
+		.command = "host-power-save",
+		.help = "Put Host into power save",
+		.func = power_save_cli_handler,
 	},
 #endif
 #ifdef CONFIG_ESP_HOSTED_COPROCESSOR
 	{
-		.command = "wake-up",
-		.help = "Wake-up host from deep sleep",
+		.command = "wake-up-host",
+		.help = "Wake-up host from power save",
 		.func = wakeup_cli_handler,
 	},
 #endif

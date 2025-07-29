@@ -835,7 +835,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 
 	release_slave_reset_gpio_post_wakeup();
 
-	if (esp_hosted_woke_from_deep_sleep()) {
+	if (esp_hosted_woke_from_power_save()) {
 		stop_host_power_save();
 	} else {
 		ESP_LOGI(TAG, "Reseting slave");

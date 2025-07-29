@@ -892,7 +892,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 
 	release_slave_reset_gpio_post_wakeup();
 
-	if (!esp_hosted_woke_from_deep_sleep()) {
+	if (!esp_hosted_woke_from_power_save()) {
 		/* Reset the slave */
 		ESP_LOGI(TAG, "Reseting slave on SPI HD bus with pin %d", reset_pin.pin);
 		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
