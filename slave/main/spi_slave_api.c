@@ -137,7 +137,7 @@ static struct hosted_mempool * buf_mp_tx_g;
 static struct hosted_mempool * buf_mp_rx_g;
 static struct hosted_mempool * trans_mp_g;
 
-static inline void spi_mempool_create()
+static inline void spi_mempool_create(void)
 {
 	buf_mp_tx_g = hosted_mempool_create(NULL, 0,
 			SPI_MEMPOOL_NUM_BLOCKS, SPI_BUFFER_SIZE);
@@ -154,7 +154,7 @@ static inline void spi_mempool_create()
 #endif
 }
 
-static inline void spi_mempool_destroy()
+static inline void spi_mempool_destroy(void)
 {
 	hosted_mempool_destroy(buf_mp_tx_g);
 	hosted_mempool_destroy(trans_mp_g);

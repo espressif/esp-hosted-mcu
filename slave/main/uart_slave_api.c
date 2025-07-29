@@ -103,7 +103,7 @@ static QueueHandle_t uart_rx_queue[MAX_PRIORITY_QUEUES];
 
 static void uart_rx_task(void* pvParameters);
 
-static inline void h_uart_mempool_create()
+static inline void h_uart_mempool_create(void)
 {
 	buf_mp_tx_g = hosted_mempool_create(NULL, 0,
 			HOSTED_UART_TX_QUEUE_SIZE, BUFFER_SIZE);
@@ -115,7 +115,7 @@ static inline void h_uart_mempool_create()
 #endif
 }
 
-static inline void h_uart_mempool_destroy()
+static inline void h_uart_mempool_destroy(void)
 {
 	hosted_mempool_destroy(buf_mp_tx_g);
 	hosted_mempool_destroy(buf_mp_rx_g);

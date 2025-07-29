@@ -16,7 +16,7 @@ before_script:
     - source ${IDF_PATH}/export.sh
     - pip install idf-ci
     - pip install idf-component-manager idf-build-apps --upgrade
-    - SDKCONFIG_PATTERN="sdkconfig.ci.{SLAVE_CI_FILE}"
+    - SDKCONFIG_PATTERN="sdkconfig.ci.${SLAVE_CI_FILE}"
     # Build with IDF pedantic flags and IDF build apps script
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"

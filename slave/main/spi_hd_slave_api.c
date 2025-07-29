@@ -145,7 +145,7 @@ static struct hosted_mempool * trans_tx_g;
 static struct hosted_mempool * trans_rx_g;
 static SemaphoreHandle_t mempool_tx_sem = NULL; // to count number of Tx bufs in IDF SPI HD driver
 
-static inline void spi_hd_mempool_create()
+static inline void spi_hd_mempool_create(void)
 {
 	buf_mp_tx_g = hosted_mempool_create(NULL, 0,
 			TX_MEMPOOL_NUM_BLOCKS, SPI_HD_BUFFER_SIZE);
@@ -163,7 +163,7 @@ static inline void spi_hd_mempool_create()
 #endif
 }
 
-static inline void spi_hd_mempool_destroy()
+static inline void spi_hd_mempool_destroy(void)
 {
 	hosted_mempool_destroy(buf_mp_tx_g);
 	hosted_mempool_destroy(buf_mp_rx_g);
