@@ -29,6 +29,10 @@ static const char TAG[] = "vhci_drv";
 #define BLE_HCI_CMD_HDR_LEN                 (3)
 #endif
 
+#ifndef __WEAK__
+#define __WEAK__	__attribute__ ((weak))
+#endif
+
 void hci_drv_init(void)
 {
 	// do nothing for VHCI: underlying transport should be ready
