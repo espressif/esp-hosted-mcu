@@ -1,5 +1,8 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-S3 | ESP32-P4 | ESP32-H2 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- |
+| Supported Hosts | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-S3 | ESP32-P4 | ESP32-H2 | Any other MCU hosts |
+| --------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | ------------------- |
+
+| Supported Co-Processors | ESP32 |
+| ----------------------- | ----- |
 
 ESP-IDF ESP-Hosted Hosted HCI Host
 ==================================
@@ -79,9 +82,15 @@ See the ESP-IDF [UART HCI Host example](https://github.com/espressif/esp-idf/tre
 
 ### Configure the project
 
+First, set the host target to ESP32-P4:
+
+```
+idf.py set-target esp32p4
+```
+
 For the ESP32 co-processor, run `idf.py menuconfig` and configure `Example Configuration` for SPI Full-duplex with the correct SPI mode and GPIOs.
 
-For the ESP32-P4 co-processor, run `idf.py menuconfig` and under `Component config ---> ESP-Hosted config`:
+For the ESP32-P4 host, run `idf.py menuconfig` and under `Component config ---> ESP-Hosted config`:
 
 * set the transport to be `SPI Full-duplex` with the correct SPI modem GPIOs (see above table) and SPI Clock frequency (10 MHz max).
 * set the Slave chipset used as `ESP32`.
@@ -89,7 +98,7 @@ For the ESP32-P4 co-processor, run `idf.py menuconfig` and under `Component conf
 
 ### Build and Flash
 
-Build and flash the co-processor and host projects, then run monitor tool to view serial output on both the ESP32 and ESP32-P4:
+After setting the host target and configuring the project, build and flash the co-processor and host projects, then run monitor tool to view serial output on both the ESP32 and ESP32-P4:
 
 ```
 idf.py -p PORT flash monitor
