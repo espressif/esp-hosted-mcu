@@ -1,0 +1,98 @@
+# Holds templates used for jobs
+
+.check_ver_template:
+  stage: pre
+  tags:
+    - build
+  script:
+    - source ${IDF_PATH}/export.sh
+    # check the exported fw versions
+    - python tools/check_fw_versions.py
+
+.build_template_coprocessor:
+  stage: build_coprocessor
+  tags:
+    - build
+  artifacts:
+    when: always
+    expire_in: 4 days
+  script:
+    - source ${IDF_PATH}/export.sh
+    - pip install idf-ci
+    - pip install idf-component-manager idf-build-apps --upgrade
+    - SDKCONFIG_PATTERN="sdkconfig.ci.${SLAVE_CI_FILE}"
+    # Build with IDF pedantic flags and IDF build apps script
+    - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+    - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
+    - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+    - cd slave
+    - idf-build-apps find --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - idf-build-apps build --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+
+.build_template:
+  stage: build
+  tags:
+    - build
+  artifacts:
+    paths:
+      - "artifacts_*/"
+    when: always
+    expire_in: 4 days
+  script:
+    - source ${IDF_PATH}/export.sh
+    - pip install idf-ci
+    - pip install idf-component-manager idf-build-apps --upgrade
+    # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
+    - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
+    # Replaces esp_hosted component in example's deps with the one from the current repository
+    - export OVERRIDE_PATH=`pwd`
+    - cd ${IDF_PATH}/${IDF_EXAMPLE_PATH}
+    # Create components directory and link esp_hosted component
+    - mkdir -p components
+    - ln -sf ${OVERRIDE_PATH} components/esp_hosted
+    - echo "Created components directory with esp_hosted link:"
+    - ls -la components/
+    # Override component dependency as backup only if not already present
+    - |
+      if ! grep -q "esp_hosted" main/idf_component.yml 2>/dev/null; then
+        cat ${OVERRIDE_PATH}/.gitlab-ci-override-idf-component.yml >> main/idf_component.yml
+        echo "Added esp_hosted override to idf_component.yml"
+      fi
+    # Add slave target configuration if specified
+    - |
+      if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
+        echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+        echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+      fi
+    # Copy specific sdkconfig.ci file if SDKCONFIG_CI_FILE is specified
+    - |
+      if [ ! -z "${SDKCONFIG_CI_FILE}" ]; then
+        cp ${OVERRIDE_PATH}/${SDKCONFIG_CI_FILE} ./sdkconfig.ci.custom
+        echo "Using custom sdkconfig: ${SDKCONFIG_CI_FILE}"
+        SDKCONFIG_PATTERN="sdkconfig.ci.custom"
+      else
+        SDKCONFIG_PATTERN="sdkconfig.ci*"
+      fi
+    # Build with IDF pedantic flags and IDF build apps script
+    - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+    - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
+    - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+    # Remove the conflicting extconn config that disables hosted
+    - rm -f sdkconfig.ci.*extconn*
+    - idf-build-apps find --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - idf-build-apps build --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+#    - echo "----------- last sdkconfig.defaults,ci* used (${IDF_TARGET}-${IDF_SLAVE_TARGET}) --------------"
+#    - cat sdkconfig.defaults
+#    - cat sdkconfig.ci*
+#    - echo "----------- last (generated) sdkconfig used (${IDF_TARGET}-${IDF_SLAVE_TARGET}) --------------"
+#    - cat sdkconfig
+#    - echo "----------------------------------------------"
+    # Copy config files back to project directory for artifacts
+    - mkdir -p ${OVERRIDE_PATH}/artifacts_${IDF_TARGET}_${IDF_SLAVE_TARGET}
+    - cp sdkconfig* ${OVERRIDE_PATH}/artifacts_${IDF_TARGET}_${IDF_SLAVE_TARGET}/ 2>/dev/null || echo "No sdkconfig files found"
+    - cp main/idf_component.yml ${OVERRIDE_PATH}/artifacts_${IDF_TARGET}_${IDF_SLAVE_TARGET}/ 2>/dev/null || echo "No component file found"
+    # Clean up the component symlink
+    - unlink components/esp_hosted
+    - echo "Cleaned up esp_hosted component symlink"
+    # Rename back, since post scripts expect the original name
+    - cd ${OVERRIDE_PATH} && cd .. && mv esp_hosted esp_hosted_mcu
