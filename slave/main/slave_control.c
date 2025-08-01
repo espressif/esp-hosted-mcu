@@ -70,7 +70,6 @@ extern esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb);
 extern volatile uint8_t station_connected;
 extern volatile uint8_t softap_started;
 static volatile bool station_connecting = false;
-static volatile bool wifi_started = false;
 static volatile bool wifi_initialized = false;
 
 static void send_wifi_event_data_to_host(int event, void *event_data, int event_size)
@@ -590,33 +589,40 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 			send_event_data_to_host(RPC_ID__Event_StaDisconnected,
 				event_data, sizeof(wifi_event_sta_disconnected_t));
 		} else {
+			// ensure start events are only sent once during a state change
 			if (event_id == WIFI_EVENT_AP_START) {
-				ESP_LOGI(TAG,"softap started");
-				esp_wifi_internal_reg_rxcb(WIFI_IF_AP, (wifi_rxcb_t) wlan_ap_rx_callback);
-				softap_started = 1;
+				if (!softap_started) {
+					ESP_LOGI(TAG,"softap started");
+					esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, (wifi_rxcb_t) wlan_ap_rx_callback);
+					softap_started = 1;
+					send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
+							&event_id, sizeof(event_id));
+				}
 			} else if (event_id == WIFI_EVENT_AP_STOP) {
-				ESP_LOGI(TAG,"softap stopped");
-				esp_wifi_internal_reg_rxcb(WIFI_IF_AP, NULL);
-				softap_started = 0;
-			}
-#if 0
-			if (event_id == WIFI_EVENT_STA_START && station_connected) {
-				ESP_LOGI(TAG, "Sta mode start, send connected event");
-				//station_connecting = false;
-				//send_event_data_to_host(RPC_ID__Event_StaConnected,
-				//	&lkg_sta_connected_event, sizeof(wifi_event_sta_connected_t));
-			}
-#endif
-			if (event_id == WIFI_EVENT_STA_START) {
-				wifi_started = true;
-				station_connecting = true;
-				esp_wifi_connect();
+				if (softap_started) {
+					ESP_LOGI(TAG,"softap stopped");
+					esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, NULL);
+					softap_started = 0;
+					send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
+							&event_id, sizeof(event_id));
+				}
+			} else if (event_id == WIFI_EVENT_STA_START) {
+				if (!station_connecting) {
+					ESP_LOGI(TAG, "sta started");
+					station_connecting = true;
+					esp_wifi_connect();
+					send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
+							&event_id, sizeof(event_id));
+				}
 			} else if (event_id == WIFI_EVENT_STA_STOP) {
-				wifi_started = false;
+				ESP_LOGI(TAG, "sta stopped");
 				station_connecting = false;
+				send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
+						&event_id, sizeof(event_id));
+			} else {
+				send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
+						&event_id, sizeof(event_id));
 			}
-			send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
-				&event_id, sizeof(event_id));
 		}
 	}
 }
@@ -1031,15 +1037,32 @@ static esp_err_t req_wifi_start(Rpc *req, Rpc *resp, void *priv_data)
 			RpcReqWifiStart, req_wifi_start,
 			rpc__resp__wifi_start__init);
 
-	if (wifi_started) {
-		ESP_LOGW(TAG, "Wifi is already started");
-		int event_id = WIFI_EVENT_STA_START;
-		send_wifi_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
-				&event_id, sizeof(event_id));
-		return ESP_OK;
+	RPC_RET_FAIL_IF(esp_wifi_start());
+
+	/**
+	 * check the current wifi mode and send the STA/AP start event(s)
+	 * to handle the case where the host wakes up from deep sleep.
+	 * In this case, the wifi was already started on the co-processor
+	 * and does not generate the required start events
+	 */
+	wifi_mode_t mode;
+	int event_id;
+	esp_err_t res = esp_wifi_get_mode(&mode);
+	if (res == ESP_OK) {
+		if ((mode == WIFI_MODE_STA) || (mode == WIFI_MODE_APSTA)) {
+			ESP_LOGI(TAG, "send WIFI_EVENT_STA_START");
+			event_id = WIFI_EVENT_STA_START;
+			send_wifi_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
+					&event_id, sizeof(event_id));
+		}
+		if ((mode == WIFI_MODE_AP) || (mode == WIFI_MODE_APSTA)) {
+			ESP_LOGI(TAG, "send WIFI_EVENT_AP_START");
+			event_id = WIFI_EVENT_AP_START;
+			send_wifi_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
+					&event_id, sizeof(event_id));
+		}
 	}
 
-	RPC_RET_FAIL_IF(esp_wifi_start());
 	return ESP_OK;
 }
 
@@ -1048,9 +1071,8 @@ static esp_err_t req_wifi_stop(Rpc *req, Rpc *resp, void *priv_data)
 	RPC_TEMPLATE_SIMPLE(RpcRespWifiStop, resp_wifi_stop,
 			RpcReqWifiStop, req_wifi_stop,
 			rpc__resp__wifi_stop__init);
-	wifi_started = false;
-	RPC_RET_FAIL_IF(esp_wifi_stop());
 
+	RPC_RET_FAIL_IF(esp_wifi_stop());
 	return ESP_OK;
 }
 
@@ -1299,6 +1321,7 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
 
 		RPC_REQ_COPY_STR(p_a_sta->sae_h2e_identifier, p_c_sta->sae_h2e_identifier, SAE_H2E_IDENTIFIER_LEN);
+		RPC_RET_FAIL_IF(esp_hosted_set_sta_config(req_payload->iface, &cfg));
 	} else if (req_payload->iface == WIFI_IF_AP) {
 		wifi_ap_config_t * p_a_ap = &(cfg.ap);
 		WifiApConfig * p_c_ap = req_payload->cfg->ap;
@@ -1332,9 +1355,10 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		}
 		p_a_ap->gtk_rekey_interval = p_c_ap->gtk_rekey_interval;
 #endif
+
+		RPC_RET_FAIL_IF(esp_wifi_set_config(req_payload->iface, &cfg));
 	}
 
-	RPC_RET_FAIL_IF(esp_hosted_set_sta_config(req_payload->iface, &cfg));
 	return ESP_OK;
 }
 
