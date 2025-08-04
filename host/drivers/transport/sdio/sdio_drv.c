@@ -86,7 +86,7 @@
 #include "esp_hosted_power_save.h"
 #include "esp_hosted_config.h"
 #include "esp_hosted_transport_config.h"
-
+#include "esp_hosted_bt.h"
 
 static const char TAG[] = "H_SDIO_DRV";
 
@@ -1173,7 +1173,7 @@ static void sdio_process_rx_task(void const* pvParameters)
 			ESP_LOGI(TAG, "Write thread started");
 			sdio_start_write_thread = true;
 		} else if (buf_handle->if_type == ESP_HCI_IF) {
-			hci_rx_handler(buf_handle);
+			hci_rx_handler(buf_handle->payload, buf_handle->payload_len);
 		} else if (buf_handle->if_type == ESP_TEST_IF) {
 #if TEST_RAW_TP
 			update_test_raw_tp_rx_len(buf_handle->payload_len +

@@ -1,10 +1,16 @@
-// Copyright 2015-2024 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __ESP_HOSTED_BT_H
 #define __ESP_HOSTED_BT_H
 
 #include "esp_hosted_bt_config.h"
+
+// Handles BT Rx
+int hci_rx_handler(uint8_t *buf, size_t buf_len);
 
 #if H_BT_HOST_ESP_BLUEDROID
 #include "esp_bluedroid_hci.h"

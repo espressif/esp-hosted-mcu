@@ -1,5 +1,8 @@
-// Copyright 2015-2024 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdint.h>
 
@@ -28,9 +31,7 @@
 #include "nimble/hci_common.h"
 #endif
 
-#if H_BT_HOST_ESP_BLUEDROID
 #include "esp_hosted_bt.h"
-#endif
 
 #include "esp_hosted_log.h"
 static const char TAG[] = "vhci_drv";
@@ -55,10 +56,10 @@ void hci_drv_show_configuration(void)
 /**
  * HCI_H4_xxx is the first byte of the received data
  */
-__WEAK__ int hci_rx_handler(interface_buffer_handle_t *buf_handle)
+H_WEAK_REF int hci_rx_handler(uint8_t *buf, size_t buf_len)
 {
-	uint8_t * data = buf_handle->payload;
-	uint32_t len_total_read = buf_handle->payload_len;
+	uint8_t * data = buf;
+	uint32_t len_total_read = buf_len;
 
 	int rc;
 
@@ -218,10 +219,10 @@ int ble_transport_to_ll_cmd_impl(void *buf)
 #if H_BT_HOST_ESP_BLUEDROID
 static esp_bluedroid_hci_driver_callbacks_t s_callback = { 0 };
 
-__WEAK__ int hci_rx_handler(interface_buffer_handle_t *buf_handle)
+H_WEAK_REF int hci_rx_handler(uint8_t *buf, size_t buf_len)
 {
-	uint8_t * data = buf_handle->payload;
-	uint32_t len_total_read = buf_handle->payload_len;
+	uint8_t * data = buf;
+	uint32_t len_total_read = buf_len;
 
 	if (s_callback.notify_host_recv) {
 		s_callback.notify_host_recv(data, len_total_read);

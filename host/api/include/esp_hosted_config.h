@@ -1,8 +1,8 @@
 /*
-* SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __ESP_HOSTED_CONFIG_H__
 #define __ESP_HOSTED_CONFIG_H__
@@ -17,6 +17,9 @@
 #ifdef CONFIG_ESP_HOSTED_DFLT_TASK_STACK
   #define H_ESP_HOSTED_DFLT_TASK_STACK CONFIG_ESP_HOSTED_DFLT_TASK_STACK
 #endif
+
+// to allow external code to override Hosted Functions if required
+#define H_WEAK_REF __attribute__((weak))
 
 #define H_TRANSPORT_NONE 0
 #define H_TRANSPORT_SDIO 1

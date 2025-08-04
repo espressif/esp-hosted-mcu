@@ -1,17 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2024 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /** Includes **/
 
@@ -26,7 +18,7 @@
 #include "esp_hosted_power_save.h"
 #include "esp_hosted_transport_config.h"
 #include "power_save_drv.h"
-
+#include "esp_hosted_bt.h"
 
 static const char TAG[] = "H_UART_DRV";
 
@@ -291,7 +283,7 @@ static void h_uart_process_rx_task(void const* pvParameters)
 				/* User can re-use this type of transaction */
 			}
 		} else if (buf_handle->if_type == ESP_HCI_IF) {
-			hci_rx_handler(buf_handle);
+			hci_rx_handler(buf_handle->payload, buf_handle->payload_len);
 		} else if (buf_handle->if_type == ESP_TEST_IF) {
 #if TEST_RAW_TP
 			update_test_raw_tp_rx_len(buf_handle->payload_len +

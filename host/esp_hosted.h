@@ -1,8 +1,8 @@
 /*
-* SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __ESP_HOSTED_H__
 #define __ESP_HOSTED_H__
@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include "esp_hosted_config.h"
+#include "esp_hosted_bt.h"
 #include "esp_hosted_bt_config.h"
 #include "esp_hosted_transport_config.h"
 #include "esp_hosted_api_types.h"
