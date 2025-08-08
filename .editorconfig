@@ -17,3 +17,8 @@ insert_final_newline = true
 # Some Mermaid diagram commands need to end with a trailing whitespace in Markdown files
 [*.md]
 trim_trailing_whitespace = false
+
+# Use two spaces for YAML files
+[{*.yml,*.yaml}]
+indent_style = space
+indent_size = 2

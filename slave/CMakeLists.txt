@@ -13,26 +13,6 @@ set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi p
 project(network_adapter)
 idf_build_set_property(COMPILE_OPTIONS "-fdiagnostics-color=always" APPEND)
 
-### add custom dependency for generated version header file
-### reference: https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/build-system.html#source-code-generation
-if(EXISTS "${PROJECT_DIR}/main/coprocessor_fw_version.txt")
-	add_custom_command(OUTPUT "${PROJECT_DIR}/main/coprocessor_fw_version.h"
-		COMMAND ${CMAKE_COMMAND} -P "${PROJECT_DIR}/ExtractVersion.cmake"
-		DEPENDS "${PROJECT_DIR}/main/coprocessor_fw_version.txt"
-		VERBATIM)
-elseif(EXISTS "${PROJECT_DIR}/../idf_component.yml")
-	add_custom_command(OUTPUT "${PROJECT_DIR}/main/coprocessor_fw_version.h"
-		COMMAND ${CMAKE_COMMAND} -P "${PROJECT_DIR}/ExtractVersion.cmake"
-		DEPENDS "${PROJECT_DIR}/../idf_component.yml"
-		VERBATIM)
-else()
-	message(FATAL_ERROR "***** coprocessor_fw_version.txt and idf_component.yml NOT found.\nUnable to generate comprocessor fw version info to build")
-endif()
-
-add_custom_target(version_header DEPENDS "${PROJECT_DIR}/main/coprocessor_fw_version.h")
-add_dependencies(${PROJECT_NAME}.elf version_header)
-
-
 if(EXISTS "${PROJECT_DIR}/../common/esp_hosted_lwip_src_port_hook.h")
 idf_component_get_property(lwip lwip COMPONENT_LIB)
 if(TARGET ${lwip})
@@ -44,4 +24,24 @@ if(TARGET ${lwip})
 		target_compile_definitions(${lwip} PRIVATE "-DESP_IDF_LWIP_HOOK_FILENAME=\"${PROJECT_DIR}/../common/esp_hosted_lwip_src_port_hook.h\"")
 	endif()
 endif()
+endif()
+
+### read and display FW Version
+file(READ "${CMAKE_CURRENT_LIST_DIR}/main/esp_hosted_coprocessor_fw_ver.h" HEADER_CONTENTS)
+set(PROJECT_VERSION_REGEX "#define[ \t]+PROJECT_VERSION_MAJOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_MINOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_PATCH_1[ \t]+([0-9]+)")
+string(REGEX MATCH "${PROJECT_VERSION_REGEX}" PROJECT_VERSION_MATCH "${HEADER_CONTENTS}")
+
+if(PROJECT_VERSION_MATCH)
+    set(PROJECT_VERSION_MAJOR_1 "${CMAKE_MATCH_1}")
+    set(PROJECT_VERSION_MINOR_1 "${CMAKE_MATCH_2}")
+    set(PROJECT_VERSION_PATCH_1 "${CMAKE_MATCH_3}")
+
+    # Construct project version
+    set(PROJECT_VER "${PROJECT_VERSION_MAJOR_1}.${PROJECT_VERSION_MINOR_1}.${PROJECT_VERSION_PATCH_1}")
+
+    message(*************************************************************************************)
+    message("                    Building ESP-Hosted-MCU FW :: ${PROJECT_VER} ")
+    message(*************************************************************************************)
+else()
+    message(FATAL_ERROR "Failed to read project version from main/esp_hosted_coprocessor_fw_ver.h")
 endif()

@@ -824,9 +824,20 @@ void bus_deinit_internal(void *bus_handle)
 	ESP_LOGI(TAG, "Deinitialised SPI HD driver");
 }
 
+/**
+  * @brief  Send to slave
+  * @param  iface_type -type of interface
+  *         iface_num - interface number
+  *         payload_buf - tx buffer
+  *         payload_len - size of tx buffer
+  *         buffer_to_free - buffer to be freed after tx
+  *         free_buf_func - function used to free buffer_to_free
+  *         flags - flags to set
+  * @retval int - ESP_OK or ESP_FAIL
+  */
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
-		uint8_t * wbuffer, uint16_t wlen, uint8_t buff_zcopy,
-		void (*free_wbuf_fun)(void* ptr), uint8_t flag)
+		uint8_t *payload_buf, uint16_t payload_len, uint8_t buff_zcopy,
+		uint8_t *buffer_to_free, void (*free_buf_func)(void *ptr), uint8_t flags)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	void (*free_func)(void* ptr) = NULL;
@@ -835,25 +846,25 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 
 	// ESP_LOGW(TAG, "%s, %"PRIu8, __func__, transport_up);
 
-	if (free_wbuf_fun)
-		free_func = free_wbuf_fun;
+	if (free_buf_func)
+		free_func = free_buf_func;
 
-	if ((!flag) &&
-	     (!wbuffer || !wlen ||(wlen > MAX_PAYLOAD_SIZE) || !transport_up)) {
+	if ((flags == 0 || flags == MORE_FRAGMENT) &&
+	     (!payload_buf || !payload_len || (payload_len > MAX_PAYLOAD_SIZE) || !transport_up)) {
 		ESP_LOGE(TAG, "tx fail: NULL buff, invalid len (%u) or len > max len (%u), transport_up(%u))",
-				wlen, MAX_PAYLOAD_SIZE, transport_up);
-		H_FREE_PTR_WITH_FUNC(free_func, wbuffer);
+				payload_len, MAX_PAYLOAD_SIZE, transport_up);
+		H_FREE_PTR_WITH_FUNC(free_func, buffer_to_free);
 		return ESP_FAIL;
 	}
 
 	buf_handle.payload_zcopy = buff_zcopy;
 	buf_handle.if_type = iface_type;
 	buf_handle.if_num = iface_num;
-	buf_handle.payload_len = wlen;
-	buf_handle.payload = wbuffer;
-	buf_handle.priv_buffer_handle = wbuffer;
+	buf_handle.payload_len = payload_len;
+	buf_handle.payload = payload_buf;
+	buf_handle.priv_buffer_handle = buffer_to_free;
 	buf_handle.free_buf_handle = free_func;
-	buf_handle.flag = flag;
+	buf_handle.flag = flags;
 
 	if (buf_handle.if_type == ESP_SERIAL_IF)
 		pkt_prio = PRIO_Q_SERIAL;
@@ -935,7 +946,7 @@ int bus_inform_slave_host_power_save_start(void)
 	} else {
 		/* Use normal queue mechanism */
 		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STARTED);
+			H_BUFF_NO_ZEROCOPY, NULL, NULL, FLAG_POWER_SAVE_STARTED);
 	}
 
 	return ret;
@@ -968,7 +979,7 @@ int bus_inform_slave_host_power_save_stop(void)
 	} else {
 		/* Use normal queue mechanism */
 		ret = esp_hosted_tx(ESP_SERIAL_IF, 0, NULL, 0,
-			H_BUFF_NO_ZEROCOPY, NULL, FLAG_POWER_SAVE_STOPPED);
+			H_BUFF_NO_ZEROCOPY, NULL, NULL, FLAG_POWER_SAVE_STOPPED);
 	}
 
 	return ret;

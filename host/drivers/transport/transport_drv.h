@@ -112,7 +112,8 @@ uint8_t is_transport_tx_ready(void);
 
 
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
-		uint8_t * buffer, uint16_t len, uint8_t buff_zerocopy, void (*free_buf_fun)(void* ptr), uint8_t flag);
+		uint8_t *payload_buf, uint16_t payload_len, uint8_t buff_zerocopy,
+		uint8_t *buffer_to_free, void (*free_buf_func)(void *ptr), uint8_t flags);
 
 int serial_rx_handler(interface_buffer_handle_t * buf_handle);
 void set_transport_state(uint8_t state);

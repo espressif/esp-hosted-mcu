@@ -212,8 +212,54 @@ static int serial_ll_write(const serial_ll_handle_t * serial_ll_hdl,
 		return -1;
 	}
 
-	return esp_hosted_tx(serial_ll_hdl->if_type,
-		serial_ll_hdl->if_num, wbuffer, wlen, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
+	if (!wbuffer || !wlen) {
+		return -1;
+	}
+
+	if (wlen > MAX_FRAGMENTABLE_PAYLOAD_SIZE) {
+		ESP_LOGE(TAG, "Payload too large: %u bytes (max allowed: %u)", wlen, MAX_FRAGMENTABLE_PAYLOAD_SIZE);
+		return -1;
+	}
+
+	uint16_t offset = 0;
+	uint16_t remaining_len = wlen;
+	void (*free_func)(void *) = NULL;
+	uint8_t *buf_to_free = NULL;
+
+	while (remaining_len > 0) {
+		uint16_t frag_len = (remaining_len > MAX_PAYLOAD_SIZE) ? MAX_PAYLOAD_SIZE : remaining_len;
+		uint8_t *frag_ptr = wbuffer + offset;
+
+		uint8_t flags = 0;
+		if (remaining_len > MAX_PAYLOAD_SIZE) {
+			flags |= MORE_FRAGMENT;
+		}
+		else {
+			// FRAGMENTATION COMPLETED
+			buf_to_free = wbuffer;
+			free_func = H_DEFLT_FREE_FUNC;
+		}
+
+		int ret = esp_hosted_tx(serial_ll_hdl->if_type,
+					serial_ll_hdl->if_num,
+					frag_ptr,
+					frag_len,
+					H_BUFF_NO_ZEROCOPY,
+					buf_to_free, free_func,
+					flags);
+		if (ret != ESP_OK) {
+			if (flags & MORE_FRAGMENT) {
+				H_FREE_PTR_WITH_FUNC(H_DEFLT_FREE_FUNC, wbuffer);
+			}
+			ESP_LOGE(TAG, "esp_hosted_tx failed at offset=%u len=%u", offset, frag_len);
+			return ret;
+		}
+
+		offset += frag_len;
+		remaining_len -= frag_len;
+	}
+
+	return 0;
 }
 
 /**

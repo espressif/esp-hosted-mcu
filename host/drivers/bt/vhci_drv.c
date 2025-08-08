@@ -171,7 +171,7 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf *om)
 		goto exit;
 	}
 
-	res = esp_hosted_tx(ESP_HCI_IF, 0, data, data_len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
+	res = esp_hosted_tx(ESP_HCI_IF, 0, data, data_len, H_BUFF_NO_ZEROCOPY, data, H_DEFLT_FREE_FUNC, 0);
 
  exit:
 	os_mbuf_free_chain(om);
@@ -199,7 +199,7 @@ int ble_transport_to_ll_cmd_impl(void *buf)
 	data[0] = HCI_H4_CMD;
 	memcpy(&data[1], buf, buf_len - 1);
 
-	res = esp_hosted_tx(ESP_HCI_IF, 0, data, buf_len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
+	res = esp_hosted_tx(ESP_HCI_IF, 0, data, buf_len, H_BUFF_NO_ZEROCOPY, data, H_DEFLT_FREE_FUNC, 0);
 
  exit:
 	ble_transport_free(buf);
@@ -252,7 +252,7 @@ void hosted_hci_bluedroid_send(uint8_t *data, uint16_t len)
 	}
 	memcpy(ptr, data, len);
 
-	res = esp_hosted_tx(ESP_HCI_IF, 0, ptr, len, H_BUFF_NO_ZEROCOPY, H_DEFLT_FREE_FUNC, 0);
+	res = esp_hosted_tx(ESP_HCI_IF, 0, ptr, len, H_BUFF_NO_ZEROCOPY, ptr, H_DEFLT_FREE_FUNC, 0);
 
 	if (res) {
 		ESP_LOGE(TAG, "%s: Tx failed", __func__);

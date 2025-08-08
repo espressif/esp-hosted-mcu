@@ -1,22 +1,8 @@
 /*
- * Espressif Systems Wireless LAN device driver
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
- * Copyright (C) 2015-2021 Espressif Systems (Shanghai) PTE LTD
- *
- * This software file (the "File") is distributed by Espressif Systems (Shanghai)
- * PTE LTD under the terms of the GNU General Public License Version 2, June 1991
- * (the "License").  You may use, redistribute and/or modify this File in
- * accordance with the terms and conditions of the License, a copy of which
- * is available by writing to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or on the
- * worldwide web at http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt.
- *
- * THE FILE IS DISTRIBUTED AS-IS, WITHOUT WARRANTY OF ANY KIND, AND THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE
- * ARE EXPRESSLY DISCLAIMED.  The License provides additional details about
- * this warranty disclaimer.
+ * SPDX-License-Identifier: Apache-2.0
  */
-
 
 #include "common.h"
 #include <stdio.h>
@@ -30,6 +16,7 @@
 #include "esp_log.h"
 #include "esp_hosted_wifi_config.h"
 #include "esp_hosted_transport.h"
+#include "esp_netif.h"
 
 static const char *TAG = "RPC_WRAP";
 
@@ -80,7 +67,6 @@ static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
 #define NO                                                0
 #define HEARTBEAT_DURATION_SEC                            20
 
-
 typedef struct {
 	int event;
 	rpc_rsp_cb_t fun;
@@ -110,11 +96,19 @@ int rpc_deinit(void)
 	return rpc_slaveif_deinit();
 }
 
+// returns true if the netif is up for the wifi interface
+static bool is_wifi_netif_started(wifi_interface_t wifi_if) {
+	esp_netif_t* netif = esp_netif_get_handle_from_ifkey(
+			(wifi_if == WIFI_IF_STA) ? "WIFI_STA_DEF" : "WIFI_AP_DEF");
+	return (netif != NULL) && esp_netif_is_netif_up(netif);
+}
 
 static int rpc_event_callback(ctrl_cmd_t * app_event)
 {
 	static bool netif_started = false;
 	static bool netif_connected = false;
+	static bool softap_started = false;
+
 	ESP_LOGV(TAG, "%u",app_event->msg_id);
 	if (!app_event || (app_event->msg_type != RPC_TYPE__Event)) {
 		if (app_event)
@@ -123,7 +117,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 	}
 
 	if ((app_event->msg_id <= RPC_ID__Event_Base) ||
-	    (app_event->msg_id >= RPC_ID__Event_Max)) {
+		(app_event->msg_id >= RPC_ID__Event_Max)) {
 		ESP_LOGE(TAG, "Event Msg ID[0x%x] is not correct",app_event->msg_id);
 		goto fail_parsing;
 	}
@@ -139,21 +133,16 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			break;
 		} case RPC_ID__Event_AP_StaConnected: {
 			wifi_event_ap_staconnected_t *p_e = &app_event->u.e_wifi_ap_staconnected;
-
 			if (strlen((char*)p_e->mac)) {
-				ESP_LOGI(TAG, "ESP Event: SoftAP mode: connected station");
-				if (netif_started) {
-					g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_CONNECTED,
-							p_e, sizeof(wifi_event_sta_connected_t), HOSTED_BLOCK_MAX);
-				} else {
-					ESP_LOGW(TAG, "Netif not started, deferring STA_CONNECTED event");
-				}
+				ESP_LOGI(TAG, "ESP Event: SoftAP mode: station connected with MAC Addr " MACSTR, MAC2STR(p_e->mac));
+				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_AP_STACONNECTED,
+					p_e, sizeof(wifi_event_ap_staconnected_t), HOSTED_BLOCK_MAX);
 			}
 			break;
 		} case RPC_ID__Event_AP_StaDisconnected: {
 			wifi_event_ap_stadisconnected_t *p_e = &app_event->u.e_wifi_ap_stadisconnected;
 			if (strlen((char*)p_e->mac)) {
-				ESP_LOGI(TAG, "ESP Event: SoftAP mode: disconnected MAC");
+				ESP_LOGI(TAG, "ESP Event: SoftAP mode: disconnected station");
 				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_AP_STADISCONNECTED,
 					p_e, sizeof(wifi_event_ap_stadisconnected_t), HOSTED_BLOCK_MAX);
 			}
@@ -186,54 +175,52 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			case WIFI_EVENT_STA_START:
 				ESP_LOGI(TAG, "ESP Event: wifi station started");
 				/* Trigger connection when station is started */
-				if (!netif_connected) {
+				if (!netif_started && !is_wifi_netif_started(WIFI_IF_STA)) {
+					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 					rpc_wifi_connect_async();
+					netif_started = true;
 				}
-				netif_started = true;
 				break;
 			case WIFI_EVENT_STA_STOP:
 				ESP_LOGI(TAG, "ESP Event: wifi station stopped");
 				netif_started = false;
 				netif_connected = false;
+				g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 				break;
 
 			case WIFI_EVENT_AP_START:
 				ESP_LOGI(TAG,"ESP Event: softap started");
+				if (!softap_started && !is_wifi_netif_started(WIFI_IF_AP)) {
+					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
+					softap_started = true;
+				}
 				break;
 
 			case WIFI_EVENT_AP_STOP:
 				ESP_LOGI(TAG,"ESP Event: softap stopped");
+				softap_started = false;
+				g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 				break;
 
 			case WIFI_EVENT_HOME_CHANNEL_CHANGE:
 				ESP_LOGD(TAG,"ESP Event: Home channel changed");
+				g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 				break;
 
 			case WIFI_EVENT_AP_STACONNECTED:
-				ESP_LOGI(TAG,"ESP Event: softap station connected");
+				// should be RPC_ID__Event_AP_StaConnected
+				ESP_LOGE(TAG,"Incorrect ESP Event: softap station connected");
 				break;
 
 			case WIFI_EVENT_AP_STADISCONNECTED:
-				ESP_LOGI(TAG,"ESP Event: softap station disconnected");
+				// should be RPC_ID__Event_AP_StaDisconnected
+				ESP_LOGE(TAG,"Incorrect ESP Event: softap station disconnected");
 				break;
+
 			default:
 				ESP_LOGV(TAG, "ESP Event: Event[%x]", wifi_event_id);
 				break;
 			} /* inner switch case */
-
-
-			if ((wifi_event_id != WIFI_EVENT_AP_START) &&
-				(wifi_event_id != WIFI_EVENT_AP_STACONNECTED) &&
-				(wifi_event_id != WIFI_EVENT_AP_STADISCONNECTED)) {
-
-				/* For STA_START, only post if netif is not already started */
-				if (wifi_event_id == WIFI_EVENT_STA_START && !netif_started) {
-					ESP_LOGW(TAG, "Posting STA_START event");
-					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
-				} else if (wifi_event_id != WIFI_EVENT_STA_START) {
-					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
-				}
-			}
 			break;
 		} case RPC_ID__Event_StaScanDone: {
 			wifi_event_sta_scan_done_t *p_e = &app_event->u.e_wifi_sta_scan_done;
@@ -374,7 +361,8 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 		goto fail_resp;
 	}
 
-	if ((app_resp->msg_id <= RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
+	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
+	if ((app_resp->msg_id < RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
 		ESP_LOGE(TAG, "Response Msg ID[0x%x] is not correct",app_resp->msg_id);
 		goto fail_resp;
 	}
@@ -385,7 +373,10 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	}
 
 	switch(app_resp->msg_id) {
-
+	case RPC_ID__Resp_Base : {
+		ESP_LOGV(TAG, "RPC Request is not supported");
+		break;
+	}
 	case RPC_ID__Resp_GetMACAddress: {
 		ESP_LOGV(TAG, "mac address is [" MACSTR "]", MAC2STR(app_resp->u.wifi_mac.mac));
 		break;

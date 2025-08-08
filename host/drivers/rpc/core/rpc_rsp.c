@@ -134,7 +134,11 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 
 	/* 3. parse Rpc into ctrl_cmd_t */
 	switch (rpc_msg->msg_id) {
-
+	case RPC_ID__Resp_Base : {
+		// RPC Request not supported
+		app_resp->resp_event_status = ESP_ERR_NOT_SUPPORTED;
+		goto fail_parse_rpc_msg;
+	}
 	case RPC_ID__Resp_GetMACAddress : {
 		RPC_FAIL_ON_NULL(resp_get_mac_address);
 		RPC_ERR_IN_RESP(resp_get_mac_address);

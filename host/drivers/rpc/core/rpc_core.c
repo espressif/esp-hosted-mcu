@@ -648,7 +648,8 @@ static int call_async_resp_callback(ctrl_cmd_t *app_resp)
 {
 	int i;
 
-	if ((app_resp->msg_id <= RPC_ID__Resp_Base) ||
+	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
+	if ((app_resp->msg_id < RPC_ID__Resp_Base) ||
 	    (app_resp->msg_id >= RPC_ID__Resp_Max)) {
 		return MSG_ID_OUT_OF_ORDER;
 	}
@@ -671,7 +672,8 @@ static int post_sync_resp_sem(ctrl_cmd_t *app_resp)
 {
 	int i;
 
-	if ((app_resp->msg_id <= RPC_ID__Resp_Base) ||
+	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
+	if ((app_resp->msg_id < RPC_ID__Resp_Base) ||
 	    (app_resp->msg_id >= RPC_ID__Resp_Max)) {
 		return MSG_ID_OUT_OF_ORDER;
 	}
@@ -812,7 +814,8 @@ static int is_async_resp_callback_available(ctrl_cmd_t *app_resp)
 {
 	int i;
 
-	if ((app_resp->msg_id <= RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
+	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
+	if ((app_resp->msg_id < RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
 		ESP_LOGE(TAG, "resp id[0x%x] out of range", app_resp->msg_id);
 		return MSG_ID_OUT_OF_ORDER;
 	}
@@ -1081,7 +1084,6 @@ free_bufs:
 	rpc_core_deinit();
 	return FAILURE;
 }
-
 
 int rpc_core_start(void)
 {
