@@ -301,6 +301,7 @@ menu "Example Configuration"
 					int "CMD GPIO number"
 					range 15 15 if IDF_TARGET_ESP32
 					range 18 18 if IDF_TARGET_ESP32C6
+					range 25 25 if IDF_TARGET_ESP32C61
 					range 10 10 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -309,6 +310,7 @@ menu "Example Configuration"
 					int "CLK GPIO number"
 					range 14 14 if IDF_TARGET_ESP32
 					range 19 19 if IDF_TARGET_ESP32C6
+					range 26 26 if IDF_TARGET_ESP32C61
 					range 9 9 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -317,6 +319,7 @@ menu "Example Configuration"
 					int "D0 GPIO number"
 					range 2 2 if IDF_TARGET_ESP32
 					range 20 20 if IDF_TARGET_ESP32C6
+					range 27 27 if IDF_TARGET_ESP32C61
 					range 8 8 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -325,6 +328,7 @@ menu "Example Configuration"
 					int "D1 GPIO number"
 					range 4 4 if IDF_TARGET_ESP32
 					range 21 21 if IDF_TARGET_ESP32C6
+					range 28 28 if IDF_TARGET_ESP32C61
 					range 7 7 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -333,6 +337,7 @@ menu "Example Configuration"
 					int "D2 GPIO number"
 					range 12 12 if IDF_TARGET_ESP32
 					range 22 22 if IDF_TARGET_ESP32C6
+					range 22 22 if IDF_TARGET_ESP32C61
 					range 14 14 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -341,6 +346,7 @@ menu "Example Configuration"
 					int "D3 GPIO number"
 					range 13 13 if IDF_TARGET_ESP32
 					range 23 23 if IDF_TARGET_ESP32C6
+					range 23 23 if IDF_TARGET_ESP32C61
 					range 13 13 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -371,12 +377,14 @@ menu "Example Configuration"
 
 			config ESP_SDIO_TX_Q_SIZE
 				int "SDIO TX queue size"
+				default 10 if IDF_TARGET_ESP32C61
 				default 20
 				help
 					Very small TX queue will lower ESP --> SDIO -- Host data rate
 
 			config ESP_SDIO_RX_Q_SIZE
 				int "SDIO RX queue size"
+				default 10 if IDF_TARGET_ESP32C61
 				default 20
 				help
 					Very small RX queue will lower ESP <-- SDIO -- Host data rate

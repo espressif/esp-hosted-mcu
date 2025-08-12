@@ -26,7 +26,7 @@ build_idf_master:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4"]
-        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5" ]
+        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5", "esp32c61" ]
         IDF_EXAMPLE_PATH: [examples/protocols/mqtt/tcp, examples/wifi/iperf]
 
 build_coprocessor_idf_v5.5:
@@ -47,5 +47,31 @@ build_coprocessor_idf_master:
   image: espressif/idf:latest
   parallel:
     matrix:
-      - IDF_TARGET: ["esp32c6", "esp32c5"]
+      - IDF_TARGET: ["esp32c6"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
+
+### build target for SOCs still in preview
+build_coprocessor_idf_master_preview_targets_c5:
+  variables:
+    EXTRA_BUILD_FLAGS: "--enable-preview-targets"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_coprocessor
+  image: espressif/idf:latest
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32c5"]
+        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
+
+# for C61, build for sdio only for now
+build_coprocessor_idf_master_preview_targets_c61:
+  variables:
+    EXTRA_BUILD_FLAGS: "--enable-preview-targets"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_coprocessor
+  image: espressif/idf:latest
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32c61"]
+        SLAVE_CI_FILE: ["sdio" ]

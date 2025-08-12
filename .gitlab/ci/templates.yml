@@ -26,8 +26,14 @@
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
     - cd slave
-    - idf-build-apps find --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-    - idf-build-apps build --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - |
+      if [ -z "${EXTRA_BUILD_FLAGS}" ]; then
+        idf-build-apps find --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+        idf-build-apps build --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+      else
+        idf-build-apps find "${EXTRA_BUILD_FLAGS}" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+        idf-build-apps build "${EXTRA_BUILD_FLAGS}" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+      fi
 
 .build_template:
   stage: build

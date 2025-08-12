@@ -69,6 +69,8 @@ enum {
   #define H_SLAVE_TARGET_ESP32C6 1
 #elif CONFIG_SLAVE_IDF_TARGET_ESP32C5
   #define H_SLAVE_TARGET_ESP32C5 1
+#elif CONFIG_SLAVE_IDF_TARGET_ESP32C61
+  #define H_SLAVE_TARGET_ESP32C61 1
 #else
   #error "Unknown Slave Target"
 #endif
