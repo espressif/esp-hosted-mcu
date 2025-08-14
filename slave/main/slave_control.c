@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
 /*
  * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
@@ -2372,7 +2371,9 @@ static esp_err_t req_wifi_sta_twt_config(Rpc *req, Rpc *resp, void *priv_data)
 
 	wifi_twt_config_t wifi_twt_config;
 	wifi_twt_config.post_wakeup_event = req_payload->config->post_wakeup_event;
+#if H_GOT_TWT_ENABLE_KEEP_ALIVE
 	wifi_twt_config.twt_enable_keep_alive = req_payload->config->twt_enable_keep_alive;
+#endif
 
 	RPC_RET_FAIL_IF(esp_wifi_sta_twt_config(&wifi_twt_config));
 

@@ -29,7 +29,7 @@
 #include "esp_wifi_he.h"
 #include "esp_pm.h"
 #include "esp_timer.h"
-
+#include "esp_idf_version.h"
 #include "wifi_cmd.h"
 
 /*******************************************************
@@ -273,7 +273,10 @@ static void wifi_itwt(void)
 
     wifi_twt_config_t wifi_twt_config = {
         .post_wakeup_event = false,
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 1)
+        // twt_enable_keep_alive only found in IDF v5.3.2 and above
         .twt_enable_keep_alive = keep_alive_enabled,
+#endif
     };
     ESP_ERROR_CHECK(esp_wifi_sta_twt_config(&wifi_twt_config));
 #if CONFIG_SOC_WIFI_SUPPORT_5G || CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G

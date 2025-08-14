@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -46,6 +46,16 @@
   #define H_DECODE_WIFI_RESERVED_FIELD 1
 #else
   #define H_DECODE_WIFI_RESERVED_FIELD 0
+#endif
+
+/*
+ * wifi_twt_config_t::twt_enable_keep_alive only found in
+ * IDF v5.3.2 and above
+ */
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 1)
+#define H_GOT_TWT_ENABLE_KEEP_ALIVE 1
+#else
+#define H_GOT_TWT_ENABLE_KEEP_ALIVE 0
 #endif
 
 /* wifi_ap_config_t::transition_disable only found in

@@ -1,5 +1,8 @@
-// Copyright 2015-2022 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "rpc_core.h"
 #include "rpc_slave_if.h"
@@ -489,7 +492,9 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 				rpc__req__wifi_sta_twt_config__init);
 		RPC_ALLOC_ELEMENT(WifiTwtConfig, req_payload->config, wifi_twt_config__init);
 		req_payload->config->post_wakeup_event = app_req->u.wifi_twt_config.post_wakeup_event;
+#if H_GOT_TWT_ENABLE_KEEP_ALIVE
 		req_payload->config->twt_enable_keep_alive = app_req->u.wifi_twt_config.twt_enable_keep_alive;
+#endif
 		break;
 	} case RPC_ID__Req_WifiStaItwtSetup: {
 		RPC_ALLOC_ASSIGN(RpcReqWifiStaItwtSetup, req_wifi_sta_itwt_setup,

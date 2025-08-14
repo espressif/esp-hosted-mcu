@@ -29,6 +29,16 @@
 #define H_PRESENT_IN_ESP_IDF_5_4_0      0
 #endif
 
+/*
+ * wifi_twt_config_t::twt_enable_keep_alive only found in
+ * IDF v5.3.2 and above
+ */
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 1)
+#define H_GOT_TWT_ENABLE_KEEP_ALIVE 1
+#else
+#define H_GOT_TWT_ENABLE_KEEP_ALIVE 0
+#endif
+
 /* wifi_ap_config_t::transition_disable only found in
  * IDF v5.3.3 and above, or
  * IDF v5.4.1 and above
