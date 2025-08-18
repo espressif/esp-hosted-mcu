@@ -201,10 +201,10 @@ menu "Example Configuration"
 				config ESP_SPI_GPIO_HANDSHAKE
 					int "Slave GPIO pin for handshake"
 					default 22 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
-					default 4 if IDF_TARGET_ESP32C5 && !C2_C5_MODULE_SUB_BOARD
-					default 1 if IDF_TARGET_ESP32C5 && C2_C5_MODULE_SUB_BOARD
 					default 18 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
 					default 3 if IDF_TARGET_ESP32C2 && !C2_C5_MODULE_SUB_BOARD
+					default 4 if IDF_TARGET_ESP32C5 && C2_C5_MODULE_SUB_BOARD
+					default 1 if IDF_TARGET_ESP32C5 && !C2_C5_MODULE_SUB_BOARD
 					default 3 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
 					default 17 if IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S2
 					default 26

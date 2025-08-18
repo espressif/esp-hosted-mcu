@@ -224,6 +224,7 @@ void *bus_init_internal(void)
 	/* Creates & Give sem for next spi trans */
 	spi_trans_ready_sem = g_h.funcs->_h_create_semaphore(1);
 	assert(spi_trans_ready_sem);
+	g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, 0);
 
 	spi_handle = g_h.funcs->_h_bus_init();
 	if (!spi_handle) {
@@ -814,7 +815,11 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
 	g_h.funcs->_h_msleep(1);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-	//g_h.funcs->_h_msleep(1500);
+	/* Delay for a short while to allow co-processor to take control
+	 * of GPIO signals after reset. Otherwise, we may false detect on
+	 * the GPIOs going high during the reset.
+	 */
+	g_h.funcs->_h_msleep(500);
 	return ESP_OK;
 }
 
