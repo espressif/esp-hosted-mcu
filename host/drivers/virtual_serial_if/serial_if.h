@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "esp_hosted_transport.h"
-#include "os_wrapper.h"
 
 #define SIZE_OF_TYPE                1
 #define SIZE_OF_LENGTH              2

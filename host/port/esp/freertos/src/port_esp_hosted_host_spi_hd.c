@@ -1,17 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2024 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdlib.h>
 
@@ -20,10 +11,10 @@
 #include "driver/spi_master.h"
 #include "hal/spi_ll.h"
 
-#include "common.h"
-#include "esp_hosted_config.h"
-#include "os_wrapper.h"
-#include "spi_hd_wrapper.h"
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_spi_hd.h"
+#include "port_esp_hosted_host_os.h"
+#include "transport_drv.h"
 
 #if SOC_CACHE_INTERNAL_MEM_VIA_L1CACHE
 /* Use DMA Aligned Buffers for reg reads, buf read / writes */
@@ -328,6 +319,14 @@ void * hosted_spi_hd_init(void)
 		.data2_io_num = -1,
 		.data3_io_num = -1,
 #endif
+		/** set other data pins to -1 to prevent warnings about gpio
+		 *  conflict in ESP-IDF spi_common.c
+		 */
+		.data4_io_num = -1,
+		.data5_io_num = -1,
+		.data6_io_num = -1,
+		.data7_io_num = -1,
+
 		.sclk_io_num = H_SPI_HD_PIN_CLK,
 		.max_transfer_sz = MAX_SPI_HD_BUFFER_SIZE,
 #if (H_SPI_HD_HOST_NUM_DATA_LINES == 4)

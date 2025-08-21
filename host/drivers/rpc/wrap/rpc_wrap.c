@@ -4,19 +4,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "rpc_slave_if.h"
 #include "string.h"
-#include "os_wrapper.h"
 #include "rpc_wrap.h"
 #include "esp_hosted_rpc.h"
 #include "esp_log.h"
-#include "esp_hosted_wifi_config.h"
+#include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_os.h"
 #include "esp_hosted_transport.h"
-#include "esp_netif.h"
+#include "port_esp_hosted_host_log.h"
+#include "transport_drv.h"
 
 static const char *TAG = "RPC_WRAP";
 

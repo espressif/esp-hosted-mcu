@@ -16,11 +16,12 @@
 #include "driver/sdmmc_defs.h"
 #include "driver/sdmmc_host.h"
 
-#include "os_wrapper.h"
+#include "port_esp_hosted_host_os.h"
 #include "sdio_reg.h"
-#include "sdio_wrapper.h"
-#include "esp_hosted_config.h"
+#include "port_esp_hosted_host_sdio.h"
 #include "esp_hosted_transport_config.h"
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_log.h"
 
 #if H_SDIO_PWR_CTRL_LDO
 #include "sd_pwr_ctrl_by_on_chip_ldo.h"
@@ -405,16 +406,16 @@ int hosted_sdio_card_init(void *ctx)
 				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
 				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
 				sdio_config->pin_d2.pin, sdio_config->pin_d3.pin,
-				H_GPIO_PIN_RESET_Pin);
+				sdio_config->pin_reset.pin);
 	} else {
 		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] Slave_Reset[%u]",
 				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
 				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
-				H_GPIO_PIN_RESET_Pin);
+				sdio_config->pin_reset.pin);
 	}
 	ESP_LOGI(TAG, "Queues: Tx[%u] Rx[%u] SDIO-Rx-Mode[%u]",
-			H_SDIO_TX_Q, H_SDIO_RX_Q,
-			H_SDIO_HOST_RX_MODE);
+			sdio_config->tx_queue_size, sdio_config->rx_queue_size,
+			sdio_config->rx_mode);
 
 #ifdef CONFIG_IDF_TARGET_ESP32P4
 	// Set this flag to allocate aligned buffer of 512 bytes to meet

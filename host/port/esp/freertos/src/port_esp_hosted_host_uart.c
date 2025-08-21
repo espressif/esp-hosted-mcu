@@ -1,26 +1,17 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2024 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "driver/uart.h"
 
-#include "esp_hosted_config.h"
-#include "os_wrapper.h"
-#include "uart_wrapper.h"
+#include "transport_drv.h"
+#include "port_esp_hosted_host_os.h"
+#include "port_esp_hosted_host_uart.h"
 
 #include "esp_log.h"
 static const char TAG[] = "uart_wrapper";
@@ -153,11 +144,11 @@ void * hosted_uart_init(void)
 	ESP_ERROR_CHECK(uart_driver_install(H_UART_PORT, MAX_UART_BUFFER_SIZE, MAX_UART_BUFFER_SIZE,
 			0, NULL, 0));
 	ESP_ERROR_CHECK(uart_param_config(H_UART_PORT, &uart_config));
-	ESP_ERROR_CHECK(uart_set_pin(H_UART_PORT, H_UART_TX_PIN, H_UART_RX_PIN,
+	ESP_ERROR_CHECK(uart_set_pin(H_UART_PORT, H_UART_PIN_TX, H_UART_PIN_RX,
 			UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
 	ESP_LOGI(TAG, "UART GPIOs: Tx: %"PRIu16 ", Rx: %"PRIu16 ", Baud Rate %i",
-			H_UART_TX_PIN, H_UART_RX_PIN, H_UART_BAUD_RATE);
+			H_UART_PIN_TX, H_UART_PIN_RX, H_UART_BAUD_RATE);
 
 	ctx->uart_port = H_UART_PORT;
 
@@ -181,7 +172,7 @@ esp_err_t hosted_uart_deinit(void *ctx)
 		ESP_LOGE(TAG, "%s: Failed to flush uart Tx", __func__);
 	uart_driver_delete(pctx->uart_port);
 
-	HOSTED_FREE(ctx);
+	g_h.funcs->_h_free(ctx);
 
 	return ESP_OK;
 }

@@ -15,8 +15,10 @@
 
 /* Wrapper interfaces for UART to communicated with slave using UART */
 
-#ifndef __UART_WRAPPER_H_
-#define __UART_WRAPPER_H_
+#ifndef __PORT_ESP_HOSTED_HOST_UART_H_
+#define __PORT_ESP_HOSTED_HOST_UART_H_
+
+#define MAX_TRANSPORT_BUFFER_SIZE        MAX_UART_BUFFER_SIZE
 
 /* Hosted init function to init the UART interface
  * returns a pointer to the UART context */

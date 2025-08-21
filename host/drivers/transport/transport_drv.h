@@ -1,17 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /** prevent recursive inclusion **/
 #ifndef __TRANSPORT_DRV_H
@@ -23,13 +14,24 @@ extern "C" {
 
 /** Includes **/
 
-#include "common.h"
+#include "esp_err.h"
 
 #include "esp_hosted_transport.h"
-#include "esp_hosted_config.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_interface.h"
 #include "esp_hosted_header.h"
+
+#include "port_esp_hosted_host_config.h"
+
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
+#include "port_esp_hosted_host_spi.h"
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
+#include "port_esp_hosted_host_sdio.h"
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
+#include "port_esp_hosted_host_spi_hd.h"
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_UART
+#include "port_esp_hosted_host_uart.h"
+#endif
 
 /* ESP in sdkconfig has CONFIG_IDF_FIRMWARE_CHIP_ID entry.
  * supported values of CONFIG_IDF_FIRMWARE_CHIP_ID are - */
@@ -42,16 +44,55 @@ extern "C" {
 #define ESP_PRIV_FIRMWARE_CHIP_ESP32C6      (0xD)
 #define ESP_PRIV_FIRMWARE_CHIP_ESP32C5      (0x17)
 
+#define MAX_SPI_BUFFER_SIZE               ESP_TRANSPORT_SPI_MAX_BUF_SIZE
+#define MAX_SDIO_BUFFER_SIZE              ESP_TRANSPORT_SDIO_MAX_BUF_SIZE
+#define MAX_SPI_HD_BUFFER_SIZE            ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE
+#define MAX_UART_BUFFER_SIZE              ESP_TRANSPORT_UART_MAX_BUF_SIZE
 
-#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
-#include "spi_wrapper.h"
-#define SPI_MODE0                           (0)
-#define SPI_MODE1                           (1)
-#define SPI_MODE2                           (2)
-#define SPI_MODE3                           (3)
-#else
-#include "sdio_wrapper.h"
+#ifndef BIT
+#define BIT(x)                            (1UL << (x))
 #endif
+
+#ifndef BIT64
+#define BIT64(nr)               (1ULL << (nr))
+#endif
+
+#define H_MIN(a, b) (((a) < (b)) ? (a) : (b))
+
+#define MHZ_TO_HZ(x) (1000000*(x))
+
+#define H_FREE_PTR_WITH_FUNC(FreeFunc, FreePtr) do {	\
+	if (FreeFunc && FreePtr) {             \
+		FreeFunc(FreePtr);                 \
+		FreePtr = NULL;                    \
+	}                                      \
+} while (0);
+
+#define SUCCESS 0
+#define FAILURE -1
+
+typedef enum {
+	TRANSPORT_INACTIVE,
+	TRANSPORT_RX_ACTIVE,
+	TRANSPORT_TX_ACTIVE,
+} transport_drv_events_e;
+
+/* interface header */
+typedef struct {
+	union {
+		void *priv_buffer_handle;
+	};
+	uint8_t if_type;
+	uint8_t if_num;
+	uint8_t *payload;
+	uint8_t flag;
+	uint16_t payload_len;
+	uint16_t seq_num;
+	/* no need of memcpy at different layers */
+	uint8_t payload_zcopy;
+
+	void (*free_buf_handle)(void *buf_handle);
+} interface_buffer_handle_t;
 
 struct esp_private {
 	uint8_t     if_type;

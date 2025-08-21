@@ -1,8 +1,8 @@
 /*
-* SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,9 +10,10 @@ extern "C" {
 
 /** Includes **/
 #include "esp_hosted_transport_config.h"
-#include "esp_hosted_wifi_config.h"
 #include "esp_hosted_api_priv.h"
 #include "esp_hosted_wifi_remote_glue.h"
+#include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_os.h"
 #include "esp_check.h"
 #include "transport_drv.h"
 #include "rpc_wrap.h"

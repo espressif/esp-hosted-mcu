@@ -11,9 +11,6 @@
 extern "C" {
 #endif
 
-#include "esp_hosted_config.h"
-#include "esp_hosted_bt.h"
-#include "esp_hosted_bt_config.h"
 #include "esp_hosted_transport_config.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_host_fw_ver.h"

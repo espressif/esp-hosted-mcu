@@ -26,7 +26,7 @@
 #include "esp_gap_bt_api.h"
 #include "esp_bluedroid_hci.h"
 
-#include "esp_hosted_bt.h"
+#include "esp_hosted_bluedroid.h"
 
 #define GAP_TAG          "GAP"
 

@@ -14,8 +14,8 @@
 
 #include "serial_if.h"
 #include "serial_ll_if.h"
-#include "esp_log.h"
 #include "esp_hosted_log.h"
+#include "port_esp_hosted_host_log.h"
 
 DEFINE_LOG_TAG(serial);
 

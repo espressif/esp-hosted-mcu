@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __ESP_HOSTED_CONFIG_H__
-#define __ESP_HOSTED_CONFIG_H__
+#ifndef __PORT_ESP_HOSTED_HOST_CONFIG_H__
+#define __PORT_ESP_HOSTED_HOST_CONFIG_H__
 
 #include "sdkconfig.h"
 #include "esp_task.h"
@@ -163,6 +163,13 @@ enum {
   #define H_SDIO_BUS_WIDTH                             CONFIG_ESP_HOSTED_SDIO_BUS_WIDTH
   #define H_SDMMC_HOST_SLOT                            CONFIG_ESP_HOSTED_SDIO_SLOT
 
+  #define H_SDIO_PORT_CLK                              NULL
+  #define H_SDIO_PORT_CMD                              NULL
+  #define H_SDIO_PORT_D0                               NULL
+  #define H_SDIO_PORT_D1                               NULL
+  #define H_SDIO_PORT_D2                               NULL
+  #define H_SDIO_PORT_D3                               NULL
+
   #ifdef H_SDIO_SOC_USE_GPIO_MATRIX
     #define H_SDIO_PIN_CLK                             CONFIG_ESP_HOSTED_SDIO_PIN_CLK
     #define H_SDIO_PIN_CMD                             CONFIG_ESP_HOSTED_SDIO_PIN_CMD
@@ -276,6 +283,13 @@ enum {
 
   #define H_SPI_HD_HOST_NUM_DATA_LINES                 CONFIG_ESP_HOSTED_SPI_HD_INTERFACE_NUM_DATA_LINES
 
+  #define H_SPI_HD_PORT_D0                             NULL
+  #define H_SPI_HD_PORT_D1                             NULL
+  #define H_SPI_HD_PORT_D2                             NULL
+  #define H_SPI_HD_PORT_D3                             NULL
+  #define H_SPI_HD_PORT_CS                             NULL
+  #define H_SPI_HD_PORT_CLK                            NULL
+
   #define H_SPI_HD_PIN_D0                              CONFIG_ESP_HOSTED_SPI_HD_GPIO_D0
   #define H_SPI_HD_PIN_D1                              CONFIG_ESP_HOSTED_SPI_HD_GPIO_D1
   #if (CONFIG_ESP_HOSTED_SPI_HD_INTERFACE_NUM_DATA_LINES == 4)
@@ -288,7 +302,7 @@ enum {
 
   #define H_SPI_HD_PIN_CS                              CONFIG_ESP_HOSTED_SPI_HD_GPIO_CS
   #define H_SPI_HD_PIN_CLK                             CONFIG_ESP_HOSTED_SPI_HD_GPIO_CLK
-  #define H_SPI_HD_GPIO_DATA_READY_Port                NULL
+  #define H_SPI_HD_PORT_DATA_READY                     NULL
   #define H_SPI_HD_PIN_DATA_READY                      CONFIG_ESP_HOSTED_SPI_HD_GPIO_DATA_READY
 
   #define H_SPI_HD_CLK_MHZ                             CONFIG_ESP_HOSTED_SPI_HD_CLK_FREQ
@@ -323,8 +337,10 @@ enum {
 
   #define H_UART_CHECKSUM                              CONFIG_ESP_HOSTED_UART_CHECKSUM
   #define H_UART_BAUD_RATE                             CONFIG_ESP_HOSTED_UART_BAUDRATE
-  #define H_UART_TX_PIN                                CONFIG_ESP_HOSTED_UART_PIN_TX
-  #define H_UART_RX_PIN                                CONFIG_ESP_HOSTED_UART_PIN_RX
+  #define H_UART_PIN_TX                                CONFIG_ESP_HOSTED_UART_PIN_TX
+  #define H_UART_PORT_TX                               NULL
+  #define H_UART_PIN_RX                                CONFIG_ESP_HOSTED_UART_PIN_RX
+  #define H_UART_PORT_RX                               NULL
   #define H_UART_TX_QUEUE_SIZE                         CONFIG_ESP_HOSTED_UART_TX_Q_SIZE
   #define H_UART_RX_QUEUE_SIZE                         CONFIG_ESP_HOSTED_UART_RX_Q_SIZE
 
@@ -334,8 +350,8 @@ enum {
 #endif
 
 /* Generic reset pin config */
-#define H_GPIO_PIN_RESET_Port                        NULL
-#define H_GPIO_PIN_RESET_Pin                         CONFIG_ESP_HOSTED_GPIO_SLAVE_RESET_SLAVE
+#define H_GPIO_PIN_RESET                             CONFIG_ESP_HOSTED_GPIO_SLAVE_RESET_SLAVE
+#define H_GPIO_PORT_RESET                            NULL
 
 /* If Reset pin is Enable, it is Active High.
  * If it is RST, active low */

@@ -6,11 +6,13 @@
 
 #include "rpc_core.h"
 #include "rpc_slave_if.h"
-#include "esp_log.h"
-#include "esp_hosted_wifi_config.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
-#include "esp_hosted_config.h"
+#include "esp_idf_version.h"
+#include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_log.h"
+#include "esp_hosted_os_abstraction.h"
 
 DEFINE_LOG_TAG(rpc_rsp);
 

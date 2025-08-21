@@ -4,9 +4,11 @@
 * SPDX-License-Identifier: Apache-2.0
 */
 
-#include "esp_hosted_transport_config.h"
 #include <string.h>
 #include "esp_log.h"
+
+#include "port_esp_hosted_host_config.h"
+#include "esp_hosted_transport_config.h"
 
 static const char *TAG = "esp_hosted_transport_config";
 
@@ -18,6 +20,14 @@ static bool esp_hosted_transport_config_set;
 
 bool esp_hosted_transport_is_config_valid(void) {
   return esp_hosted_transport_config_set;
+}
+
+esp_err_t esp_hosted_set_default_config(void) {
+  return esp_hosted_transport_set_default_config();
+}
+
+bool esp_hosted_is_config_valid(void) {
+  return esp_hosted_transport_is_config_valid();
 }
 
 esp_hosted_transport_err_t esp_hosted_transport_set_default_config(void)
@@ -74,8 +84,8 @@ esp_hosted_transport_err_t esp_hosted_transport_get_reset_config(gpio_pin_t *pin
 	case H_TRANSPORT_NONE: // drop through to default case
 	default:
 		// transport config not yet initialised. Use default Reset pin config
-		pin_config->port = NULL;
-		pin_config->pin  = H_GPIO_PIN_RESET_Pin;
+		pin_config->port = H_GPIO_PORT_RESET;
+		pin_config->pin  = H_GPIO_PIN_RESET;
 		break;
 	}
 

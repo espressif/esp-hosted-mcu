@@ -12,7 +12,7 @@
 #include "esp_console.h"
 
 #ifdef CONFIG_ESP_HOSTED_ENABLED
-#include "esp_hosted_config.h"
+#include "port_esp_hosted_host_config.h"
 #include "esp_hosted_power_save.h"
 #endif
 
