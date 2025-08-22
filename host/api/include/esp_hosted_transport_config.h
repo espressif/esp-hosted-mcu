@@ -9,7 +9,6 @@
 
 #include <stdbool.h>
 
-#include "port_esp_hosted_host_config.h"
 #include "esp_err.h"
 
 typedef enum {
