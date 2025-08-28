@@ -681,6 +681,35 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
 		RPC_ERR_IN_RESP(resp_set_dhcp_dns);
 		break;
+	} case RPC_ID__Resp_GpioConfig: {
+	    RPC_FAIL_ON_NULL(resp_gpio_config);
+	    RPC_ERR_IN_RESP(resp_gpio_config);
+	    break;
+    } case RPC_ID__Resp_GpioResetPin: {
+        RPC_FAIL_ON_NULL(resp_gpio_reset);
+        RPC_ERR_IN_RESP(resp_gpio_reset);
+        break;
+	} case RPC_ID__Resp_GpioSetLevel: {
+	    RPC_FAIL_ON_NULL(resp_gpio_set_level);
+	    RPC_ERR_IN_RESP(resp_gpio_set_level);
+	    break;
+    } case RPC_ID__Resp_GpioGetLevel: {
+        RPC_FAIL_ON_NULL(resp_gpio_get_level);
+        RPC_ERR_IN_RESP(resp_gpio_get_level);
+        app_resp->u.gpio_get_level = rpc_msg->resp_gpio_get_level->level;
+        break;
+    } case RPC_ID__Resp_GpioSetDirection: {
+        RPC_FAIL_ON_NULL(resp_gpio_set_direction);
+        RPC_ERR_IN_RESP(resp_gpio_set_direction);
+        break;
+    } case RPC_ID__Resp_GpioInputEnable: {
+        RPC_FAIL_ON_NULL(resp_gpio_input_enable);
+        RPC_ERR_IN_RESP(resp_gpio_input_enable);
+        break;
+    } case RPC_ID__Resp_GpioSetPullMode: {
+        RPC_FAIL_ON_NULL(resp_gpio_set_pull_mode);
+        RPC_ERR_IN_RESP(resp_gpio_set_pull_mode);
+        break;
 	} default: {
 		ESP_LOGE(TAG, "Unsupported rpc Resp[%u]", rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;

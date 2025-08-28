@@ -14,6 +14,7 @@ extern "C" {
 
 /** Includes **/
 #include "esp_wifi.h"
+#include "driver/gpio.h"
 #include "port_esp_hosted_host_wifi_config.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_ota.h"
@@ -105,6 +106,15 @@ esp_err_t rpc_wifi_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw);
 esp_err_t rpc_set_dhcp_dns_status(wifi_interface_t interface, uint8_t link_up,
 		uint8_t dhcp_up, char *dhcp_ip, char *dhcp_nm, char *dhcp_gw,
 		uint8_t dns_up, char *dns_ip, uint8_t dns_type);
+
+esp_err_t rpc_gpio_config(const gpio_config_t *pGPIOConfig);
+esp_err_t rpc_gpio_reset_pin(gpio_num_t gpio_num);
+esp_err_t rpc_gpio_set_level(gpio_num_t gpio_num, uint32_t level);
+int rpc_gpio_get_level(gpio_num_t gpio_num, int *level);
+esp_err_t rpc_gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode);
+esp_err_t rpc_gpio_input_enable(gpio_num_t gpio_num);
+esp_err_t rpc_gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pull);
+
 
 #ifdef __cplusplus
 }

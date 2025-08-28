@@ -201,6 +201,21 @@ typedef struct {
 	int32_t wifi_event_id;
 } event_wifi_simple_t;
 
+typedef struct {
+  gpio_num_t gpio_num;
+  uint32_t level;
+} rpc_gpio_set_level_t;
+
+typedef struct {
+  gpio_num_t gpio_num;
+  gpio_mode_t mode;
+} rpc_gpio_set_direction_t;
+
+typedef struct {
+  gpio_num_t gpio_num;
+  gpio_pull_mode_t pull_mode;
+} rpc_gpio_set_pull_mode_t;
+
 typedef struct Ctrl_cmd_t {
 	/* msg type could be 1. req 2. resp 3. notification */
 	uint8_t msg_type;
@@ -315,6 +330,18 @@ typedef struct Ctrl_cmd_t {
 
 		wifi_event_sta_itwt_probe_t    e_wifi_sta_itwt_probe;
 #endif
+
+		gpio_config_t               gpio_config;
+
+		gpio_num_t                  gpio_num;
+
+		rpc_gpio_set_level_t        gpio_set_level;
+
+        int                         gpio_get_level;
+
+		rpc_gpio_set_direction_t    gpio_set_direction;
+
+		rpc_gpio_set_pull_mode_t    gpio_set_pull_mode;
 	}u;
 
 	/* By default this callback is set to NULL.
@@ -530,6 +557,13 @@ ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_suspend(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_get_flow_id_status(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_send_probe_req(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_set_target_wake_time_offset(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_config(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_reset_pin(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_set_level(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_get_level(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_set_direction(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_input_enable(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_set_pull_mode(ctrl_cmd_t *req);
 #ifdef __cplusplus
 }
 #endif
