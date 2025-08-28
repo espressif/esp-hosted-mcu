@@ -30,7 +30,6 @@
 #include "nvs_flash.h"
 
 #include "esp_hosted.h"
-#include "esp_hosted_misc.h"
 
 /* Example Message IDs - use any uint32_t except 0xFFFFFFFF */
 #define MSG_ID_CAT      1   /**< Request: small data */

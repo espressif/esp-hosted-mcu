@@ -1,0 +1,4 @@
+# ESP-Hosted GPIO Expander Example Configuration
+
+# Enable GPIO expander support
+CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER=y

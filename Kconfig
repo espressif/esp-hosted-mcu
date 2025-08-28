@@ -1657,6 +1657,15 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			can instruct the co-processor to negotiate specific wake and sleep schedules with
 			the access point (AP) for lower power consumption.
 
+	config ESP_HOSTED_ENABLE_GPIO_EXPANDER
+		bool "Enable GPIO Expander feature on host"
+		default n
+		help
+			Enable RPC methods that allow the HOST MCU to configure and control GPIOs
+			on the co-processor. Leave disabled unless you really need it.
+			GPIO requests that target pins used by the active transport will be rejected.
+			Note: ESP_HOSTED_ENABLE_GPIO_EXPANDER should also be enabled at co-processor to use this
+
 	config ESP_HOSTED_ENABLE_DPP
 		bool "Enable Wi-Fi Easy Connect (DPP)"
 		default n

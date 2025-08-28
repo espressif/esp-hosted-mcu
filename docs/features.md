@@ -27,3 +27,4 @@ This page documents the features implemented by ESP-Hosted-MCU.
 ## Miscellaneous
 
 1. (Optional) [**Host Power Save**](feature_host_power_save.md) to allow Host to go to sleep and be waken by co-processor
+2. (Optional) [**GPIO Expander**](gpio_expander.md) to allow the host to control the GPIOs of the slave.
