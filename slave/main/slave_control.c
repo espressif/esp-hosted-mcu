@@ -20,6 +20,7 @@
 #include "esp_hosted_log.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
 #include "driver/gpio.h"
+#include "transport_gpio_pin_guard.h"
 
 #if CONFIG_SOC_WIFI_HE_SUPPORT
 #include "esp_wifi_he.h"
@@ -2835,6 +2836,7 @@ static esp_err_t req_wifi_sta_itwt_set_target_wake_time_offset(Rpc *req, Rpc *re
 }
 #endif // CONFIG_SOC_WIFI_HE_SUPPORT
 
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
 static esp_err_t req_gpio_config(Rpc *req, Rpc *resp, void *priv_data)
 {
   RPC_TEMPLATE(RpcRespGpioConfig, resp_gpio_config,
@@ -2849,6 +2851,16 @@ static esp_err_t req_gpio_config(Rpc *req, Rpc *resp, void *priv_data)
   config.intr_type = req_payload->config->intr_type;
   config.pin_bit_mask = req_payload->config->pin_bit_mask;
 
+  for (int pin = 0; pin < GPIO_NUM_MAX; ++pin) {
+      if (config.pin_bit_mask & (1ULL << pin)) {
+          if (!transport_gpio_pin_guard_is_eligible((gpio_num_t)pin)) {
+              ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", pin);;
+              resp_payload->resp = ESP_ERR_INVALID_ARG;
+              return ESP_OK;
+          }
+      }
+  }
+
   RPC_RET_FAIL_IF(gpio_config(&config));
 
   return ESP_OK;
@@ -2862,6 +2874,12 @@ static esp_err_t req_gpio_reset(Rpc *req, Rpc *resp, void *priv_data)
 
   gpio_num_t gpio_num;
   gpio_num = req_payload->gpio_num;
+
+  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+      resp_payload->resp = ESP_ERR_INVALID_ARG;
+      return ESP_OK;
+  }
 
   RPC_RET_FAIL_IF(gpio_reset_pin(gpio_num));
 
@@ -2880,6 +2898,12 @@ static esp_err_t req_gpio_set_level(Rpc *req, Rpc *resp, void *priv_data)
   uint32_t level;
   level = req_payload->level;
 
+  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+      resp_payload->resp = ESP_ERR_INVALID_ARG;
+      return ESP_OK;
+  }
+
   RPC_RET_FAIL_IF(gpio_set_level(gpio_num, level));
 
   return ESP_OK;
@@ -2893,6 +2917,12 @@ static esp_err_t req_gpio_get_level(Rpc *req, Rpc *resp, void *priv_data)
 
   gpio_num_t gpio_num;
   gpio_num = req_payload->gpio_num;
+
+  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+      resp_payload->resp = ESP_ERR_INVALID_ARG;
+      return ESP_OK;
+  }
 
   int level = gpio_get_level(gpio_num);
 
@@ -2913,6 +2943,12 @@ static esp_err_t req_gpio_set_direction(Rpc *req, Rpc *resp, void *priv_data)
   gpio_mode_t mode;
   mode = req_payload->mode;
 
+  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+      resp_payload->resp = ESP_ERR_INVALID_ARG;
+      return ESP_OK;
+  }
+
   RPC_RET_FAIL_IF(gpio_set_direction(gpio_num, mode));
 
   return ESP_OK;
@@ -2926,6 +2962,12 @@ static esp_err_t req_gpio_input_enable(Rpc *req, Rpc *resp, void *priv_data)
 
   gpio_num_t gpio_num;
   gpio_num = req_payload->gpio_num;
+
+  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+        ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+        resp_payload->resp = ESP_ERR_INVALID_ARG;
+        return ESP_OK;
+    }
 
   RPC_RET_FAIL_IF(gpio_input_enable(gpio_num));
 
@@ -2944,10 +2986,17 @@ static esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data)
   gpio_pull_mode_t pull_mode;
   pull_mode = req_payload->pull;
 
+  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+       resp_payload->resp = ESP_ERR_INVALID_ARG;
+       return ESP_OK;
+   }
+
   RPC_RET_FAIL_IF(gpio_set_pull_mode(gpio_num, pull_mode));
 
   return ESP_OK;
 }
+#endif // CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
 
 static esp_rpc_req_t req_table[] = {
 	{
@@ -3218,6 +3267,7 @@ static esp_rpc_req_t req_table[] = {
 		.command_handler = req_wifi_sta_itwt_set_target_wake_time_offset
 	},
 #endif // CONFIG_SOC_WIFI_HE_SUPPORT
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
 	{
         .req_num = RPC_ID__Req_GpioConfig,
         .command_handler = req_gpio_config
@@ -3245,13 +3295,14 @@ static esp_rpc_req_t req_table[] = {
     {
          .req_num = RPC_ID__Req_GpioSetPullMode,
          .command_handler = req_gpio_set_pull_mode
-    }
+    },
+#endif // CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
 };
 
 
 static int lookup_req_handler(int req_id)
 {
-	for (int i = 0; i < sizeof(req_table)/sizeof(esp_rpc_req_t); i++) {
+    for (int i = 0; i < sizeof(req_table)/sizeof(esp_rpc_req_t); i++) {
 		if (req_table[i].req_num == req_id) {
 			return i;
 		}
