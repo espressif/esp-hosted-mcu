@@ -12,6 +12,7 @@
 #include "esp_hosted_rpc.pb-c.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
+#include "driver/gpio.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
 #ifdef __cplusplus
