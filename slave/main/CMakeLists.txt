@@ -16,6 +16,7 @@ set(COMPONENT_SRCS
 	"mempool_ll.c"
 	"host_power_save.c"
 	"lwip_filter.c"
+	"transport_gpio_pin_guard.c"
 )
 
 set(COMPONENT_ADD_INCLUDEDIRS
