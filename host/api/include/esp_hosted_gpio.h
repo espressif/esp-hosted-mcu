@@ -22,4 +22,4 @@ esp_err_t esp_hosted_gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pu
 
 
 
-#endif /*__ESP_HOSTED_OTA_H__*/
+#endif /*__ESP_HOSTED_GPIO_H__*/
