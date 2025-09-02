@@ -70,7 +70,8 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 
 	# host ESP32 specific files
 	list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c")
-
+	list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_gpio.c")
+	
 	# cli
 	list(APPEND srcs "${common_dir}/utils/esp_hosted_cli.c")
 	list(APPEND priv_include "${common_dir}/utils")
