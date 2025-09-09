@@ -491,6 +491,9 @@ static esp_err_t get_chip_str_from_id(int chip_id, char* chip_str)
 	case ESP_PRIV_FIRMWARE_CHIP_ESP32C5:
 		strcpy(chip_str, "esp32c5");
 		break;
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C61:
+		strcpy(chip_str, "esp32c61");
+		break;
 	default:
 		ESP_LOGW(TAG, "Unsupported chip id: %u", chip_id);
 		strcpy(chip_str, "unsupported");
@@ -519,6 +522,8 @@ static void verify_host_config_for_slave(uint8_t chip_type)
 	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32S3;
 #elif H_SLAVE_TARGET_ESP32C5
 	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32C5;
+#elif H_SLAVE_TARGET_ESP32C61
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32C61;
 #else
 	ESP_LOGW(TAG, "Incorrect host config for ESP slave chipset[%x]", chip_type);
 #endif
@@ -731,7 +736,8 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C2) &&
 		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C3) &&
 		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C6) &&
-		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C5)) {
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C5) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C61)) {
 		ESP_LOGI(TAG, "ESP board type is not mentioned, ignoring [%d]\n\r", chip_type);
 		chip_type = ESP_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
 		return -1;
