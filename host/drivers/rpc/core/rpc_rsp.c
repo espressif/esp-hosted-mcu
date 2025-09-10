@@ -681,6 +681,105 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
 		RPC_ERR_IN_RESP(resp_set_dhcp_dns);
 		break;
+#if H_WIFI_ENTERPRISE_SUPPORT
+	} case RPC_ID__Resp_WifiStaEnterpriseEnable: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_enterprise_enable);
+		RPC_ERR_IN_RESP(resp_wifi_sta_enterprise_enable);
+		break;
+	} case RPC_ID__Resp_WifiStaEnterpriseDisable: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_enterprise_disable);
+		RPC_ERR_IN_RESP(resp_wifi_sta_enterprise_disable);
+		break;
+	} case RPC_ID__Resp_EapSetIdentity: {
+		RPC_FAIL_ON_NULL(resp_eap_set_identity);
+		RPC_ERR_IN_RESP(resp_eap_set_identity);
+		break;
+	} case RPC_ID__Resp_EapClearIdentity: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_identity);
+		RPC_ERR_IN_RESP(resp_eap_clear_identity);
+		break;
+	} case RPC_ID__Resp_EapSetUsername: {
+		RPC_FAIL_ON_NULL(resp_eap_set_username);
+		RPC_ERR_IN_RESP(resp_eap_set_username);
+		break;
+	} case RPC_ID__Resp_EapClearUsername: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_username);
+		RPC_ERR_IN_RESP(resp_eap_clear_username);
+		break;
+	} case RPC_ID__Resp_EapSetPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_set_password);
+		RPC_ERR_IN_RESP(resp_eap_set_password);
+		break;
+	} case RPC_ID__Resp_EapClearPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_password);
+		RPC_ERR_IN_RESP(resp_eap_clear_password);
+		break;
+	} case RPC_ID__Resp_EapSetNewPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_set_new_password);
+		RPC_ERR_IN_RESP(resp_eap_set_new_password);
+		break;
+	} case RPC_ID__Resp_EapClearNewPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_new_password);
+		RPC_ERR_IN_RESP(resp_eap_clear_new_password);
+		break;
+	} case RPC_ID__Resp_EapSetCaCert: {
+		RPC_FAIL_ON_NULL(resp_eap_set_ca_cert);
+		RPC_ERR_IN_RESP(resp_eap_set_ca_cert);
+		break;
+	} case RPC_ID__Resp_EapClearCaCert: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_ca_cert);
+		RPC_ERR_IN_RESP(resp_eap_clear_ca_cert);
+		break;
+	} case RPC_ID__Resp_EapSetCertificateAndKey: {
+		RPC_FAIL_ON_NULL(resp_eap_set_certificate_and_key);
+		RPC_ERR_IN_RESP(resp_eap_set_certificate_and_key);
+		break;
+	} case RPC_ID__Resp_EapClearCertificateAndKey: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_certificate_and_key);
+		RPC_ERR_IN_RESP(resp_eap_clear_certificate_and_key);
+		break;
+	} case RPC_ID__Resp_EapGetDisableTimeCheck: {
+		RPC_FAIL_ON_NULL(resp_eap_get_disable_time_check);
+		RPC_ERR_IN_RESP(resp_eap_get_disable_time_check);
+		app_resp->u.eap_disable_time_check.disable = rpc_msg->resp_eap_get_disable_time_check->disable;
+		break;
+	} case RPC_ID__Resp_EapSetTtlsPhase2Method: {
+		RPC_FAIL_ON_NULL(resp_eap_set_ttls_phase2_method);
+		RPC_ERR_IN_RESP(resp_eap_set_ttls_phase2_method);
+		break;
+	} case RPC_ID__Resp_EapSetSuitebCertification: {
+		RPC_FAIL_ON_NULL(resp_eap_set_suiteb_certification);
+		RPC_ERR_IN_RESP(resp_eap_set_suiteb_certification);
+		break;
+	} case RPC_ID__Resp_EapSetPacFile: {
+		RPC_FAIL_ON_NULL(resp_eap_set_pac_file);
+		RPC_ERR_IN_RESP(resp_eap_set_pac_file);
+		break;
+	} case RPC_ID__Resp_EapSetFastParams: {
+		RPC_FAIL_ON_NULL(resp_eap_set_fast_params);
+		RPC_ERR_IN_RESP(resp_eap_set_fast_params);
+		break;
+	} case RPC_ID__Resp_EapUseDefaultCertBundle: {
+		RPC_FAIL_ON_NULL(resp_eap_use_default_cert_bundle);
+		RPC_ERR_IN_RESP(resp_eap_use_default_cert_bundle);
+		break;
+	} case RPC_ID__Resp_WifiSetOkcSupport: {
+		RPC_FAIL_ON_NULL(resp_wifi_set_okc_support);
+		RPC_ERR_IN_RESP(resp_wifi_set_okc_support);
+		break;
+	} case RPC_ID__Resp_EapSetDomainName: {
+		RPC_FAIL_ON_NULL(resp_eap_set_domain_name);
+		RPC_ERR_IN_RESP(resp_eap_set_domain_name);
+		break;
+	} case RPC_ID__Resp_EapSetDisableTimeCheck: {
+		RPC_FAIL_ON_NULL(resp_eap_set_disable_time_check);
+		RPC_ERR_IN_RESP(resp_eap_set_disable_time_check);
+		break;
+	} case RPC_ID__Resp_EapSetEapMethods: {
+		RPC_FAIL_ON_NULL(resp_eap_set_eap_methods);
+		RPC_ERR_IN_RESP(resp_eap_set_eap_methods);
+		break;
+#endif
 	} default: {
 		ESP_LOGE(TAG, "Unsupported rpc Resp[%u]", rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;

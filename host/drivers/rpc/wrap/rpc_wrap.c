@@ -545,6 +545,32 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_WifiStaItwtSendProbeReq:
 	case RPC_ID__Resp_WifiStaItwtSetTargetWakeTimeOffset:
 #endif // H_WIFI_HE_SUPPORT
+#if H_WIFI_ENTERPRISE_SUPPORT
+	case RPC_ID__Resp_WifiStaEnterpriseEnable:
+	case RPC_ID__Resp_WifiStaEnterpriseDisable:
+	case RPC_ID__Resp_EapSetIdentity:
+	case RPC_ID__Resp_EapClearIdentity:
+	case RPC_ID__Resp_EapSetUsername:
+	case RPC_ID__Resp_EapClearUsername:
+	case RPC_ID__Resp_EapSetPassword:
+	case RPC_ID__Resp_EapClearPassword:
+	case RPC_ID__Resp_EapSetNewPassword:
+	case RPC_ID__Resp_EapClearNewPassword:
+	case RPC_ID__Resp_EapSetCaCert:
+	case RPC_ID__Resp_EapClearCaCert:
+	case RPC_ID__Resp_EapSetCertificateAndKey:
+	case RPC_ID__Resp_EapClearCertificateAndKey:
+	case RPC_ID__Resp_EapGetDisableTimeCheck:
+	case RPC_ID__Resp_EapSetTtlsPhase2Method:
+	case RPC_ID__Resp_EapSetSuitebCertification:
+	case RPC_ID__Resp_EapSetPacFile:
+	case RPC_ID__Resp_EapSetFastParams:
+	case RPC_ID__Resp_EapUseDefaultCertBundle:
+	case RPC_ID__Resp_WifiSetOkcSupport:
+	case RPC_ID__Resp_EapSetDomainName:
+	case RPC_ID__Resp_EapSetDisableTimeCheck:
+	case RPC_ID__Resp_EapSetEapMethods:
+#endif
 	case RPC_ID__Resp_GetCoprocessorFwVersion: {
 		/* Intended fallthrough */
 		break;
@@ -1608,3 +1634,301 @@ esp_err_t rpc_set_dhcp_dns_status(wifi_interface_t ifx, uint8_t link_up,
 	resp = rpc_slaveif_set_slave_dhcp_dns_status(req);
 	return rpc_rsp_callback(resp);
 }
+
+#if H_WIFI_ENTERPRISE_SUPPORT
+esp_err_t rpc_wifi_sta_enterprise_enable(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_wifi_sta_enterprise_enable(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_sta_enterprise_disable(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_wifi_sta_enterprise_disable(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_identity(const unsigned char *identity, int len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!identity || len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_identity.identity = identity;
+	req->u.eap_identity.len = len;
+
+	resp = rpc_slaveif_eap_set_identity(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_identity(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_identity(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_username(const unsigned char *username, int len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!username || len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_username.username = username;
+	req->u.eap_username.len = len;
+
+	resp = rpc_slaveif_eap_set_username(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_username(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_username(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_password(const unsigned char *password, int len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!password || len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_password.password = password;
+	req->u.eap_password.len = len;
+
+	resp = rpc_slaveif_eap_set_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_password(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_new_password(const unsigned char *new_password, int len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!new_password || len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_password.password = new_password;
+	req->u.eap_password.len = len;
+
+	resp = rpc_slaveif_eap_set_new_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_new_password(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_new_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_ca_cert(const unsigned char *ca_cert, int ca_cert_len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!ca_cert || ca_cert_len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_ca_cert.ca_cert = ca_cert;
+	req->u.eap_ca_cert.len = ca_cert_len;
+
+	resp = rpc_slaveif_eap_set_ca_cert(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_ca_cert(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_ca_cert(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_certificate_and_key(const unsigned char *client_cert, int client_cert_len,
+												 const unsigned char *private_key, int private_key_len,
+												 const unsigned char *private_key_password, int private_key_passwd_len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!client_cert || (client_cert_len <= 0) ||
+		!private_key || (private_key_len <= 0) ||
+		(private_key_password && private_key_passwd_len <= 0) ||
+		(private_key_passwd_len > 0 && !private_key_password)) {
+			return FAILURE;
+	}
+
+	req->u.eap_cert_key.client_cert = client_cert;
+	req->u.eap_cert_key.client_cert_len = client_cert_len;
+
+	req->u.eap_cert_key.private_key = private_key;
+	req->u.eap_cert_key.private_key_len = private_key_len;
+
+	req->u.eap_cert_key.private_key_password = private_key_password;
+	req->u.eap_cert_key.private_key_passwd_len = private_key_passwd_len;
+
+	resp = rpc_slaveif_eap_set_certificate_and_key(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_certificate_and_key(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_certificate_and_key(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_disable_time_check(bool disable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_disable_time_check.disable = disable;
+	resp = rpc_slaveif_eap_set_disable_time_check(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_get_disable_time_check(bool *disable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!disable)
+		return FAILURE;
+
+	resp = rpc_slaveif_eap_get_disable_time_check(req);
+
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*disable = resp->u.eap_disable_time_check.disable;
+	}
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_ttls_phase2_method(esp_eap_ttls_phase2_types type)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_ttls_phase2 = type;
+	resp = rpc_slaveif_eap_set_ttls_phase2_method(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_suiteb_192bit_certification(bool enable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_suiteb_192bit.enable = enable;
+	resp = rpc_slaveif_eap_set_suiteb_certification(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_pac_file(const unsigned char *pac_file, int pac_file_len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!pac_file || pac_file_len <= 0)
+		return FAILURE;
+
+	req->u.eap_pac_file.pac_file = pac_file;
+	req->u.eap_pac_file.len = pac_file_len;
+
+	resp = rpc_slaveif_eap_set_pac_file(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_fast_params(esp_eap_fast_config config)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_fast_config = config;
+	resp = rpc_slaveif_eap_set_fast_params(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_use_default_cert_bundle(bool use_default_bundle)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_default_cert_bundle.use_default = use_default_bundle;
+	resp = rpc_slaveif_eap_use_default_cert_bundle(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_set_okc_support(bool enable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_okc_support.enable = enable;
+	resp = rpc_slaveif_wifi_set_okc_support(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_domain_name(const char *domain_name)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!domain_name)
+		return FAILURE;
+
+	req->u.eap_domain_name.domain_name = domain_name;
+	resp = rpc_slaveif_eap_set_domain_name(req);
+	return rpc_rsp_callback(resp);
+}
+
+#if H_GOT_SET_EAP_METHODS_API
+esp_err_t rpc_eap_client_set_eap_methods(esp_eap_method_t methods)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.methods = methods;
+	resp = rpc_slaveif_eap_set_eap_methods(req);
+	return rpc_rsp_callback(resp);
+}
+#endif
+#endif
