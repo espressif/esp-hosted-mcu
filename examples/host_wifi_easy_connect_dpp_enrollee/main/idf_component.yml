@@ -1,0 +1,10 @@
+dependencies:
+  qrcode: "^0.1.0"
+  espressif/esp_wifi_remote:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4, esp32h2]"
+  espressif/esp_hosted:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4, esp32h2]"

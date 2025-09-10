@@ -95,5 +95,36 @@
 #else
 #define H_GOT_EAP_OKC_SUPPORT 1
 #endif
+/**
+ * Wi-Fi Easy Connect (DPP) events is returned to user via
+ * Supplicant Callback or Wi-Fi DPP events,
+ * depending on IDF version
+ */
+// Supplicant Callback DPP Events: still available, but deprecated
+#if CONFIG_ESP_HOSTED_ENABLE_DPP
+#define H_SUPP_DPP_SUPPORT 1
+#else
+#define H_SUPP_DPP_SUPPORT 0
+#endif
+
+// Wi-Fi DPP Events: only in IDF v5.5 and above
+#if CONFIG_ESP_HOSTED_ENABLE_DPP && (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0))
+#define H_WIFI_DPP_SUPPORT 1
+#else
+#define H_WIFI_DPP_SUPPORT 0
+#endif
+
+// for generic DPP support
+#if H_SUPP_DPP_SUPPORT || H_WIFI_DPP_SUPPORT
+#define H_DPP_SUPPORT 1
+#else
+#define H_DPP_SUPPORT 0
+#endif
+
+// this sets the maximum length of the URI we can receive to generate
+// the QR code
+#if H_DPP_SUPPORT
+#define H_DPP_URI_LEN_MAX CONFIG_ESP_HOSTED_DPP_URI_LEN_MAX
+#endif
 
 #endif /* __ESP_HOSTED_WIFI_CONFIG_H__ */
