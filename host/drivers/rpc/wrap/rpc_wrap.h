@@ -18,6 +18,10 @@ extern "C" {
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_ota.h"
 
+#if H_WIFI_ENTERPRISE_SUPPORT
+#include "esp_eap_client.h"
+#endif
+
 /** Exported variables **/
 
 /** Inline functions **/
@@ -105,6 +109,38 @@ esp_err_t rpc_wifi_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw);
 esp_err_t rpc_set_dhcp_dns_status(wifi_interface_t interface, uint8_t link_up,
 		uint8_t dhcp_up, char *dhcp_ip, char *dhcp_nm, char *dhcp_gw,
 		uint8_t dns_up, char *dns_ip, uint8_t dns_type);
+
+#if H_WIFI_ENTERPRISE_SUPPORT
+esp_err_t rpc_wifi_sta_enterprise_enable(void);
+esp_err_t rpc_wifi_sta_enterprise_disable(void);
+esp_err_t rpc_eap_client_set_identity(const unsigned char *identity, int len);
+esp_err_t rpc_eap_client_clear_identity(void);
+esp_err_t rpc_eap_client_set_username(const unsigned char *username, int len);
+esp_err_t rpc_eap_client_clear_username(void);
+esp_err_t rpc_eap_client_set_password(const unsigned char *password, int len);
+esp_err_t rpc_eap_client_clear_password(void);
+esp_err_t rpc_eap_client_set_new_password(const unsigned char *new_password, int len);
+esp_err_t rpc_eap_client_clear_new_password(void);
+esp_err_t rpc_eap_client_set_ca_cert(const unsigned char *ca_cert, int ca_cert_len);
+esp_err_t rpc_eap_client_clear_ca_cert(void);
+
+esp_err_t rpc_eap_client_set_certificate_and_key(const unsigned char *client_cert, int client_cert_len,
+                                                  const unsigned char *private_key, int private_key_len,
+                                                  const unsigned char *private_key_password, int private_key_passwd_len);
+esp_err_t rpc_eap_client_clear_certificate_and_key(void);
+esp_err_t rpc_eap_client_set_disable_time_check(bool disable);
+esp_err_t rpc_eap_client_get_disable_time_check(bool *disable);
+esp_err_t rpc_eap_client_set_ttls_phase2_method(esp_eap_ttls_phase2_types type);
+esp_err_t rpc_eap_client_set_suiteb_192bit_certification(bool enable);
+esp_err_t rpc_eap_client_set_pac_file(const unsigned char *pac_file, int pac_file_len);
+esp_err_t rpc_eap_client_set_fast_params(esp_eap_fast_config config);
+esp_err_t rpc_eap_client_use_default_cert_bundle(bool use_default_bundle);
+esp_err_t rpc_wifi_set_okc_support(bool enable);
+esp_err_t rpc_eap_client_set_domain_name(const char *domain_name);
+#if H_GOT_SET_EAP_METHODS_API
+esp_err_t rpc_eap_client_set_eap_methods(esp_eap_method_t methods);
+#endif
+#endif
 
 #ifdef __cplusplus
 }

@@ -542,6 +542,160 @@ esp_err_t esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *v
 	return rpc_get_coprocessor_fwversion(ver_info);
 }
 
+#if H_WIFI_ENTERPRISE_SUPPORT
+esp_err_t esp_wifi_remote_sta_enterprise_enable(void)
+{
+	check_transport_up();
+	return rpc_wifi_sta_enterprise_enable();
+}
+
+esp_err_t esp_wifi_remote_sta_enterprise_disable(void)
+{
+	check_transport_up();
+	return rpc_wifi_sta_enterprise_disable();
+}
+
+esp_err_t esp_eap_client_remote_set_identity(const unsigned char *identity, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_identity(identity, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_identity(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_identity();
+}
+
+esp_err_t esp_eap_client_remote_set_username(const unsigned char *username, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_username(username, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_username(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_username();
+}
+
+esp_err_t esp_eap_client_remote_set_password(const unsigned char *password, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_password(password, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_password(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_password();
+}
+
+esp_err_t esp_eap_client_remote_set_new_password(const unsigned char *new_password, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_new_password(new_password, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_new_password(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_new_password();
+}
+
+esp_err_t esp_eap_client_remote_set_ca_cert(const unsigned char *ca_cert, int ca_cert_len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_ca_cert(ca_cert, ca_cert_len);
+}
+
+esp_err_t esp_eap_client_remote_clear_ca_cert(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_ca_cert();
+}
+
+esp_err_t esp_eap_client_remote_set_certificate_and_key(const unsigned char *client_cert,
+							int client_cert_len,
+							const unsigned char *private_key,
+							int private_key_len,
+							const unsigned char *private_key_password,
+							int private_key_passwd_len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_certificate_and_key(client_cert, client_cert_len, private_key,
+						      private_key_len, private_key_password, private_key_passwd_len);
+}
+
+esp_err_t esp_eap_client_remote_clear_certificate_and_key(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_certificate_and_key();
+}
+
+esp_err_t esp_eap_client_remote_set_disable_time_check(bool disable)
+{
+	check_transport_up();
+	return rpc_eap_client_set_disable_time_check(disable);
+}
+
+esp_err_t esp_eap_client_remote_get_disable_time_check(bool *disable)
+{
+	check_transport_up();
+	return rpc_eap_client_get_disable_time_check(disable);
+}
+
+esp_err_t esp_eap_client_remote_set_ttls_phase2_method(esp_eap_ttls_phase2_types type)
+{
+	check_transport_up();
+	return rpc_eap_client_set_ttls_phase2_method(type);
+}
+
+esp_err_t esp_eap_client_remote_set_suiteb_192bit_certification(bool enable)
+{
+	check_transport_up();
+	return rpc_eap_client_set_suiteb_192bit_certification(enable);
+}
+
+esp_err_t esp_eap_client_remote_set_pac_file(const unsigned char *pac_file, int pac_file_len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_pac_file(pac_file, pac_file_len);
+}
+
+esp_err_t esp_eap_client_remote_set_fast_params(esp_eap_fast_config config)
+{
+	check_transport_up();
+	return rpc_eap_client_set_fast_params(config);
+}
+
+esp_err_t esp_eap_client_remote_use_default_cert_bundle(bool use_default_bundle)
+{
+	check_transport_up();
+	return rpc_eap_client_use_default_cert_bundle(use_default_bundle);
+}
+
+esp_err_t esp_wifi_remote_set_okc_support(bool enable)
+{
+	check_transport_up();
+	return rpc_wifi_set_okc_support(enable);
+}
+
+esp_err_t esp_eap_client_remote_set_domain_name(const char *domain_name)
+{
+	check_transport_up();
+	return rpc_eap_client_set_domain_name(domain_name);
+}
+
+#if H_GOT_SET_EAP_METHODS_API
+esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods)
+{
+	check_transport_up();
+	return rpc_eap_client_set_eap_methods(methods);
+}
+#endif
+#endif
+
 /* esp_err_t esp_wifi_remote_scan_get_ap_record(wifi_ap_record_t *ap_record)
 esp_err_t esp_wifi_remote_set_csi(_Bool en)
 esp_err_t esp_wifi_remote_set_csi_rx_cb(wifi_csi_cb_t cb, void *ctx)
