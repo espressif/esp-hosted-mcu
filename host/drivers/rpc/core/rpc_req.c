@@ -91,6 +91,16 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 	case RPC_ID__Req_WifiStaGetAid:
 	case RPC_ID__Req_WifiGetBand:
 	case RPC_ID__Req_WifiGetBandMode:
+#if H_WIFI_ENTERPRISE_SUPPORT
+	case RPC_ID__Req_WifiStaEnterpriseEnable:
+	case RPC_ID__Req_WifiStaEnterpriseDisable:
+	case RPC_ID__Req_EapClearIdentity:
+	case RPC_ID__Req_EapClearUsername:
+	case RPC_ID__Req_EapClearPassword:
+	case RPC_ID__Req_EapClearNewPassword:
+	case RPC_ID__Req_EapClearCaCert:
+	case RPC_ID__Req_EapClearCertificateAndKey:
+#endif
 	case RPC_ID__Req_WifiScanGetApRecord: {
 		/* Intentional fallthrough & empty */
 		break;
@@ -617,6 +627,104 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		RPC_REQ_COPY_STR(p_c->dhcp_gw, p_a->dhcp_gw, 64);
 		RPC_REQ_COPY_STR(p_c->dns_ip, p_a->dns_ip, 64);
 		break;
+#if H_WIFI_ENTERPRISE_SUPPORT
+	} case RPC_ID__Req_EapSetIdentity: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetIdentity, req_eap_set_identity,
+				rpc__req__eap_set_identity__init);
+		RPC_REQ_COPY_BYTES(req_payload->identity, (uint8_t *)app_req->u.eap_identity.identity, app_req->u.eap_identity.len);
+		req_payload->len = app_req->u.eap_identity.len;
+		break;
+	} case RPC_ID__Req_EapSetUsername: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetUsername, req_eap_set_username,
+				rpc__req__eap_set_username__init);
+		RPC_REQ_COPY_BYTES(req_payload->username, (uint8_t *)app_req->u.eap_username.username, app_req->u.eap_username.len);
+		req_payload->len = app_req->u.eap_username.len;
+		break;
+	} case RPC_ID__Req_EapSetPassword: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetPassword, req_eap_set_password,
+				rpc__req__eap_set_password__init);
+		RPC_REQ_COPY_BYTES(req_payload->password, (uint8_t *)app_req->u.eap_password.password, app_req->u.eap_password.len);
+		req_payload->len = app_req->u.eap_password.len;
+		break;
+	} case RPC_ID__Req_EapSetNewPassword: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetNewPassword, req_eap_set_new_password,
+				rpc__req__eap_set_new_password__init);
+		RPC_REQ_COPY_BYTES(req_payload->new_password, (uint8_t *)app_req->u.eap_password.password, app_req->u.eap_password.len);
+		req_payload->len = app_req->u.eap_password.len;
+		break;
+	} case RPC_ID__Req_EapSetCaCert: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetCaCert, req_eap_set_ca_cert,
+				rpc__req__eap_set_ca_cert__init);
+		RPC_REQ_COPY_BYTES(req_payload->ca_cert, (uint8_t *)app_req->u.eap_ca_cert.ca_cert, app_req->u.eap_ca_cert.len);
+		req_payload->ca_cert_len = app_req->u.eap_ca_cert.len;
+		break;
+	} case RPC_ID__Req_EapSetCertificateAndKey: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetCertificateAndKey, req_eap_set_certificate_and_key,
+				rpc__req__eap_set_certificate_and_key__init);
+		RPC_REQ_COPY_BYTES(req_payload->client_cert, (uint8_t *)app_req->u.eap_cert_key.client_cert, app_req->u.eap_cert_key.client_cert_len);
+		req_payload->client_cert_len = app_req->u.eap_cert_key.client_cert_len;
+		RPC_REQ_COPY_BYTES(req_payload->private_key, (uint8_t *)app_req->u.eap_cert_key.private_key, app_req->u.eap_cert_key.private_key_len);
+		req_payload->private_key_len = app_req->u.eap_cert_key.private_key_len;
+		RPC_REQ_COPY_BYTES(req_payload->private_key_password, (uint8_t *)app_req->u.eap_cert_key.private_key_password, app_req->u.eap_cert_key.private_key_passwd_len);
+		req_payload->private_key_passwd_len = app_req->u.eap_cert_key.private_key_passwd_len;
+		break;
+	} case RPC_ID__Req_EapSetDisableTimeCheck: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetDisableTimeCheck, req_eap_set_disable_time_check,
+				rpc__req__eap_set_disable_time_check__init);
+		req_payload->disable = app_req->u.eap_disable_time_check.disable;
+		break;
+	} case RPC_ID__Req_EapSetTtlsPhase2Method: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetTtlsPhase2Method, req_eap_set_ttls_phase2_method,
+				rpc__req__eap_set_ttls_phase2_method__init);
+		req_payload->type = app_req->u.eap_ttls_phase2;
+		break;
+	} case RPC_ID__Req_EapSetSuitebCertification: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetSuiteb192bitCertification, req_eap_set_suiteb_certification,
+				rpc__req__eap_set_suiteb192bit_certification__init);
+		req_payload->enable = app_req->u.eap_suiteb_192bit.enable;
+		break;
+	} case RPC_ID__Req_EapSetPacFile: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetPacFile, req_eap_set_pac_file,
+				rpc__req__eap_set_pac_file__init);
+		RPC_REQ_COPY_BYTES(req_payload->pac_file, (uint8_t *)app_req->u.eap_pac_file.pac_file, app_req->u.eap_pac_file.len);
+		req_payload->pac_file_len = app_req->u.eap_pac_file.len;
+		break;
+	} case RPC_ID__Req_EapSetFastParams: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetFastParams, req_eap_set_fast_params,
+				rpc__req__eap_set_fast_params__init);
+		RPC_ALLOC_ELEMENT(EapFastConfig, req_payload->eap_fast_config, eap_fast_config__init);
+		req_payload->eap_fast_config->fast_provisioning = app_req->u.eap_fast_config.fast_provisioning;
+		req_payload->eap_fast_config->fast_max_pac_list_len = app_req->u.eap_fast_config.fast_max_pac_list_len;
+		req_payload->eap_fast_config->fast_pac_format_binary = app_req->u.eap_fast_config.fast_pac_format_binary;
+		break;
+	} case RPC_ID__Req_EapUseDefaultCertBundle: {
+		RPC_ALLOC_ASSIGN(RpcReqEapUseDefaultCertBundle, req_eap_use_default_cert_bundle,
+				rpc__req__eap_use_default_cert_bundle__init);
+		req_payload->use_default_bundle = app_req->u.eap_default_cert_bundle.use_default;
+		break;
+#if H_GOT_EAP_OKC_SUPPORT
+	} case RPC_ID__Req_WifiSetOkcSupport: {
+		RPC_ALLOC_ASSIGN(RpcReqWifiSetOkcSupport, req_wifi_set_okc_support,
+				rpc__req__wifi_set_okc_support__init);
+		req_payload->enable = app_req->u.wifi_okc_support.enable;
+		break;
+#endif
+#if H_GOT_EAP_SET_DOMAIN_NAME
+	} case RPC_ID__Req_EapSetDomainName: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetDomainName, req_eap_set_domain_name,
+				rpc__req__eap_set_domain_name__init);
+		
+		RPC_REQ_COPY_BYTES(req_payload->domain_name, (uint8_t *)app_req->u.eap_domain_name.domain_name, strlen(app_req->u.eap_domain_name.domain_name) + 1);
+		break;
+#endif
+#if H_GOT_SET_EAP_METHODS_API
+	} case RPC_ID__Req_EapSetEapMethods: {
+		RPC_ALLOC_ASSIGN(RpcReqEapSetEapMethods, req_eap_set_eap_methods,
+				rpc__req__eap_set_eap_methods__init);
+		req_payload->methods = app_req->u.methods;
+		break;
+#endif
+#endif
 	} default: {
 		*failure_status = RPC_ERR_UNSUPPORTED_MSG;
 		ESP_LOGE(TAG, "Unsupported RPC Req[%u]",req->msg_id);

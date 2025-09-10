@@ -425,9 +425,34 @@ enum RpcId {
 	Req_WifiStaItwtSendProbeReq       = 359; //0x167
 	Req_WifiStaItwtSetTargetWakeTimeOffset = 360; //0x168
 
+	Req_WifiStaEnterpriseEnable       = 361; //0x169
+	Req_WifiStaEnterpriseDisable      = 362; //0x16A
+	Req_EapSetIdentity                = 363; //0x16B
+	Req_EapClearIdentity              = 364; //0x16C
+	Req_EapSetUsername                = 365; //0x16D
+	Req_EapClearUsername              = 366; //0x16E
+	Req_EapSetPassword                = 367; //0x16F
+	Req_EapClearPassword              = 368; //0x170
+	Req_EapSetNewPassword             = 369; //0x171
+	Req_EapClearNewPassword           = 370; //0x172
+	Req_EapSetCaCert                  = 371; //0x173
+	Req_EapClearCaCert                = 372; //0x174
+	Req_EapSetCertificateAndKey       = 373; //0x175
+	Req_EapClearCertificateAndKey     = 374; //0x176
+	Req_EapGetDisableTimeCheck        = 375; //0x177
+	Req_EapSetTtlsPhase2Method        = 376; //0x178
+	Req_EapSetSuitebCertification     = 377; //0x179
+	Req_EapSetPacFile                 = 378; //0x17A
+	Req_EapSetFastParams              = 379; //0x17B
+	Req_EapUseDefaultCertBundle       = 380; //0x17C
+	Req_WifiSetOkcSupport             = 381; //0x17D
+	Req_EapSetDomainName              = 382; //0x17E
+	Req_EapSetDisableTimeCheck        = 383; //0x17F
+	Req_EapSetEapMethods              = 384; // 0x180
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 361; //0x169
+	Req_Max                           = 385; // 0x181
+
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -562,9 +587,34 @@ enum RpcId {
 	Resp_WifiStaItwtSendProbeReq      = 615;
 	Resp_WifiStaItwtSetTargetWakeTimeOffset = 616;
 
+	Resp_WifiStaEnterpriseEnable              = 617;
+	Resp_WifiStaEnterpriseDisable             = 618;
+	Resp_EapSetIdentity                       = 619;
+	Resp_EapClearIdentity                     = 620;
+	Resp_EapSetUsername                       = 621;
+	Resp_EapClearUsername                     = 622;
+	Resp_EapSetPassword                       = 623;
+	Resp_EapClearPassword                     = 624;
+	Resp_EapSetNewPassword                    = 625;
+	Resp_EapClearNewPassword                  = 626;
+	Resp_EapSetCaCert                         = 627;
+	Resp_EapClearCaCert                       = 628;
+	Resp_EapSetCertificateAndKey              = 629;
+	Resp_EapClearCertificateAndKey            = 630;
+	Resp_EapGetDisableTimeCheck               = 631;
+	Resp_EapSetTtlsPhase2Method               = 632;
+	Resp_EapSetSuitebCertification            = 633;
+	Resp_EapSetPacFile                        = 634;
+	Resp_EapSetFastParams                     = 635;
+	Resp_EapUseDefaultCertBundle              = 636;
+	Resp_WifiSetOkcSupport                    = 637;
+	Resp_EapSetDomainName                     = 638;
+	Resp_EapSetDisableTimeCheck               = 639;
+	Resp_EapSetEapMethods                     = 640;
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 617;
+	Resp_Max                          = 641;
+
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -1052,6 +1102,11 @@ message ConnectedSTAList {
 	int32 rssi = 2;
 }
 
+message eap_fast_config {
+	int32 fast_provisioning = 1;        // Enable or disable Fast Provisioning in EAP-FAST (0 = disabled, 1 = enabled)
+	int32 fast_max_pac_list_len = 2;    // Maximum length of the PAC (Protected Access Credential) list
+	bool fast_pac_format_binary = 3;    // Set to true for binary format PAC, false for ASCII format PAC
+}
 
 /* Control path structures */
 /** Req/Resp structure **/
@@ -1806,6 +1861,200 @@ message Rpc_Event_StaItwtProbe {
 	uint32 reason = 3;
 }
 
+message Rpc_Req_WifiStaEnterpriseEnable {
+}
+
+message Rpc_Resp_WifiStaEnterpriseEnable {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiStaEnterpriseDisable {
+}
+
+message Rpc_Resp_WifiStaEnterpriseDisable {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetIdentity {
+	bytes identity = 1;
+	int32 len = 2;
+}
+
+message Rpc_Resp_EapSetIdentity {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapClearIdentity {
+}
+
+message Rpc_Resp_EapClearIdentity {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetUsername {
+	bytes username = 1;
+	int32 len = 2;
+}
+
+message Rpc_Resp_EapSetUsername {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapClearUsername {
+}
+
+message Rpc_Resp_EapClearUsername {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetPassword {
+	bytes password = 1;
+	int32 len = 2;
+}
+
+message Rpc_Resp_EapSetPassword {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapClearPassword {
+}
+
+message Rpc_Resp_EapClearPassword {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetNewPassword {
+	bytes new_password = 1;
+	int32 len = 2;
+}
+
+message Rpc_Resp_EapSetNewPassword {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapClearNewPassword {
+}
+
+message Rpc_Resp_EapClearNewPassword {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetCaCert {
+	bytes ca_cert = 1;
+	int32 ca_cert_len = 2;
+}
+
+message Rpc_Resp_EapSetCaCert {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapClearCaCert {
+}
+
+message Rpc_Resp_EapClearCaCert {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetCertificateAndKey {
+	bytes client_cert = 1;
+	int32 client_cert_len = 2;
+	bytes private_key = 3;
+	int32 private_key_len = 4;
+	bytes private_key_password = 5;
+	int32 private_key_passwd_len = 6;
+}
+
+message Rpc_Resp_EapSetCertificateAndKey {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapClearCertificateAndKey {
+}
+
+message Rpc_Resp_EapClearCertificateAndKey {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetDisableTimeCheck {
+	bool disable = 1;
+}
+
+message Rpc_Resp_EapSetDisableTimeCheck {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapGetDisableTimeCheck {
+}
+
+message Rpc_Resp_EapGetDisableTimeCheck {
+	int32 resp = 1;
+	bool disable = 2;
+}
+
+message Rpc_Req_EapSetTtlsPhase2Method {
+	int32 type = 1;
+}
+
+message Rpc_Resp_EapSetTtlsPhase2Method {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetSuiteb192bitCertification {
+	bool enable = 1;
+}
+
+message Rpc_Resp_EapSetSuiteb192bitCertification {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetPacFile {
+	bytes pac_file = 1;
+	int32 pac_file_len = 2;
+}
+
+message Rpc_Resp_EapSetPacFile {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetFastParams {
+	eap_fast_config eap_fast_config = 1;
+}
+
+message Rpc_Resp_EapSetFastParams {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapUseDefaultCertBundle {
+	bool use_default_bundle = 1;
+}
+
+message Rpc_Resp_EapUseDefaultCertBundle {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiSetOkcSupport {
+	bool enable = 1;
+}
+
+message Rpc_Resp_WifiSetOkcSupport {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetDomainName {
+	bytes domain_name = 1;
+}
+
+message Rpc_Resp_EapSetDomainName {
+	int32 resp = 1;
+}
+
+message Rpc_Req_EapSetEapMethods {
+	int32 methods = 1;
+}
+
+message Rpc_Resp_EapSetEapMethods {
+	int32 resp = 1;
+}
 message Rpc {
 	/* msg_type could be req, resp or Event */
 	RpcType msg_type = 1;
@@ -1913,6 +2162,30 @@ message Rpc {
 		Rpc_Req_WifiStaItwtGetFlowIdStatus  req_wifi_sta_itwt_get_flow_id_status = 358;
 		Rpc_Req_WifiStaItwtSendProbeReq     req_wifi_sta_itwt_send_probe_req  = 359;
 		Rpc_Req_WifiStaItwtSetTargetWakeTimeOffset req_wifi_sta_itwt_set_target_wake_time_offset = 360;
+		Rpc_Req_WifiStaEnterpriseEnable         req_wifi_sta_enterprise_enable          = 361;
+		Rpc_Req_WifiStaEnterpriseDisable        req_wifi_sta_enterprise_disable         = 362;
+		Rpc_Req_EapSetIdentity                  req_eap_set_identity                    = 363;
+		Rpc_Req_EapClearIdentity                req_eap_clear_identity                  = 364;
+		Rpc_Req_EapSetUsername                  req_eap_set_username                    = 365;
+		Rpc_Req_EapClearUsername                req_eap_clear_username                  = 366;
+		Rpc_Req_EapSetPassword                  req_eap_set_password                    = 367;
+		Rpc_Req_EapClearPassword                req_eap_clear_password                  = 368;
+		Rpc_Req_EapSetNewPassword               req_eap_set_new_password                = 369;
+		Rpc_Req_EapClearNewPassword             req_eap_clear_new_password              = 370;
+		Rpc_Req_EapSetCaCert                    req_eap_set_ca_cert                     = 371;
+		Rpc_Req_EapClearCaCert                  req_eap_clear_ca_cert                   = 372;
+		Rpc_Req_EapSetCertificateAndKey         req_eap_set_certificate_and_key         = 373;
+		Rpc_Req_EapClearCertificateAndKey       req_eap_clear_certificate_and_key       = 374;
+		Rpc_Req_EapGetDisableTimeCheck          req_eap_get_disable_time_check          = 375;
+		Rpc_Req_EapSetTtlsPhase2Method          req_eap_set_ttls_phase2_method          = 376;
+		Rpc_Req_EapSetSuiteb192bitCertification req_eap_set_suiteb_certification        = 377;
+		Rpc_Req_EapSetPacFile                   req_eap_set_pac_file                    = 378;
+		Rpc_Req_EapSetFastParams                req_eap_set_fast_params                 = 379;
+		Rpc_Req_EapUseDefaultCertBundle         req_eap_use_default_cert_bundle         = 380;
+		Rpc_Req_WifiSetOkcSupport               req_wifi_set_okc_support                = 381;
+		Rpc_Req_EapSetDomainName                req_eap_set_domain_name                 = 382;
+		Rpc_Req_EapSetDisableTimeCheck          req_eap_set_disable_time_check          = 383;
+		Rpc_Req_EapSetEapMethods                req_eap_set_eap_methods                 = 384;
 
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
@@ -2008,7 +2281,30 @@ message Rpc {
 		Rpc_Resp_WifiStaItwtGetFlowIdStatus resp_wifi_sta_itwt_get_flow_id_status = 614;
 		Rpc_Resp_WifiStaItwtSendProbeReq    resp_wifi_sta_itwt_send_probe_req  = 615;
 		Rpc_Resp_WifiStaItwtSetTargetWakeTimeOffset resp_wifi_sta_itwt_set_target_wake_time_offset = 616;
-
+		Rpc_Resp_WifiStaEnterpriseEnable       resp_wifi_sta_enterprise_enable         = 617;
+		Rpc_Resp_WifiStaEnterpriseDisable      resp_wifi_sta_enterprise_disable        = 618;
+		Rpc_Resp_EapSetIdentity                resp_eap_set_identity                   = 619;
+		Rpc_Resp_EapClearIdentity              resp_eap_clear_identity                 = 620;
+		Rpc_Resp_EapSetUsername                resp_eap_set_username                   = 621;
+		Rpc_Resp_EapClearUsername              resp_eap_clear_username                 = 622;
+		Rpc_Resp_EapSetPassword                resp_eap_set_password                   = 623;
+		Rpc_Resp_EapClearPassword              resp_eap_clear_password                 = 624;
+		Rpc_Resp_EapSetNewPassword             resp_eap_set_new_password               = 625;
+		Rpc_Resp_EapClearNewPassword           resp_eap_clear_new_password             = 626;
+		Rpc_Resp_EapSetCaCert                  resp_eap_set_ca_cert                    = 627;
+		Rpc_Resp_EapClearCaCert                resp_eap_clear_ca_cert                  = 628;
+		Rpc_Resp_EapSetCertificateAndKey       resp_eap_set_certificate_and_key        = 629;
+		Rpc_Resp_EapClearCertificateAndKey     resp_eap_clear_certificate_and_key      = 630;
+		Rpc_Resp_EapGetDisableTimeCheck        resp_eap_get_disable_time_check         = 631;
+		Rpc_Resp_EapSetTtlsPhase2Method        resp_eap_set_ttls_phase2_method         = 632;
+		Rpc_Resp_EapSetSuiteb192bitCertification resp_eap_set_suiteb_certification      = 633;
+		Rpc_Resp_EapSetPacFile                 resp_eap_set_pac_file                   = 634;
+		Rpc_Resp_EapSetFastParams              resp_eap_set_fast_params                = 635;
+		Rpc_Resp_EapUseDefaultCertBundle       resp_eap_use_default_cert_bundle        = 636;
+		Rpc_Resp_WifiSetOkcSupport             resp_wifi_set_okc_support               = 637;
+		Rpc_Resp_EapSetDomainName              resp_eap_set_domain_name                = 638;
+		Rpc_Resp_EapSetDisableTimeCheck        resp_eap_set_disable_time_check         = 639;
+		Rpc_Resp_EapSetEapMethods              resp_eap_set_eap_methods                = 640;
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
 		Rpc_Event_Heartbeat                 event_heartbeat                    = 770;

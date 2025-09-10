@@ -131,7 +131,7 @@ else()
 endif()
 
 idf_component_register(SRCS ${srcs}
-	PRIV_REQUIRES soc esp_event esp_netif esp_timer driver esp_wifi bt esp_http_client console
+	PRIV_REQUIRES soc esp_event esp_netif esp_timer driver esp_wifi bt esp_http_client console wpa_supplicant
 	REQUIRES ${driver_requires}
 	INCLUDE_DIRS ${pub_include}
 	PRIV_INCLUDE_DIRS ${priv_include})

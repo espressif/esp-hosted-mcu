@@ -25,6 +25,12 @@
   #define H_WIFI_DUALBAND_SUPPORT 0
 #endif
 
+#ifdef CONFIG_ESP_WIFI_REMOTE_EAP_ENABLED
+  #define H_WIFI_ENTERPRISE_SUPPORT 1
+#else
+  #define H_WIFI_ENTERPRISE_SUPPORT 0
+#endif
+
 /* ESP-IDF 5.5.0 breaking change: reserved/he_reserved renamed to reserved1/reserved2 */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
   #define H_WIFI_NEW_RESERVED_FIELD_NAMES 1
@@ -71,6 +77,23 @@
   #define H_PRESENT_IN_ESP_IDF_6_0_0      1
 #else
   #define H_PRESENT_IN_ESP_IDF_6_0_0      0
+#endif
+
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 4)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3)) || ESP_IDF_VERSION == ESP_IDF_VERSION_VAL(5, 5, 0)
+#define H_GOT_SET_EAP_METHODS_API 0
+#else
+#define H_GOT_SET_EAP_METHODS_API 1
+#endif
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 4)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3))
+#define H_GOT_EAP_SET_DOMAIN_NAME 0
+#else
+#define H_GOT_EAP_SET_DOMAIN_NAME 1
+#endif
+
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3))
+#define H_GOT_EAP_OKC_SUPPORT 0
+#else
+#define H_GOT_EAP_OKC_SUPPORT 1
 #endif
 
 #endif /* __ESP_HOSTED_WIFI_CONFIG_H__ */

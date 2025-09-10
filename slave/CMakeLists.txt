@@ -8,7 +8,7 @@ add_compile_options(-Wl,--wrap=esp_wifi_init)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 list(APPEND EXCLUDE_COMPONENTS lwip esp_netif)
 
-set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt)
+set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant)
 #list(APPEND COMPONENTS esp_gdbstub) # incase gdbstub needed
 project(network_adapter)
 idf_build_set_property(COMPILE_OPTIONS "-fdiagnostics-color=always" APPEND)

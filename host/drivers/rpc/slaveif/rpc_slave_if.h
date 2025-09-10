@@ -14,6 +14,10 @@
 #include "esp_wifi_types.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
+#if H_WIFI_ENTERPRISE_SUPPORT
+#include "esp_eap_client.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -201,6 +205,63 @@ typedef struct {
 	int32_t wifi_event_id;
 } event_wifi_simple_t;
 
+#if H_WIFI_ENTERPRISE_SUPPORT
+typedef struct {
+	const unsigned char *identity;
+	int len;
+} rpc_eap_identity_t;
+
+typedef struct {
+	const unsigned char *username;
+	int len;
+} rpc_eap_username_t;
+
+typedef struct {
+	const unsigned char *password;
+	int len;
+} rpc_eap_password_t;
+
+typedef struct {
+	const unsigned char *ca_cert;
+	int len;
+} rpc_eap_ca_cert_t;
+
+typedef struct {
+	const unsigned char *client_cert;
+	int client_cert_len;
+	const unsigned char *private_key;
+	int private_key_len;
+	const unsigned char *private_key_password;
+	int private_key_passwd_len;
+} rpc_eap_cert_key_t;
+
+typedef struct {
+	bool disable;
+} rpc_eap_disable_time_check_t;
+
+typedef struct {
+	bool enable;
+} rpc_eap_suiteb_192bit_t;
+
+typedef struct {
+	const unsigned char *pac_file;
+	int len;
+} rpc_eap_pac_file_t;
+
+
+typedef struct {
+	bool use_default;
+} rpc_eap_default_cert_bundle_t;
+
+typedef struct {
+	bool enable;
+} rpc_wifi_okc_support_t;
+
+typedef struct {
+	const char *domain_name;
+} rpc_eap_domain_name_t;
+#endif
+
 typedef struct Ctrl_cmd_t {
 	/* msg type could be 1. req 2. resp 3. notification */
 	uint8_t msg_type;
@@ -314,6 +375,37 @@ typedef struct Ctrl_cmd_t {
 		wifi_event_sta_itwt_suspend_t  e_wifi_sta_itwt_suspend;
 
 		wifi_event_sta_itwt_probe_t    e_wifi_sta_itwt_probe;
+#endif
+#if H_WIFI_ENTERPRISE_SUPPORT
+		rpc_eap_identity_t            eap_identity;
+ 
+		rpc_eap_username_t            eap_username;
+
+		rpc_eap_password_t            eap_password;
+
+		rpc_eap_ca_cert_t             eap_ca_cert;
+
+		rpc_eap_cert_key_t            eap_cert_key;
+
+		rpc_eap_disable_time_check_t  eap_disable_time_check;
+
+		esp_eap_ttls_phase2_types     eap_ttls_phase2;
+
+		rpc_eap_suiteb_192bit_t       eap_suiteb_192bit;
+
+		rpc_eap_pac_file_t            eap_pac_file;
+
+		esp_eap_fast_config           eap_fast_config;
+
+		rpc_eap_default_cert_bundle_t eap_default_cert_bundle;
+
+		rpc_wifi_okc_support_t        wifi_okc_support;
+
+		rpc_eap_domain_name_t         eap_domain_name;
+
+#if H_GOT_SET_EAP_METHODS_API
+		esp_eap_method_t              methods;
+#endif
 #endif
 	}u;
 
@@ -530,6 +622,32 @@ ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_suspend(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_get_flow_id_status(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_send_probe_req(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_set_target_wake_time_offset(ctrl_cmd_t *req);
+#if H_WIFI_ENTERPRISE_SUPPORT
+ctrl_cmd_t * rpc_slaveif_wifi_sta_enterprise_enable(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_sta_enterprise_disable(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_identity(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_clear_identity(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_username(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_clear_username(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_password(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_clear_password(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_new_password(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_clear_new_password(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_ca_cert(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_clear_ca_cert(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_certificate_and_key(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_clear_certificate_and_key(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_disable_time_check(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_get_disable_time_check(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_ttls_phase2_method(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_suiteb_certification(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_pac_file(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_fast_params(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_use_default_cert_bundle(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_set_okc_support(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_domain_name(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_eap_set_eap_methods(ctrl_cmd_t *req);
+#endif
 #ifdef __cplusplus
 }
 #endif

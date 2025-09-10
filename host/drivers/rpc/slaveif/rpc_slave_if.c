@@ -445,3 +445,151 @@ ctrl_cmd_t * rpc_slaveif_set_slave_dhcp_dns_status(ctrl_cmd_t *req)
 	RPC_SEND_REQ(RPC_ID__Req_SetDhcpDnsStatus);
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
+
+#if H_WIFI_ENTERPRISE_SUPPORT
+ctrl_cmd_t * rpc_slaveif_wifi_sta_enterprise_enable(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaEnterpriseEnable);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_sta_enterprise_disable(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiStaEnterpriseDisable);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_identity(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetIdentity);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_clear_identity(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapClearIdentity);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_username(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetUsername);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_clear_username(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapClearUsername);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_password(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetPassword);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_clear_password(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapClearPassword);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_new_password(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetNewPassword);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_clear_new_password(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapClearNewPassword);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_ca_cert(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetCaCert);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_clear_ca_cert(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapClearCaCert);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_certificate_and_key(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetCertificateAndKey);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_clear_certificate_and_key(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapClearCertificateAndKey);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_get_disable_time_check(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapGetDisableTimeCheck);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_ttls_phase2_method(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetTtlsPhase2Method);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_suiteb_certification(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetSuitebCertification);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_pac_file(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetPacFile);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_fast_params(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetFastParams);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_use_default_cert_bundle(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapUseDefaultCertBundle);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_wifi_set_okc_support(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiSetOkcSupport);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_domain_name(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetDomainName);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_eap_set_disable_time_check(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetDisableTimeCheck);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+#if H_GOT_SET_EAP_METHODS_API
+ctrl_cmd_t * rpc_slaveif_eap_set_eap_methods(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_EapSetEapMethods);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+#endif
+#endif
