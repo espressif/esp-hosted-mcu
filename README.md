@@ -45,6 +45,10 @@ This can be any generic microcontroller (MCU). We demonstrate any ESP as host. U
 - **Extensible RPC library**
   - The Remote Procedure Call (RPC) used by ESP-Hosted can be extended to provide any function required by the Host, as long as the co-processor can support it. Currently, the essential [ESP-IDF](https://github.com/espressif/esp-idf) Wi-Fi functions have been implemented.
 
+## 3.1 Features Supported by ESP-Hosted
+
+See the [Features](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/features.md) document for features currently supported by ESP-Hosted.
+
 ## 4 Quick Demo with ESP32-P4-Function-EV-Board
 
 Impatient to test? We've got you covered!

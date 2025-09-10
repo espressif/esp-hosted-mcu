@@ -21,6 +21,9 @@ extern "C" {
 #if H_WIFI_ENTERPRISE_SUPPORT
 #include "esp_eap_client.h"
 #endif
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
+#endif
 
 /** Exported variables **/
 
@@ -140,6 +143,15 @@ esp_err_t rpc_eap_client_set_domain_name(const char *domain_name);
 #if H_GOT_SET_EAP_METHODS_API
 esp_err_t rpc_eap_client_set_eap_methods(esp_eap_method_t methods);
 #endif
+#endif
+#if H_DPP_SUPPORT
+esp_err_t rpc_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb);
+esp_err_t rpc_supp_dpp_deinit(void);
+esp_err_t rpc_supp_dpp_bootstrap_gen(const char *chan_list,
+		esp_supp_dpp_bootstrap_t type,
+		const char *key, const char *info);
+esp_err_t rpc_supp_dpp_start_listen(void);
+esp_err_t rpc_supp_dpp_stop_listen(void);
 #endif
 
 #ifdef __cplusplus

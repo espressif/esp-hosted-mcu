@@ -1,17 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __SLAVE_CONTROL__H__
 #define __SLAVE_CONTROL__H__
@@ -37,17 +28,17 @@
             }                       \
         }
 
-#define NTFY_TEMPLATE(NtFy_MsgId, NtFy_TyPe, NtFy_StRuCt, InIt_FuN)           \
-	NtFy_TyPe *ntfy_payload = NULL;                                             \
-	ntfy_payload = (NtFy_TyPe*)calloc(1,sizeof(NtFy_TyPe));                     \
-	if (!ntfy_payload) {                                                        \
-		ESP_LOGE(TAG,"Failed to allocate memory");                                \
-		return ESP_ERR_NO_MEM;                                                    \
-	}                                                                           \
-	InIt_FuN(ntfy_payload);                                                     \
-	ntfy->payload_case = NtFy_MsgId;                                            \
-	ntfy->NtFy_StRuCt = ntfy_payload;                                           \
-	ntfy_payload->resp = SUCCESS;
+#define NTFY_TEMPLATE(NtFy_MsgId, NtFy_TyPe, NtFy_StRuCt, InIt_FuN)             \
+  NtFy_TyPe *ntfy_payload = NULL;                                               \
+  ntfy_payload = (NtFy_TyPe*)calloc(1,sizeof(NtFy_TyPe));                       \
+  if (!ntfy_payload) {                                                          \
+    ESP_LOGE(TAG,"Failed to allocate memory");                                  \
+    return ESP_ERR_NO_MEM;                                                      \
+  }                                                                             \
+  InIt_FuN(ntfy_payload);                                                       \
+  ntfy->payload_case = NtFy_MsgId;                                              \
+  ntfy->NtFy_StRuCt = ntfy_payload;                                             \
+  ntfy_payload->resp = SUCCESS;
 
 #define RPC_TEMPLATE(RspTyPe, RspStRuCt, ReqType, ReqStruct, InIt_FuN)          \
   RspTyPe *resp_payload = NULL;                                                 \
@@ -95,25 +86,25 @@
 } while(0);
 
 #define RPC_ALLOC_ELEMENT(TyPe,MsG_StRuCt,InIt_FuN) {                         \
-    TyPe *NeW_AllocN = (TyPe *)calloc(1, sizeof(TyPe));                       \
-    if (!NeW_AllocN) {                                                        \
-        ESP_LOGI(TAG,"Failed to allocate memory for req.%s\n",#MsG_StRuCt);   \
-        resp_payload->resp = RPC_ERR_MEMORY_FAILURE;                          \
-		goto err;                                                                 \
-    }                                                                         \
-    MsG_StRuCt = NeW_AllocN;                                                  \
-    InIt_FuN(MsG_StRuCt);                                                     \
+  TyPe *NeW_AllocN = (TyPe *)calloc(1, sizeof(TyPe));                         \
+  if (!NeW_AllocN) {                                                          \
+    ESP_LOGI(TAG,"Failed to allocate memory for req.%s\n",#MsG_StRuCt);       \
+    resp_payload->resp = RPC_ERR_MEMORY_FAILURE;                              \
+    goto err;                                                                 \
+  }                                                                           \
+  MsG_StRuCt = NeW_AllocN;                                                    \
+  InIt_FuN(MsG_StRuCt);                                                       \
 }
 
 #define NTFY_ALLOC_ELEMENT(TyPe,MsG_StRuCt,InIt_FuN) {                        \
-    TyPe *NeW_AllocN = (TyPe *)calloc(1, sizeof(TyPe));                       \
-    if (!NeW_AllocN) {                                                        \
-        ESP_LOGI(TAG,"Failed to allocate memory for req.%s\n",#MsG_StRuCt);   \
-        ntfy_payload->resp = RPC_ERR_MEMORY_FAILURE;                          \
-		goto err;                                                                 \
-    }                                                                         \
-    MsG_StRuCt = NeW_AllocN;                                                  \
-    InIt_FuN(MsG_StRuCt);                                                     \
+  TyPe *NeW_AllocN = (TyPe *)calloc(1, sizeof(TyPe));                         \
+  if (!NeW_AllocN) {                                                          \
+    ESP_LOGI(TAG,"Failed to allocate memory for req.%s\n",#MsG_StRuCt);       \
+    ntfy_payload->resp = RPC_ERR_MEMORY_FAILURE;                              \
+    goto err;                                                                 \
+  }                                                                           \
+  MsG_StRuCt = NeW_AllocN;                                                    \
+  InIt_FuN(MsG_StRuCt);                                                       \
 }
 
 #define NTFY_COPY_BYTES(dest, src, num)                                         \
@@ -126,9 +117,20 @@
         return ESP_OK;                                                          \
       }                                                                         \
       memcpy(dest.data, src, num);                                              \
-	  dest.len = num;                                                             \
+      dest.len = num;                                                           \
     }                                                                           \
   } while(0)
+
+#define NTFY_COPY_STR(dest, src, max_len)                                       \
+  if (src) {                                                                    \
+    dest.data = (uint8_t*)strndup((char*)src, max_len);                         \
+    if (!dest.data) {                                                           \
+      ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);     \
+      ntfy_payload->resp = FAILURE;                                             \
+      return ESP_OK;                                                            \
+    }                                                                           \
+    dest.len = min(max_len,strlen((char*)src)+1);                                 \
+  }
 
 #define RPC_REQ_COPY_BYTES(dest, src, num_bytes)                                \
   if (src.len && src.data)                                                      \
@@ -144,7 +146,7 @@
       resp_payload->resp = FAILURE;                                             \
       return ESP_OK;                                                            \
     }                                                                           \
-	dest.len = min(max_len,strlen((char*)src)+1);                                 \
+    dest.len = min(max_len,strlen((char*)src)+1);                                 \
   }
 
 #define RPC_RESP_COPY_BYTES_SRC_UNCHECKED(dest, src, num)                       \
@@ -157,7 +159,7 @@
         return ESP_OK;                                                          \
       }                                                                         \
       memcpy(dest.data, src, num);                                              \
-	  dest.len = num;                                                             \
+      dest.len = num;                                                           \
     }                                                                           \
   } while(0)
 
@@ -173,7 +175,7 @@
       ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);     \
       return FAILURE;                                                           \
     }                                                                           \
-	dest.len = min(max_len,strlen((char*)src)+1);                                 \
+    dest.len = min(max_len,strlen((char*)src)+1);                                 \
   }
 
 #define RPC_COPY_BYTES(dest, src, num)                                          \
@@ -185,7 +187,7 @@
         return FAILURE;                                                         \
       }                                                                         \
       memcpy(dest.data, src, num);                                              \
-	  dest.len = num;                                                             \
+      dest.len = num;                                                             \
     }                                                                           \
   } while(0)
 

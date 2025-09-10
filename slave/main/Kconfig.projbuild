@@ -845,6 +845,12 @@ menu "Example Configuration"
 		help
 			Enable/disable sleeps while OTA operations
 
+	config ESP_WIFI_DPP_SUPPORT
+		bool "Enable Wi-Fi Easy Connect (DPP)"
+		default n
+		help
+			Enable Wi-Fi Easy Connect (DPP) support
+
 	menu "Hosted Debugging"
 		config ESP_RAW_THROUGHPUT_TRANSPORT
 			bool "RawTP: Transport level throughput debug test"

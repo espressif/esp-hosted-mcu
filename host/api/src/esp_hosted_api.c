@@ -19,6 +19,10 @@ extern "C" {
 #include "rpc_wrap.h"
 #include "esp_log.h"
 
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
+#endif
+
 /** Macros **/
 static const char *TAG="H_API";
 
@@ -533,6 +537,40 @@ esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t
 {
 	check_transport_up();
 	return rpc_wifi_get_bandwidths(ifx, bw);
+}
+#endif
+
+#if H_DPP_SUPPORT
+esp_err_t esp_supp_remote_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
+{
+	check_transport_up();
+	return rpc_supp_dpp_init(evt_cb);
+}
+
+esp_err_t esp_supp_remote_dpp_deinit(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_deinit();
+}
+
+esp_err_t esp_supp_remote_dpp_bootstrap_gen(const char *chan_list,
+		esp_supp_dpp_bootstrap_t type,
+		const char *key, const char *info)
+{
+	check_transport_up();
+	return rpc_supp_dpp_bootstrap_gen(chan_list, type, key, info);
+}
+
+esp_err_t esp_supp_remote_dpp_start_listen(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_start_listen();
+}
+
+esp_err_t esp_supp_remote_dpp_stop_listen(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_stop_listen();
 }
 #endif
 

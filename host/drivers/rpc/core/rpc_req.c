@@ -101,6 +101,11 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 	case RPC_ID__Req_EapClearCaCert:
 	case RPC_ID__Req_EapClearCertificateAndKey:
 #endif
+#if H_DPP_SUPPORT
+	case RPC_ID__Req_SuppDppDeinit:
+	case RPC_ID__Req_SuppDppStartListen:
+	case RPC_ID__Req_SuppDppStopListen:
+#endif
 	case RPC_ID__Req_WifiScanGetApRecord: {
 		/* Intentional fallthrough & empty */
 		break;
@@ -713,7 +718,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 	} case RPC_ID__Req_EapSetDomainName: {
 		RPC_ALLOC_ASSIGN(RpcReqEapSetDomainName, req_eap_set_domain_name,
 				rpc__req__eap_set_domain_name__init);
-		
+
 		RPC_REQ_COPY_BYTES(req_payload->domain_name, (uint8_t *)app_req->u.eap_domain_name.domain_name, strlen(app_req->u.eap_domain_name.domain_name) + 1);
 		break;
 #endif
@@ -724,6 +729,37 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->methods = app_req->u.methods;
 		break;
 #endif
+#endif
+#if H_DPP_SUPPORT
+	} case RPC_ID__Req_SuppDppInit: {
+		RPC_ALLOC_ASSIGN(RpcReqSuppDppInit,req_supp_dpp_init,
+				rpc__req__supp_dpp_init__init);
+		req_payload->cb = app_req->u.dpp_enable_cb;
+		break;
+	} case RPC_ID__Req_SuppDppBootstrapGen: {
+		RPC_ALLOC_ASSIGN(RpcReqSuppDppBootstrapGen,req_supp_dpp_bootstrap_gen,
+				rpc__req__supp_dpp_bootstrap_gen__init);
+		int str_len;
+		RpcReqSuppDppBootstrapGen *p_c = req_payload;
+		rpc_supp_dpp_bootstrap_gen_t* p_a = &app_req->u.dpp_bootstrap_gen;
+
+		p_c->type = p_a->type;
+
+		// chan_list: copy terminating NULL
+		str_len = strlen(p_a->chan_list);
+		RPC_REQ_COPY_BYTES(p_c->chan_list, (uint8_t *)p_a->chan_list, str_len + 1);
+
+		// key is a fixed length (if provided)
+		if (p_a->key) {
+			RPC_REQ_COPY_BYTES(p_c->key, (uint8_t *)p_a->key, DPP_BOOTSTRAP_GEN_KEY_LEN);
+		}
+
+		// info: copy terminating NULL
+		if (p_a->info) {
+			str_len = strlen(p_a->info);
+			RPC_REQ_COPY_BYTES(p_c->info, (uint8_t *)p_a->info, str_len + 1);
+		}
+		break;
 #endif
 	} default: {
 		*failure_status = RPC_ERR_UNSUPPORTED_MSG;

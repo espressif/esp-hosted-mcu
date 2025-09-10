@@ -1506,6 +1506,20 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			can instruct the co-processor to negotiate specific wake and sleep schedules with
 			the access point (AP) for lower power consumption.
 
+	config ESP_HOSTED_ENABLE_DPP
+		bool "Enable Wi-Fi Easy Connect (DPP)"
+		default n
+		help
+			Enable Wi-Fi Easy Connect (DPP) support
+
+	config ESP_HOSTED_DPP_URI_LEN_MAX
+		int "Maximum length of URI used to generate QR code in Wi-Fi Easy Connect"
+		depends on ESP_HOSTED_ENABLE_DPP
+		default 255
+		help
+			URIs used to generate the QR code should be less than this length.
+			Increase this value if the received URI can be larger
+
 	config ESP_HOSTED_USE_MEMPOOL
 		bool "Cache allocated memory like mempool - helps to reduce malloc calls"
 		default y

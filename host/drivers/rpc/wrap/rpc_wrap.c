@@ -18,6 +18,10 @@
 #include "port_esp_hosted_host_log.h"
 #include "transport_drv.h"
 
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
+#endif
+
 static const char *TAG = "RPC_WRAP";
 
 uint8_t restart_after_slave_ota = 0;
@@ -33,7 +37,6 @@ uint8_t restart_after_slave_ota = 0;
 #define OTA_BEGIN_RSP_TIMEOUT_SEC                         15
 #define WIFI_INIT_RSP_TIMEOUT_SEC                         10
 #define OTA_FROM_WEB_URL                                  1
-
 
 /* Forward declarations */
 static int rpc_wifi_connect_async(void);
@@ -66,6 +69,27 @@ static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
 #define YES                                               1
 #define NO                                                0
 #define HEARTBEAT_DURATION_SEC                            20
+
+#if H_SUPP_DPP_SUPPORT
+// size of Callback queue used by the Supplicant DPP task
+#define RPC_SUPP_CB_QUEUE_SIZE (5)
+
+typedef struct {
+	esp_supp_dpp_event_t dpp_event;
+	int dpp_reason; // to avoid doing malloc(sizeof(int)) as dpp_data
+	void * dpp_data;
+} supp_cb_queue_item_t;
+
+static void * rpc_supp_cb_thread_hdl = NULL;
+static queue_handle_t rpc_supp_cb_thread_q = NULL;
+
+static void rpc_supp_thread(void const *arg);
+static esp_err_t rpc_supp_cb_thread_start(void);
+static esp_err_t rpc_supp_cb_thread_stop(void);
+
+// evt_cb triggered when we receive a DPP callback event
+static esp_supp_dpp_event_cb_t dpp_evt_cb = NULL;
+#endif
 
 typedef struct {
 	int event;
@@ -153,8 +177,6 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			wifi_event_sta_connected_t *p_e = &app_event->u.e_wifi_sta_connected;
 
 			if (!netif_connected && netif_started) {
-				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_STOP, 0, 0, HOSTED_BLOCK_MAX);
-				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_START, 0, 0, HOSTED_BLOCK_MAX);
 				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_CONNECTED,
 					p_e, sizeof(wifi_event_sta_connected_t), HOSTED_BLOCK_MAX);
 				netif_connected = true;
@@ -193,6 +215,75 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				p_e, sizeof(wifi_event_sta_itwt_probe_t), HOSTED_BLOCK_MAX);
 			break;
 #endif // H_WIFI_HE_SUPPORT
+#if H_WIFI_DPP_SUPPORT
+		} case RPC_ID__Event_WifiDppUriReady: {
+			ESP_LOGV(TAG, "ESP Event: DPP: URI Ready");
+			supp_wifi_event_dpp_uri_ready_t *p_e = &app_event->u.e_dpp_uri_ready;
+			int len = p_e->uri_data_len;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_URI_READY,
+				p_e, sizeof(wifi_event_sta_itwt_probe_t) + len, HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_WifiDppCfgRecvd: {
+			ESP_LOGV(TAG, "ESP Event: DPP: CFG Received");
+			supp_wifi_event_dpp_config_received_t *p_e = &app_event->u.e_dpp_config_received;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_CFG_RECVD,
+				p_e, sizeof(wifi_event_dpp_config_received_t), HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_WifiDppFail: {
+			ESP_LOGV(TAG, "ESP Event: DPP: Fail");
+			supp_wifi_event_dpp_failed_t *p_e = &app_event->u.e_dpp_failed;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_FAILED,
+				p_e, sizeof(wifi_event_dpp_failed_t), HOSTED_BLOCK_MAX);
+			break;
+#endif // H_WIFI_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
+		// queue Supplicant DPP events on the dpp queue
+		} case RPC_ID__Event_SuppDppUriReady: {
+			if (rpc_supp_cb_thread_q) {
+				// copy the uri, push it to the queue
+				size_t len = strlen(app_event->u.e_dpp_uri_ready.uri) + 1; // include terminating NULL
+				supp_cb_queue_item_t item = { 0 };
+				item.dpp_event = ESP_SUPP_DPP_URI_READY;
+				item.dpp_data = g_h.funcs->_h_malloc(len);
+				if (item.dpp_data) {
+					g_h.funcs->_h_memcpy(item.dpp_data, app_event->u.e_dpp_uri_ready.uri, len);
+					g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+				} else {
+					ESP_LOGE(TAG, "malloc failed for dpp uri");
+				}
+			} else {
+				ESP_LOGW(TAG, "no queue to push dpp uri: dropping event");
+			}
+			break;
+		} case RPC_ID__Event_SuppDppCfgRecvd: {
+			if (rpc_supp_cb_thread_q) {
+				// copy the wifi config, push it to the queue
+				supp_cb_queue_item_t item = { 0 };
+				item.dpp_event = ESP_SUPP_DPP_CFG_RECVD;
+				item.dpp_data = g_h.funcs->_h_malloc(sizeof(wifi_config_t));
+				if (item.dpp_data) {
+					g_h.funcs->_h_memcpy(item.dpp_data, &app_event->u.e_dpp_config_received.wifi_cfg,
+							sizeof(wifi_config_t));
+					g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+				} else {
+					ESP_LOGE(TAG, "malloc failed for dpp wifi config");
+				}
+			} else {
+				ESP_LOGW(TAG, "no queue to push dpp wifi config: dropping event");
+			}
+			ESP_LOGW(TAG, "Finished Supplicant Event: Cfg Received");
+			break;
+		} case RPC_ID__Event_SuppDppFail: {
+			if (rpc_supp_cb_thread_q) {
+				supp_cb_queue_item_t item = { 0 };
+				item.dpp_event = ESP_SUPP_DPP_FAIL;
+				item.dpp_reason = app_event->u.e_dpp_failed.failure_reason;
+				g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+			} else {
+				ESP_LOGW(TAG, "no queue to push dpp wifi config: dropping event");
+			}
+			break;
+#endif // H_SUPP_DPP_SUPPORT
 		} case RPC_ID__Event_WifiEventNoArgs: {
 			int wifi_event_id = app_event->u.e_wifi_simple.wifi_event_id;
 
@@ -369,6 +460,20 @@ int rpc_register_event_callbacks(void)
 		{ RPC_ID__Event_StaItwtSuspend,            rpc_event_callback },
 		{ RPC_ID__Event_StaItwtProbe,              rpc_event_callback },
 #endif // H_WIFI_HE_SUPPORT
+#if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
+		// supp events get sent to the separate supp callback handler
+		{ RPC_ID__Event_SuppDppUriReady,           rpc_event_callback },
+		{ RPC_ID__Event_SuppDppCfgRecvd,           rpc_event_callback },
+		{ RPC_ID__Event_SuppDppFail,               rpc_event_callback },
+#endif
+#if H_WIFI_DPP_SUPPORT
+		// wifi events are handled via wifi event handler
+		{ RPC_ID__Event_WifiDppUriReady,           rpc_event_callback },
+		{ RPC_ID__Event_WifiDppCfgRecvd,           rpc_event_callback },
+		{ RPC_ID__Event_WifiDppFail,               rpc_event_callback },
+#endif
+#endif
 	};
 
 	for (evt=0; evt<sizeof(events)/sizeof(event_callback_table_t); evt++) {
@@ -571,6 +676,13 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_EapSetDisableTimeCheck:
 	case RPC_ID__Resp_EapSetEapMethods:
 #endif
+#if H_DPP_SUPPORT
+	case RPC_ID__Resp_SuppDppInit:
+	case RPC_ID__Resp_SuppDppDeinit:
+	case RPC_ID__Resp_SuppDppBootstrapGen:
+	case RPC_ID__Resp_SuppDppStartListen:
+	case RPC_ID__Resp_SuppDppStopListen:
+#endif
 	case RPC_ID__Resp_GetCoprocessorFwVersion: {
 		/* Intended fallthrough */
 		break;
@@ -651,7 +763,7 @@ int rpc_wifi_get_mac(wifi_interface_t mode, uint8_t out_mac[6])
 	if (resp && resp->resp_event_status == SUCCESS) {
 
 		g_h.funcs->_h_memcpy(out_mac, resp->u.wifi_mac.mac, BSSID_BYTES_SIZE);
-		ESP_LOGI(TAG, "%s mac address is [" MACSTR "]",
+		ESP_LOGD(TAG, "%s mac address is [" MACSTR "]",
 			mode==WIFI_IF_STA? "sta":"ap", MAC2STR(out_mac));
 	}
 	return rpc_rsp_callback(resp);
@@ -1932,3 +2044,199 @@ esp_err_t rpc_eap_client_set_eap_methods(esp_eap_method_t methods)
 }
 #endif
 #endif
+#if H_DPP_SUPPORT
+esp_err_t rpc_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	// save the incoming callback
+	dpp_evt_cb = evt_cb;
+
+#if H_SUPP_DPP_SUPPORT
+	// start the cb thread, if required
+	if (dpp_evt_cb) {
+		if (ESP_OK != rpc_supp_cb_thread_start()) {
+			ESP_LOGE(TAG, "failed to start supp_cb_thread");
+		}
+	}
+#endif
+
+	if (evt_cb) {
+		req->u.dpp_enable_cb = true;
+	} else {
+		req->u.dpp_enable_cb = false;
+	}
+	resp = rpc_slaveif_supp_dpp_init(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_supp_dpp_deinit(void)
+{
+#if H_SUPP_DPP_SUPPORT
+	// stop the cb thread
+	rpc_supp_cb_thread_stop();
+#endif
+
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_supp_dpp_deinit(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_supp_dpp_bootstrap_gen(const char *chan_list,
+		esp_supp_dpp_bootstrap_t type,
+		const char *key, const char *info)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!chan_list) {
+		ESP_LOGE(TAG, "chan_list cannot be NULL");
+		return ESP_FAIL;
+	}
+	req->u.dpp_bootstrap_gen.chan_list = chan_list;
+	req->u.dpp_bootstrap_gen.type = type;
+	req->u.dpp_bootstrap_gen.key = key;
+	req->u.dpp_bootstrap_gen.info = info;
+
+	resp = rpc_slaveif_supp_dpp_bootstrap_gen(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_supp_dpp_start_listen(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_supp_dpp_start_listen(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_supp_dpp_stop_listen(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_supp_dpp_stop_listen(req);
+	return rpc_rsp_callback(resp);
+}
+
+#if H_SUPP_DPP_SUPPORT
+// creates the suplicant dpp queue and starts the thread
+static esp_err_t rpc_supp_cb_thread_start(void)
+{
+	// create the queue
+	if (!rpc_supp_cb_thread_q) {
+		rpc_supp_cb_thread_q = g_h.funcs->_h_create_queue(RPC_SUPP_CB_QUEUE_SIZE,
+				sizeof(supp_cb_queue_item_t));
+	}
+	if (!rpc_supp_cb_thread_q) {
+		ESP_LOGE(TAG, "Failed to create rpc_supp_cb_thread_q");
+		return ESP_FAIL;
+	}
+
+	// create and start the thread
+	if (!rpc_supp_cb_thread_hdl) {
+		rpc_supp_cb_thread_hdl = g_h.funcs->_h_thread_create("rpc_supp_cb", RPC_TASK_PRIO,
+			RPC_TASK_STACK_SIZE, rpc_supp_thread, NULL);
+	}
+	if (!rpc_supp_cb_thread_hdl) {
+		ESP_LOGE(TAG, "Failed to create rpc_supp_cb_thread_hdl");
+		// destroy the created queue also
+		g_h.funcs->_h_destroy_queue(rpc_supp_cb_thread_q);
+		rpc_supp_cb_thread_q = NULL;
+		return ESP_FAIL;
+	}
+
+	return ESP_OK;
+}
+
+// stops the thread and destroys the queue
+static esp_err_t rpc_supp_cb_thread_stop(void)
+{
+	int res;
+	int i;
+	int num_items;
+
+	if (rpc_supp_cb_thread_hdl) {
+		// stop the thread
+		res = g_h.funcs->_h_thread_cancel(rpc_supp_cb_thread_hdl);
+		if (!res) {
+			rpc_supp_cb_thread_hdl = NULL;
+		} else {
+			ESP_LOGE(TAG, "Failed to cancel rpc_supp_cb_thread_hdl");
+		}
+	} else {
+		ESP_LOGD(TAG, "No rpc_supp_cb_thread_hdl to cancel");
+	}
+
+	if (rpc_supp_cb_thread_q) {
+		// remove all items from the queue
+		num_items = g_h.funcs->_h_queue_msg_waiting(rpc_supp_cb_thread_q);
+		for (i = 0; i < num_items; i++) {
+			supp_cb_queue_item_t item;
+			res = g_h.funcs->_h_dequeue_item(rpc_supp_cb_thread_q, &item, 0);
+			if (res) {
+				ESP_LOGE(TAG, "Error removing item from rpc_supp_cb_thread_q");
+				continue;
+			}
+			if (item.dpp_data) {
+				g_h.funcs->_h_free(item.dpp_data);
+			}
+		}
+
+		// destroy the queue
+		if (!g_h.funcs->_h_destroy_queue(rpc_supp_cb_thread_q)) {
+			rpc_supp_cb_thread_q = NULL;
+		} else {
+			ESP_LOGE(TAG, "Failed to destroy rpc_supp_cb_thread_q");
+		}
+	} else {
+		ESP_LOGD(TAG, "No rpc_supp_cb_thread_q to delete");
+	}
+
+	return ESP_OK;
+}
+
+static void rpc_supp_thread(void const *arg)
+{
+	int res;
+	supp_cb_queue_item_t item;
+
+	while (1) {
+		// wait until there is an item to process
+		res = g_h.funcs->_h_dequeue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+		if (res) {
+			ESP_LOGE(TAG, "Error getting item from rpc_supp_cb_thread_q");
+			continue;
+		}
+		// triggger the callback with the data;
+		if (dpp_evt_cb) {
+			if (item.dpp_event == ESP_SUPP_DPP_FAIL) {
+				// user cb expected to cast provided data back to a int
+				// see https://github.com/espressif/esp-idf/blob/7912b04e6bdf8c9aeea88baff9e46794d04e4200/examples/wifi/wifi_easy_connect/dpp-enrollee/main/dpp_enrollee_main.c#L96
+				dpp_evt_cb(item.dpp_event, (void *)item.dpp_reason);
+			}
+			else if (item.dpp_data) {
+				dpp_evt_cb(item.dpp_event, item.dpp_data);
+			} else {
+				ESP_LOGW(TAG, "unknown supplicant DPP event: dropping");
+			}
+		} else {
+			ESP_LOGW(TAG, "no registed supplicant dpp cb: dropping dpp event");
+		}
+		// free allocated memory
+		if (item.dpp_data) {
+			g_h.funcs->_h_free(item.dpp_data);
+		}
+	}
+}
+#endif // H_SUPP_DPP_SUPPORT
+#endif // H_DPP_SUPPORT
