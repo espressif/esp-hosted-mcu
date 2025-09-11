@@ -1,6 +1,8 @@
 # Holds jobs that run from the scheduled pipeline
 
-build_idf_v5.3_scheduled:
+build_idf_v5.3_mqtt_tcp_scheduled:
+  variables:
+    EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
     - scheduled_build
   rules:
@@ -12,10 +14,11 @@ build_idf_v5.3_scheduled:
       - IDF_VER: ["v5.3.1", "v5.3.2", "v5.3.3", "release-v5.3"]
         IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6"]
-        IDF_EXAMPLE_PATH: examples/protocols/mqtt/tcp
-        #IDF_EXAMPLE_PATH: [examples/wifi/iperf]
+        IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
-build_idf_v5.4_scheduled:
+build_idf_v5.4_mqtt_tcp_scheduled:
+  variables:
+    EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
     - scheduled_build
   rules:
@@ -27,10 +30,9 @@ build_idf_v5.4_scheduled:
       - IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4"]
         IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32c6"]
-        IDF_EXAMPLE_PATH: examples/protocols/mqtt/tcp
-        #IDF_EXAMPLE_PATH: [examples/wifi/iperf]
+        IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
-build_idf_v5.5_scheduled:
+build_idf_v5.5_iperf_scheduled:
   tags:
     - scheduled_build
   rules:
@@ -42,9 +44,11 @@ build_idf_v5.5_scheduled:
       - IDF_VER: ["v5.5", "release-v5.5"]
         IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
-        IDF_EXAMPLE_PATH: [examples/wifi/iperf]
+        IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
 
-build_idf_master_scheduled:
+build_idf_master_mqtt_tcp_scheduled:
+  variables:
+    EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
     - scheduled_build
   rules:
@@ -55,9 +59,24 @@ build_idf_master_scheduled:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
-        IDF_EXAMPLE_PATH: [examples/protocols/mqtt/tcp, examples/wifi/iperf]
+        IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
-build_all_features_enabled_master_scheduled:
+build_idf_master_iperf_scheduled:
+  tags:
+    - scheduled_build
+  rules:
+    - !reference [.scheduled_pipeline_rules, rules]
+  extends: .build_template
+  image: espressif/idf:latest
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4", "esp32h2"]
+        IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
+        IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
+
+build_all_features_enabled_master_iperf_scheduled:
+  variables:
+    SDKCONFIG_CI_FILE: "sdkconfig.ci.all_features_enabled"
   tags:
     - scheduled_build
   rules:
@@ -68,8 +87,7 @@ build_all_features_enabled_master_scheduled:
     matrix:
       - IDF_TARGET: ["esp32p4"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
-        IDF_EXAMPLE_PATH: [examples/wifi/iperf]
-        SDKCONFIG_CI_FILE: "sdkconfig.ci.all_features_enabled"
+        IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
 
 build_coprocessor_idf_v5.3_scheduled:
   tags:
@@ -97,7 +115,7 @@ build_coprocessor_idf_v5.3_scheduled_2:
         IDF_VER: ["v5.3.1", "v5.3.2", "v5.3.3", "release-v5.3"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
-build_coprocessor_idf_v5.3_scheduled_esp32:
+build_coprocessor_idf_v5.3_esp32_scheduled:
   tags:
     - scheduled_build
   rules:
@@ -136,7 +154,7 @@ build_coprocessor_idf_v5.4_scheduled_2:
         IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
-build_coprocessor_idf_v5.4_scheduled_esp32:
+build_coprocessor_idf_v5.4_esp32_scheduled:
   tags:
     - scheduled_build
   rules:
@@ -162,7 +180,7 @@ build_coprocessor_idf_v5.5_scheduled:
         IDF_VER: ["v5.5", "v5.5.1", "release-v5.5"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
-build_coprocessor_idf_v5.5_scheduled_esp32:
+build_coprocessor_idf_v5.5_esp32_scheduled:
   tags:
     - scheduled_build
   rules:
