@@ -13,6 +13,16 @@ set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi p
 project(network_adapter)
 idf_build_set_property(COMPILE_OPTIONS "-fdiagnostics-color=always" APPEND)
 
+if(EXISTS "${PROJECT_DIR}/../common")
+    set(common_dir "${PROJECT_DIR}/../common")
+    message(STATUS "common: ${common_dir}")
+elseif(EXISTS "${PROJECT_DIR}/main/common")
+    set(common_dir "${PROJECT_DIR}/main/common")
+    message(STATUS "common: ${common_dir}")
+else()
+    message(FATAL_ERROR "Could not find 'common' directory in either '${PROJECT_DIR}/../common' or '${PROJECT_DIR}/main/common'")
+endif()
+
 ### read and display FW Version
 file(READ "${CMAKE_CURRENT_LIST_DIR}/main/esp_hosted_coprocessor_fw_ver.h" HEADER_CONTENTS)
 set(PROJECT_VERSION_REGEX "#define[ \t]+PROJECT_VERSION_MAJOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_MINOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_PATCH_1[ \t]+([0-9]+)")
