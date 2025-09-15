@@ -13,15 +13,27 @@ set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi p
 project(network_adapter)
 idf_build_set_property(COMPILE_OPTIONS "-fdiagnostics-color=always" APPEND)
 
-if(EXISTS "${PROJECT_DIR}/../common/esp_hosted_lwip_src_port_hook.h")
+
+if(EXISTS "${PROJECT_DIR}/../common")
+    set(common_dir "${PROJECT_DIR}/../common")
+    message(STATUS "common: ${common_dir}")
+elseif(EXISTS "${PROJECT_DIR}/main/common")
+    set(common_dir "${PROJECT_DIR}/main/common")
+    message(STATUS "common: ${common_dir}")
+else()
+    message(FATAL_ERROR "Could not find 'common' directory in either '${PROJECT_DIR}/../common' or '${PROJECT_DIR}/main/common'")
+endif()
+
+
+if(EXISTS "${common_dir}/esp_hosted_lwip_src_port_hook.h")
 idf_component_get_property(lwip lwip COMPONENT_LIB)
 if(TARGET ${lwip})
 	# Use generator expressions to only apply to non-INTERFACE targets
 	get_target_property(lwip_type ${lwip} TYPE)
 	if(NOT lwip_type STREQUAL "INTERFACE_LIBRARY")
 		message(STATUS "********** Configuring LWIP for network split mode with custom hook **********")
-		target_include_directories(${lwip} PRIVATE "${PROJECT_DIR}/../common")
-		target_compile_definitions(${lwip} PRIVATE "-DESP_IDF_LWIP_HOOK_FILENAME=\"${PROJECT_DIR}/../common/esp_hosted_lwip_src_port_hook.h\"")
+		target_include_directories(${lwip} PRIVATE "${common_dir}")
+		target_compile_definitions(${lwip} PRIVATE "-DESP_IDF_LWIP_HOOK_FILENAME=\"${common_dir}/esp_hosted_lwip_src_port_hook.h\"")
 	endif()
 endif()
 endif()
