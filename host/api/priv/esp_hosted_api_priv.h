@@ -1,8 +1,8 @@
 /*
-* SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* prevent recursive inclusion */
 #ifndef __ESP_HOSTED_API_PRIV_H__
@@ -20,8 +20,13 @@ extern "C" {
 #include "esp_hosted_ota.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
+
 #if H_WIFI_ENTERPRISE_SUPPORT
 #include "esp_eap_client.h"
+#endif
+
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
 #endif
 
 /* Remote WiFi API Functions - Port/Implementation Specific */
@@ -122,6 +127,16 @@ esp_err_t esp_eap_client_remote_set_certificate_and_key(const unsigned char *cli
 #if H_GOT_SET_EAP_METHODS_API
 esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods);
 #endif
+#endif
+
+#if H_DPP_SUPPORT
+esp_err_t esp_supp_remote_dpp_init(esp_supp_dpp_event_cb_t evt_cb);
+esp_err_t esp_supp_remote_dpp_deinit(void);
+esp_err_t esp_supp_remote_dpp_bootstrap_gen(const char *chan_list,
+		esp_supp_dpp_bootstrap_t type,
+		const char *key, const char *info);
+esp_err_t esp_supp_remote_dpp_start_listen(void);
+esp_err_t esp_supp_remote_dpp_stop_listen(void);
 #endif
 
 #ifdef __cplusplus

@@ -593,3 +593,34 @@ ctrl_cmd_t * rpc_slaveif_eap_set_eap_methods(ctrl_cmd_t *req)
 }
 #endif
 #endif
+#if H_DPP_SUPPORT
+ctrl_cmd_t * rpc_slaveif_supp_dpp_init(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_SuppDppInit);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_supp_dpp_deinit(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_SuppDppDeinit);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_supp_dpp_bootstrap_gen(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_SuppDppBootstrapGen);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_supp_dpp_start_listen(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_SuppDppStartListen);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_SuppDppStopListen);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+#endif

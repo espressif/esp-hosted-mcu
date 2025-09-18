@@ -14,6 +14,10 @@
 #include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
+#endif
+
 H_WEAK_REF esp_err_t esp_wifi_init(const wifi_init_config_t *config)
 {
 	return esp_wifi_remote_init(config);
@@ -440,4 +444,36 @@ esp_err_t esp_eap_client_set_eap_methods(esp_eap_method_t methods)
 	return esp_eap_client_remote_set_eap_methods(methods);
 }
 #endif
+#endif
+
+#if H_DPP_SUPPORT
+/**
+ * Weak version of esp_dpp API
+ */
+H_WEAK_REF esp_err_t esp_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
+{
+	return esp_supp_remote_dpp_init(evt_cb);
+}
+
+H_WEAK_REF esp_err_t esp_supp_dpp_deinit(void)
+{
+	return esp_supp_remote_dpp_deinit();
+}
+
+H_WEAK_REF esp_err_t esp_supp_dpp_bootstrap_gen(const char *chan_list,
+		esp_supp_dpp_bootstrap_t type,
+		const char *key, const char *info)
+{
+	return esp_supp_remote_dpp_bootstrap_gen(chan_list, type, key, info);
+}
+
+H_WEAK_REF esp_err_t esp_supp_dpp_start_listen(void)
+{
+	return esp_supp_remote_dpp_start_listen();
+}
+
+H_WEAK_REF esp_err_t esp_supp_dpp_stop_listen(void)
+{
+	return esp_supp_remote_dpp_stop_listen();
+}
 #endif

@@ -17,6 +17,9 @@
 #if H_WIFI_ENTERPRISE_SUPPORT
 #include "esp_eap_client.h"
 #endif
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -193,6 +196,34 @@ typedef struct {
 } rpc_wifi_itwt_suspend_t;
 #endif
 
+#if H_DPP_SUPPORT
+// current length of the optional bootstrap gen key length
+// see documentation for `esp_supp_dpp_bootstrap_gen()`
+#define DPP_BOOTSTRAP_GEN_KEY_LEN (32)
+
+#define DPP_URI_LEN_MAX (H_DPP_URI_LEN_MAX + 1) // include NULL at end of string
+
+typedef struct {
+	const char *chan_list;
+	esp_supp_dpp_bootstrap_t type;
+	const char *key;
+	const char *info;
+} rpc_supp_dpp_bootstrap_gen_t;
+
+typedef struct {
+	uint32_t uri_data_len;       /**< URI data length including null termination */
+	char uri[DPP_URI_LEN_MAX];   /**< URI data */
+} supp_wifi_event_dpp_uri_ready_t;
+
+typedef struct {
+	wifi_config_t wifi_cfg;                  /**< Received WIFI config in DPP */
+} supp_wifi_event_dpp_config_received_t;
+
+typedef struct {
+	int failure_reason;                      /**< Failure reason */
+} supp_wifi_event_dpp_failed_t;
+#endif
+
 typedef struct {
 	/* event */
 	uint32_t hb_num;
@@ -353,6 +384,13 @@ typedef struct Ctrl_cmd_t {
 
 		rpc_set_dhcp_dns_status_t   slave_dhcp_dns_status;
 
+#if H_DPP_SUPPORT
+		bool                        dpp_enable_cb;
+
+		rpc_supp_dpp_bootstrap_gen_t dpp_bootstrap_gen;
+#endif
+
+
 		event_heartbeat_t           e_heartbeat;
 
 		event_wifi_simple_t         e_wifi_simple;
@@ -378,7 +416,7 @@ typedef struct Ctrl_cmd_t {
 #endif
 #if H_WIFI_ENTERPRISE_SUPPORT
 		rpc_eap_identity_t            eap_identity;
- 
+
 		rpc_eap_username_t            eap_username;
 
 		rpc_eap_password_t            eap_password;
@@ -406,6 +444,13 @@ typedef struct Ctrl_cmd_t {
 #if H_GOT_SET_EAP_METHODS_API
 		esp_eap_method_t              methods;
 #endif
+#endif
+#if H_DPP_SUPPORT
+		supp_wifi_event_dpp_uri_ready_t e_dpp_uri_ready;
+
+		supp_wifi_event_dpp_config_received_t e_dpp_config_received;
+
+		supp_wifi_event_dpp_failed_t   e_dpp_failed;
 #endif
 	}u;
 
@@ -647,6 +692,13 @@ ctrl_cmd_t * rpc_slaveif_eap_use_default_cert_bundle(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_okc_support(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_eap_set_domain_name(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_eap_set_eap_methods(ctrl_cmd_t *req);
+#endif
+#if H_DPP_SUPPORT
+ctrl_cmd_t * rpc_slaveif_supp_dpp_init(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_supp_dpp_deinit(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_supp_dpp_bootstrap_gen(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_supp_dpp_start_listen(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req);
 #endif
 #ifdef __cplusplus
 }
