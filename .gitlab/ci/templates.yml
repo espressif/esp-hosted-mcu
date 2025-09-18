@@ -18,7 +18,6 @@
     expire_in: 4 days
   script:
     - source ${IDF_PATH}/export.sh
-    - pip install idf-ci
     - pip install idf-component-manager idf-build-apps --upgrade
     - SDKCONFIG_PATTERN="sdkconfig.ci.${SLAVE_CI_FILE}"
     # Build with IDF pedantic flags and IDF build apps script
@@ -26,14 +25,9 @@
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
     - cd slave
-    - |
-      if [ -z "${EXTRA_BUILD_FLAGS}" ]; then
-        idf-build-apps find --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-        idf-build-apps build --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-      else
-        idf-build-apps find "${EXTRA_BUILD_FLAGS}" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-        idf-build-apps build "${EXTRA_BUILD_FLAGS}" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-      fi
+    # use --enable-preview-targets to build for all targets
+    - idf-build-apps find --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - idf-build-apps build --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
 
 .build_template:
   stage: build
@@ -46,7 +40,6 @@
     expire_in: 4 days
   script:
     - source ${IDF_PATH}/export.sh
-    - pip install idf-ci
     - pip install idf-component-manager idf-build-apps --upgrade
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
     - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
@@ -70,23 +63,30 @@
         echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
         echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
-    # Copy specific sdkconfig.ci file if SDKCONFIG_CI_FILE is specified
+    # HOSTED_CI_FILE: use custom sdkconfig CI file from esp_hosted directory, or
+    # EXAMPLE_CI_FILE: use sdkconfig CI file in example directory
     - |
       if [ ! -z "${SDKCONFIG_CI_FILE}" ]; then
         cp ${OVERRIDE_PATH}/${SDKCONFIG_CI_FILE} ./sdkconfig.ci.custom
         echo "Using custom sdkconfig: ${SDKCONFIG_CI_FILE}"
         SDKCONFIG_PATTERN="sdkconfig.ci.custom"
+      elif [ ! -z "${EXAMPLE_CI_FILE}" ]; then
+        echo "Using CI sdkconfig file in example: ${EXAMPLE_CI_FILE}"
+        SDKCONFIG_PATTERN="./${EXAMPLE_CI_FILE}"
       else
         SDKCONFIG_PATTERN="sdkconfig.ci*"
       fi
+    - echo "SDKCONFIG_PATTERN is ${SDKCONFIG_PATTERN}"
     # Build with IDF pedantic flags and IDF build apps script
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
     # Remove the conflicting extconn config that disables hosted
     - rm -f sdkconfig.ci.*extconn*
-    - idf-build-apps find --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-    - idf-build-apps build --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    # use --config-file to override default IDF config file
+    # use --enable-preview-targets to build for all targets
+    - idf-build-apps find --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - idf-build-apps build --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
 #    - echo "----------- last sdkconfig.defaults,ci* used (${IDF_TARGET}-${IDF_SLAVE_TARGET}) --------------"
 #    - cat sdkconfig.defaults
 #    - cat sdkconfig.ci*
