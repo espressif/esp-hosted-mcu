@@ -402,16 +402,29 @@ int hosted_sdio_card_init(void *ctx)
 			sdio_config->bus_width==4? 4:1,
 			config.max_freq_khz);
 	if (sdio_config->bus_width == 4) {
+#ifndef CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_CALLBACK_FUNCTION
 		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] D2[%u] D3[%u] Slave_Reset[%u]",
 				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
 				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
 				sdio_config->pin_d2.pin, sdio_config->pin_d3.pin,
 				sdio_config->pin_reset.pin);
+#else
+		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] D2[%u] D3[%u]",
+				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
+				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
+				sdio_config->pin_d2.pin, sdio_config->pin_d3.pin);
+#endif
 	} else {
+#ifndef CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_CALLBACK_FUNCTION
 		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] Slave_Reset[%u]",
 				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
 				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
 				sdio_config->pin_reset.pin);
+#else
+		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u]",
+				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
+				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin);
+#endif
 	}
 	ESP_LOGI(TAG, "Queues: Tx[%u] Rx[%u] SDIO-Rx-Mode[%u]",
 			sdio_config->tx_queue_size, sdio_config->rx_queue_size,

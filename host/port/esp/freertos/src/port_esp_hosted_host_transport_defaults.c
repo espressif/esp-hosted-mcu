@@ -20,7 +20,11 @@ struct esp_hosted_sdio_config esp_hosted_get_default_sdio_config(void)
         .pin_d1  = {.port = H_SDIO_PORT_D1,  .pin = H_SDIO_PIN_D1},
         .pin_d2  = {.port = H_SDIO_PORT_D2,  .pin = H_SDIO_PIN_D2},
         .pin_d3  = {.port = H_SDIO_PORT_D3,  .pin = H_SDIO_PIN_D3},
+#ifndef CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
         .pin_reset = {.port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET},
+#else
+        .pin_reset = {.port = NULL, .pin = -1},
+#endif
         .rx_mode = H_SDIO_HOST_RX_MODE,
         .block_mode = H_SDIO_TX_BLOCK_ONLY_XFER && H_SDIO_RX_BLOCK_ONLY_XFER,
         .iomux_enable = false,

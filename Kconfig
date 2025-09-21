@@ -489,19 +489,6 @@ ESP32XX_SPI_CLK_FREQ_RANGE_MAX := 40
 		menu "Hosted SDIO Configuration"
 			depends on ESP_HOSTED_SDIO_HOST_INTERFACE
 
-			choice ESP_HOSTED_SDIO_RESET_GPIO_CONFIG
-				bool "RESET GPIO Config"
-				default ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH
-				help
-					"If Active High, High->Low->High will trigger reset (Low will trigger reset)
-					 If Active Low, Low->High->Low will trigger reset (High will trigger reset)"
-
-				config ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH
-					bool "RESET: Active High"
-				config ESP_HOSTED_SDIO_RESET_ACTIVE_LOW
-					bool "RESET: Active Low"
-			endchoice
-
 			choice ESP_HOSTED_SDIO_RX_OPTIMIZATION
 				bool "SDIO Receive Optimization"
 				default ESP_HOSTED_SDIO_OPTIMIZATION_RX_STREAMING_MODE
@@ -851,7 +838,29 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 						D1 GPIO pin for SDIO. Range enforced dynamically based on slave target to ensure IOMUX compliance.
 			endif
 
+			config ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
+				bool "Reset slave using callback function"
+				help
+					Select this option if you want to reset the slave device using a callback function instead of using a GPIO pin.
+					This is useful if the reset line of the slave device is not connected to a GPIO pin of the host device.
+					The callback function should be defined as esp_err_t hosted_sdio_reset_slave_callback(void); in user code.
+
+			choice ESP_HOSTED_SDIO_RESET_GPIO_CONFIG
+				depends on !ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
+				bool "RESET GPIO Config"
+				default ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH
+				help
+					"If Active High, High->Low->High will trigger reset (Low will trigger reset)
+					 If Active Low, Low->High->Low will trigger reset (High will trigger reset)"
+
+				config ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH
+					bool "RESET: Active High"
+				config ESP_HOSTED_SDIO_RESET_ACTIVE_LOW
+					bool "RESET: Active Low"
+			endchoice
+
 			config ESP_HOSTED_SDIO_GPIO_RESET_SLAVE
+				depends on !ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
 				int "GPIO pin for Reseting slave ESP"
 				default 54 if IDF_TARGET_ESP32P4
 				default 42 if IDF_TARGET_ESP32S3
