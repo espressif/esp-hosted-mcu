@@ -106,6 +106,8 @@ static void set_host_modules_log_level(void)
 }
 int esp_hosted_init(void)
 {
+	esp_err_t res;
+
 	if (esp_hosted_init_done)
 		return ESP_OK;
 
@@ -117,12 +119,38 @@ int esp_hosted_init(void)
 	if (esp_hosted_is_config_valid()) {
 		ESP_LOGW(TAG, "Transport already initialized, skipping initialization");
 	} else {
-		ESP_ERROR_CHECK(esp_hosted_set_default_config());
+		res = esp_hosted_set_default_config();
+		if (res != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to set default config");
+			return res;
+		}
 	}
-	ESP_ERROR_CHECK(add_esp_wifi_remote_channels());
-	ESP_ERROR_CHECK(setup_transport(transport_active_cb));
-	ESP_ERROR_CHECK(rpc_init());
-	rpc_register_event_callbacks();
+	res = add_esp_wifi_remote_channels();
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to add esp-wifi-remote channels");
+		return res;
+	}
+
+	res = setup_transport(transport_active_cb);
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to setup transport");
+		return res;
+	}
+
+	res = rpc_init();
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to initialize RPC");
+		teardown_transport();
+		return res;
+	}
+
+	res = rpc_register_event_callbacks();
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to register RPC event callbacks");
+		rpc_deinit();
+		teardown_transport();
+		return res;
+	}
 
 	esp_hosted_init_done = 1;
 	return ESP_OK;
@@ -130,10 +158,23 @@ int esp_hosted_init(void)
 
 int esp_hosted_deinit(void)
 {
+	esp_err_t res;
 	ESP_LOGI(TAG, "ESP-Hosted deinit\n");
-	rpc_unregister_event_callbacks();
-	ESP_ERROR_CHECK(rpc_deinit());
-	ESP_ERROR_CHECK(teardown_transport());
+	res = rpc_unregister_event_callbacks();
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to unregister RPC event callbacks");
+		return res;
+	}
+	res = rpc_deinit();
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to deinitialize RPC");
+		return res;
+	}
+	res = teardown_transport();
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to teardown transport");
+		return res;
+	}
 	esp_hosted_init_done = 0;
 	return ESP_OK;
 }
@@ -145,7 +186,12 @@ static inline esp_err_t esp_hosted_reconfigure(void)
 		return ESP_FAIL;
 	}
 
-	ESP_ERROR_CHECK_WITHOUT_ABORT(transport_drv_reconfigure());
+	esp_err_t res = transport_drv_reconfigure();
+	if (res != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to reconfigure transport");
+		return res;
+	}
+
 	return ESP_OK;
 }
 

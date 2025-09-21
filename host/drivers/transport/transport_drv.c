@@ -175,7 +175,11 @@ esp_err_t transport_drv_reconfigure(void)
 	/* This would come into picture, only if the host has
 	 * reset pin connected to slave's 'EN' or 'RST' GPIO */
 	if (!is_transport_tx_ready()) {
-		ensure_slave_bus_ready(bus_handle);
+		esp_err_t res = ensure_slave_bus_ready(bus_handle);
+		if (res != ESP_OK) {
+			ESP_LOGE(TAG, "Slave bus is not ready");
+			return res;
+		}
 		transport_state = TRANSPORT_RX_ACTIVE;
 		ESP_LOGI(TAG, "Waiting for esp_hosted slave to be ready");
 		while (!is_transport_tx_ready()) {
