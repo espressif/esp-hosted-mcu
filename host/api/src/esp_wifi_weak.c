@@ -244,7 +244,11 @@ H_WEAK_REF esp_err_t esp_wifi_sta_twt_config(wifi_twt_config_t *config)
 	return esp_wifi_remote_sta_twt_config(config);
 }
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 H_WEAK_REF esp_err_t esp_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+#else
+H_WEAK_REF esp_err_t esp_wifi_sta_itwt_setup(wifi_twt_setup_config_t *setup_config)
+#endif
 {
 	return esp_wifi_remote_sta_itwt_setup(setup_config);
 }

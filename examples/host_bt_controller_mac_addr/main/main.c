@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <string.h>
+
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_hosted.h"
@@ -123,7 +125,7 @@ void app_main(void)
     ESP_LOGI(TAG, "getting fw version");
     esp_hosted_coprocessor_fwver_t fwver;
     if (ESP_OK == esp_hosted_get_coprocessor_fwversion(&fwver)) {
-        ESP_LOGI(TAG, "FW Version: %d.%d.%d",
+        ESP_LOGI(TAG, "FW Version: %" PRIu32 ".%" PRIu32 ".%" PRIu32,
                 fwver.major1, fwver.minor1, fwver.patch1);
     } else {
         ESP_LOGW(TAG, "failed to get fw version");

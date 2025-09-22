@@ -8,8 +8,11 @@
 
 #include "esp_idf_version.h"
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 1)
-#error ESP-IDF version used is not supported
+// HE support changed after ESP-IDF v5.3
+#if CONFIG_SOC_WIFI_HE_SUPPORT && (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 0))
+  #define H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3 1
+#else
+  #define H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3 0
 #endif
 
 /* ESP-IDF 5.5.0: renamed reserved fields to reserved1/reserved2 */

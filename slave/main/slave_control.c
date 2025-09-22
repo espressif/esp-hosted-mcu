@@ -3313,6 +3313,7 @@ static esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
 }
 
 #if CONFIG_SOC_WIFI_HE_SUPPORT
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 static esp_err_t req_wifi_sta_twt_config(Rpc *req, Rpc *resp, void *priv_data)
 {
 	RPC_TEMPLATE(RpcRespWifiStaTwtConfig, resp_wifi_sta_twt_config,
@@ -3329,16 +3330,25 @@ static esp_err_t req_wifi_sta_twt_config(Rpc *req, Rpc *resp, void *priv_data)
 
 	return ESP_OK;
 }
+#endif
 
 static esp_err_t req_wifi_sta_itwt_setup(Rpc *req, Rpc *resp, void *priv_data)
 {
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	wifi_itwt_setup_config_t cfg = {0};
+#else
+	wifi_twt_setup_config_t cfg = {0};
+#endif
 
 	RPC_TEMPLATE(RpcRespWifiStaItwtSetup, resp_wifi_sta_itwt_setup,
 			RpcReqWifiStaItwtSetup, req_wifi_sta_itwt_setup,
 			rpc__resp__wifi_sta_itwt_setup__init);
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	wifi_itwt_setup_config_t * p_a_cfg = &cfg;
+#else
+	wifi_twt_setup_config_t * p_a_cfg = &cfg;
+#endif
 	WifiItwtSetupConfig *p_c_cfg = req_payload->setup_config;
 
 	p_a_cfg->setup_cmd = p_c_cfg->setup_cmd;
@@ -3751,10 +3761,12 @@ static esp_rpc_req_t req_table[] = {
 		.command_handler = req_get_dhcp_dns_status
 	},
 #if CONFIG_SOC_WIFI_HE_SUPPORT
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	{
 		.req_num = RPC_ID__Req_WifiStaTwtConfig,
 		.command_handler = req_wifi_sta_twt_config
 	},
+#endif
 	{
 		.req_num = RPC_ID__Req_WifiStaItwtSetup,
 		.command_handler = req_wifi_sta_itwt_setup

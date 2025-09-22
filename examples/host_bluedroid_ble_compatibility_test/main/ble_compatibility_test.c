@@ -653,7 +653,7 @@ void app_main(void)
     ESP_LOGI("INFO", "getting fw version");
     esp_hosted_coprocessor_fwver_t fwver;
     if (ESP_OK == esp_hosted_get_coprocessor_fwversion(&fwver)) {
-        ESP_LOGI("INFO", "FW Version: %d.%d.%d",
+        ESP_LOGI("INFO", "FW Version: %" PRIu32 ".%" PRIu32 ".%" PRIu32,
                 fwver.major1, fwver.minor1, fwver.patch1);
     } else {
         ESP_LOGW("INFO", "failed to get fw version");

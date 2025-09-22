@@ -78,7 +78,11 @@ esp_err_t esp_wifi_remote_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
 
 #if H_WIFI_HE_SUPPORT
 esp_err_t esp_wifi_remote_sta_twt_config(wifi_twt_config_t *config);
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config);
+#else
+esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_twt_setup_config_t *setup_config);
+#endif
 esp_err_t esp_wifi_remote_sta_itwt_teardown(int flow_id);
 esp_err_t esp_wifi_remote_sta_itwt_suspend(int flow_id, int suspend_time_ms);
 esp_err_t esp_wifi_remote_sta_itwt_get_flow_id_status(int *flow_id_bitmap);

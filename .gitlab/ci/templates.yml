@@ -31,6 +31,40 @@
     - idf-build-apps find --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
     - idf-build-apps build --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
 
+.build_template_example:
+  stage: build_example
+  tags:
+    - build
+  script:
+    - source ${IDF_PATH}/export.sh
+    - pip install idf-component-manager idf-build-apps --upgrade
+    # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
+    - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
+    # Create components directory and link esp_hosted component
+    - export OVERRIDE_PATH=`pwd`
+    - cd examples/${EXAMPLE_TO_BUILD}
+    # Create components directory and link esp_hosted component
+    - mkdir -p components
+    - ln -sf ${OVERRIDE_PATH} components/esp_hosted
+    # Override component dependency as backup only if not already present
+    - |
+      if ! grep -q "esp_hosted" main/idf_component.yml 2>/dev/null; then
+        cat ${OVERRIDE_PATH}/.gitlab-ci-override-idf-component.yml >> main/idf_component.yml
+        echo "Added esp_hosted override to idf_component.yml"
+      fi
+    # Add slave target configuration if specified
+    - |
+      if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
+        echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+        echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+      fi
+    # Build with IDF pedantic flags and IDF build apps script
+    - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+    - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
+    - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+    - idf-build-apps find -vv --target ${IDF_TARGET}
+    - idf-build-apps build -vv --target ${IDF_TARGET}
+
 .build_template:
   stage: build
   tags:
@@ -87,8 +121,9 @@
     - rm -f sdkconfig.ci.*extconn*
     # use --config-file to override default IDF config file
     # use --enable-preview-targets to build for all targets
-    - idf-build-apps find --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-    - idf-build-apps build --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    # use --override-sdkconfig-items to override (possibly incorrect) build target that may be in provided config file
+    - idf-build-apps find --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} --override-sdkconfig-items=CONFIG_IDF_TARGET=${IDF_TARGET} -vv --target ${IDF_TARGET}
+    - idf-build-apps build --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} --override-sdkconfig-items=CONFIG_IDF_TARGET=${IDF_TARGET} -vv --target ${IDF_TARGET}
 #    - echo "----------- last sdkconfig.defaults,ci* used (${IDF_TARGET}-${IDF_SLAVE_TARGET}) --------------"
 #    - cat sdkconfig.defaults
 #    - cat sdkconfig.ci*

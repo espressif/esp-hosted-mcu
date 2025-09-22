@@ -103,9 +103,9 @@ The RPC IDs listed here are for requests and events. Each request will have a co
 |  93 |    382 | EapSetDomainName                   | 2.4.0            |
 |  94 |    383 | EapSetDisableTimeCheck             | 2.4.0            |
 |  95 |    384 | EapSetEapMethods                   | 2.4.0            |
-|  96 |    385 | IfaceMacAddrSetGet                 | 2.4.4            |
-|  97 |    386 | IfaceMacAddrLenGet                 | 2.4.4            |
-|  98 |    387 | FeatureControl                     | 2.4.4            |
+|  96 |    385 | IfaceMacAddrSetGet                 | 2.5.2            |
+|  97 |    386 | IfaceMacAddrLenGet                 | 2.5.2            |
+|  98 |    387 | FeatureControl                     | 2.5.2            |
 
 ## List of RPC Events
 

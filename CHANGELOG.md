@@ -1,8 +1,21 @@
 # Changelog
 
+## 2.5.4
+
+### Features
+
+- Added building with ESP-IDF v5.3 in CI
+- Added building ESP-Hosted examples in CI
+
+### Bug Fixes
+
+- Fixed building with ESP32-H2 as host in CI (was skipping build)
+
 ## 2.5.3
 
-Fix the ESP-IDF CI
+### Bug Fixes
+
+- Fix the ESP-IDF CI
 
 ## 2.5.2
 
@@ -24,31 +37,17 @@ Fix the ESP-IDF CI
 
 ## 2.5.1
 
-### Features
+### Bug Fixes
 
 - Added dependency on `esp_driver_gpio`
 
 ## 2.5.0
 
-### Features
+### Bug Fixes
 
 - Remove dependency on deprecated `driver` component and added necessary dependencies instead
 
 ## 2.4.3
-
-### Features
-
-- Added support for Wi-Fi Easy Connect (DPP)
-
-### APIs added
-
-- `esp_supp_remote_dpp_init`
-- `esp_supp_remote_dpp_deinit`
-- `esp_supp_remote_dpp_bootstrap_gen`
-- `esp_supp_remote_dpp_start_listen`
-- `esp_supp_remote_dpp_stop_listen`
-
-## 2.4.2
 
 ### Features
 
@@ -63,3 +62,48 @@ Fix the ESP-IDF CI
 - `esp_supp_dpp_bootstrap_gen`
 - `esp_supp_dpp_start_listen`
 - `esp_supp_dpp_stop_listen`
+
+## 2.4.2
+
+### Bug Fixes
+
+- Fix ignored lwip hook header in slave example
+
+## 2.4.1
+
+### Bug Fixes
+
+- Reduced ESP32 bootloader size
+
+## 2.4.0
+
+### Features
+
+- Added support for Wi-Fi Enterprise
+
+### APIs added
+
+- `esp_wifi_sta_enterprise_enable`
+- `esp_wifi_sta_enterprise_disable`
+- `esp_eap_client_set_identity`
+- `esp_eap_client_clear_identity`
+- `esp_eap_client_set_username`
+- `esp_eap_client_clear_username`
+- `esp_eap_client_set_password`
+- `esp_eap_client_clear_password`
+- `esp_eap_client_set_new_password`
+- `esp_eap_client_clear_new_password`
+- `esp_eap_client_set_ca_cert`
+- `esp_eap_client_clear_ca_cert`
+- `esp_eap_client_set_certificate_and_key`
+- `esp_eap_client_clear_certificate_and_key`
+- `esp_eap_client_set_disable_time_check`
+- `esp_eap_client_get_disable_time_check`
+- `esp_eap_client_set_ttls_phase2_method`
+- `esp_eap_client_set_suiteb_192bit_certification`
+- `esp_eap_client_set_pac_file`
+- `esp_eap_client_set_fast_params`
+- `esp_eap_client_use_default_cert_bundle`
+- `esp_wifi_set_okc_support`
+- `esp_eap_client_set_domain_name`
+- `esp_eap_client_set_eap_methods`

@@ -1,18 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <stdint.h>
 #include <string.h>
@@ -120,8 +110,8 @@ void process_hci_rx_pkt(uint8_t *payload, uint16_t payload_len)
 #if BLUETOOTH_HCI
 #if SOC_ESP_NIMBLE_CONTROLLER
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0)
-#include "nimble/ble_hci_trans.h"
+#if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0)
+#include "ble_hci_trans.h"
 
 typedef enum {
     DATA_TYPE_COMMAND = 1,
@@ -190,7 +180,7 @@ ble_hs_rx_data(struct os_mbuf *om, void *arg)
     os_mbuf_free_chain(om);
     return 0;
 }
-#endif // ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0)
+#endif // ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0)
 
 #endif
 #endif
@@ -288,7 +278,7 @@ esp_err_t enable_bluetooth(void)
 	}
 
 #if BLUETOOTH_HCI
-#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0))
+#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0))
     ble_hci_trans_cfg_hs((ble_hci_trans_rx_cmd_fn *)ble_hs_hci_rx_evt,NULL,
                          (ble_hci_trans_rx_acl_fn *)ble_hs_rx_data,NULL);
 #else
@@ -310,7 +300,7 @@ esp_err_t disable_bluetooth(void)
 #ifdef CONFIG_BT_ENABLED
 #if BLUETOOTH_HCI
 // unregister callback functions
-#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0))
+#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0))
     ble_hci_trans_cfg_hs(NULL, NULL,
                          NULL, NULL);
 #else
