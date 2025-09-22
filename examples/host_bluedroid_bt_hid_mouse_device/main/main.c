@@ -19,6 +19,8 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
+#include "esp_idf_version.h"
+
 #include "esp_hosted.h"
 #include "esp_hosted_bluedroid.h"
 
@@ -449,7 +451,9 @@ void app_main(void)
     ESP_LOGI(TAG, "setting cod major, peripheral");
     esp_bt_cod_t cod = {0};
     cod.major = ESP_BT_COD_MAJOR_DEV_PERIPHERAL;
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 0)
     cod.minor = ESP_BT_COD_MINOR_PERIPHERAL_POINTING;
+#endif
     esp_bt_gap_set_cod(cod, ESP_BT_SET_COD_MAJOR_MINOR);
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);

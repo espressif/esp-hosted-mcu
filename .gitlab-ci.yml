@@ -1,6 +1,7 @@
 stages:
   - pre
   - build_coprocessor
+  - build_example
   - build
 
 before_script:

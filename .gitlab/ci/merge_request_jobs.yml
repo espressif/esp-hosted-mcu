@@ -18,7 +18,7 @@ build_idf_v5.5:
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
 
-### build mqtt/tcp example mqtt/tcp sdkconfig.ci.p4_wifi
+### build protocols/mqtt/tcp example
 build_idf_master_mqtt_tcp:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
@@ -32,6 +32,7 @@ build_idf_master_mqtt_tcp:
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5", "esp32c61"]
         IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
+### build wifi/iperf example
 build_idf_master_iperf:
   rules:
     - !reference [.default_rules, rules]
@@ -74,3 +75,49 @@ build_coprocessor_idf_master_c61:
     matrix:
       - IDF_TARGET: ["esp32c61"]
         SLAVE_CI_FILE: ["sdio" ]
+
+### build ESP-Hosted examples
+build_nimble_examples:
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_VER: ["latest",
+        "v5.5", "v5.5.1", "release-v5.5"]
+        IDF_SLAVE_TARGET: ["esp32c6"]
+        EXAMPLE_TO_BUILD: ["host_nimble_bleprph_host_only_vhci",
+        "host_nimble_bleprph_host_only_uart_hci"]
+
+build_bluedroid_examples:
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_VER: ["latest",
+        "v5.5", "v5.5.1", "release-v5.5"]
+        IDF_SLAVE_TARGET: ["esp32"]
+        EXAMPLE_TO_BUILD: ["host_bluedroid_ble_compatibility_test",
+        "host_bluedroid_bt_hid_mouse_device",
+        "host_bluedroid_host_only",
+        "host_bt_controller_mac_addr"]
+
+build_wifi_examples:
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_VER: ["latest",
+        "v5.5", "v5.5.1", "release-v5.5"]
+        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
+        EXAMPLE_TO_BUILD: ["host_wifi_easy_connect_dpp_enrollee",
+        "host_wifi_itwt",
+        "host_transport_config"]
