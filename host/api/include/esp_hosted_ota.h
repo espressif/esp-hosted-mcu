@@ -1,8 +1,8 @@
 /*
-* SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* APIs to do OTA updates of the co-processor
  *
@@ -28,8 +28,18 @@
 // OTA API for ESP-IDF
 #include "esp_err.h"
 
-/* Fetch OTA image from a web server (image_url) */
-esp_err_t esp_hosted_slave_ota(const char* image_url);
+// TODO: Make these configurable in sdkconfig
+#define OTA_CHUNK_SIZE                                       2048
+#define OTA_CHUNK_DELAY_MS                                   10
+
+#if OTA_FROM_WEB_URL
+/* Fetch OTA image from a web server per HTTP (image_url) */
+esp_err_t esp_hosted_slave_ota_http(const char* image_url);
+/* Fetch OTA image from a web server (image_url) per HTTPS */
+esp_err_t esp_hosted_slave_ota_https(const char* image_url, const char* https_cert);
+#else
+/* Fetch OTA image from a file (image_url) */
+esp_err_t esp_hosted_slave_ota_image_file(const char* image_url);
 #endif
 
 #endif /*__ESP_HOSTED_OTA_H__*/
