@@ -124,7 +124,8 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 endif()
 
 idf_component_register(SRCS ${srcs}
-	PRIV_REQUIRES soc esp_event esp_netif esp_timer driver esp_wifi bt esp_http_client console wpa_supplicant
+	PRIV_REQUIRES soc esp_event esp_netif esp_timer esp_wifi bt esp_http_client console wpa_supplicant esp_driver_spi
+	REQUIRES esp_driver_sdmmc esp_driver_uart
 	INCLUDE_DIRS ${pub_include}
 	PRIV_INCLUDE_DIRS ${priv_include})
 
