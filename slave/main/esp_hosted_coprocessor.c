@@ -1014,10 +1014,6 @@ esp_err_t esp_hosted_coprocessor_init(void)
 	register_reset_pin(CONFIG_ESP_GPIO_SLAVE_RESET);
 #endif
 
-#if defined(CONFIG_BT_ENABLED) && defined(CONFIG_SOC_BT_SUPPORTED)
-	initialise_bluetooth();
-#endif
-
 	pc_pserial = protocomm_new();
 	if (pc_pserial == NULL) {
 		ESP_LOGE(TAG,"Failed to allocate memory for new instance of protocomm ");

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.5.0
+
+### Features
+
+- Remove dependency on deprecated `driver` component and added necessary dependencies instead
+
 ## 2.4.2
 
 ### Features
