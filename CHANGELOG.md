@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.3
+
+Fix the ESP-IDF CI
+
 ## 2.5.2
 
 ### Features

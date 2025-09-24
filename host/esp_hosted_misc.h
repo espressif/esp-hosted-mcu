@@ -7,6 +7,7 @@
 #ifndef __ESP_HOSTED_MISC_H__
 #define __ESP_HOSTED_MISC_H__
 
+#include <stdbool.h>
 #include "esp_mac.h"
 
 /**
