@@ -15,6 +15,7 @@ extern "C" {
 /** Includes **/
 #include "esp_wifi.h"
 #include "port_esp_hosted_host_wifi_config.h"
+#include "esp_mac.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_ota.h"
 
@@ -83,6 +84,14 @@ esp_err_t rpc_wifi_sta_get_aid(uint16_t *aid);
 esp_err_t rpc_wifi_set_inactive_time(wifi_interface_t ifx, uint16_t sec);
 esp_err_t rpc_wifi_get_inactive_time(wifi_interface_t ifx, uint16_t *sec);
 esp_err_t rpc_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info);
+
+esp_err_t rpc_bt_controller_init(void);
+esp_err_t rpc_bt_controller_deinit(bool mem_release);
+esp_err_t rpc_bt_controller_enable(void);
+esp_err_t rpc_bt_controller_disable(void);
+
+esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp_mac_type_t type);
+esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type);
 
 esp_err_t rpc_ota_begin(void);
 esp_err_t rpc_ota_write(uint8_t* ota_data, uint32_t ota_data_len);

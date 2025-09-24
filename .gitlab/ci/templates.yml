@@ -1,6 +1,6 @@
 # Holds templates used for jobs
 
-.check_ver_template:
+.premerge_check_template:
   stage: pre
   tags:
     - build
@@ -8,6 +8,8 @@
     - source ${IDF_PATH}/export.sh
     # check the exported fw versions
     - python tools/check_fw_versions.py
+    # check the changelog
+    - python tools/check_changelog.py
 
 .build_template_coprocessor:
   stage: build_coprocessor

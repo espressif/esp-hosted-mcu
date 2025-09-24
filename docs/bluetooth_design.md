@@ -2,30 +2,38 @@
 
 **Table of Contents**
 
+<details>
+
+<summary>Table of Contents</summary>
+
 - [1. Introduction](#1-introduction)
-  - [1.1 Choosing a Bluetooth Host stack](#11-choosing-a-bluetooth-host-stack)
+  - [1.1 Prerequisites](#11-prerequisites)
+  - [1.2 Choosing a Bluetooth Host stack](#12-choosing-a-bluetooth-host-stack)
 - [2. Bluetooth Controller](#2-bluetooth-controller)
 - [3. Bluetooth Interface](#3-bluetooth-interface)
+  - [3.1 Initializing the Bluetooth Controller](#31-initializing-the-bluetooth-controller)
 - [4. NimBLE Host Stack](#4-nimble-host-stack)
   - [4.1. Transporting HCI data using Hosted HCI in NimBLE](#41-transporting-hci-data-using-hosted-hci-in-nimble)
-    - [4.1.1. Bluetooth Host Hosted HCI Initialization](#411-bluetooth-host-hosted-hci-initialization)
-    - [4.1.2. Bluetooth Host Sending Data through Hosted HCI in NimBLE](#412-bluetooth-host-sending-data-through-hosted-hci-in-nimble)
-    - [4.1.3. Bluetooth Host Receiving Data from Hosted HCI in NimBLE](#413-bluetooth-host-receiving-data-from-hosted-hci-in-nimble)
+  - [4.1.1. Bluetooth Host Hosted HCI Initialization](#411-bluetooth-host-hosted-hci-initialization)
+  - [4.1.2. Bluetooth Host Sending Data through Hosted HCI in NimBLE](#412-bluetooth-host-sending-data-through-hosted-hci-in-nimble)
+  - [4.1.3. Bluetooth Host Receiving Data from Hosted HCI in NimBLE](#413-bluetooth-host-receiving-data-from-hosted-hci-in-nimble)
   - [4.2. Transporting HCI data using UART](#42-transporting-hci-data-using-uart)
     - [4.2.1. Bluetooth Host HCI Initialization](#421-bluetooth-host-hci-initialization)
-    - [4.2.2. Bluetooth Host Sending Data using HCI](#422-bluetooth-host-sending-data-using-hci)
-    - [4.2.3. Bluetooth Host Receiving Data using HCI](#423-bluetooth-host-receiving-data-using-hci)
+  - [4.2.2. Bluetooth Host Sending Data using HCI](#422-bluetooth-host-sending-data-using-hci)
+  - [4.2.3. Bluetooth Host Receiving Data using HCI](#423-bluetooth-host-receiving-data-using-hci)
 - [5. BlueDroid Host Stack](#5-bluedroid-host-stack)
   - [5.1. Transporting HCI data using Hosted HCI in BlueDroid](#51-transporting-hci-data-using-hosted-hci-in-bluedroid)
     - [5.1.1. Bluetooth Host Hosted HCI Initialization](#511-bluetooth-host-hosted-hci-initialization)
-    - [5.1.2. Bluetooth Host Sending Data through Hosted HCI in BlueDroid](#512-bluetooth-host-sending-data-through-hosted-hci-in-bluedroid)
-    - [5.1.3. Bluetooth Host Receiving Data from Hosted HCI in BlueDroid](#513-bluetooth-host-receiving-data-from-hosted-hci-in-bluedroid)
+  - [5.1.2. Bluetooth Host Sending Data through Hosted HCI in BlueDroid](#512-bluetooth-host-sending-data-through-hosted-hci-in-bluedroid)
+  - [5.1.3. Bluetooth Host Receiving Data from Hosted HCI in BlueDroid](#513-bluetooth-host-receiving-data-from-hosted-hci-in-bluedroid)
   - [5.2. Transporting HCI data using UART](#52-transporting-hci-data-using-uart)
     - [5.2.1. Bluetooth Host HCI Initialization](#521-bluetooth-host-hci-initialization)
-    - [5.2.2. Bluetooth Host Sending Data using HCI](#522-bluetooth-host-sending-data-using-hci)
-    - [5.2.3. Bluetooth Host Receiving Data using HCI](#523-bluetooth-host-receiving-data-using-hci)
+  - [5.2.2. Bluetooth Host Sending Data using HCI](#522-bluetooth-host-sending-data-using-hci)
+  - [5.2.3. Bluetooth Host Receiving Data using HCI](#523-bluetooth-host-receiving-data-using-hci)
 - [6. Configuring the Co-processor for Standard HCI over UART](#6-configuring-the-co-processor-for-standard-hci-over-uart)
 - [7. References](#7-references)
+
+</details>
 
 ## 1. Introduction
 
@@ -34,14 +42,6 @@ Host on the Hosted Master and the Bluetooth Controller on the Hosted
 Co-processor. The Host MCU implement the Bluetooth app and Bluetooth
 Host Stack and the co-processor runs the Bluetooth controller and
 hardware.
-
-> [!NOTE]
-> Check that the memory requirement for your preferred Bluetooth host
-> stack can be satisfied on the Host.
-
-> [!WARNING]
-> The ESP32 only supports Bluetooth v4.2. If you are using a ESP32 as
-> the co-processor, the host Bluetooth stack must also be v4.2.
 
 ESP-Hosted is Bluetooth stack agnostic. To showcase ESP-Hosted's
 Bluetooth support, both `esp-nimble` and `esp-bluedroid` are used
@@ -58,7 +58,12 @@ as Bluetooth Low Energy.
 
 See [References](#7-references) for links with more information.
 
-### 1.1 Choosing a Bluetooth Host stack
+### 1.1 Prerequisites
+
+- check that the memory requirement for your preferred Bluetooth host stack can be satisfied on the Host.
+- the ESP32 only supports Bluetooth v4.2. If you are using a ESP32 as the co-processor, the host Bluetooth stack must also be v4.2.
+
+### 1.2 Choosing a Bluetooth Host stack
 
 For usecases involving classic Bluetooth as well as Bluetooth Low
 Energy, BlueDroid should be used.
@@ -129,6 +134,48 @@ Use this option if you want:
 > Bluetooth over Standard HCI configuration must be disabled, and vice
 > versa.
 
+### 3.1 Initializing the Bluetooth Controller
+
+> [!NOTE]
+> Before ESP-Hosted-MCU v2.5.2, the Bluetooth Controller on the
+> co-processor was **enabled** by default. This section on
+> initializing the Bluetooth Controller applies to ESP-Hosted-MCU
+> v2.5.2 and after.
+
+The Bluetooth Controller on the co-processor is disabled by
+default. This allows the BT Mac Address to be set, which must be done
+before the controller is enabled. The BT Controller should be enabled
+before initialzing the BT Host Stack.
+
+To get and set the BT Controller MAC address:
+
+1. Call `esp_hosted_connect_to_slave()` to intialise the transport
+2. (Optional) Call `esp_hosted_iface_mac_addr_len_get` to get the length of the BT MAC address
+3. (Optional) Call `esp_hosted_iface_mac_addr_get` to get the current BT MAC address
+4. Call `esp_hosted_iface_mac_addr_set` to set the current BT MAC address
+
+After setting the BT Controller MAC address, you can now enable the BT Controller.
+
+> [!NOTE]
+> This MAC address setting is temporary and will revert after device
+> reset. For permanent MAC address change, modify during hardware
+> provisioning or burn directly into eFuse using appropriate commands
+
+To enable the BT Controller:
+
+1. Call `esp_hosted_connect_to_slave()` to intialise the transport. (Skip this if already called while seting the BT MAC Address above.)
+2. (Optional) Call `esp_hosted_iface_mac_addr_get()` and
+   `esp_hosted_iface_mac_addr_set()` to get and set the BT Mac Address
+3. Call `esp_hosted_bt_controller_init()` to initialise the BT Controller
+4. Call `esp_hosted_bt_controller_enable()` to enable the BT Controller
+5. Initialise the BT Host stack
+
+To disable the Controller:
+
+1. Deinitialise the BT Host stack
+2. Call `esp_hosted_bt_controller_disable()` to disable the BT Controller
+3. Call `esp_hosted_bt_controller_deinit()` to deinit the BT Controller
+
 ## 4. NimBLE Host Stack
 
 The ESP-Hosted Master implements the set of API calls required by the
@@ -162,11 +209,11 @@ sequenceDiagram
     end
 
     ble ->> +hhci : hci_drv_init()
-	Note over hhci: do any init required
+    Note over hhci: do any init required
     hhci -->> -ble : 
 
     ble ->> +hhci : ble_transport_ll_init()
-	Note over hhci : do any transport init required
+    Note over hhci : do any transport init required
     hhci -->> -ble : 
 ```
 
@@ -227,12 +274,12 @@ sequenceDiagram
 
     alt Receive Event Data
         Note over hhci: convert HCI data to Event
-	    hhci ->> ble : ble_transport_to_hs_evt()
-	    ble -->> hhci : 
+        hhci ->> ble : ble_transport_to_hs_evt()
+        ble -->> hhci : 
     else Receive ACL Data
         Note over hhci: convert HCI data to ACL
-	    hhci ->> ble : ble_transport_to_hs_acl()
-	    ble -->> hhci : 
+        hhci ->> ble : ble_transport_to_hs_acl()
+        ble -->> hhci : 
     end
 
     hhci -->> -master : 
@@ -306,12 +353,12 @@ sequenceDiagram
 
     alt Receive Event Data
         Note over huart : convert HCI data to Event
-	    huart ->> ble : ble_transport_to_hs_evt()
-	    ble -->> huart : 
+        huart ->> ble : ble_transport_to_hs_evt()
+        ble -->> huart : 
     else Receive ACL Data
         Note over huart : convert HCI data to ACL
-	    huart ->> ble : ble_transport_to_hs_acl()
-	    ble -->> huart : 
+        huart ->> ble : ble_transport_to_hs_acl()
+        ble -->> huart : 
     end
 ```
 
@@ -357,7 +404,7 @@ sequenceDiagram
     end
 
     bt ->> +hhci : hosted_hci_bluedroid_open()
-	Note over hhci: do any init required
+    Note over hhci: do any init required
     hhci -->> -bt : 
 ```
 
@@ -451,7 +498,7 @@ sequenceDiagram
     end
 
     bt ->> +huart : uart_open()
-	Note over huart: do any uart init required
+    Note over huart: do any uart init required
     huart -->> -bt : 
 ```
 

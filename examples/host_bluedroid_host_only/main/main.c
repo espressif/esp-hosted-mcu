@@ -26,6 +26,7 @@
 #include "esp_gap_bt_api.h"
 #include "esp_bluedroid_hci.h"
 
+#include "esp_hosted.h"
 #include "esp_hosted_bluedroid.h"
 
 #define GAP_TAG          "GAP"
@@ -163,7 +164,7 @@ static void update_device_info(esp_bt_gap_cb_param_t *param)
     }
 
     if (!esp_bt_gap_is_valid_cod(cod) ||
-	    (!(esp_bt_gap_get_cod_major_dev(cod) == ESP_BT_COD_MAJOR_DEV_PHONE) &&
+        (!(esp_bt_gap_get_cod_major_dev(cod) == ESP_BT_COD_MAJOR_DEV_PHONE) &&
              !(esp_bt_gap_get_cod_major_dev(cod) == ESP_BT_COD_MAJOR_DEV_AV))) {
         return;
     }
@@ -282,7 +283,19 @@ void app_main(void)
     }
     ESP_ERROR_CHECK( ret );
 
-    /* initialize TRANSPORT first */
+    // initialise connection to co-processor
+    esp_hosted_connect_to_slave();
+
+    // init bt controller
+    if (ESP_OK != esp_hosted_bt_controller_init()) {
+        ESP_LOGW("INFO", "failed to init bt controller");
+    }
+
+    // enable bt controller
+    if (ESP_OK != esp_hosted_bt_controller_enable()) {
+        ESP_LOGW("INFO", "failed to enable bt controller");
+    }
+
     hosted_hci_bluedroid_open();
 
     /* get HCI driver operations */
