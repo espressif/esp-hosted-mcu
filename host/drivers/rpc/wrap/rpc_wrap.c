@@ -948,7 +948,11 @@ esp_err_t rpc_wifi_sta_twt_config(wifi_twt_config_t *config)
 	return rpc_rsp_callback(resp);
 }
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 esp_err_t rpc_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+#else
+esp_err_t rpc_wifi_sta_itwt_setup(wifi_twt_setup_config_t *setup_config)
+#endif
 {
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
@@ -957,7 +961,11 @@ esp_err_t rpc_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
 	if (!setup_config)
 		return FAILURE;
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	g_h.funcs->_h_memcpy(&req->u.wifi_itwt_setup_config, setup_config, sizeof(wifi_itwt_setup_config_t));
+#else
+	g_h.funcs->_h_memcpy(&req->u.wifi_twt_setup_config, setup_config, sizeof(wifi_twt_setup_config_t));
+#endif
 	resp = rpc_slaveif_wifi_sta_itwt_setup(req);
 	return rpc_rsp_callback(resp);
 }

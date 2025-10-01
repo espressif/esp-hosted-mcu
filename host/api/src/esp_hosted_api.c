@@ -459,7 +459,11 @@ esp_err_t esp_wifi_remote_sta_twt_config(wifi_twt_config_t *config)
 	return rpc_wifi_sta_twt_config(config);
 }
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+#else
+esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_twt_setup_config_t *setup_config)
+#endif
 {
 	return rpc_wifi_sta_itwt_setup(setup_config);
 }

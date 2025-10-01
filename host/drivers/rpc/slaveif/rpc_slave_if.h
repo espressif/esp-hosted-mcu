@@ -409,7 +409,11 @@ typedef struct Ctrl_cmd_t {
 #if H_WIFI_HE_SUPPORT
 		wifi_twt_config_t           wifi_twt_config;
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 		wifi_itwt_setup_config_t    wifi_itwt_setup_config;
+#else
+		wifi_twt_setup_config_t     wifi_twt_setup_config;
+#endif
 
 		int                         wifi_itwt_flow_id;
 
