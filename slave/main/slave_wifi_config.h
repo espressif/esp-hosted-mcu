@@ -76,9 +76,13 @@
  * Wi-Fi Easy Connect (DPP) events is returned to user via
  * Supplicant Callback or Wi-Fi DPP events,
  * depending on IDF version
+ *
+ * IDF v6.0 and above only support Wi-Fi DPP events
+ * IDF v5.5 support Wi-Fi and Supplicant DPP events
+ * earlier versions support only Supplicant DPP events
  */
-// Supplicant Callback DPP Events: still available, but deprecated
-#if CONFIG_ESP_WIFI_DPP_SUPPORT
+// Supplicant Callback DPP Events: removed from IDF v6.0
+#if CONFIG_ESP_WIFI_DPP_SUPPORT && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
 #define H_SUPP_DPP_SUPPORT 1
 #else
 #define H_SUPP_DPP_SUPPORT 0

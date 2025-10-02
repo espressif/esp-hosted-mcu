@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.5
+
+### Bug Fixes
+
+- Fixed build errors when using latest version of ESP-IDF
+- Updated Wi-Fi Easy Connect (DPP) code to match current ESP-IDF master
+- Adjusted CI pipeline
+
 ## 2.5.4
 
 ### Features

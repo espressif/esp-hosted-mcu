@@ -659,7 +659,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	if (buf_handle->if_type == ESP_STA_IF && station_connected) {
 		/* Forward data to wlan driver */
 		do {
-			ret = esp_wifi_internal_tx(ESP_IF_WIFI_STA, payload, payload_len);
+			ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
 			if (ret) {
 				vTaskDelay(pdMS_TO_TICKS(1));
 			}
@@ -676,7 +676,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 #endif
 	} else if (buf_handle->if_type == ESP_AP_IF && softap_started) {
 		/* Forward data to wlan driver */
-		esp_wifi_internal_tx(ESP_IF_WIFI_AP, payload, payload_len);
+		esp_wifi_internal_tx(WIFI_IF_AP, payload, payload_len);
 		ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
 	} else if (buf_handle->if_type == ESP_SERIAL_IF) {
 #if ESP_PKT_STATS

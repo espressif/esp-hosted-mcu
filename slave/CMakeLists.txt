@@ -8,7 +8,7 @@ add_compile_options(-Wl,--wrap=esp_wifi_init)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 list(APPEND EXCLUDE_COMPONENTS lwip esp_netif)
 
-set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning)
+set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning esp_driver_sdio)
 
 #list(APPEND COMPONENTS esp_gdbstub) # incase gdbstub needed
 project(network_adapter)

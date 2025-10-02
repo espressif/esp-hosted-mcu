@@ -454,10 +454,17 @@ esp_err_t esp_eap_client_set_eap_methods(esp_eap_method_t methods)
 /**
  * Weak version of esp_dpp API
  */
+#if H_SUPP_DPP_SUPPORT
 H_WEAK_REF esp_err_t esp_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
 {
 	return esp_supp_remote_dpp_init(evt_cb);
 }
+#else
+H_WEAK_REF esp_err_t esp_supp_dpp_init(void)
+{
+	return esp_supp_remote_dpp_init();
+}
+#endif
 
 H_WEAK_REF esp_err_t esp_supp_dpp_deinit(void)
 {

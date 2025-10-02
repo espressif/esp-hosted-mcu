@@ -85,7 +85,7 @@ build_coprocessor_idf_v5.3_scheduled:
     matrix:
       - IDF_TARGET: ["esp32c6"]
         IDF_VER: ["v5.3", "v5.3.1", "v5.3.2", "v5.3.3", "v5.3.4", "release-v5.3"]
-        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
+        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
 build_coprocessor_idf_v5.3_scheduled_2:
   tags:
@@ -124,7 +124,7 @@ build_coprocessor_idf_v5.4_scheduled:
     matrix:
       - IDF_TARGET: ["esp32c6"]
         IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4"]
-        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
+        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
 build_coprocessor_idf_v5.4_scheduled_2:
   tags:
@@ -225,6 +225,8 @@ build_bluedroid_examples:
         "host_bt_controller_mac_addr"]
 
 build_wifi_examples:
+  tags:
+    - scheduled_build
   rules:
     - !reference [.scheduled_pipeline_rules, rules]
   extends: .build_template_example
