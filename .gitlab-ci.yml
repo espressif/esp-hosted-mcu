@@ -1,8 +1,8 @@
 stages:
   - pre
+  - build
   - build_coprocessor
   - build_example
-  - build
 
 before_script:
   - git submodule update --init --recursive

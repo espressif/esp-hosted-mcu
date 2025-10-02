@@ -134,7 +134,11 @@ esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods);
 #endif
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 esp_err_t esp_supp_remote_dpp_init(esp_supp_dpp_event_cb_t evt_cb);
+#else
+esp_err_t esp_supp_remote_dpp_init(void);
+#endif
 esp_err_t esp_supp_remote_dpp_deinit(void);
 esp_err_t esp_supp_remote_dpp_bootstrap_gen(const char *chan_list,
 		esp_supp_dpp_bootstrap_t type,

@@ -35,6 +35,9 @@
   stage: build_example
   tags:
     - build
+  artifacts:
+    when: always
+    expire_in: 4 days
   script:
     - source ${IDF_PATH}/export.sh
     - pip install idf-component-manager idf-build-apps --upgrade
