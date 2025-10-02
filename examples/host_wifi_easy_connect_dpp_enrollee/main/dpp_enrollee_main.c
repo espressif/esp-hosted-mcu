@@ -28,6 +28,8 @@
 /** for ESP-IDF v5.5.0 and above, DPP events come in as Wi-Fi Events
  ** set EXAMPLE_DPP_USE_WIFI_EVENTS to 0 to use the older Supplicant
  ** based DPP events
+ *
+ ** Note: ESP-IDF v6.0 and above removed Supplicant based DPP events
  */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
 #define EXAMPLE_DPP_USE_WIFI_EVENTS 1
@@ -219,7 +221,11 @@ void dpp_enrollee_init(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
 #if EXAMPLE_DPP_USE_WIFI_EVENTS
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    ESP_ERROR_CHECK(esp_supp_dpp_init());
+#else
     ESP_ERROR_CHECK(esp_supp_dpp_init(NULL));
+#endif
 #else
     ESP_ERROR_CHECK(esp_supp_dpp_init(dpp_enrollee_event_cb));
 #endif

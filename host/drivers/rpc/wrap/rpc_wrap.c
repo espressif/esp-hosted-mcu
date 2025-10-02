@@ -2061,6 +2061,7 @@ esp_err_t rpc_eap_client_set_eap_methods(esp_eap_method_t methods)
 #endif
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 esp_err_t rpc_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
 {
 	/* implemented synchronous */
@@ -2087,6 +2088,20 @@ esp_err_t rpc_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
 	resp = rpc_slaveif_supp_dpp_init(req);
 	return rpc_rsp_callback(resp);
 }
+#else // H_SUPP_DPP_SUPPORT
+esp_err_t rpc_supp_dpp_init(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	// no callback
+	req->u.dpp_enable_cb = false;
+
+	resp = rpc_slaveif_supp_dpp_init(req);
+	return rpc_rsp_callback(resp);
+}
+#endif
 
 esp_err_t rpc_supp_dpp_deinit(void)
 {

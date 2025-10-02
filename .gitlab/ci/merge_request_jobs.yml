@@ -53,7 +53,7 @@ build_coprocessor_idf_v5.5:
     matrix:
       - IDF_TARGET: ["esp32c6", "esp32c5"]
         IDF_VER: ["v5.5", "v5.5.1", "release-v5.5"]
-        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
+        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
 build_coprocessor_idf_master:
   rules:
@@ -63,7 +63,7 @@ build_coprocessor_idf_master:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32c6", "esp32c5"]
-        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
+        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
 # for C61, build for sdio only for now
 build_coprocessor_idf_master_c61:
@@ -74,7 +74,7 @@ build_coprocessor_idf_master_c61:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32c61"]
-        SLAVE_CI_FILE: ["sdio" ]
+        SLAVE_CI_FILE: ["sdio"]
 
 ### build ESP-Hosted examples
 build_nimble_examples:

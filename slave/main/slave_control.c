@@ -659,7 +659,7 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 			if (event_id == WIFI_EVENT_AP_START) {
 				if (!softap_started) {
 					ESP_LOGI(TAG,"softap started");
-					esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, (wifi_rxcb_t) wlan_ap_rx_callback);
+					esp_wifi_internal_reg_rxcb(WIFI_IF_AP, (wifi_rxcb_t) wlan_ap_rx_callback);
 					softap_started = 1;
 					send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
 							&event_id, sizeof(event_id));
@@ -667,7 +667,7 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 			} else if (event_id == WIFI_EVENT_AP_STOP) {
 				if (softap_started) {
 					ESP_LOGI(TAG,"softap stopped");
-					esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, NULL);
+					esp_wifi_internal_reg_rxcb(WIFI_IF_AP, NULL);
 					softap_started = 0;
 					send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
 							&event_id, sizeof(event_id));
@@ -3089,7 +3089,9 @@ static esp_err_t req_wifi_sta_itwt_set_target_wake_time_offset(Rpc *req, Rpc *re
 #endif // CONFIG_SOC_WIFI_HE_SUPPORT
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data);
+#endif
 
 static esp_err_t req_supp_dpp_init(Rpc *req, Rpc *resp, void *priv_data)
 {
@@ -3098,13 +3100,22 @@ static esp_err_t req_supp_dpp_init(Rpc *req, Rpc *resp, void *priv_data)
 			rpc__resp__supp_dpp_init__init);
 
 	if (req_payload->cb) {
+#if H_SUPP_DPP_SUPPORT
 		// init with callback
 		ESP_LOGI(TAG, "dpp init with callback");
 		RPC_RET_FAIL_IF(esp_supp_dpp_init(dpp_enrollee_event_cb));
+#else
+		ESP_LOGE(TAG, "dpp init with callback NOT supported");
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+#endif
 	} else {
 		// init without callback
 		ESP_LOGI(TAG, "dpp init WITHOUT callback");
+#if H_SUPP_DPP_SUPPORT
 		RPC_RET_FAIL_IF(esp_supp_dpp_init(NULL));
+#else
+		RPC_RET_FAIL_IF(esp_supp_dpp_init());
+#endif
 	}
 	return ESP_OK;
 }
@@ -4012,9 +4023,9 @@ static esp_err_t rpc_evt_Event_WifiEventNoArgs(Rpc *ntfy,
 }
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data)
 {
-#if H_SUPP_DPP_SUPPORT
 	switch (event) {
 	case ESP_SUPP_DPP_URI_READY:
 		if (data != NULL) {
@@ -4047,9 +4058,6 @@ void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data)
 		}
 		break;
 	}
-#else // H_SUPP_DPP_SUPPORT
-	ESP_LOGW(TAG, "DPP Supplicant Callback not supported: ignoring event");
-#endif // H_SUPP_DPP_SUPPORT
 }
 
 static esp_err_t rpc_evt_supp_dpp_uri_ready(Rpc *ntfy,
@@ -4108,6 +4116,7 @@ static esp_err_t rpc_evt_supp_dpp_fail(Rpc *ntfy,
 	ntfy_payload->resp = SUCCESS;
 	return ESP_OK;
 }
+#endif // H_SUPP_DPP_SUPPORT
 
 #if H_WIFI_DPP_SUPPORT
 static esp_err_t rpc_evt_wifi_dpp_uri_ready(Rpc *ntfy,
@@ -4249,7 +4258,7 @@ esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 		} case RPC_ID__Event_WifiDppFail: {
 			ret = rpc_evt_wifi_dpp_fail(ntfy, inbuf, inlen);
 			break;
-#endif
+#endif // H_WIFI_DPP_SUPPORT
 		} default: {
 			ESP_LOGE(TAG, "Incorrect/unsupported Ctrl Notification[%u]\n",ntfy->msg_id);
 			goto err;

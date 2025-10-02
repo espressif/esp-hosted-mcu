@@ -546,11 +546,19 @@ esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t
 #endif
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 esp_err_t esp_supp_remote_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
 {
 	check_transport_up();
 	return rpc_supp_dpp_init(evt_cb);
 }
+#else
+esp_err_t esp_supp_remote_dpp_init(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_init();
+}
+#endif
 
 esp_err_t esp_supp_remote_dpp_deinit(void)
 {
