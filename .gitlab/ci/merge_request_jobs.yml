@@ -1,12 +1,35 @@
 # Holds jobs that run from a merge request
 
+###
+### Check project pre-requisites have been fulfilled
+###
+
 premerge_check:
   rules:
     - !reference [.default_rules, rules]
   extends: .premerge_check_template
   image: espressif/idf:latest
 
-build_idf_v5.5:
+###
+### Build host using ESP-IDF examples
+###
+
+### protocols/mqtt/tcp example
+build_idf_master_mqtt_tcp:
+  variables:
+    EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template
+  image: espressif/idf:latest
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
+        IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
+
+### wifi/iperf example
+build_idf_v5.5_iperf:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template
@@ -18,21 +41,6 @@ build_idf_v5.5:
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
 
-### build protocols/mqtt/tcp example
-build_idf_master_mqtt_tcp:
-  variables:
-    EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
-  rules:
-    - !reference [.default_rules, rules]
-  extends: .build_template
-  image: espressif/idf:latest
-  parallel:
-    matrix:
-      - IDF_TARGET: ["esp32p4"]
-        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5", "esp32c61"]
-        IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
-
-### build wifi/iperf example
 build_idf_master_iperf:
   rules:
     - !reference [.default_rules, rules]
@@ -43,6 +51,10 @@ build_idf_master_iperf:
       - IDF_TARGET: ["esp32p4"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5", "esp32c61"]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
+
+###
+### Build coprocessor
+###
 
 build_coprocessor_idf_v5.5:
   rules:
@@ -76,7 +88,10 @@ build_coprocessor_idf_master_c61:
       - IDF_TARGET: ["esp32c61"]
         SLAVE_CI_FILE: ["sdio"]
 
+###
 ### build ESP-Hosted examples
+###
+
 build_nimble_examples:
   rules:
     - !reference [.default_rules, rules]
