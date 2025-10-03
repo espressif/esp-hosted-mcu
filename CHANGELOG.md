@@ -1,14 +1,11 @@
 # Changelog
 
-## 2.5.9
-
-Test staging with dummy MR
-
-## 2.5.8
+## 2.5.10
 
 ### Features
 
-- Add staging branch workflow for safer component releases
+- Version, 2.5.8 - 2.5.10:
+  - Add staging branch workflow for safer component releases
 
 ## 2.5.7
 
