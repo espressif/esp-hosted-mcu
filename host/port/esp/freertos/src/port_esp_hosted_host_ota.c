@@ -21,12 +21,23 @@
 #include "port_esp_hosted_host_os.h"
 #include "esp_hosted_ota.h"
 
-#define CHUNK_SIZE                                        1400
-#define OTA_FROM_WEB_URL                                  1
-
 static char* TAG = "hosted_ota";
 
 #if OTA_FROM_WEB_URL
+
+
+/* Fetch OTA image from a web server per HTTP (image_url) */
+esp_err_t esp_hosted_slave_ota_http(const char* image_url)
+{
+	return esp_hosted_slave_ota_chunked(image_url, NULL);
+}
+
+/* Fetch OTA image from a web server (image_url) per HTTPS */
+esp_err_t esp_hosted_slave_ota_https(const char* image_url, const char* https_cert)
+{
+	return esp_hosted_slave_ota_chunked(image_url, https_cert);
+}
+
 /* Default: Chunk by chunk transfer using esp http client library */
 uint8_t http_err = 0;
 static esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
@@ -67,7 +78,7 @@ static esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
 	return ESP_OK;
 }
 
-static esp_err_t _hosted_ota(const char* image_url)
+static esp_err_t _hosted_ota(const char* image_url, const char* https_cert)
 {
 	uint8_t *ota_chunk = NULL;
 	esp_err_t err = 0;
@@ -85,6 +96,13 @@ static esp_err_t _hosted_ota(const char* image_url)
 		.timeout_ms = 5000,
 		.event_handler = http_client_event_handler,
 	};
+	/* Add https configuration if https_cert is provided */
+	if (https_cert != NULL) {
+		config.transport_type = HTTP_TRANSPORT_OVER_SSL;
+		config.cert_pem = https_cert;
+		config.buffer_size = 4096;
+		config.buffer_size_tx = 4096;
+	}
 
 	esp_http_client_handle_t client = esp_http_client_init(&config);
 
@@ -132,7 +150,7 @@ static esp_err_t _hosted_ota(const char* image_url)
 		return ESP_FAIL;
 	}
 
-	ota_chunk = (uint8_t*)g_h.funcs->_h_calloc(1, CHUNK_SIZE);
+	ota_chunk = (uint8_t*)g_h.funcs->_h_calloc(1, OTA_CHUNK_SIZE);
 	if (!ota_chunk) {
 		ESP_LOGE(TAG, "Failed to allocate otachunk mem\n");
 		err = -ENOMEM;
@@ -141,7 +159,7 @@ static esp_err_t _hosted_ota(const char* image_url)
 	ESP_LOGI(TAG, "Starting OTA");
 
 	if (!err) {
-		while ((data_read = esp_http_client_read(client, (char*)ota_chunk, CHUNK_SIZE)) > 0) {
+		while ((data_read = esp_http_client_read(client, (char*)ota_chunk, OTA_CHUNK_SIZE)) > 0) {
 
 			ESP_LOGV(TAG, "Read image length %d", data_read);
 			if ((err = rpc_ota_write(ota_chunk, data_read))) {
@@ -149,6 +167,7 @@ static esp_err_t _hosted_ota(const char* image_url)
 				ota_failed = err;
 				break;
 			}
+			vTaskDelay(OTA_CHUNK_DELAY_MS / portTICK_PERIOD_MS);
 		}
 	}
 
@@ -185,13 +204,13 @@ static esp_err_t _hosted_ota(const char* image_url)
 	return ota_failed;
 }
 
-static esp_err_t esp_hosted_slave_ota_chunked(const char* image_url)
+static esp_err_t esp_hosted_slave_ota_chunked(const char* image_url, const char* https_cert)
 {
 	uint8_t ota_retry = 2;
 	int ret = 0;
 
 	do {
-		ret = _hosted_ota(image_url);
+		ret = _hosted_ota(image_url, https_cert);
 
 		ota_retry--;
 		if (ota_retry && ret)
@@ -205,7 +224,7 @@ static esp_err_t esp_hosted_slave_ota_chunked(const char* image_url)
 static esp_err_t esp_hosted_slave_ota_whole_image(const char* image_path)
 {
 	FILE* f = NULL;
-	char ota_chunk[CHUNK_SIZE] = {0};
+	char ota_chunk[OTA_CHUNK_SIZE] = {0};
 	int ret = rpc_ota_begin();
 	if (ret == ESP_OK) {
 		f = fopen(image_path,"rb");
@@ -216,8 +235,8 @@ static esp_err_t esp_hosted_slave_ota_whole_image(const char* image_path)
 			ESP_LOGV(TAG, "Success in opening %s file", image_path);
 		}
 		while (!feof(f)) {
-			fread(&ota_chunk, CHUNK_SIZE, 1, f);
-			ret = rpc_ota_write((uint8_t* )&ota_chunk, CHUNK_SIZE);
+			fread(&ota_chunk, OTA_CHUNK_SIZE, 1, f);
+			ret = rpc_ota_write((uint8_t* )&ota_chunk, OTA_CHUNK_SIZE);
 			if (ret) {
 				ESP_LOGE(TAG, "OTA procedure failed!!");
 				/* TODO: Do we need to do OTA end irrespective of success/failure? */
@@ -239,11 +258,7 @@ static esp_err_t esp_hosted_slave_ota_whole_image(const char* image_path)
 }
 #endif // ENABLE_HTTP_OTA
 
-esp_err_t esp_hosted_slave_ota(const char* image_url)
-{
-#if OTA_FROM_WEB_URL
-	return esp_hosted_slave_ota_chunked(image_url);
-#else
+/* Fetch OTA image from a file (image_url) */
+esp_err_t esp_hosted_slave_ota_image_file(const char* image_url){ 
 	return esp_hosted_slave_ota_whole_image(image_url);
-#endif
 }
