@@ -147,6 +147,7 @@ promote_staging_to_main:
   rules:
     - if: $CI_COMMIT_BRANCH == "staging" && $CI_PIPELINE_SOURCE == "push"
   script:
+    - git remote set-url origin https://oauth2:${GITLAB_TOKEN_STAGING_TO_MAIN}@gitlab.espressif.cn:6688/app-frameworks/esp_hosted_mcu.git
     - git push origin $CI_COMMIT_SHA:main
   tags:
     - build
