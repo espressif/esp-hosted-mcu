@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.5.7
+
+### Bug Fixes
+
+- Fixed build break when Network Split and CLI Commands are enabled on coprocessor
+
 ## 2.5.6
 
 ### Bug Fixes

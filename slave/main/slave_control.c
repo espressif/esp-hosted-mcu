@@ -768,7 +768,7 @@ static esp_err_t set_slave_static_ip(wifi_interface_t iface, char *ip, char *nm,
 
 	ESP_LOGI(TAG, "Set static IP addr ip:%s nm:%s gw:%s", ip, nm, gw);
 	ESP_ERROR_CHECK(esp_netif_set_ip_info(slave_sta_netif, &ip_info));
-	esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
+	esp_wifi_internal_reg_rxcb(WIFI_IF_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
 
 	return ESP_OK;
 }
