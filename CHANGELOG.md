@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.9
+
+Test staging with dummy MR
+
 ## 2.5.8
 
 ### Features
