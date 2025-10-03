@@ -137,3 +137,16 @@ build_wifi_examples:
         "host_wifi_itwt",
         "host_transport_config",
         "host_network_split__power_save"]
+
+###
+### Promote staging to main after successful regression
+###
+
+promote_staging_to_main:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == "staging" && $CI_PIPELINE_SOURCE == "push"
+  script:
+    - git push origin $CI_COMMIT_SHA:main
+  tags:
+    - build
