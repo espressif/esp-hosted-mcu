@@ -4,9 +4,9 @@ build_idf_v5.3_mqtt_tcp_scheduled:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -20,9 +20,9 @@ build_idf_v5.4_mqtt_tcp_scheduled:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -34,9 +34,9 @@ build_idf_v5.4_mqtt_tcp_scheduled:
 
 build_idf_v5.5_iperf_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -50,9 +50,9 @@ build_idf_master_mqtt_tcp_scheduled:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:latest
   parallel:
@@ -63,9 +63,9 @@ build_idf_master_mqtt_tcp_scheduled:
 
 build_idf_master_iperf_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:latest
   parallel:
@@ -76,9 +76,9 @@ build_idf_master_iperf_scheduled:
 
 build_coprocessor_idf_v5.3_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -89,9 +89,9 @@ build_coprocessor_idf_v5.3_scheduled:
 
 build_coprocessor_idf_v5.3_scheduled_2:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -102,9 +102,9 @@ build_coprocessor_idf_v5.3_scheduled_2:
 
 build_coprocessor_idf_v5.3_esp32_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -115,9 +115,9 @@ build_coprocessor_idf_v5.3_esp32_scheduled:
 
 build_coprocessor_idf_v5.4_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -128,9 +128,9 @@ build_coprocessor_idf_v5.4_scheduled:
 
 build_coprocessor_idf_v5.4_scheduled_2:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -141,9 +141,9 @@ build_coprocessor_idf_v5.4_scheduled_2:
 
 build_coprocessor_idf_v5.4_esp32_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -154,9 +154,9 @@ build_coprocessor_idf_v5.4_esp32_scheduled:
 
 build_coprocessor_idf_v5.5_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -167,9 +167,9 @@ build_coprocessor_idf_v5.5_scheduled:
 
 build_coprocessor_idf_v5.5_esp32_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -180,9 +180,9 @@ build_coprocessor_idf_v5.5_esp32_scheduled:
 
 build_coprocessor_idf_master_all_features_enabled_scheduled:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:latest
   parallel:
@@ -192,9 +192,9 @@ build_coprocessor_idf_master_all_features_enabled_scheduled:
 
 build_nimble_examples:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -208,9 +208,9 @@ build_nimble_examples:
 
 build_bluedroid_examples:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -226,9 +226,9 @@ build_bluedroid_examples:
 
 build_wifi_examples:
   tags:
-    - scheduled_build
+    - build
   rules:
-    - !reference [.scheduled_pipeline_rules, rules]
+    - !reference [.staging_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.5.8
+
+### Features
+
+- Add staging branch workflow for safer component releases
+
 ## 2.5.7
 
 ### Bug Fixes
