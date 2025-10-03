@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.5.6
+
+### Bug Fixes
+
+- Updated co-processor and some example `idf_component.yml` files to set component dependencies based on the ESP-IDF version in use
+
 ## 2.5.5
 
 ### Bug Fixes
