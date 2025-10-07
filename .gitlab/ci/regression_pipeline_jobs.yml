@@ -1,6 +1,6 @@
-# Holds jobs that run from the scheduled pipeline
+# Holds jobs that run before promoting to main branch
 
-build_idf_v5.3_mqtt_tcp_scheduled:
+regression_build_idf_v5.3_mqtt_tcp_scheduled:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
@@ -16,7 +16,7 @@ build_idf_v5.3_mqtt_tcp_scheduled:
         IDF_SLAVE_TARGET: ["esp32c6"]
         IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
-build_idf_v5.4_mqtt_tcp_scheduled:
+regression_build_idf_v5.4_mqtt_tcp_scheduled:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
@@ -32,7 +32,7 @@ build_idf_v5.4_mqtt_tcp_scheduled:
         IDF_SLAVE_TARGET: ["esp32c6"]
         IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
-build_idf_v5.5_iperf_scheduled:
+regression_build_idf_v5.5_iperf_scheduled:
   tags:
     - build
   rules:
@@ -46,7 +46,7 @@ build_idf_v5.5_iperf_scheduled:
         IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
 
-build_idf_master_mqtt_tcp_scheduled:
+regression_build_idf_master_mqtt_tcp_scheduled:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   tags:
@@ -61,7 +61,7 @@ build_idf_master_mqtt_tcp_scheduled:
         IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
         IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
-build_idf_master_iperf_scheduled:
+regression_build_idf_master_iperf_scheduled:
   tags:
     - build
   rules:
@@ -74,7 +74,7 @@ build_idf_master_iperf_scheduled:
         IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
 
-build_coprocessor_idf_v5.3_scheduled:
+regression_build_coprocessor_idf_v5.3_scheduled:
   tags:
     - build
   rules:
@@ -87,7 +87,7 @@ build_coprocessor_idf_v5.3_scheduled:
         IDF_VER: ["v5.3", "v5.3.1", "v5.3.2", "v5.3.3", "v5.3.4", "release-v5.3"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
-build_coprocessor_idf_v5.3_scheduled_2:
+regression_build_coprocessor_idf_v5.3_scheduled_2:
   tags:
     - build
   rules:
@@ -100,7 +100,7 @@ build_coprocessor_idf_v5.3_scheduled_2:
         IDF_VER: ["v5.3", "v5.3.1", "v5.3.2", "v5.3.3", "v5.3.4", "release-v5.3"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
-build_coprocessor_idf_v5.3_esp32_scheduled:
+regression_build_coprocessor_idf_v5.3_esp32_scheduled:
   tags:
     - build
   rules:
@@ -113,7 +113,7 @@ build_coprocessor_idf_v5.3_esp32_scheduled:
         IDF_VER: ["v5.3", "v5.3.1", "v5.3.2", "v5.3.3", "v5.3.4", "release-v5.3"]
         SLAVE_CI_FILE: ["sdio", "spi", "uart"]
 
-build_coprocessor_idf_v5.4_scheduled:
+regression_build_coprocessor_idf_v5.4_scheduled:
   tags:
     - build
   rules:
@@ -126,7 +126,7 @@ build_coprocessor_idf_v5.4_scheduled:
         IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
-build_coprocessor_idf_v5.4_scheduled_2:
+regression_build_coprocessor_idf_v5.4_scheduled_2:
   tags:
     - build
   rules:
@@ -139,7 +139,7 @@ build_coprocessor_idf_v5.4_scheduled_2:
         IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
-build_coprocessor_idf_v5.4_esp32_scheduled:
+regression_build_coprocessor_idf_v5.4_esp32_scheduled:
   tags:
     - build
   rules:
@@ -152,7 +152,7 @@ build_coprocessor_idf_v5.4_esp32_scheduled:
         IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4"]
         SLAVE_CI_FILE: ["sdio", "spi", "uart"]
 
-build_coprocessor_idf_v5.5_scheduled:
+regression_build_coprocessor_idf_v5.5_scheduled:
   tags:
     - build
   rules:
@@ -165,7 +165,7 @@ build_coprocessor_idf_v5.5_scheduled:
         IDF_VER: ["v5.5", "v5.5.1", "release-v5.5"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
-build_coprocessor_idf_v5.5_esp32_scheduled:
+regression_build_coprocessor_idf_v5.5_esp32_scheduled:
   tags:
     - build
   rules:
@@ -178,7 +178,7 @@ build_coprocessor_idf_v5.5_esp32_scheduled:
         IDF_VER: ["v5.5", "v5.5.1", "release-v5.5"]
         SLAVE_CI_FILE: ["sdio", "spi", "uart"]
 
-build_coprocessor_idf_master_all_features_enabled_scheduled:
+regression_build_coprocessor_idf_master_all_features_enabled_scheduled:
   tags:
     - build
   rules:
@@ -190,7 +190,7 @@ build_coprocessor_idf_master_all_features_enabled_scheduled:
       - IDF_TARGET: ["esp32c6"]
         SLAVE_CI_FILE: ["all_features"]
 
-build_nimble_examples:
+regression_build_nimble_examples:
   tags:
     - build
   rules:
@@ -206,7 +206,7 @@ build_nimble_examples:
         EXAMPLE_TO_BUILD: ["host_nimble_bleprph_host_only_vhci",
         "host_nimble_bleprph_host_only_uart_hci"]
 
-build_bluedroid_examples:
+regression_build_bluedroid_examples:
   tags:
     - build
   rules:
@@ -224,7 +224,7 @@ build_bluedroid_examples:
         "host_bluedroid_host_only",
         "host_bt_controller_mac_addr"]
 
-build_wifi_examples:
+regression_build_wifi_examples:
   tags:
     - build
   rules:

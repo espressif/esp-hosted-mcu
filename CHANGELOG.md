@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.5.11
+
+### Bug Fixes
+
+- Renamed CI pipelines to "sanity" and "regression"
+- Prefix jobs with `sanity_` or `regression_` to make their names unique
+- Enabled building of ESP-Hosted examples in regression pipeline
+
 ## 2.5.10
 
 ### Features
