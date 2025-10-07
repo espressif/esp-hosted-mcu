@@ -15,7 +15,7 @@ premerge_check:
 ###
 
 ### protocols/mqtt/tcp example
-build_idf_master_mqtt_tcp:
+sanity_build_idf_master_mqtt_tcp:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   rules:
@@ -29,7 +29,7 @@ build_idf_master_mqtt_tcp:
         IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
 ### wifi/iperf example
-build_idf_v5.5_iperf:
+sanity_build_idf_v5.5_iperf:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template
@@ -41,7 +41,7 @@ build_idf_v5.5_iperf:
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
 
-build_idf_master_iperf:
+sanity_build_idf_master_iperf:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template
@@ -56,7 +56,7 @@ build_idf_master_iperf:
 ### Build coprocessor
 ###
 
-build_coprocessor_idf_v5.5:
+sanity_build_coprocessor_idf_v5.5:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_coprocessor
@@ -67,7 +67,7 @@ build_coprocessor_idf_v5.5:
         IDF_VER: ["v5.5", "v5.5.1", "release-v5.5"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
-build_coprocessor_idf_master:
+sanity_build_coprocessor_idf_master:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_coprocessor
@@ -78,7 +78,7 @@ build_coprocessor_idf_master:
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
 # for C61, build for sdio only for now
-build_coprocessor_idf_master_c61:
+sanity_build_coprocessor_idf_master_c61:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_coprocessor
@@ -92,7 +92,7 @@ build_coprocessor_idf_master_c61:
 ### build ESP-Hosted examples
 ###
 
-build_nimble_examples:
+sanity_build_nimble_examples:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_example
@@ -106,7 +106,7 @@ build_nimble_examples:
         EXAMPLE_TO_BUILD: ["host_nimble_bleprph_host_only_vhci",
         "host_nimble_bleprph_host_only_uart_hci"]
 
-build_bluedroid_examples:
+sanity_build_bluedroid_examples:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_example
@@ -122,7 +122,7 @@ build_bluedroid_examples:
         "host_bluedroid_host_only",
         "host_bt_controller_mac_addr"]
 
-build_wifi_examples:
+sanity_build_wifi_examples:
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_example
@@ -138,7 +138,7 @@ build_wifi_examples:
         "host_transport_config"]
 
 ###
-### Promote staging to main after successful regression
+### Promote staging to main after successful regression testing
 ###
 
 promote_staging_to_main:
