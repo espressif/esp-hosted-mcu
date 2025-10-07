@@ -11,5 +11,5 @@ before_script:
 include:
   - '.gitlab/ci/templates.yml'
   - '.gitlab/ci/rules.yml'
-  - '.gitlab/ci/scheduled_pipeline_jobs.yml'
-  - '.gitlab/ci/merge_request_jobs.yml'
+  - '.gitlab/ci/regression_pipeline_jobs.yml'
+  - '.gitlab/ci/sanity_pipeline_jobs.yml'
