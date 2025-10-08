@@ -4,9 +4,11 @@
 
 ### Bug Fixes
 
+- Fixes to use compatible version of `idf-build-apps` and constraints during CI pipeline builds
 - Renamed CI pipelines to "sanity" and "regression"
 - Prefix jobs with `sanity_` or `regression_` to make their names unique
 - Enabled building of ESP-Hosted examples in regression pipeline
+- Various bug fixes found in the process of fixing the CI pipelines
 
 ## 2.5.10
 

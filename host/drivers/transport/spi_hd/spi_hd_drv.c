@@ -102,7 +102,7 @@ static void spi_hd_read_task(void const* pvParameters);
 static void spi_hd_process_rx_task(void const* pvParameters);
 static int update_flow_ctrl(uint8_t *rxbuff);
 
-static inline void spi_hd_mempool_create()
+static inline void spi_hd_mempool_create(void)
 {
 	MEM_DUMP("spi_hd_mempool_create");
 	buf_mp_g = mempool_create(MAX_SPI_HD_BUFFER_SIZE);
@@ -111,7 +111,7 @@ static inline void spi_hd_mempool_create()
 #endif
 }
 
-static inline void spi_hd_mempool_destroy()
+static inline void spi_hd_mempool_destroy(void)
 {
 	mempool_destroy(buf_mp_g);
 }
