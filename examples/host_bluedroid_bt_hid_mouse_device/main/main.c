@@ -451,7 +451,7 @@ void app_main(void)
     ESP_LOGI(TAG, "setting cod major, peripheral");
     esp_bt_cod_t cod = {0};
     cod.major = ESP_BT_COD_MAJOR_DEV_PERIPHERAL;
-#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 0)
+#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 1)
     cod.minor = ESP_BT_COD_MINOR_PERIPHERAL_POINTING;
 #endif
     esp_bt_gap_set_cod(cod, ESP_BT_SET_COD_MAJOR_MINOR);

@@ -19,8 +19,9 @@
     when: always
     expire_in: 4 days
   script:
+    - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
+    - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
-    - pip install idf-component-manager idf-build-apps --upgrade
     - SDKCONFIG_PATTERN="sdkconfig.ci.${SLAVE_CI_FILE}"
     # Build with IDF pedantic flags and IDF build apps script
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
@@ -28,8 +29,8 @@
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
     - cd slave
     # use --enable-preview-targets to build for all targets
-    - idf-build-apps find --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
-    - idf-build-apps build --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - idf-build-apps find -p . --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
+    - idf-build-apps build -p . --enable-preview-targets --config ${SDKCONFIG_PATTERN} -vv --target ${IDF_TARGET}
 
 .build_template_example:
   stage: build_example
@@ -39,8 +40,9 @@
     when: always
     expire_in: 4 days
   script:
+    - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
+    - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
-    - pip install idf-component-manager idf-build-apps --upgrade
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
     - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
     # Create components directory and link esp_hosted component
@@ -65,8 +67,15 @@
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
     - export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
-    - idf-build-apps find -vv --target ${IDF_TARGET}
-    - idf-build-apps build -vv --target ${IDF_TARGET}
+    # Build with extra ci config file if specified
+    - |
+      if [ ! -z "${EXAMPLE_CI_FILE}" ]; then
+        idf-build-apps find -p . -vv --config sdkconfig.ci.${EXAMPLE_CI_FILE} --target ${IDF_TARGET}
+        idf-build-apps build -p . -vv --config sdkconfig.ci.${EXAMPLE_CI_FILE} --target ${IDF_TARGET}
+      else
+        idf-build-apps find -p . -vv --target ${IDF_TARGET}
+        idf-build-apps build -p . -vv --target ${IDF_TARGET}
+      fi
 
 .build_template:
   stage: build
@@ -78,8 +87,9 @@
     when: always
     expire_in: 4 days
   script:
+    - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
+    - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
-    - pip install idf-component-manager idf-build-apps --upgrade
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
     - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
     # Replaces esp_hosted component in example's deps with the one from the current repository
@@ -125,8 +135,8 @@
     # use --config-file to override default IDF config file
     # use --enable-preview-targets to build for all targets
     # use --override-sdkconfig-items to override (possibly incorrect) build target that may be in provided config file
-    - idf-build-apps find --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} --override-sdkconfig-items=CONFIG_IDF_TARGET=${IDF_TARGET} -vv --target ${IDF_TARGET}
-    - idf-build-apps build --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} --override-sdkconfig-items=CONFIG_IDF_TARGET=${IDF_TARGET} -vv --target ${IDF_TARGET}
+    - idf-build-apps find -p . --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} --override-sdkconfig-items=CONFIG_IDF_TARGET=${IDF_TARGET} -vv --target ${IDF_TARGET}
+    - idf-build-apps build -p . --enable-preview-targets --config-file "${OVERRIDE_PATH}/.idf_build_apps.toml" --config ${SDKCONFIG_PATTERN} --override-sdkconfig-items=CONFIG_IDF_TARGET=${IDF_TARGET} -vv --target ${IDF_TARGET}
 #    - echo "----------- last sdkconfig.defaults,ci* used (${IDF_TARGET}-${IDF_SLAVE_TARGET}) --------------"
 #    - cat sdkconfig.defaults
 #    - cat sdkconfig.ci*
