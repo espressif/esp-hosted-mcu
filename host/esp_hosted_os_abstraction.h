@@ -83,7 +83,7 @@ typedef struct {
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
           /* Transport - SDIO */
-/* 47 */ int (*_h_sdio_card_init)(void *ctx);
+/* 47 */ int (*_h_sdio_card_init)(void *ctx, bool show_config);
 /* 48 */ int (*_h_sdio_card_deinit)(void*ctx);
 /* 49 */ int (*_h_sdio_read_reg)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);
 /* 50 */ int (*_h_sdio_write_reg)(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required);

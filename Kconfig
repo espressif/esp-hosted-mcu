@@ -919,6 +919,13 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 				help
 					Very small RX queue will lower data rate
 
+			config ESP_HOSTED_SDIO_RESET_DELAY_MS
+				int "Delay (in ms) after Co-processor Reset"
+				default 1500
+				help
+					The co-processor needs some time to be ready after being reset by the host.
+					Increase this value if host sees SDMMC errors after resetting the co-processor.
+
 			config ESP_HOSTED_SDIO_CHECKSUM
 				bool "SDIO checksum ENABLE/DISABLE"
 				help

@@ -510,6 +510,14 @@ enum {
   #define H_HOST_WAKEUP_GPIO_LEVEL 1 /* High */
 #endif
 
+// adjust this value if co-processor needs more time to be ready
+// after reset from host
+#if CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS
+  #define H_HOST_SDIO_RESET_DELAY_MS CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS
+#else
+  #define H_HOST_SDIO_RESET_DELAY_MS 1500
+#endif
+
 /* Conflict checks for host power save configuration */
 #if (H_HOST_PS_ALLOWED == 1)
   #if (H_HOST_WAKEUP_GPIO == -1)
