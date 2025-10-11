@@ -1,5 +1,9 @@
-// Copyright 2025 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 
 /* Definitions used in ESP-Hosted Transport Initialization */
 
@@ -59,10 +63,5 @@ typedef enum {
 	ESP_PRIV_CAP_EXT, // extended capability (4 bytes)
 	ESP_PRIV_FIRMWARE_VERSION,
 } ESP_PRIV_TAG_TYPE;
-
-/**
- * Macro to convert version number into an integer
- */
-#define ESP_HOSTED_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 
 #endif

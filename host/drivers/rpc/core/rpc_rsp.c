@@ -198,6 +198,13 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			goto fail_parse_rpc_msg;
 		}
 		break;
+	} case RPC_ID__Resp_OTAActivate: {
+		RPC_FAIL_ON_NULL(resp_ota_activate);
+		if (rpc_msg->resp_ota_activate->resp) {
+			ESP_LOGE(TAG, "OTA activate failed");
+			goto fail_parse_rpc_msg;
+		}
+		break;
 	} case RPC_ID__Resp_WifiSetMaxTxPower: {
 		RPC_FAIL_ON_NULL(resp_set_wifi_max_tx_power);
 		RPC_ERR_IN_RESP(resp_set_wifi_max_tx_power);
