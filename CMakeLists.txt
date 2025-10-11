@@ -7,6 +7,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${host_dir}/api/src/esp_wifi_weak.c"
 		"${host_dir}/api/src/esp_hosted_api.c"
 		"${host_dir}/api/src/esp_hosted_transport_config.c"
+		"${host_dir}/api/src/esp_hosted_ota_api.c"
 		"${host_dir}/drivers/transport/transport_drv.c"
 		"${host_dir}/drivers/serial/serial_ll_if.c"
 		"${host_dir}/utils/stats.c"
@@ -69,8 +70,6 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${common_dir}/protobuf-c"
 		"${common_dir}/proto" )
 
-	# host ESP32 specific files
-	list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c")
 
 	# cli
 	list(APPEND srcs "${common_dir}/utils/esp_hosted_cli.c")
@@ -107,7 +106,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	list(APPEND srcs
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_init.c"
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_os.c"
-		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c"
+		#"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c"
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_transport_defaults.c"
 	)
 

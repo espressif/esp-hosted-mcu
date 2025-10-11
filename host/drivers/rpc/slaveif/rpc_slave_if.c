@@ -124,6 +124,12 @@ ctrl_cmd_t * rpc_slaveif_ota_end(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 
+ctrl_cmd_t * rpc_slaveif_ota_activate(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_OTAActivate);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
 ctrl_cmd_t * rpc_slaveif_wifi_init(ctrl_cmd_t *req)
 {
 	RPC_SEND_REQ(RPC_ID__Req_WifiInit);

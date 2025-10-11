@@ -51,7 +51,7 @@
 
 #define TIMEOUT_IN_MIN              (60*TIMEOUT_IN_SEC)
 #define TIMEOUT_IN_HOUR             (60*TIMEOUT_IN_MIN)
-#define RESTART_TIMEOUT             (5*TIMEOUT_IN_SEC)
+#define RESTART_TIMEOUT             (2*TIMEOUT_IN_SEC)
 
 #define MIN_HEARTBEAT_INTERVAL      (10)
 #define MAX_HEARTBEAT_INTERVAL      (60*60)
@@ -59,6 +59,16 @@
 static wifi_config_t new_wifi_config = {0};
 static bool new_config_recvd = false;
 static wifi_event_sta_connected_t lkg_sta_connected_event = {0};
+
+enum {
+	OTA_NOT_STARTED,
+	OTA_IN_PROGRESS,
+	OTA_FAILED,
+	OTA_COMPLETED,
+	OTA_ACTIVATED,
+};
+
+uint8_t ota_status = OTA_NOT_STARTED;
 
 #if H_WIFI_ENTERPRISE_SUPPORT
 #define CLEAR_CERT(ptr, len) \
@@ -271,6 +281,7 @@ static esp_err_t req_ota_begin_handler (Rpc *req,
 		ESP_LOGE(TAG, "OTA begin failed[%d]", ret);
 		goto err;
 	}
+	ota_status = OTA_IN_PROGRESS;
 
 	ota_msg = 1;
 
@@ -325,7 +336,6 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 {
 	esp_err_t ret = ESP_OK;
 	RpcRespOTAEnd *resp_payload = NULL;
-	TimerHandle_t xTimer = NULL;
 
 	if (!req || !resp) {
 		ESP_LOGE(TAG, "Invalid parameters");
@@ -348,7 +358,61 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 		} else {
 			ESP_LOGE(TAG, "OTA update failed in end (%s)!", esp_err_to_name(ret));
 		}
+		ota_status = OTA_FAILED;
 		goto err;
+	}
+
+	ESP_LOGI(TAG, "**** OTA updated successful, ready for activation ****");
+	ota_status = OTA_COMPLETED;
+	resp_payload->resp = SUCCESS;
+	return ESP_OK;
+err:
+	resp_payload->resp = ret;
+	return ESP_OK;
+}
+
+/* Function OTA activate */
+static esp_err_t req_ota_activate_handler (Rpc *req,
+		Rpc *resp, void *priv_data)
+{
+	esp_err_t ret = ESP_OK;
+	RpcRespOTAActivate *resp_payload = NULL;
+	TimerHandle_t xTimer = NULL;
+
+	if (!req || !resp) {
+		ESP_LOGE(TAG, "Invalid parameters");
+		return ESP_FAIL;
+	}
+
+	resp_payload = (RpcRespOTAActivate *)calloc(1,sizeof(RpcRespOTAActivate));
+	if (!resp_payload) {
+		ESP_LOGE(TAG,"Failed to allocate memory");
+		return ESP_ERR_NO_MEM;
+	}
+	rpc__resp__otaactivate__init(resp_payload);
+	resp->payload_case = RPC__PAYLOAD_RESP_OTA_ACTIVATE;
+	resp->resp_ota_activate = resp_payload;
+
+	ret = ESP_OK;
+	switch (ota_status) {
+		case OTA_COMPLETED:
+			break;
+		case OTA_IN_PROGRESS:
+			ESP_LOGW(TAG, "OTA in progress");
+			goto err;
+			break;
+		case OTA_NOT_STARTED:
+			ESP_LOGW(TAG, "OTA not started");
+			goto err;
+			break;
+		case OTA_FAILED:
+			ESP_LOGW(TAG, "OTA failed");
+			goto err;
+			break;
+		default:
+			ESP_LOGW(TAG, "OTA status unknown");
+			goto err;
+			break;
 	}
 
 	/* set OTA partition for next boot */
@@ -357,7 +421,9 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 		ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(ret));
 		goto err;
 	}
-	xTimer = xTimerCreate("Timer", RESTART_TIMEOUT , pdFALSE, 0, vTimerCallback);
+	ota_status = OTA_ACTIVATED;
+	/* Create timer to reboot system and activate OTA */
+	xTimer = xTimerCreate("OTAActivateTimer", RESTART_TIMEOUT , pdFALSE, 0, vTimerCallback);
 	if (xTimer == NULL) {
 		ESP_LOGE(TAG, "Failed to create timer to restart system");
 		ret = -1;
@@ -369,7 +435,7 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 		ret = -2;
 		goto err;
 	}
-	ESP_LOGE(TAG, "**** OTA updated successful, ESP32 will reboot in 5 sec ****");
+	ESP_LOGE(TAG, "**** OTA activation initiated, ESP32 will reboot in 2 sec ****");
 	resp_payload->resp = SUCCESS;
 	return ESP_OK;
 err:
@@ -3217,6 +3283,10 @@ static esp_rpc_req_t req_table[] = {
 		.command_handler = req_ota_end_handler
 	},
 	{
+		.req_num = RPC_ID__Req_OTAActivate,
+		.command_handler = req_ota_activate_handler
+	},
+	{
 		.req_num = RPC_ID__Req_WifiSetMaxTxPower,
 		.command_handler = req_wifi_set_max_tx_power
 	},
@@ -3622,7 +3692,9 @@ static esp_err_t esp_rpc_command_dispatcher(
 		goto err_not_supported;
 	}
 
-	ESP_LOGI(TAG, "Received Req [0x%x]", req->msg_id);
+	if (req->msg_id != RPC_ID__Req_OTAWrite) {
+		ESP_LOGI(TAG, "Received Req [0x%x]", req->msg_id);
+	}
 
 	req_index = lookup_req_handler(req->msg_id);
 	if (req_index < 0) {
@@ -3685,7 +3757,10 @@ esp_err_t data_transfer_handler(uint32_t session_id,const uint8_t *inbuf,
 	resp->msg_id = req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base;
 	resp->uid = req->uid;
 	resp->payload_case = resp->msg_id;
-	ESP_LOGI(TAG, "Resp_MSGId for req[0x%x] is [0x%x], uid %ld", req->msg_id, resp->msg_id, resp->uid);
+
+	if (resp->msg_id != RPC_ID__Resp_OTAWrite) {
+		ESP_LOGI(TAG, "Resp_MSGId for req[0x%x] is [0x%x], uid %ld", req->msg_id, resp->msg_id, resp->uid);
+	}
 	ret = esp_rpc_command_dispatcher(req,resp,NULL);
 	if (ret) {
 		ESP_LOGE(TAG, "Command dispatching not happening");

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.6.0
+- Added public OTA APIs for slave firmware updates
+- Added host-triggered slave OTA example with support for HTTP, partition, and filesystem sources
+- Support for LittleFS filesystem-based OTA updates
+- Migration guide updated for 2.6.0
+
+### APIs added
+
+- `esp_hosted_ota_begin`
+- `esp_hosted_ota_write`
+- `esp_hosted_ota_end`
+- `esp_hosted_ota_activate`
+
+### APIs deprecated
+
+- `esp_hosted_slave_ota` - Use the new [Host Performs Slave OTA Example](examples/host_performs_slave_ota/README.md) instead for more flexible OTA implementations with comprehensive documentation and multiple deployment methods
+
+### Examples added
+
+- `host_performs_slave_ota` - Host-triggered slave OTA example supporting HTTP URLs, partition sources and  LittleFS filesystem sources
+
 ## 2.5.12
 
 ### Features

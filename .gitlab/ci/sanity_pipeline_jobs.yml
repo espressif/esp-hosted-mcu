@@ -124,7 +124,8 @@ sanity_build_wifi_examples:
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         EXAMPLE_TO_BUILD: ["host_wifi_easy_connect_dpp_enrollee",
         "host_wifi_itwt",
-        "host_transport_config"]
+        "host_transport_config",
+        "host_performs_slave_ota"]
 
 ###
 ### Promote staging to main after successful regression testing

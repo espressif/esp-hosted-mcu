@@ -17,7 +17,6 @@ extern "C" {
 #include "esp_wifi.h"
 #include "esp_wifi_remote.h"
 #include "esp_hosted_api_types.h"
-#include "esp_hosted_ota.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
 

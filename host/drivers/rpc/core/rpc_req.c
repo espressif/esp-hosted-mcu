@@ -70,6 +70,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 	case RPC_ID__Req_WifiGetPs:
 	case RPC_ID__Req_OTABegin:
 	case RPC_ID__Req_OTAEnd:
+	case RPC_ID__Req_OTAActivate:
 	case RPC_ID__Req_WifiDeinit:
 	case RPC_ID__Req_WifiStart:
 	case RPC_ID__Req_WifiStop:
