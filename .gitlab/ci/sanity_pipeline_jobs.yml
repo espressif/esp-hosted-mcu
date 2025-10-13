@@ -74,19 +74,8 @@ sanity_build_coprocessor_idf_master:
   image: espressif/idf:latest
   parallel:
     matrix:
-      - IDF_TARGET: ["esp32c6", "esp32c5"]
+      - IDF_TARGET: ["esp32c6", "esp32c5", "esp32c61"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
-
-# for C61, build for sdio only for now
-sanity_build_coprocessor_idf_master_c61:
-  rules:
-    - !reference [.default_rules, rules]
-  extends: .build_template_coprocessor
-  image: espressif/idf:latest
-  parallel:
-    matrix:
-      - IDF_TARGET: ["esp32c61"]
-        SLAVE_CI_FILE: ["sdio"]
 
 ###
 ### build ESP-Hosted examples
