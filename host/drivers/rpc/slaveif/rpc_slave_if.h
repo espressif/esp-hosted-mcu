@@ -663,6 +663,10 @@ ctrl_cmd_t * rpc_slaveif_ota_write(ctrl_cmd_t *req);
  * Creates timer which reset ESP32 after 5 sec */
 ctrl_cmd_t * rpc_slaveif_ota_end(ctrl_cmd_t *req);
 
+/* Performs an OTA activate operation for ESP32, It reboots the ESP32
+ * to activate the newly written OTA partition */
+ctrl_cmd_t * rpc_slaveif_ota_activate(ctrl_cmd_t *req);
+
 /* Gets the co-processor FW Version */
 ctrl_cmd_t * rpc_slaveif_get_coprocessor_fwversion(ctrl_cmd_t *req);
 

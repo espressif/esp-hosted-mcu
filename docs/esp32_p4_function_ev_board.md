@@ -11,8 +11,8 @@
   - [Building Firmware](#33-building-firmware)
 - [4. Checking ESP-Hosted](#4-checking-esp-hosted)
 - [5. Flashing ESP32-C6](#5-flashing-esp32-c6)
-  - [Using ESP-Prog](#51-using-esp-prog)
-  - [OTA Updates](#52-ota-updates)
+  - [Using ESP-Prog](#51-serial-flashing-using-esp-prog-initial-setup)
+  - [OTA Updates](#52-esp-hosted-slave-ota-updates-recommended)
 - [6. Troubleshooting](#6-troubleshooting)
 - [7. Flashing the On-board ESP32-P4 through the ESP-Prog](#7-flashing-esp32-p4)
 - [8. Testing ESP-Hosted with SPI-FD with other MCUs](#8-testing-esp-hosted-with-spi-fd-with-other-mcus)
@@ -21,7 +21,7 @@
 
 ## 1. Introduction
 
-This page documents using ESP-Hosted-MCU on the ESP32-P4-Function-EV-Board. The board comes with an on-board ESP32-C6 module, pre-flashed with ESP-Hosted-MCU slave code (v0.0.6). The board provides a Wi-Fi connection to the on-board ESP32-P4, which acts as the host.
+This guide covers using ESP-Hosted-MCU on the ESP32-P4-Function-EV-Board. The board includes an on-board ESP32-C6 module that comes pre-flashed with ESP-Hosted-MCU slave firmware (v0.0.6). This provides Wi-Fi/Bluetooth connectivity to the on-board ESP32-P4, which acts as the host.
 
 The image below shows the board.
 
@@ -33,15 +33,13 @@ The ESP32-P4 communicates with the ESP32-C6 module using SDIO.
 
 ## 2. Set-Up ESP-IDF
 
-As you have reached here, it is highly likely that you have already setup ESP-IDF.
+If you haven't already set up ESP-IDF, choose one of the following options:
 
-If not done, Please set up ESP-IDF:
-
-#### Option 1: Installer Way
+#### Option 1: Installer Way (Recommended)
 
 - **Windows**
-  - Install and setup ESP-IDF on Windows as documented in the [Standard Setup of Toolchain for Windows](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/windows-setup.html).
-  - Use the ESP-IDF [Powershell Command Prompt](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/windows-setup.html#using-the-command-prompt) for subsequent commands.
+  - Follow the [Standard Setup of Toolchain for Windows](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/windows-setup.html)
+  - Use the ESP-IDF [Powershell Command Prompt](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/windows-setup.html#using-the-command-prompt) for all commands
 
 - **Linux or MacOS**
   - For bash:
@@ -55,23 +53,24 @@ If not done, Please set up ESP-IDF:
 
 #### Option 2: Manual Way
 
-Please follow the [ESP-IDF Get Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html) for manual installation.
+Follow the [ESP-IDF Get Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html) for manual installation.
 
 ## 3. Building Host for the P4
 
 ### 3.1. Adding Components
 
-Add `esp_wifi_remote` and `esp_hosted` components to the project:
+Add the required components to your project:
 
-```
+```bash
 idf.py add-dependency "espressif/esp_wifi_remote"
 idf.py add-dependency "espressif/esp_hosted"
 ```
 
-Remove 'esp-extconn' if present in `main/idf_component.yml`, as esp-extconn and esp-hosted cannot work together.
-Open the `main/idf_component.yml` file and remove/comment the following block if present:
+**Important:** Remove `esp-extconn` if present, as it conflicts with `esp-hosted`.
 
-```
+Open `main/idf_component.yml` and remove or comment out this block if it exists:
+
+```yaml
 # ------- Delete or comment this block ---------
 espressif/esp-extconn:
   version: "~0.1.0"
@@ -80,18 +79,15 @@ espressif/esp-extconn:
 # -----------------------------------
 ```
 
-It is always good to use `esp_wifi_remote` as it provides all the Wi-Fi config and a wrapper abstraction layer.
-But you can also evaluate without using it.
-
 > [!IMPORTANT]
-> Co-processor selection is done by wifi-remote. Ensure the correct
-> co-processor chip is selected in `Component config` -> `Wi-Fi
-> Remote` -> `choose slave target`. The target selected will affect
-> the ESP-Hosted transport options and default GPIOs used.
+> The co-processor is selected through `esp_wifi_remote`. Make sure to select the correct slave target in:
+> `Component config` → `Wi-Fi Remote` → `choose slave target`
+> 
+> This selection determines the ESP-Hosted transport options and default GPIOs.
 
 ### 3.2. Configuring Defaults
 
-Edit the `sdkconfig.defaults.esp32p4` file such that, it would have following content:
+Edit `sdkconfig.defaults.esp32p4` to include the following configuration:
 
 ```
 ### sdkconfig for ESP32-P4 + C6 Dev board
@@ -115,22 +111,23 @@ CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
 CONFIG_LWIP_TCP_SACK_OUT=y
 ```
 
-Optimised parameters for using other co-processors with the ESP32-P4 can be found in the [Performance Optimization Guide](performance_optimization.md).
+For optimized parameters when using other co-processors, see the [Performance Optimization Guide](performance_optimization.md).
 
 ### 3.3. Building Firmware
 
-Set the ESP32-P4 as the target, build, flash the firmware and
-(optionally) monitor ESP32-P4 console output:
+Build and flash the firmware:
 
 ```sh
 idf.py set-target esp32p4
 idf.py build
-idf.py -p <Serial Port> flash monitor
+idf.py -p <P4 Serial Port> flash monitor
 ```
+
+Replace `<P4 Serial Port>` with your actual serial port (e.g., `COM3` on Windows or `/dev/ttyUSB0` on Linux).
 
 ## 4. Checking ESP-Hosted
 
-When the P4 is running with Hosted, you should see console output similar to this after start-up:
+After flashing, you should see output similar to this on the console:
 
 ```
 I (498) H_API: esp_wifi_remote_init
@@ -186,88 +183,39 @@ I (1848) H_SDIO_DRV: Received INIT event
 I (1868) rpc_wrap: Received Slave ESP Init
 ```
 
+This confirms that ESP-Hosted is running correctly.
+
 ## 5. Flashing ESP32-C6
-ESP32-C6 flashing is totally **optional**, as C6 is expected to be pre-flashed with ESP-Hosted slave firmware, 0.0.6. If you wish to get updated ESP-Hosted slave firmware, you can flash it using two ways, Either with ESP-Prog on ESP32-C6, or using OTA update configured using web server.
 
-### 5.1 OTA Updates
+Note: The ESP32-C6 comes pre-flashed with ESP-Hosted slave firmware v0.0.6, so this step is optional unless you need to update the firmware. However, it is **recommended** to upgrade to the latest slave firmware to get updated features and performance optimizations.
 
-To update the ESP32-C6 slave module using Over-The-Air (OTA) updates, follow these steps:
+### 5.1 Serial Flashing Using ESP-Prog (Initial Setup)
 
-1. Build the ESP-Hosted slave firmware for the ESP32-C6 module:
+> [!TIP]
+> For firmware updates after initial setup, use the OTA method described in section 5.2
 
-```
-idf.py create-project-from-example "espressif/esp_hosted:slave"
-```
-
-2. Set the target and start `Menuconfig`:
-
-```sh
-idf.py set-target esp32c6
-idf.py menuconfig
-```
-
-3. Under **Example Configuration**, ensure that the Hosted transport
-   selected is `SDIO`.
-
-4. Build the firmware:
-
-```sh
-idf.py build
-```
-
-5. Upload the firmware (the build/network_adapter.bin file) to a server or a local directory accessible via HTTP.
-
-6. On the ESP32-P4 host, add the following code to your application to initiate the OTA update:
-
-```
-#include "esp_hosted.h"
-
-esp_err_t esp_hosted_slave_ota(const char *url);
-```
-
-7. Call the `esp_hosted_slave_ota` function with the URL of the firmware binary:
-
-```
-esp_err_t err = esp_hosted_slave_ota("http://example.com/path/to/network_adapter.bin");
-if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to start OTA update: %s", esp_err_to_name(err));
-}
-```
-
-8. Monitor the console output to see the OTA update progress.
-
-### 5.2 Using ESP-Prog
-
-> [!NOTE]
-> ESP-Prog is only required if you want to flash firmware to the
-> ESP32-C6 module using the standard ESP Tools.
-
-This step is optional, as C6 is expected to be pre-flashed with ESP-Hosted slave firmware, 0.0.6.
-
-The image below shows the board with an ESP-Prog connected to the
-header to communicate with the on-board ESP32-C6..
+You'll need an ESP-Prog or similar UART adapter for serial flashing.
 
 <img src="images/esp32-p4-function-ev-board-esp-prog.jpg" alt="ESP32-P4-Function-EV-Board with ESP-Prog Connected to ESP32-C6" width="800" />
 
 *ESP32-P4-Function-EV-Board with ESP-Prog Connected to ESP32-C6*
 
-If you need to update the ESP-Hosted slave firmware on the on-board
-ESP32-C6 module using ESP-Prog, follow these steps:
+**Steps:**
 
-1. Check out the ESP-Hosted slave example project:
+1. Get the ESP-Hosted slave example:
 
-```
+```bash
 idf.py create-project-from-example "espressif/esp_hosted:slave"
 ```
 
-2. Set the target and start `Menuconfig`:
+2. Configure the project:
 
 ```sh
 idf.py set-target esp32c6
 idf.py menuconfig
 ```
 
-3. Navigate and ensure SDIO is enabled. By default it should already be enabled.
+3. Verify SDIO is enabled (it should be by default):
    ```
    Example Configuration
    └── Bus Config in between Host and Co-processor
@@ -281,67 +229,55 @@ idf.py menuconfig
 idf.py build
 ```
 
-5. Connect the Program Header on the ESP-Prog to the `PROG_C6` header
-   on the board. The connections are as follows:
+5. Connect ESP-Prog to the `PROG_C6` header:
 
-| ESP-Prog | PROG_C6 | Notes          |
-| ---      | ---     | ---            |
-| ESP\_EN  | EN      |                |
-| ESP\_TXD | TXD     |                |
-| ESP\_RXD | RXD     |                |
-| VDD      | -       | Do not connect |
-| GND      | GND     |                |
-| ESP\_IO0 | IO0     |                |
+| ESP-Prog | PROG_C6 | Notes                   |
+| ---      | ---     | ---                     |
+| ESP\_EN  | EN      |                         |
+| ESP\_TXD | TXD     |                         |
+| ESP\_RXD | RXD     |                         |
+| VDD      | -       | **Do not connect**      |
+| GND      | GND     |                         |
+| ESP\_IO0 | IO0     |                         |
 
+6. Put the ESP32-P4 into bootloader mode to prevent interference:
 
-6. Flashing the firmware
+   **Manual method:**
+   - Hold down the `BOOT` button
+   - Press and release the `RST` button
+   - Release the `BOOT` button
 
-The on-board ESP32-P4 controls the reset signal for the ESP32-C6. To
-prevent the P4 interfering with the C6 while flashing (by asserting
-the C6 Reset signal during the firmware download), set the P4 into
-Bootloader mode before flashing the firmware to the C6:
+   **Script method:**
+   ```sh
+   esptool.py -p <host_serial_port> --before default_reset --after no_reset run
+   ```
 
-###### Manual Way
-    1. hold down the `BOOT` button on the board
-    2. press and release the `RST` button on the board
-    3. release the `BOOT` button
-
-###### Script Way
-
-```sh
-esptool.py -p <host_serial_port> --before default_reset --after no_reset run
-```
-
-You can now flash the firmware to the C6 (and monitor the console
-output):
+7. Flash the C6:
 
 ```sh
 idf.py -p <Serial Port> flash monitor
 ```
 
+### 5.2 ESP-Hosted Slave OTA Updates (Recommended)
+
+The ESP-Hosted link comes pre-configured and ready to use on first boot. You can update the slave firmware remotely from the host MCU using OTA (Over-The-Air) updates: **No** ESP-Prog, serial cable, or extra GPIO connections are required.
+
+For step-by-step instructions, see the [Host Performs Slave OTA Example](../examples/host_performs_slave_ota/README.md).
+
 ## 6. Troubleshooting
 
-If you encounter issues with using ESP-Hosted, see the following guide:
-
-- [Troubleshooting Guide](troubleshooting.md)
+If you encounter any issues, refer to the [Troubleshooting Guide](troubleshooting.md).
 
 <details>
-<summary>Flashing the On-board ESP32-P4 through the Serial Interface</summary>
+<summary>7. Flashing the On-board ESP32-P4 through the ESP-Prog</summary>
 
-## 7. Flashing the On-board ESP32-P4 through the ESP-Prog
-
-The USB connector on the board is the standard method for flashing the
-firmware to the P4. An alternative method is to flash the P4 through
-its serial interface using a ESP-Prog.
-
-The image below shows the connection between the ESP-Prog and the
-serial port pins on the P4 header for programming.
+The standard way to flash the P4 is through the **USB connector with Type-C cable** inserted into USB-UART port on ESP32-P4. However, you can also use an ESP-Prog connected to the serial interface.
 
 <img src="images/esp32-p4-esp-prog.jpg" alt="ESP32-P4 Serial Connection with ESP-Prog" width="600" />
 
 *ESP32-P4 Serial Connection with ESP-Prog*
 
-The connection between the ESP-Prog and the P4 header is as follows:
+**Connections:**
 
 | ESP-Prog | P4 Header       |
 | ---      | ---             |
@@ -349,30 +285,31 @@ The connection between the ESP-Prog and the P4 header is as follows:
 | ESP\_RXD | U0RXD (GPIO 38) |
 | GND      | GND             |
 
-Leave the other ESP-Prog connected unconnected.
+Leave other ESP-Prog pins disconnected.
 
-To flash the P4:
+**Flashing steps:**
 
-1. hold down the `BOOT` button on the board
-2. press and release the `RST` button on the board
-3. release the `BOOT` button
+1. Hold down the `BOOT` button
+2. Press and release the `RST` button
+3. Release the `BOOT` button
 
-You can now flash the firmware (and monitor the console output):
+4. Flash the firmware:
 
 ```sh
 idf.py -p <Serial Port> flash monitor
 ```
 
-To restart the P4 after flashing, press and release the `RST` button
-on the board.
+5. Press the `RST` button to restart the P4 after flashing.
 
 </details>
 
 ## 8. Testing ESP-Hosted with SPI-FD with other MCUs
 
-You can use SPI-FD (Full Duplex) on the ESP32-P4 to test ESP-Hosted with other ESP32s. Do this by connecting the ESP32 to the P4 through the J1 GPIO header on the ESP32-P4 DevKit.
+You can test ESP-Hosted using SPI Full Duplex (SPI-FD) by connecting another ESP-Dev-Kit or ESP Chipset to the P4 through the J1 GPIO header.
 
-Use GPIOs 36 or lower on the P4 DevKit to avoid LDO power issues with high numbered GPIOs. Here is one combination on GPIOs that can be used on the P4:
+**Important:** Use GPIO 36 or lower to avoid LDO power issues with higher-numbered GPIOs.
+
+**Recommended GPIO configuration:**
 
 | Function   | GPIO |
 |------------|------|
@@ -385,15 +322,14 @@ Use GPIOs 36 or lower on the P4 DevKit to avoid LDO power issues with high numbe
 | Reset      | 2    |
 
 > [!NOTE]
-> Avoid using GPIO 35 and 36 as they affect the ESP32-P4 Bootloader Mode. See [ESP32-P4 Boot Mode Selection](https://docs.espressif.com/projects/esptool/en/latest/esp32p4/advanced-topics/boot-mode-selection.html#select-bootloader-mode) for more information.
+> Avoid using GPIO 35 and 36, as they affect bootloader mode. See [ESP32-P4 Boot Mode Selection](https://docs.espressif.com/projects/esptool/en/latest/esp32p4/advanced-topics/boot-mode-selection.html#select-bootloader-mode) for details.
 
 > [!TIP]
->
-> To measure the optimal performance, check out the [Shield Box Test Setup](shield-box-test-setup.md).
+> For optimal performance testing, check out the [Shield Box Test Setup](shield-box-test-setup.md).
 
 ## 9. References
 
-- ESP32-P4-Function-EV-Board: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/
-- ESP-Prog: https://docs.espressif.com/projects/esp-iot-solution/en/latest/hw-reference/ESP-Prog_guide.html
-- `esp_wifi_remote` component: https://components.espressif.com/components/espressif/esp_wifi_remote/
-- `esp_hosted` component: https://components.espressif.com/components/espressif/esp_hosted/
+- [ESP32-P4-Function-EV-Board Documentation](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/)
+- [ESP-Prog Guide](https://docs.espressif.com/projects/esp-iot-solution/en/latest/hw-reference/ESP-Prog_guide.html)
+- [`esp_wifi_remote` component](https://components.espressif.com/components/espressif/esp_wifi_remote/)
+- [`esp_hosted` component](https://components.espressif.com/components/espressif/esp_hosted/)

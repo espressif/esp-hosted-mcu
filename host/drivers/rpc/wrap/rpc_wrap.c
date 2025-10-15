@@ -562,6 +562,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	} case RPC_ID__Resp_OTAEnd : {
 		ESP_LOGV(TAG, "OTA end success");
 		break;
+	} case RPC_ID__Resp_OTAActivate : {
+		ESP_LOGV(TAG, "OTA activate success");
+		break;
 	} case RPC_ID__Resp_WifiSetMaxTxPower: {
 		ESP_LOGV(TAG, "Set wifi max tx power success");
 		break;
@@ -833,6 +836,17 @@ int rpc_ota_end(void)
 	ctrl_cmd_t *resp = NULL;
 
 	resp = rpc_slaveif_ota_end(req);
+
+	return rpc_rsp_callback(resp);
+}
+
+int rpc_ota_activate(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_ota_activate(req);
 
 	return rpc_rsp_callback(resp);
 }

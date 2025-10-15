@@ -90,6 +90,7 @@ enum RpcId {
 	//Req_StartSoftAP                   = 267; //0x10b
 	//Req_GetSoftAPConnectedSTAList     = 268; //0x10c
 	//Req_StopSoftAP                    = 269; //0x10d
+	Req_OTAActivate                   = 266; //0x112
 
 	Req_WifiSetPs                     = 270; //0x10e
 	Req_WifiGetPs                     = 271; //0x10f
@@ -261,6 +262,7 @@ enum RpcId {
 	//Resp_StartSoftAP                  = 523;
 	//Resp_GetSoftAPConnectedSTAList    = 524;
 	//Resp_StopSoftAP                   = 525;
+	Resp_OTAActivate                  = 522;
 
 	Resp_WifiSetPs                    = 526;
 	Resp_WifiGetPs                    = 527;
@@ -981,6 +983,13 @@ message Rpc_Req_OTAEnd {
 }
 
 message Rpc_Resp_OTAEnd {
+	int32 resp = 1;
+}
+
+message Rpc_Req_OTAActivate {
+}
+
+message Rpc_Resp_OTAActivate {
 	int32 resp = 1;
 }
 
@@ -1894,10 +1903,10 @@ message Rpc {
 		Rpc_Req_SuppDppStartListen          req_supp_dpp_start_listen         = 264;
 		Rpc_Req_SuppDppStopListen           req_supp_dpp_stop_listen          = 265;
 
-		//Rpc_Req_SetSoftAPVendorSpecificIE   req_set_softap_vendor_specific_ie = 266;
 		//Rpc_Req_StartSoftAP                 req_start_softap                  = 267;
 		//Rpc_Req_SoftAPConnectedSTA          req_softap_connected_stas_list    = 268;
 		//Rpc_Req_GetStatus                   req_stop_softap                   = 269;
+		Rpc_Req_OTAActivate                 req_ota_activate                  = 266;
 
 		Rpc_Req_SetPs                       req_wifi_set_ps                   = 270;
 		Rpc_Req_GetPs                       req_wifi_get_ps                   = 271;
@@ -2024,6 +2033,7 @@ message Rpc {
 		//Rpc_Resp_StartSoftAP                resp_start_softap                  = 523;
 		//Rpc_Resp_SoftAPConnectedSTA         resp_softap_connected_stas_list    = 524;
 		//Rpc_Resp_GetStatus                  resp_stop_softap                   = 525;
+		Rpc_Resp_OTAActivate                resp_ota_activate                  = 522;
 
 		Rpc_Resp_SetPs                      resp_wifi_set_ps                   = 526;
 		Rpc_Resp_GetPs                      resp_wifi_get_ps                   = 527;
