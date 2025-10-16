@@ -302,6 +302,13 @@ idf.py build
 
 ### 7.4 Co-processor Flashing
 
+It is **recommended** to periodically upgrade the slave firmware to leverage new features, bug fixes, and performance improvements.
+
+| Method                     | Description                                        | Recommended Use                                       |
+| -------------------------- | -------------------------------------------------- | ----------------------------------------------------- |
+| **Direct Serial Flashing** | Uses UART pins for direct firmware installation    | First-time setup to install ESP-Hosted slave firmware |
+| **Slave OTA Update**       | Performs slave firmware updates directly from Host | All subsequent updates after initial installation     |
+
 ##### 7.4.1 Serial Flashing (Initial Setup)
 
 For the initial setup or when OTA is not available, use serial flashing.
@@ -324,48 +331,9 @@ idf.py -p <co-processor_serial_port> flash
 
 ##### 7.4.2 Co-processor OTA Flashing (Subsequent Updates)
 
-For subsequent updates, you can re-use ESP-Hosted-MCU transport, as it should be already working. While doing OTA, Complete co-processor firmware image is not needed and only co-processor application partition, 'network_adapter.bin' need to be re-flashed remotely from host.
+The ESP-Hosted link comes pre-configured and ready to use on first boot. You can update the slave firmware remotely from the host MCU using OTA (Over-The-Air) updates: **No** ESP-Prog, serial cable, or extra GPIO connections are required.
 
-1. Ensure your co-processor device is connected and communicating with the host with existing ESP-Hosted-MCU.
-
-2. Create a web server
-You can re-use your existing web server or create a new locally for testing. Below is example to do it.
-    - Make a new directory so that web server can be run into it and navigate into it
-    - Create simple local web server using python3
-
-     ```bash
-     python3 -m http.server 8080
-     ```
-3. Copy the co-processor app partition `network_adapter.bin` in the directory where you created the web server.
-    - The `network_adapter.bin` can be found in your co-processor project build at `<co-processor_project>/build/network_adapter.bin`
-
-4. Verify if web server is set-up correctly
-    - Open link `http://127.0.0.1:8080` in the browser and check if network_adapter.bin is available.
-    - Right click and copy the complete URL of this network_adapter.bin and note somewhere.
-
-5. On the **host side**, use the `esp_hosted_slave_ota` function to initiate the OTA update:
-
-   ```c
-   #include "esp_hosted.h"
-
-   const char* image_url = "http://example.com/path/to/network_adapter.bin"; //web server full url
-   esp_err_t ret = esp_hosted_slave_ota(image_url);
-   if (ret == ESP_OK) {
-       printf("co-processor OTA update failed[%d]\n", ret);
-   }
-   ```
-
-   This function will download the firmware in chunk by chunk as http client from the specified URL and flash it to the co-processor device through the established transport.
-   In above web server example, You can paste the copied url earlier.
-
-
-6. Monitor the OTA progress through the console output on both the host and co-processor devices.
-
-> [!NOTE]
->
->   A. The `esp_hosted_slave_ota` function is part of the ESP-Hosted-MCU API and handles the OTA process through the transport layer. \
->   B. Ensure that your host application has web server connectivity to download the firmware file. \
->   C. The co-processor device doesn't need to be connected to the web server for this OTA method.
+For step-by-step instructions, see the [Host Performs Slave OTA Example](../examples/host_performs_slave_ota/README.md).
 
 ## 8 Flashing the Host
 
@@ -412,30 +380,36 @@ If you happen to have both, host and co-processor as same ESP chipset type (for 
 ### 8.3 Menuconfig, Build and Flash Host
 
 ##### 1. High performance configurations
-   This is optional step, suggested for high performance applications.
+This is optional step, suggested for high performance applications.
 
-   If using ESP32-P4 as host:
-   - Remove the default `sdkconfig.defaults.esp32p4` file.
-   - Create a new `sdkconfig.defaults.esp32p4` file with the following content:
-     ```
-     CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
-     CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=64
-     CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=64
-     CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y
-     CONFIG_ESP_WIFI_TX_BA_WIN=32
-     CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=y
-     CONFIG_ESP_WIFI_RX_BA_WIN=32
+If using ESP32-P4 as host and the ESP32-C6 as the co-processor:
 
-     CONFIG_LWIP_TCP_SND_BUF_DEFAULT=65534
-     CONFIG_LWIP_TCP_WND_DEFAULT=65534
-     CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
-     CONFIG_LWIP_UDP_RECVMBOX_SIZE=64
-     CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
+- Remove all `CONFIG_ESP_WIFI_` settings. They do not apply to ESP-Hosted.
+- Add the following settings to your `sdkconfig.defaults.esp32p4` file:
+  ```
+  ### sdkconfig for ESP32-P4 + C6 Dev board
+  CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16
+  CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=64
+  CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM=64
+  CONFIG_WIFI_RMT_AMPDU_TX_ENABLED=y
+  CONFIG_WIFI_RMT_TX_BA_WIN=32
+  CONFIG_WIFI_RMT_AMPDU_RX_ENABLED=y
+  CONFIG_WIFI_RMT_RX_BA_WIN=32
 
-     CONFIG_LWIP_TCP_SACK_OUT=y
-     ```
+  CONFIG_LWIP_TCP_SND_BUF_DEFAULT=65534
+  CONFIG_LWIP_TCP_WND_DEFAULT=65534
+  CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
+  CONFIG_LWIP_UDP_RECVMBOX_SIZE=64
+  CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
 
-    For other hosts also, you can merge above configs in corresponding `sdkconfig.defaults.esp32XX` file.
+  CONFIG_LWIP_TCP_SACK_OUT=y
+  ```
+
+For other ESP32 hosts, you can merge above configs into the corresponding `sdkconfig.defaults.esp32XX` file.
+
+To adjust other Wi-Fi parameters, run `idf.py menuconfig` and go to `Component config` ---> `Wi-Fi Remote` ---> `Wi-Fi configuration`.
+
+Optimised parameters for other co-processors can be found in the [Performance Optimization Guide](performance_optimization.md).
 
 ###### 2. Set environment for your host ESP chip:
 

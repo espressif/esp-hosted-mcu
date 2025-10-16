@@ -1,17 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2024 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "sdkconfig.h"
 
@@ -338,6 +329,12 @@ static void esp_spi_hd_get_bus_cfg(spi_bus_config_t * bus_cfg)
 	bus_cfg->data2_io_num = -1;
 	bus_cfg->data3_io_num = -1;
 #endif
+	// mark octal SPI_HD signals as not in use
+	bus_cfg->data4_io_num = -1;
+	bus_cfg->data5_io_num = -1;
+	bus_cfg->data6_io_num = -1;
+	bus_cfg->data7_io_num = -1;
+
 	bus_cfg->sclk_io_num = GPIO_SCLK;
 	bus_cfg->max_transfer_sz = SPI_HD_BUFFER_SIZE;
 #if (NUM_DATA_BITS == 4)

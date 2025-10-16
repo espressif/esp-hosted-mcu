@@ -659,7 +659,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	if (buf_handle->if_type == ESP_STA_IF && station_connected) {
 		/* Forward data to wlan driver */
 		do {
-			ret = esp_wifi_internal_tx(ESP_IF_WIFI_STA, payload, payload_len);
+			ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
 			if (ret) {
 				vTaskDelay(pdMS_TO_TICKS(1));
 			}
@@ -676,7 +676,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 #endif
 	} else if (buf_handle->if_type == ESP_AP_IF && softap_started) {
 		/* Forward data to wlan driver */
-		esp_wifi_internal_tx(ESP_IF_WIFI_AP, payload, payload_len);
+		esp_wifi_internal_tx(WIFI_IF_AP, payload, payload_len);
 		ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
 	} else if (buf_handle->if_type == ESP_SERIAL_IF) {
 #if ESP_PKT_STATS
@@ -1150,10 +1150,6 @@ esp_err_t esp_hosted_coprocessor_init(void)
 												CONFIG_ESP_HOSTED_HOST_RESERVED_TCP_DEST_PORTS,
 												CONFIG_ESP_HOSTED_HOST_RESERVED_UDP_SRC_PORTS,
 												CONFIG_ESP_HOSTED_HOST_RESERVED_UDP_DEST_PORTS);
-#endif
-
-#if defined(CONFIG_BT_ENABLED) && defined(CONFIG_SOC_BT_SUPPORTED)
-	initialise_bluetooth();
 #endif
 
 	pc_pserial = protocomm_new();

@@ -5,6 +5,7 @@
  */
 
 #include "rpc_core.h"
+#include "rpc_utils.h"
 #include "rpc_slave_if.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
@@ -40,7 +41,6 @@ DEFINE_LOG_TAG(rpc_rsp);
                 app_resp->msg_id, app_resp->uid, app_resp->resp_event_status); \
         goto fail_parse_rpc_msg;                                              \
     }
-
 
 #define RPC_RSP_COPY_BYTES(dst,src) {                                         \
     if (src.data && src.len) {                                                \
@@ -198,6 +198,13 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			goto fail_parse_rpc_msg;
 		}
 		break;
+	} case RPC_ID__Resp_OTAActivate: {
+		RPC_FAIL_ON_NULL(resp_ota_activate);
+		if (rpc_msg->resp_ota_activate->resp) {
+			ESP_LOGE(TAG, "OTA activate failed");
+			goto fail_parse_rpc_msg;
+		}
+		break;
 	} case RPC_ID__Resp_WifiSetMaxTxPower: {
 		RPC_FAIL_ON_NULL(resp_set_wifi_max_tx_power);
 		RPC_ERR_IN_RESP(resp_set_wifi_max_tx_power);
@@ -251,72 +258,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		case WIFI_IF_STA: {
 			wifi_sta_config_t * p_a_sta = &(app_resp->u.wifi_config.u.sta);
 			WifiStaConfig * p_c_sta = rpc_msg->resp_wifi_get_config->cfg->sta;
-			RPC_RSP_COPY_BYTES(p_a_sta->ssid, p_c_sta->ssid);
-			RPC_RSP_COPY_BYTES(p_a_sta->password, p_c_sta->password);
-			p_a_sta->scan_method = p_c_sta->scan_method;
-			p_a_sta->bssid_set = p_c_sta->bssid_set;
-			RPC_RSP_COPY_BYTES(p_a_sta->bssid, p_c_sta->bssid);
-			p_a_sta->channel = p_c_sta->channel;
-			p_a_sta->listen_interval = p_c_sta->listen_interval;
-			p_a_sta->sort_method = p_c_sta->sort_method;
-			if (p_c_sta->threshold) {
-				p_a_sta->threshold.rssi = p_c_sta->threshold->rssi;
-				p_a_sta->threshold.authmode = p_c_sta->threshold->authmode;
-#if H_PRESENT_IN_ESP_IDF_5_4_0
-				p_a_sta->threshold.rssi_5g_adjustment = p_c_sta->threshold->rssi_5g_adjustment;
-#endif
-			}
-			//p_a_sta->ssid_hidden = p_c_sta->ssid_hidden;
-			//p_a_sta->max_connections = p_c_sta->max_connections;
-			if (p_c_sta->pmf_cfg) {
-				p_a_sta->pmf_cfg.capable = p_c_sta->pmf_cfg->capable;
-				p_a_sta->pmf_cfg.required = p_c_sta->pmf_cfg->required;
-			}
-			p_a_sta->rm_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_rm_enabled, p_c_sta->bitmask);
-			p_a_sta->btm_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_btm_enabled, p_c_sta->bitmask);
-			p_a_sta->mbo_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_mbo_enabled, p_c_sta->bitmask);
-			p_a_sta->ft_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_ft_enabled, p_c_sta->bitmask);
-			p_a_sta->owe_enabled = H_GET_BIT(WIFI_STA_CONFIG_1_owe_enabled, p_c_sta->bitmask);
-			p_a_sta->transition_disable = H_GET_BIT(WIFI_STA_CONFIG_1_transition_disable, p_c_sta->bitmask);
-
-#if H_DECODE_WIFI_RESERVED_FIELD
-  #if H_WIFI_NEW_RESERVED_FIELD_NAMES
-			p_a_sta->reserved1 = WIFI_STA_CONFIG_1_GET_RESERVED_VAL(p_c_sta->bitmask);
-  #else
-			p_a_sta->reserved = WIFI_STA_CONFIG_1_GET_RESERVED_VAL(p_c_sta->bitmask);
-  #endif
-#endif
-
-			p_a_sta->sae_pwe_h2e = p_c_sta->sae_pwe_h2e;
-			p_a_sta->sae_pk_mode = p_c_sta->sae_pk_mode;
-			p_a_sta->failure_retry_cnt = p_c_sta->failure_retry_cnt;
-
-			p_a_sta->he_dcm_set = H_GET_BIT(WIFI_STA_CONFIG_2_he_dcm_set_BIT, p_c_sta->he_bitmask);
-
-			// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_tx is two bits wide
-			p_a_sta->he_dcm_max_constellation_tx = (p_c_sta->he_bitmask >> WIFI_STA_CONFIG_2_he_dcm_max_constellation_tx_BITS) & 0x03;
-			// WIFI_HE_STA_CONFIG_he_dcm_max_constellation_rx is two bits wide
-			p_a_sta->he_dcm_max_constellation_rx = (p_c_sta->he_bitmask >> WIFI_STA_CONFIG_2_he_dcm_max_constellation_rx_BITS) & 0x03;
-			p_a_sta->he_mcs9_enabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_mcs9_enabled_BIT, p_c_sta->he_bitmask);
-			p_a_sta->he_su_beamformee_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_su_beamformee_disabled_BIT, p_c_sta->he_bitmask);
-			p_a_sta->he_trig_su_bmforming_feedback_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_trig_su_bmforming_feedback_disabled_BIT, p_c_sta->bitmask);
-			p_a_sta->he_trig_mu_bmforming_partial_feedback_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT, p_c_sta->bitmask);
-			p_a_sta->he_trig_cqi_feedback_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->bitmask);
-
-#if H_PRESENT_IN_ESP_IDF_5_5_0
-			p_a_sta->vht_su_beamformee_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
-			p_a_sta->vht_mu_beamformee_disabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled, p_c_sta->he_bitmask);
-			p_a_sta->vht_mcs8_enabled = H_GET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
-#endif
-
-#if H_DECODE_WIFI_RESERVED_FIELD
-  #if H_WIFI_NEW_RESERVED_FIELD_NAMES
-			p_a_sta->reserved2 = WIFI_STA_CONFIG_2_GET_RESERVED_VAL(p_c_sta->he_bitmask);
-  #else
-			p_a_sta->he_reserved = WIFI_STA_CONFIG_2_GET_RESERVED_VAL(p_c_sta->he_bitmask);
-  #endif
-#endif
-
+			rpc_copy_wifi_sta_config(p_a_sta, p_c_sta);
 			break;
 		}
 		case WIFI_IF_AP: {
@@ -622,7 +564,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_set_target_wake_time_offset);
 		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_set_target_wake_time_offset);
 		break;
-#endif
+#endif // H_WIFI_HE_SUPPORT
 #if H_WIFI_DUALBAND_SUPPORT
 	} case RPC_ID__Resp_WifiSetProtocols: {
 		RPC_FAIL_ON_NULL(resp_wifi_set_protocols);
@@ -676,11 +618,149 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		app_resp->u.wifi_band_mode =
 			rpc_msg->resp_wifi_get_bandmode->bandmode;
 		break;
-#endif
+#endif // H_WIFI_DUALBAND_SUPPORT
+	} case RPC_ID__Resp_IfaceMacAddrSetGet: {
+		RPC_FAIL_ON_NULL(resp_iface_mac_addr_set_get);
+		RPC_ERR_IN_RESP(resp_iface_mac_addr_set_get);
+		RPC_RSP_COPY_BYTES(app_resp->u.iface_mac.mac, rpc_msg->resp_iface_mac_addr_set_get->mac);
+		break;
+	} case RPC_ID__Resp_IfaceMacAddrLenGet: {
+		RPC_FAIL_ON_NULL(resp_iface_mac_addr_len_get);
+		RPC_ERR_IN_RESP(resp_iface_mac_addr_len_get);
+		app_resp->u.iface_mac_len.type =
+				rpc_msg->resp_iface_mac_addr_len_get->type;
+		app_resp->u.iface_mac_len.len =
+				rpc_msg->resp_iface_mac_addr_len_get->len;
+		break;
+	} case RPC_ID__Resp_FeatureControl: {
+		RPC_FAIL_ON_NULL(resp_feature_control);
+		RPC_ERR_IN_RESP(resp_feature_control);
+		break;
 	} case RPC_ID__Resp_SetDhcpDnsStatus: {
 		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
 		RPC_ERR_IN_RESP(resp_set_dhcp_dns);
 		break;
+		#if H_WIFI_ENTERPRISE_SUPPORT
+	} case RPC_ID__Resp_WifiStaEnterpriseEnable: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_enterprise_enable);
+		RPC_ERR_IN_RESP(resp_wifi_sta_enterprise_enable);
+		break;
+	} case RPC_ID__Resp_WifiStaEnterpriseDisable: {
+		RPC_FAIL_ON_NULL(resp_wifi_sta_enterprise_disable);
+		RPC_ERR_IN_RESP(resp_wifi_sta_enterprise_disable);
+		break;
+	} case RPC_ID__Resp_EapSetIdentity: {
+		RPC_FAIL_ON_NULL(resp_eap_set_identity);
+		RPC_ERR_IN_RESP(resp_eap_set_identity);
+		break;
+	} case RPC_ID__Resp_EapClearIdentity: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_identity);
+		RPC_ERR_IN_RESP(resp_eap_clear_identity);
+		break;
+	} case RPC_ID__Resp_EapSetUsername: {
+		RPC_FAIL_ON_NULL(resp_eap_set_username);
+		RPC_ERR_IN_RESP(resp_eap_set_username);
+		break;
+	} case RPC_ID__Resp_EapClearUsername: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_username);
+		RPC_ERR_IN_RESP(resp_eap_clear_username);
+		break;
+	} case RPC_ID__Resp_EapSetPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_set_password);
+		RPC_ERR_IN_RESP(resp_eap_set_password);
+		break;
+	} case RPC_ID__Resp_EapClearPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_password);
+		RPC_ERR_IN_RESP(resp_eap_clear_password);
+		break;
+	} case RPC_ID__Resp_EapSetNewPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_set_new_password);
+		RPC_ERR_IN_RESP(resp_eap_set_new_password);
+		break;
+	} case RPC_ID__Resp_EapClearNewPassword: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_new_password);
+		RPC_ERR_IN_RESP(resp_eap_clear_new_password);
+		break;
+	} case RPC_ID__Resp_EapSetCaCert: {
+		RPC_FAIL_ON_NULL(resp_eap_set_ca_cert);
+		RPC_ERR_IN_RESP(resp_eap_set_ca_cert);
+		break;
+	} case RPC_ID__Resp_EapClearCaCert: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_ca_cert);
+		RPC_ERR_IN_RESP(resp_eap_clear_ca_cert);
+		break;
+	} case RPC_ID__Resp_EapSetCertificateAndKey: {
+		RPC_FAIL_ON_NULL(resp_eap_set_certificate_and_key);
+		RPC_ERR_IN_RESP(resp_eap_set_certificate_and_key);
+		break;
+	} case RPC_ID__Resp_EapClearCertificateAndKey: {
+		RPC_FAIL_ON_NULL(resp_eap_clear_certificate_and_key);
+		RPC_ERR_IN_RESP(resp_eap_clear_certificate_and_key);
+		break;
+	} case RPC_ID__Resp_EapGetDisableTimeCheck: {
+		RPC_FAIL_ON_NULL(resp_eap_get_disable_time_check);
+		RPC_ERR_IN_RESP(resp_eap_get_disable_time_check);
+		app_resp->u.eap_disable_time_check.disable = rpc_msg->resp_eap_get_disable_time_check->disable;
+		break;
+	} case RPC_ID__Resp_EapSetTtlsPhase2Method: {
+		RPC_FAIL_ON_NULL(resp_eap_set_ttls_phase2_method);
+		RPC_ERR_IN_RESP(resp_eap_set_ttls_phase2_method);
+		break;
+	} case RPC_ID__Resp_EapSetSuitebCertification: {
+		RPC_FAIL_ON_NULL(resp_eap_set_suiteb_certification);
+		RPC_ERR_IN_RESP(resp_eap_set_suiteb_certification);
+		break;
+	} case RPC_ID__Resp_EapSetPacFile: {
+		RPC_FAIL_ON_NULL(resp_eap_set_pac_file);
+		RPC_ERR_IN_RESP(resp_eap_set_pac_file);
+		break;
+	} case RPC_ID__Resp_EapSetFastParams: {
+		RPC_FAIL_ON_NULL(resp_eap_set_fast_params);
+		RPC_ERR_IN_RESP(resp_eap_set_fast_params);
+		break;
+	} case RPC_ID__Resp_EapUseDefaultCertBundle: {
+		RPC_FAIL_ON_NULL(resp_eap_use_default_cert_bundle);
+		RPC_ERR_IN_RESP(resp_eap_use_default_cert_bundle);
+		break;
+	} case RPC_ID__Resp_WifiSetOkcSupport: {
+		RPC_FAIL_ON_NULL(resp_wifi_set_okc_support);
+		RPC_ERR_IN_RESP(resp_wifi_set_okc_support);
+		break;
+	} case RPC_ID__Resp_EapSetDomainName: {
+		RPC_FAIL_ON_NULL(resp_eap_set_domain_name);
+		RPC_ERR_IN_RESP(resp_eap_set_domain_name);
+		break;
+	} case RPC_ID__Resp_EapSetDisableTimeCheck: {
+		RPC_FAIL_ON_NULL(resp_eap_set_disable_time_check);
+		RPC_ERR_IN_RESP(resp_eap_set_disable_time_check);
+		break;
+	} case RPC_ID__Resp_EapSetEapMethods: {
+		RPC_FAIL_ON_NULL(resp_eap_set_eap_methods);
+		RPC_ERR_IN_RESP(resp_eap_set_eap_methods);
+		break;
+#endif
+#if H_DPP_SUPPORT
+	} case RPC_ID__Resp_SuppDppInit: {
+		RPC_FAIL_ON_NULL(resp_supp_dpp_init);
+		RPC_ERR_IN_RESP(resp_supp_dpp_init);
+		break;
+	} case RPC_ID__Resp_SuppDppDeinit: {
+		RPC_FAIL_ON_NULL(resp_supp_dpp_deinit);
+		RPC_ERR_IN_RESP(resp_supp_dpp_deinit);
+		break;
+	} case RPC_ID__Resp_SuppDppBootstrapGen: {
+		RPC_FAIL_ON_NULL(resp_supp_dpp_bootstrap_gen);
+		RPC_ERR_IN_RESP(resp_supp_dpp_bootstrap_gen);
+		break;
+	} case RPC_ID__Resp_SuppDppStartListen: {
+		RPC_FAIL_ON_NULL(resp_supp_dpp_start_listen);
+		RPC_ERR_IN_RESP(resp_supp_dpp_start_listen);
+		break;
+	} case RPC_ID__Resp_SuppDppStopListen: {
+		RPC_FAIL_ON_NULL(resp_supp_dpp_stop_listen);
+		RPC_ERR_IN_RESP(resp_supp_dpp_stop_listen);
+		break;
+#endif
 	} case RPC_ID__Resp_GpioConfig: {
 	    RPC_FAIL_ON_NULL(resp_gpio_config);
 	    RPC_ERR_IN_RESP(resp_gpio_config);

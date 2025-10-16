@@ -14,10 +14,15 @@ extern "C" {
 #include "esp_hosted_wifi_remote_glue.h"
 #include "port_esp_hosted_host_wifi_config.h"
 #include "port_esp_hosted_host_os.h"
+#include "esp_hosted_misc.h"
 #include "esp_check.h"
 #include "transport_drv.h"
 #include "rpc_wrap.h"
 #include "esp_log.h"
+
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
+#endif
 
 /** Macros **/
 static const char *TAG="H_API";
@@ -454,7 +459,11 @@ esp_err_t esp_wifi_remote_sta_twt_config(wifi_twt_config_t *config)
 	return rpc_wifi_sta_twt_config(config);
 }
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+#else
+esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_twt_setup_config_t *setup_config)
+#endif
 {
 	return rpc_wifi_sta_itwt_setup(setup_config);
 }
@@ -536,10 +545,271 @@ esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t
 }
 #endif
 
+#if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
+esp_err_t esp_supp_remote_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
+{
+	check_transport_up();
+	return rpc_supp_dpp_init(evt_cb);
+}
+#else
+esp_err_t esp_supp_remote_dpp_init(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_init();
+}
+#endif
+
+esp_err_t esp_supp_remote_dpp_deinit(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_deinit();
+}
+
+esp_err_t esp_supp_remote_dpp_bootstrap_gen(const char *chan_list,
+		esp_supp_dpp_bootstrap_t type,
+		const char *key, const char *info)
+{
+	check_transport_up();
+	return rpc_supp_dpp_bootstrap_gen(chan_list, type, key, info);
+}
+
+esp_err_t esp_supp_remote_dpp_start_listen(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_start_listen();
+}
+
+esp_err_t esp_supp_remote_dpp_stop_listen(void)
+{
+	check_transport_up();
+	return rpc_supp_dpp_stop_listen();
+}
+#endif
+
 esp_err_t esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info)
 {
 	check_transport_up();
 	return rpc_get_coprocessor_fwversion(ver_info);
+}
+
+#if H_WIFI_ENTERPRISE_SUPPORT
+esp_err_t esp_wifi_remote_sta_enterprise_enable(void)
+{
+	check_transport_up();
+	return rpc_wifi_sta_enterprise_enable();
+}
+
+esp_err_t esp_wifi_remote_sta_enterprise_disable(void)
+{
+	check_transport_up();
+	return rpc_wifi_sta_enterprise_disable();
+}
+
+esp_err_t esp_eap_client_remote_set_identity(const unsigned char *identity, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_identity(identity, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_identity(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_identity();
+}
+
+esp_err_t esp_eap_client_remote_set_username(const unsigned char *username, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_username(username, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_username(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_username();
+}
+
+esp_err_t esp_eap_client_remote_set_password(const unsigned char *password, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_password(password, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_password(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_password();
+}
+
+esp_err_t esp_eap_client_remote_set_new_password(const unsigned char *new_password, int len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_new_password(new_password, len);
+}
+
+esp_err_t esp_eap_client_remote_clear_new_password(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_new_password();
+}
+
+esp_err_t esp_eap_client_remote_set_ca_cert(const unsigned char *ca_cert, int ca_cert_len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_ca_cert(ca_cert, ca_cert_len);
+}
+
+esp_err_t esp_eap_client_remote_clear_ca_cert(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_ca_cert();
+}
+
+esp_err_t esp_eap_client_remote_set_certificate_and_key(const unsigned char *client_cert,
+							int client_cert_len,
+							const unsigned char *private_key,
+							int private_key_len,
+							const unsigned char *private_key_password,
+							int private_key_passwd_len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_certificate_and_key(client_cert, client_cert_len, private_key,
+						      private_key_len, private_key_password, private_key_passwd_len);
+}
+
+esp_err_t esp_eap_client_remote_clear_certificate_and_key(void)
+{
+	check_transport_up();
+	return rpc_eap_client_clear_certificate_and_key();
+}
+
+esp_err_t esp_eap_client_remote_set_disable_time_check(bool disable)
+{
+	check_transport_up();
+	return rpc_eap_client_set_disable_time_check(disable);
+}
+
+esp_err_t esp_eap_client_remote_get_disable_time_check(bool *disable)
+{
+	check_transport_up();
+	return rpc_eap_client_get_disable_time_check(disable);
+}
+
+esp_err_t esp_eap_client_remote_set_ttls_phase2_method(esp_eap_ttls_phase2_types type)
+{
+	check_transport_up();
+	return rpc_eap_client_set_ttls_phase2_method(type);
+}
+
+esp_err_t esp_eap_client_remote_set_suiteb_192bit_certification(bool enable)
+{
+	check_transport_up();
+	return rpc_eap_client_set_suiteb_192bit_certification(enable);
+}
+
+esp_err_t esp_eap_client_remote_set_pac_file(const unsigned char *pac_file, int pac_file_len)
+{
+	check_transport_up();
+	return rpc_eap_client_set_pac_file(pac_file, pac_file_len);
+}
+
+esp_err_t esp_eap_client_remote_set_fast_params(esp_eap_fast_config config)
+{
+	check_transport_up();
+	return rpc_eap_client_set_fast_params(config);
+}
+
+esp_err_t esp_eap_client_remote_use_default_cert_bundle(bool use_default_bundle)
+{
+	check_transport_up();
+	return rpc_eap_client_use_default_cert_bundle(use_default_bundle);
+}
+
+esp_err_t esp_wifi_remote_set_okc_support(bool enable)
+{
+	check_transport_up();
+	return rpc_wifi_set_okc_support(enable);
+}
+
+esp_err_t esp_eap_client_remote_set_domain_name(const char *domain_name)
+{
+	check_transport_up();
+	return rpc_eap_client_set_domain_name(domain_name);
+}
+
+#if H_GOT_SET_EAP_METHODS_API
+esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods)
+{
+	check_transport_up();
+	return rpc_eap_client_set_eap_methods(methods);
+}
+#endif
+#endif
+
+esp_err_t esp_hosted_bt_controller_init(void)
+{
+	return rpc_bt_controller_init();
+}
+
+esp_err_t esp_hosted_bt_controller_deinit(bool mem_release)
+{
+	return rpc_bt_controller_deinit(mem_release);
+}
+
+esp_err_t esp_hosted_bt_controller_enable(void)
+{
+	return rpc_bt_controller_enable();
+}
+
+esp_err_t esp_hosted_bt_controller_disable(void)
+{
+	return rpc_bt_controller_disable();
+}
+
+static bool check_mac_len(size_t mac_len, esp_mac_type_t type)
+{
+	if (((type == ESP_MAC_IEEE802154) && (mac_len == 8)) ||
+			((type == ESP_MAC_EFUSE_EXT) && (mac_len == 2)) ||
+			(mac_len == 6)) {
+		return true;
+	}
+	return false;
+}
+
+esp_err_t esp_hosted_iface_mac_addr_set(uint8_t *mac, size_t mac_len, esp_mac_type_t type)
+{
+	// check that incoming mac_len is correct for the provided type
+	if (!check_mac_len(mac_len, type)) {
+		ESP_LOGE(TAG, "Invalid mac length for provided MAC type");
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	return rpc_iface_mac_addr_set_get(true, mac, mac_len, type);
+}
+
+esp_err_t esp_hosted_iface_mac_addr_get(uint8_t *mac, size_t mac_len, esp_mac_type_t type)
+{
+	// check that incoming mac_len is correct for the provided type
+	if (!check_mac_len(mac_len, type)) {
+		ESP_LOGE(TAG, "Invalid mac length for provided MAC type");
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	return rpc_iface_mac_addr_set_get(false, mac, mac_len, type);
+}
+
+size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type)
+{
+	// NOTE: this API returns size_t, not esp_err_t
+	// to match size_t esp_mac_addr_len_get(esp_mac_type_t type)
+	size_t len;
+
+	if (ESP_OK != rpc_iface_mac_addr_len_get(&len, type)) {
+		return 0;
+	} else {
+		return len;
+	}
 }
 
 /* esp_err_t esp_wifi_remote_scan_get_ap_record(wifi_ap_record_t *ap_record)

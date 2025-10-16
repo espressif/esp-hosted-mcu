@@ -18,6 +18,10 @@
 #include "port_esp_hosted_host_log.h"
 #include "transport_drv.h"
 
+#if H_DPP_SUPPORT
+#include "esp_dpp.h"
+#endif
+
 static const char *TAG = "RPC_WRAP";
 
 uint8_t restart_after_slave_ota = 0;
@@ -33,10 +37,11 @@ uint8_t restart_after_slave_ota = 0;
 #define OTA_BEGIN_RSP_TIMEOUT_SEC                         15
 #define WIFI_INIT_RSP_TIMEOUT_SEC                         10
 #define OTA_FROM_WEB_URL                                  1
-
+#define GET_FWVERSION_TIMEOUT_SEC                         1
 
 /* Forward declarations */
 static int rpc_wifi_connect_async(void);
+static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_control);
 
 static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
 {
@@ -66,6 +71,27 @@ static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
 #define YES                                               1
 #define NO                                                0
 #define HEARTBEAT_DURATION_SEC                            20
+
+#if H_SUPP_DPP_SUPPORT
+// size of Callback queue used by the Supplicant DPP task
+#define RPC_SUPP_CB_QUEUE_SIZE (5)
+
+typedef struct {
+	esp_supp_dpp_event_t dpp_event;
+	int dpp_reason; // to avoid doing malloc(sizeof(int)) as dpp_data
+	void * dpp_data;
+} supp_cb_queue_item_t;
+
+static void * rpc_supp_cb_thread_hdl = NULL;
+static queue_handle_t rpc_supp_cb_thread_q = NULL;
+
+static void rpc_supp_thread(void const *arg);
+static esp_err_t rpc_supp_cb_thread_start(void);
+static esp_err_t rpc_supp_cb_thread_stop(void);
+
+// evt_cb triggered when we receive a DPP callback event
+static esp_supp_dpp_event_cb_t dpp_evt_cb = NULL;
+#endif
 
 typedef struct {
 	int event;
@@ -153,8 +179,6 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			wifi_event_sta_connected_t *p_e = &app_event->u.e_wifi_sta_connected;
 
 			if (!netif_connected && netif_started) {
-				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_STOP, 0, 0, HOSTED_BLOCK_MAX);
-				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_START, 0, 0, HOSTED_BLOCK_MAX);
 				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_CONNECTED,
 					p_e, sizeof(wifi_event_sta_connected_t), HOSTED_BLOCK_MAX);
 				netif_connected = true;
@@ -193,6 +217,75 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				p_e, sizeof(wifi_event_sta_itwt_probe_t), HOSTED_BLOCK_MAX);
 			break;
 #endif // H_WIFI_HE_SUPPORT
+#if H_WIFI_DPP_SUPPORT
+		} case RPC_ID__Event_WifiDppUriReady: {
+			ESP_LOGV(TAG, "ESP Event: DPP: URI Ready");
+			supp_wifi_event_dpp_uri_ready_t *p_e = &app_event->u.e_dpp_uri_ready;
+			int len = p_e->uri_data_len;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_URI_READY,
+				p_e, sizeof(wifi_event_sta_itwt_probe_t) + len, HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_WifiDppCfgRecvd: {
+			ESP_LOGV(TAG, "ESP Event: DPP: CFG Received");
+			supp_wifi_event_dpp_config_received_t *p_e = &app_event->u.e_dpp_config_received;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_CFG_RECVD,
+				p_e, sizeof(wifi_event_dpp_config_received_t), HOSTED_BLOCK_MAX);
+			break;
+		} case RPC_ID__Event_WifiDppFail: {
+			ESP_LOGV(TAG, "ESP Event: DPP: Fail");
+			supp_wifi_event_dpp_failed_t *p_e = &app_event->u.e_dpp_failed;
+			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_FAILED,
+				p_e, sizeof(wifi_event_dpp_failed_t), HOSTED_BLOCK_MAX);
+			break;
+#endif // H_WIFI_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
+		// queue Supplicant DPP events on the dpp queue
+		} case RPC_ID__Event_SuppDppUriReady: {
+			if (rpc_supp_cb_thread_q) {
+				// copy the uri, push it to the queue
+				size_t len = strlen(app_event->u.e_dpp_uri_ready.uri) + 1; // include terminating NULL
+				supp_cb_queue_item_t item = { 0 };
+				item.dpp_event = ESP_SUPP_DPP_URI_READY;
+				item.dpp_data = g_h.funcs->_h_malloc(len);
+				if (item.dpp_data) {
+					g_h.funcs->_h_memcpy(item.dpp_data, app_event->u.e_dpp_uri_ready.uri, len);
+					g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+				} else {
+					ESP_LOGE(TAG, "malloc failed for dpp uri");
+				}
+			} else {
+				ESP_LOGW(TAG, "no queue to push dpp uri: dropping event");
+			}
+			break;
+		} case RPC_ID__Event_SuppDppCfgRecvd: {
+			if (rpc_supp_cb_thread_q) {
+				// copy the wifi config, push it to the queue
+				supp_cb_queue_item_t item = { 0 };
+				item.dpp_event = ESP_SUPP_DPP_CFG_RECVD;
+				item.dpp_data = g_h.funcs->_h_malloc(sizeof(wifi_config_t));
+				if (item.dpp_data) {
+					g_h.funcs->_h_memcpy(item.dpp_data, &app_event->u.e_dpp_config_received.wifi_cfg,
+							sizeof(wifi_config_t));
+					g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+				} else {
+					ESP_LOGE(TAG, "malloc failed for dpp wifi config");
+				}
+			} else {
+				ESP_LOGW(TAG, "no queue to push dpp wifi config: dropping event");
+			}
+			ESP_LOGW(TAG, "Finished Supplicant Event: Cfg Received");
+			break;
+		} case RPC_ID__Event_SuppDppFail: {
+			if (rpc_supp_cb_thread_q) {
+				supp_cb_queue_item_t item = { 0 };
+				item.dpp_event = ESP_SUPP_DPP_FAIL;
+				item.dpp_reason = app_event->u.e_dpp_failed.failure_reason;
+				g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+			} else {
+				ESP_LOGW(TAG, "no queue to push dpp wifi config: dropping event");
+			}
+			break;
+#endif // H_SUPP_DPP_SUPPORT
 		} case RPC_ID__Event_WifiEventNoArgs: {
 			int wifi_event_id = app_event->u.e_wifi_simple.wifi_event_id;
 
@@ -369,6 +462,20 @@ int rpc_register_event_callbacks(void)
 		{ RPC_ID__Event_StaItwtSuspend,            rpc_event_callback },
 		{ RPC_ID__Event_StaItwtProbe,              rpc_event_callback },
 #endif // H_WIFI_HE_SUPPORT
+#if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
+		// supp events get sent to the separate supp callback handler
+		{ RPC_ID__Event_SuppDppUriReady,           rpc_event_callback },
+		{ RPC_ID__Event_SuppDppCfgRecvd,           rpc_event_callback },
+		{ RPC_ID__Event_SuppDppFail,               rpc_event_callback },
+#endif
+#if H_WIFI_DPP_SUPPORT
+		// wifi events are handled via wifi event handler
+		{ RPC_ID__Event_WifiDppUriReady,           rpc_event_callback },
+		{ RPC_ID__Event_WifiDppCfgRecvd,           rpc_event_callback },
+		{ RPC_ID__Event_WifiDppFail,               rpc_event_callback },
+#endif
+#endif
 	};
 
 	for (evt=0; evt<sizeof(events)/sizeof(event_callback_table_t); evt++) {
@@ -455,6 +562,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	} case RPC_ID__Resp_OTAEnd : {
 		ESP_LOGV(TAG, "OTA end success");
 		break;
+	} case RPC_ID__Resp_OTAActivate : {
+		ESP_LOGV(TAG, "OTA activate success");
+		break;
 	} case RPC_ID__Resp_WifiSetMaxTxPower: {
 		ESP_LOGV(TAG, "Set wifi max tx power success");
 		break;
@@ -536,6 +646,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_SetDhcpDnsStatus:
 	case RPC_ID__Resp_WifiSetInactiveTime:
 	case RPC_ID__Resp_WifiGetInactiveTime:
+	case RPC_ID__Resp_IfaceMacAddrSetGet:
+	case RPC_ID__Resp_IfaceMacAddrLenGet:
+	case RPC_ID__Resp_FeatureControl:
 #if H_WIFI_HE_SUPPORT
 	case RPC_ID__Resp_WifiStaTwtConfig:
 	case RPC_ID__Resp_WifiStaItwtSetup:
@@ -545,6 +658,39 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_WifiStaItwtSendProbeReq:
 	case RPC_ID__Resp_WifiStaItwtSetTargetWakeTimeOffset:
 #endif // H_WIFI_HE_SUPPORT
+#if H_WIFI_ENTERPRISE_SUPPORT
+	case RPC_ID__Resp_WifiStaEnterpriseEnable:
+	case RPC_ID__Resp_WifiStaEnterpriseDisable:
+	case RPC_ID__Resp_EapSetIdentity:
+	case RPC_ID__Resp_EapClearIdentity:
+	case RPC_ID__Resp_EapSetUsername:
+	case RPC_ID__Resp_EapClearUsername:
+	case RPC_ID__Resp_EapSetPassword:
+	case RPC_ID__Resp_EapClearPassword:
+	case RPC_ID__Resp_EapSetNewPassword:
+	case RPC_ID__Resp_EapClearNewPassword:
+	case RPC_ID__Resp_EapSetCaCert:
+	case RPC_ID__Resp_EapClearCaCert:
+	case RPC_ID__Resp_EapSetCertificateAndKey:
+	case RPC_ID__Resp_EapClearCertificateAndKey:
+	case RPC_ID__Resp_EapGetDisableTimeCheck:
+	case RPC_ID__Resp_EapSetTtlsPhase2Method:
+	case RPC_ID__Resp_EapSetSuitebCertification:
+	case RPC_ID__Resp_EapSetPacFile:
+	case RPC_ID__Resp_EapSetFastParams:
+	case RPC_ID__Resp_EapUseDefaultCertBundle:
+	case RPC_ID__Resp_WifiSetOkcSupport:
+	case RPC_ID__Resp_EapSetDomainName:
+	case RPC_ID__Resp_EapSetDisableTimeCheck:
+	case RPC_ID__Resp_EapSetEapMethods:
+#endif
+#if H_DPP_SUPPORT
+	case RPC_ID__Resp_SuppDppInit:
+	case RPC_ID__Resp_SuppDppDeinit:
+	case RPC_ID__Resp_SuppDppBootstrapGen:
+	case RPC_ID__Resp_SuppDppStartListen:
+	case RPC_ID__Resp_SuppDppStopListen:
+#endif
 	case RPC_ID__Resp_GetCoprocessorFwVersion: 
 	case RPC_ID__Resp_GpioConfig:
 	case RPC_ID__Resp_GpioResetPin:
@@ -552,8 +698,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_GpioGetLevel:
 	case RPC_ID__Resp_GpioSetDirection:
 	case RPC_ID__Resp_GpioInputEnable:
-	case RPC_ID__Resp_GpioSetPullMode:
-	{
+	case RPC_ID__Resp_GpioSetPullMode:	{
 		/* Intended fallthrough */
 		break;
 	} default: {
@@ -633,7 +778,7 @@ int rpc_wifi_get_mac(wifi_interface_t mode, uint8_t out_mac[6])
 	if (resp && resp->resp_event_status == SUCCESS) {
 
 		g_h.funcs->_h_memcpy(out_mac, resp->u.wifi_mac.mac, BSSID_BYTES_SIZE);
-		ESP_LOGI(TAG, "%s mac address is [" MACSTR "]",
+		ESP_LOGD(TAG, "%s mac address is [" MACSTR "]",
 			mode==WIFI_IF_STA? "sta":"ap", MAC2STR(out_mac));
 	}
 	return rpc_rsp_callback(resp);
@@ -702,10 +847,23 @@ int rpc_ota_end(void)
 	return rpc_rsp_callback(resp);
 }
 
+int rpc_ota_activate(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_ota_activate(req);
+
+	return rpc_rsp_callback(resp);
+}
+
 esp_err_t rpc_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info)
 {
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	// change timeout value for this call
+	req->rsp_timeout_sec = GET_FWVERSION_TIMEOUT_SEC;
 	ctrl_cmd_t *resp = NULL;
 
 	resp = rpc_slaveif_get_coprocessor_fwversion(req);
@@ -811,7 +969,11 @@ esp_err_t rpc_wifi_sta_twt_config(wifi_twt_config_t *config)
 	return rpc_rsp_callback(resp);
 }
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 esp_err_t rpc_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
+#else
+esp_err_t rpc_wifi_sta_itwt_setup(wifi_twt_setup_config_t *setup_config)
+#endif
 {
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
@@ -820,7 +982,11 @@ esp_err_t rpc_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
 	if (!setup_config)
 		return FAILURE;
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	g_h.funcs->_h_memcpy(&req->u.wifi_itwt_setup_config, setup_config, sizeof(wifi_itwt_setup_config_t));
+#else
+	g_h.funcs->_h_memcpy(&req->u.wifi_twt_setup_config, setup_config, sizeof(wifi_twt_setup_config_t));
+#endif
 	resp = rpc_slaveif_wifi_sta_itwt_setup(req);
 	return rpc_rsp_callback(resp);
 }
@@ -1617,60 +1783,616 @@ esp_err_t rpc_set_dhcp_dns_status(wifi_interface_t ifx, uint8_t link_up,
 	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_config(const gpio_config_t *pGPIOConfig)
+#if H_WIFI_ENTERPRISE_SUPPORT
+esp_err_t rpc_wifi_sta_enterprise_enable(void)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  if (!pGPIOConfig)
-    return FAILURE;
-
-  g_h.funcs->_h_memcpy(&req->u.gpio_config, pGPIOConfig, sizeof(gpio_config_t));
-  resp = rpc_slaveif_gpio_config(req);
-
-  return rpc_rsp_callback(resp);
+	resp = rpc_slaveif_wifi_sta_enterprise_enable(req);
+	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_reset(gpio_num_t gpio_num)
+esp_err_t rpc_wifi_sta_enterprise_disable(void)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_num = gpio_num;
-  resp = rpc_slaveif_gpio_reset_pin(req);
-
-  return rpc_rsp_callback(resp);
+	resp = rpc_slaveif_wifi_sta_enterprise_disable(req);
+	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_set_level(gpio_num_t gpio_num, uint32_t level)
+esp_err_t rpc_eap_client_set_identity(const unsigned char *identity, int len)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_set_level.gpio_num = gpio_num;
-  req->u.gpio_set_level.level = level;
+	if (!identity || len <= 0) {
+		return FAILURE;
+	}
 
-  resp = rpc_slaveif_gpio_set_level(req);
-  return rpc_rsp_callback(resp);
+	req->u.eap_identity.identity = identity;
+	req->u.eap_identity.len = len;
+
+	resp = rpc_slaveif_eap_set_identity(req);
+	return rpc_rsp_callback(resp);
 }
 
-int rpc_gpio_get_level(gpio_num_t gpio_num, int *level)
+esp_err_t rpc_eap_client_clear_identity(void)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_num = gpio_num;
-  resp = rpc_slaveif_gpio_get_level(req);
+	resp = rpc_slaveif_eap_clear_identity(req);
+	return rpc_rsp_callback(resp);
+}
 
-  if (resp && resp->resp_event_status == SUCCESS) {
-        *level = resp->u.gpio_get_level;
-    }
+esp_err_t rpc_eap_client_set_username(const unsigned char *username, int len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  return rpc_rsp_callback(resp);
+	if (!username || len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_username.username = username;
+	req->u.eap_username.len = len;
+
+	resp = rpc_slaveif_eap_set_username(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_username(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_username(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_password(const unsigned char *password, int len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!password || len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_password.password = password;
+	req->u.eap_password.len = len;
+
+	resp = rpc_slaveif_eap_set_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_password(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_new_password(const unsigned char *new_password, int len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!new_password || len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_password.password = new_password;
+	req->u.eap_password.len = len;
+
+	resp = rpc_slaveif_eap_set_new_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_new_password(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_new_password(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_ca_cert(const unsigned char *ca_cert, int ca_cert_len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!ca_cert || ca_cert_len <= 0) {
+		return FAILURE;
+	}
+
+	req->u.eap_ca_cert.ca_cert = ca_cert;
+	req->u.eap_ca_cert.len = ca_cert_len;
+
+	resp = rpc_slaveif_eap_set_ca_cert(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_ca_cert(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_ca_cert(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_certificate_and_key(const unsigned char *client_cert, int client_cert_len,
+												 const unsigned char *private_key, int private_key_len,
+												 const unsigned char *private_key_password, int private_key_passwd_len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!client_cert || (client_cert_len <= 0) ||
+		!private_key || (private_key_len <= 0) ||
+		(private_key_password && private_key_passwd_len <= 0) ||
+		(private_key_passwd_len > 0 && !private_key_password)) {
+			return FAILURE;
+	}
+
+	req->u.eap_cert_key.client_cert = client_cert;
+	req->u.eap_cert_key.client_cert_len = client_cert_len;
+
+	req->u.eap_cert_key.private_key = private_key;
+	req->u.eap_cert_key.private_key_len = private_key_len;
+
+	req->u.eap_cert_key.private_key_password = private_key_password;
+	req->u.eap_cert_key.private_key_passwd_len = private_key_passwd_len;
+
+	resp = rpc_slaveif_eap_set_certificate_and_key(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_clear_certificate_and_key(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_eap_clear_certificate_and_key(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_disable_time_check(bool disable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_disable_time_check.disable = disable;
+	resp = rpc_slaveif_eap_set_disable_time_check(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_get_disable_time_check(bool *disable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!disable)
+		return FAILURE;
+
+	resp = rpc_slaveif_eap_get_disable_time_check(req);
+
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*disable = resp->u.eap_disable_time_check.disable;
+	}
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_ttls_phase2_method(esp_eap_ttls_phase2_types type)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_ttls_phase2 = type;
+	resp = rpc_slaveif_eap_set_ttls_phase2_method(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_suiteb_192bit_certification(bool enable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_suiteb_192bit.enable = enable;
+	resp = rpc_slaveif_eap_set_suiteb_certification(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_pac_file(const unsigned char *pac_file, int pac_file_len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!pac_file || pac_file_len <= 0)
+		return FAILURE;
+
+	req->u.eap_pac_file.pac_file = pac_file;
+	req->u.eap_pac_file.len = pac_file_len;
+
+	resp = rpc_slaveif_eap_set_pac_file(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_fast_params(esp_eap_fast_config config)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_fast_config = config;
+	resp = rpc_slaveif_eap_set_fast_params(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_use_default_cert_bundle(bool use_default_bundle)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.eap_default_cert_bundle.use_default = use_default_bundle;
+	resp = rpc_slaveif_eap_use_default_cert_bundle(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_wifi_set_okc_support(bool enable)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_okc_support.enable = enable;
+	resp = rpc_slaveif_wifi_set_okc_support(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_eap_client_set_domain_name(const char *domain_name)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!domain_name)
+		return FAILURE;
+
+	req->u.eap_domain_name.domain_name = domain_name;
+	resp = rpc_slaveif_eap_set_domain_name(req);
+	return rpc_rsp_callback(resp);
+}
+
+#if H_GOT_SET_EAP_METHODS_API
+esp_err_t rpc_eap_client_set_eap_methods(esp_eap_method_t methods)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.methods = methods;
+	resp = rpc_slaveif_eap_set_eap_methods(req);
+	return rpc_rsp_callback(resp);
+}
+#endif
+#endif
+
+#if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
+esp_err_t rpc_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	// save the incoming callback
+	dpp_evt_cb = evt_cb;
+
+#if H_SUPP_DPP_SUPPORT
+	// start the cb thread, if required
+	if (dpp_evt_cb) {
+		if (ESP_OK != rpc_supp_cb_thread_start()) {
+			ESP_LOGE(TAG, "failed to start supp_cb_thread");
+		}
+	}
+#endif
+
+	if (evt_cb) {
+		req->u.dpp_enable_cb = true;
+	} else {
+		req->u.dpp_enable_cb = false;
+	}
+	resp = rpc_slaveif_supp_dpp_init(req);
+	return rpc_rsp_callback(resp);
+}
+#else // H_SUPP_DPP_SUPPORT
+esp_err_t rpc_supp_dpp_init(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	// no callback
+	req->u.dpp_enable_cb = false;
+
+	resp = rpc_slaveif_supp_dpp_init(req);
+	return rpc_rsp_callback(resp);
+}
+#endif
+
+esp_err_t rpc_supp_dpp_deinit(void)
+{
+#if H_SUPP_DPP_SUPPORT
+	// stop the cb thread
+	rpc_supp_cb_thread_stop();
+#endif
+
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_supp_dpp_deinit(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_supp_dpp_bootstrap_gen(const char *chan_list,
+		esp_supp_dpp_bootstrap_t type,
+		const char *key, const char *info)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!chan_list) {
+		ESP_LOGE(TAG, "chan_list cannot be NULL");
+		return ESP_FAIL;
+	}
+	req->u.dpp_bootstrap_gen.chan_list = chan_list;
+	req->u.dpp_bootstrap_gen.type = type;
+	req->u.dpp_bootstrap_gen.key = key;
+	req->u.dpp_bootstrap_gen.info = info;
+
+	resp = rpc_slaveif_supp_dpp_bootstrap_gen(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_supp_dpp_start_listen(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_supp_dpp_start_listen(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_supp_dpp_stop_listen(void)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_supp_dpp_stop_listen(req);
+	return rpc_rsp_callback(resp);
+}
+
+#if H_SUPP_DPP_SUPPORT
+// creates the suplicant dpp queue and starts the thread
+static esp_err_t rpc_supp_cb_thread_start(void)
+{
+	// create the queue
+	if (!rpc_supp_cb_thread_q) {
+		rpc_supp_cb_thread_q = g_h.funcs->_h_create_queue(RPC_SUPP_CB_QUEUE_SIZE,
+				sizeof(supp_cb_queue_item_t));
+	}
+	if (!rpc_supp_cb_thread_q) {
+		ESP_LOGE(TAG, "Failed to create rpc_supp_cb_thread_q");
+		return ESP_FAIL;
+	}
+
+	// create and start the thread
+	if (!rpc_supp_cb_thread_hdl) {
+		rpc_supp_cb_thread_hdl = g_h.funcs->_h_thread_create("rpc_supp_cb", RPC_TASK_PRIO,
+			RPC_TASK_STACK_SIZE, rpc_supp_thread, NULL);
+	}
+	if (!rpc_supp_cb_thread_hdl) {
+		ESP_LOGE(TAG, "Failed to create rpc_supp_cb_thread_hdl");
+		// destroy the created queue also
+		g_h.funcs->_h_destroy_queue(rpc_supp_cb_thread_q);
+		rpc_supp_cb_thread_q = NULL;
+		return ESP_FAIL;
+	}
+
+	return ESP_OK;
+}
+
+// stops the thread and destroys the queue
+static esp_err_t rpc_supp_cb_thread_stop(void)
+{
+	int res;
+	int i;
+	int num_items;
+
+	if (rpc_supp_cb_thread_hdl) {
+		// stop the thread
+		res = g_h.funcs->_h_thread_cancel(rpc_supp_cb_thread_hdl);
+		if (!res) {
+			rpc_supp_cb_thread_hdl = NULL;
+		} else {
+			ESP_LOGE(TAG, "Failed to cancel rpc_supp_cb_thread_hdl");
+		}
+	} else {
+		ESP_LOGD(TAG, "No rpc_supp_cb_thread_hdl to cancel");
+	}
+
+	if (rpc_supp_cb_thread_q) {
+		// remove all items from the queue
+		num_items = g_h.funcs->_h_queue_msg_waiting(rpc_supp_cb_thread_q);
+		for (i = 0; i < num_items; i++) {
+			supp_cb_queue_item_t item;
+			res = g_h.funcs->_h_dequeue_item(rpc_supp_cb_thread_q, &item, 0);
+			if (res) {
+				ESP_LOGE(TAG, "Error removing item from rpc_supp_cb_thread_q");
+				continue;
+			}
+			if (item.dpp_data) {
+				g_h.funcs->_h_free(item.dpp_data);
+			}
+		}
+
+		// destroy the queue
+		if (!g_h.funcs->_h_destroy_queue(rpc_supp_cb_thread_q)) {
+			rpc_supp_cb_thread_q = NULL;
+		} else {
+			ESP_LOGE(TAG, "Failed to destroy rpc_supp_cb_thread_q");
+		}
+	} else {
+		ESP_LOGD(TAG, "No rpc_supp_cb_thread_q to delete");
+	}
+
+	return ESP_OK;
+}
+
+static void rpc_supp_thread(void const *arg)
+{
+	int res;
+	supp_cb_queue_item_t item;
+
+	while (1) {
+		// wait until there is an item to process
+		res = g_h.funcs->_h_dequeue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
+		if (res) {
+			ESP_LOGE(TAG, "Error getting item from rpc_supp_cb_thread_q");
+			continue;
+		}
+		// triggger the callback with the data;
+		if (dpp_evt_cb) {
+			if (item.dpp_event == ESP_SUPP_DPP_FAIL) {
+				// user cb expected to cast provided data back to a int
+				// see https://github.com/espressif/esp-idf/blob/7912b04e6bdf8c9aeea88baff9e46794d04e4200/examples/wifi/wifi_easy_connect/dpp-enrollee/main/dpp_enrollee_main.c#L96
+				dpp_evt_cb(item.dpp_event, (void *)item.dpp_reason);
+			}
+			else if (item.dpp_data) {
+				dpp_evt_cb(item.dpp_event, item.dpp_data);
+			} else {
+				ESP_LOGW(TAG, "unknown supplicant DPP event: dropping");
+			}
+		} else {
+			ESP_LOGW(TAG, "no registed supplicant dpp cb: dropping dpp event");
+		}
+		// free allocated memory
+		if (item.dpp_data) {
+			g_h.funcs->_h_free(item.dpp_data);
+		}
+	}
+}
+#endif // H_SUPP_DPP_SUPPORT
+#endif // H_DPP_SUPPORT
+
+esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp_mac_type_t type)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.iface_mac.set = set;
+	req->u.iface_mac.type = type;
+	req->u.iface_mac.mac_len = mac_len;
+	memset(req->u.iface_mac.mac, 0, sizeof(req->u.iface_mac.mac));
+
+	if (set) {
+		memcpy(req->u.iface_mac.mac, mac, mac_len);
+	}
+
+	resp = rpc_slaveif_iface_mac_addr_set_get(req);
+
+	// copy mac address for get
+	if (!set && resp && resp->resp_event_status == SUCCESS) {
+		memcpy(mac, resp->u.iface_mac.mac, mac_len);
+	}
+	return rpc_rsp_callback(resp);
+}
+
+int rpc_bt_controller_init(void)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_INIT;
+	feature_control.option  = FEATURE_OPTION_NONE;
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+int rpc_bt_controller_deinit(bool mem_release)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_DEINIT;
+	if (mem_release) {
+		feature_control.option = FEATURE_OPTION_BT_DEINIT_RELEASE_MEMORY;
+	} else {
+		feature_control.option = FEATURE_OPTION_NONE;
+	}
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+int rpc_bt_controller_enable(void)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_ENABLE;
+	feature_control.option  = FEATURE_OPTION_NONE;
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+int rpc_bt_controller_disable(void)
+{
+	rcp_feature_control_t feature_control;
+
+	feature_control.feature = FEATURE_BT;
+	feature_control.command = FEATURE_COMMAND_BT_DISABLE;
+	feature_control.option  = FEATURE_OPTION_NONE;
+
+	return rpc_iface_feature_control(&feature_control);
+}
+
+esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.iface_mac_len.type = type;
+	resp = rpc_slaveif_iface_mac_addr_len_get(req);
+
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*len = resp->u.iface_mac_len.len;
+	}
+	return rpc_rsp_callback(resp);
+}
+
+static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_control)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.feature_control.feature = feature_control->feature;
+	req->u.feature_control.command = feature_control->command;
+	req->u.feature_control.option  = feature_control->option;
+
+	resp = rpc_slaveif_feature_control(req);
+
+	return rpc_rsp_callback(resp);
 }
 
 esp_err_t rpc_gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode)

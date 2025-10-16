@@ -7,6 +7,8 @@
 #ifndef __STATS__H
 #define __STATS__H
 
+#include "port_esp_hosted_host_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

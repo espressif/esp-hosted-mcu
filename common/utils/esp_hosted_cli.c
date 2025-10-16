@@ -395,7 +395,7 @@ int esp_cli_register_cmds(void)
 
 	app_register_all_wifi_commands();
 	app_register_iperf_commands();
-	app_register_ping_commands();
+	ping_cmd_register_ping();
 	app_register_iperf_hook_func(iperf_hook_show_wifi_stats);
 #endif
 	return 0;

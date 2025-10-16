@@ -62,6 +62,7 @@ typedef struct WifiBandwidths WifiBandwidths;
 typedef struct WifiItwtSetupConfig WifiItwtSetupConfig;
 typedef struct WifiTwtConfig WifiTwtConfig;
 typedef struct ConnectedSTAList ConnectedSTAList;
+typedef struct EapFastConfig EapFastConfig;
 typedef struct RpcReqGetMacAddress RpcReqGetMacAddress;
 typedef struct RpcRespGetMacAddress RpcRespGetMacAddress;
 typedef struct RpcReqGetMode RpcReqGetMode;
@@ -80,6 +81,8 @@ typedef struct RpcReqOTAWrite RpcReqOTAWrite;
 typedef struct RpcRespOTAWrite RpcRespOTAWrite;
 typedef struct RpcReqOTAEnd RpcReqOTAEnd;
 typedef struct RpcRespOTAEnd RpcRespOTAEnd;
+typedef struct RpcReqOTAActivate RpcReqOTAActivate;
+typedef struct RpcRespOTAActivate RpcRespOTAActivate;
 typedef struct RpcReqWifiSetMaxTxPower RpcReqWifiSetMaxTxPower;
 typedef struct RpcRespWifiSetMaxTxPower RpcRespWifiSetMaxTxPower;
 typedef struct RpcReqWifiGetMaxTxPower RpcReqWifiGetMaxTxPower;
@@ -194,6 +197,22 @@ typedef struct RpcReqSetDhcpDnsStatus RpcReqSetDhcpDnsStatus;
 typedef struct RpcRespSetDhcpDnsStatus RpcRespSetDhcpDnsStatus;
 typedef struct RpcReqGetDhcpDnsStatus RpcReqGetDhcpDnsStatus;
 typedef struct RpcRespGetDhcpDnsStatus RpcRespGetDhcpDnsStatus;
+typedef struct RpcReqSuppDppInit RpcReqSuppDppInit;
+typedef struct RpcRespSuppDppInit RpcRespSuppDppInit;
+typedef struct RpcReqSuppDppDeinit RpcReqSuppDppDeinit;
+typedef struct RpcRespSuppDppDeinit RpcRespSuppDppDeinit;
+typedef struct RpcReqSuppDppBootstrapGen RpcReqSuppDppBootstrapGen;
+typedef struct RpcRespSuppDppBootstrapGen RpcRespSuppDppBootstrapGen;
+typedef struct RpcReqSuppDppStartListen RpcReqSuppDppStartListen;
+typedef struct RpcRespSuppDppStartListen RpcRespSuppDppStartListen;
+typedef struct RpcReqSuppDppStopListen RpcReqSuppDppStopListen;
+typedef struct RpcRespSuppDppStopListen RpcRespSuppDppStopListen;
+typedef struct RpcReqIfaceMacAddrSetGet RpcReqIfaceMacAddrSetGet;
+typedef struct RpcRespIfaceMacAddrSetGet RpcRespIfaceMacAddrSetGet;
+typedef struct RpcReqIfaceMacAddrLenGet RpcReqIfaceMacAddrLenGet;
+typedef struct RpcRespIfaceMacAddrLenGet RpcRespIfaceMacAddrLenGet;
+typedef struct RpcReqFeatureControl RpcReqFeatureControl;
+typedef struct RpcRespFeatureControl RpcRespFeatureControl;
 typedef struct RpcEventWifiEventNoArgs RpcEventWifiEventNoArgs;
 typedef struct RpcEventESPInit RpcEventESPInit;
 typedef struct RpcEventHeartbeat RpcEventHeartbeat;
@@ -202,6 +221,65 @@ typedef struct RpcEventAPStaConnected RpcEventAPStaConnected;
 typedef struct RpcEventStaScanDone RpcEventStaScanDone;
 typedef struct RpcEventStaConnected RpcEventStaConnected;
 typedef struct RpcEventStaDisconnected RpcEventStaDisconnected;
+typedef struct RpcEventDhcpDnsStatus RpcEventDhcpDnsStatus;
+typedef struct RpcEventStaItwtSetup RpcEventStaItwtSetup;
+typedef struct RpcEventStaItwtTeardown RpcEventStaItwtTeardown;
+typedef struct RpcEventStaItwtSuspend RpcEventStaItwtSuspend;
+typedef struct RpcEventStaItwtProbe RpcEventStaItwtProbe;
+typedef struct RpcReqWifiStaEnterpriseEnable RpcReqWifiStaEnterpriseEnable;
+typedef struct RpcRespWifiStaEnterpriseEnable RpcRespWifiStaEnterpriseEnable;
+typedef struct RpcReqWifiStaEnterpriseDisable RpcReqWifiStaEnterpriseDisable;
+typedef struct RpcRespWifiStaEnterpriseDisable RpcRespWifiStaEnterpriseDisable;
+typedef struct RpcReqEapSetIdentity RpcReqEapSetIdentity;
+typedef struct RpcRespEapSetIdentity RpcRespEapSetIdentity;
+typedef struct RpcReqEapClearIdentity RpcReqEapClearIdentity;
+typedef struct RpcRespEapClearIdentity RpcRespEapClearIdentity;
+typedef struct RpcReqEapSetUsername RpcReqEapSetUsername;
+typedef struct RpcRespEapSetUsername RpcRespEapSetUsername;
+typedef struct RpcReqEapClearUsername RpcReqEapClearUsername;
+typedef struct RpcRespEapClearUsername RpcRespEapClearUsername;
+typedef struct RpcReqEapSetPassword RpcReqEapSetPassword;
+typedef struct RpcRespEapSetPassword RpcRespEapSetPassword;
+typedef struct RpcReqEapClearPassword RpcReqEapClearPassword;
+typedef struct RpcRespEapClearPassword RpcRespEapClearPassword;
+typedef struct RpcReqEapSetNewPassword RpcReqEapSetNewPassword;
+typedef struct RpcRespEapSetNewPassword RpcRespEapSetNewPassword;
+typedef struct RpcReqEapClearNewPassword RpcReqEapClearNewPassword;
+typedef struct RpcRespEapClearNewPassword RpcRespEapClearNewPassword;
+typedef struct RpcReqEapSetCaCert RpcReqEapSetCaCert;
+typedef struct RpcRespEapSetCaCert RpcRespEapSetCaCert;
+typedef struct RpcReqEapClearCaCert RpcReqEapClearCaCert;
+typedef struct RpcRespEapClearCaCert RpcRespEapClearCaCert;
+typedef struct RpcReqEapSetCertificateAndKey RpcReqEapSetCertificateAndKey;
+typedef struct RpcRespEapSetCertificateAndKey RpcRespEapSetCertificateAndKey;
+typedef struct RpcReqEapClearCertificateAndKey RpcReqEapClearCertificateAndKey;
+typedef struct RpcRespEapClearCertificateAndKey RpcRespEapClearCertificateAndKey;
+typedef struct RpcReqEapSetDisableTimeCheck RpcReqEapSetDisableTimeCheck;
+typedef struct RpcRespEapSetDisableTimeCheck RpcRespEapSetDisableTimeCheck;
+typedef struct RpcReqEapGetDisableTimeCheck RpcReqEapGetDisableTimeCheck;
+typedef struct RpcRespEapGetDisableTimeCheck RpcRespEapGetDisableTimeCheck;
+typedef struct RpcReqEapSetTtlsPhase2Method RpcReqEapSetTtlsPhase2Method;
+typedef struct RpcRespEapSetTtlsPhase2Method RpcRespEapSetTtlsPhase2Method;
+typedef struct RpcReqEapSetSuiteb192bitCertification RpcReqEapSetSuiteb192bitCertification;
+typedef struct RpcRespEapSetSuiteb192bitCertification RpcRespEapSetSuiteb192bitCertification;
+typedef struct RpcReqEapSetPacFile RpcReqEapSetPacFile;
+typedef struct RpcRespEapSetPacFile RpcRespEapSetPacFile;
+typedef struct RpcReqEapSetFastParams RpcReqEapSetFastParams;
+typedef struct RpcRespEapSetFastParams RpcRespEapSetFastParams;
+typedef struct RpcReqEapUseDefaultCertBundle RpcReqEapUseDefaultCertBundle;
+typedef struct RpcRespEapUseDefaultCertBundle RpcRespEapUseDefaultCertBundle;
+typedef struct RpcReqWifiSetOkcSupport RpcReqWifiSetOkcSupport;
+typedef struct RpcRespWifiSetOkcSupport RpcRespWifiSetOkcSupport;
+typedef struct RpcReqEapSetDomainName RpcReqEapSetDomainName;
+typedef struct RpcRespEapSetDomainName RpcRespEapSetDomainName;
+typedef struct RpcReqEapSetEapMethods RpcReqEapSetEapMethods;
+typedef struct RpcRespEapSetEapMethods RpcRespEapSetEapMethods;
+typedef struct RpcEventSuppDppUriReady RpcEventSuppDppUriReady;
+typedef struct RpcEventSuppDppCfgRecvd RpcEventSuppDppCfgRecvd;
+typedef struct RpcEventSuppDppFail RpcEventSuppDppFail;
+typedef struct RpcEventWifiDppUriReady RpcEventWifiDppUriReady;
+typedef struct RpcEventWifiDppCfgRecvd RpcEventWifiDppCfgRecvd;
+typedef struct RpcEventWifiDppFail RpcEventWifiDppFail;
 typedef struct RpcGpioConfig RpcGpioConfig;
 typedef struct RpcReqGpioConfig RpcReqGpioConfig;
 typedef struct RpcRespGpioConfig RpcRespGpioConfig;
@@ -217,11 +295,6 @@ typedef struct RpcReqGpioInputEnable RpcReqGpioInputEnable;
 typedef struct RpcRespGpioInputEnable RpcRespGpioInputEnable;
 typedef struct RpcReqGpioSetPullMode RpcReqGpioSetPullMode;
 typedef struct RpcRespGpioSetPullMode RpcRespGpioSetPullMode;
-typedef struct RpcEventDhcpDnsStatus RpcEventDhcpDnsStatus;
-typedef struct RpcEventStaItwtSetup RpcEventStaItwtSetup;
-typedef struct RpcEventStaItwtTeardown RpcEventStaItwtTeardown;
-typedef struct RpcEventStaItwtSuspend RpcEventStaItwtSuspend;
-typedef struct RpcEventStaItwtProbe RpcEventStaItwtProbe;
 typedef struct Rpc Rpc;
 
 
@@ -270,6 +343,42 @@ typedef enum _RpcType {
   RPC_TYPE__MsgType_Max = 4
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_TYPE)
 } RpcType;
+typedef enum _RpcFeature {
+  RPC_FEATURE__Feature_None = 0,
+  /*
+   * Bluetooth (BT) Feature
+   */
+  /*
+   * add additional features here
+   */
+  RPC_FEATURE__Feature_Bluetooth = 1
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_FEATURE)
+} RpcFeature;
+typedef enum _RpcFeatureCommand {
+  RPC_FEATURE_COMMAND__Feature_Command_None = 0,
+  /*
+   * Bluetooth (BT) Feature Commands
+   */
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Init = 1,
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit = 2,
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Enable = 3,
+  /*
+   * add additional feature commands here
+   */
+  RPC_FEATURE_COMMAND__Feature_Command_BT_Disable = 4
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_FEATURE_COMMAND)
+} RpcFeatureCommand;
+typedef enum _RpcFeatureOption {
+  RPC_FEATURE_OPTION__Feature_Option_None = 0,
+  /*
+   * Bluetooth (BT) Feature Options
+   */
+  /*
+   * release memory when deinit BT
+   */
+  RPC_FEATURE_OPTION__Feature_Option_BT_Deinit_Release_Memory = 1
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_FEATURE_OPTION)
+} RpcFeatureOption;
 typedef enum _RpcId {
   RPC_ID__MsgId_Invalid = 0,
   /*
@@ -295,6 +404,36 @@ typedef enum _RpcId {
    *0x104
    */
   RPC_ID__Req_SetWifiMode = 260,
+  /*
+   *0x105
+   */
+  RPC_ID__Req_SuppDppInit = 261,
+  /*
+   *0x106
+   */
+  RPC_ID__Req_SuppDppDeinit = 262,
+  /*
+   *0x107
+   */
+  RPC_ID__Req_SuppDppBootstrapGen = 263,
+  /*
+   *0x108
+   */
+  RPC_ID__Req_SuppDppStartListen = 264,
+  /*
+   *0x109
+   */
+  RPC_ID__Req_SuppDppStopListen = 265,
+  /*
+   *Req_SetSoftAPVendorSpecificIE     = 266; //0x10a
+   *Req_StartSoftAP                   = 267; //0x10b
+   *Req_GetSoftAPConnectedSTAList     = 268; //0x10c
+   *Req_StopSoftAP                    = 269; //0x10d
+   */
+  /*
+   *0x112
+   */
+  RPC_ID__Req_OTAActivate = 266,
   /*
    *0x10e
    */
@@ -665,41 +804,154 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_WifiStaItwtSetTargetWakeTimeOffset = 360,
   /*
-   * 0x169
+   *0x169
    */
-  RPC_ID__Req_GpioConfig = 361,
+  RPC_ID__Req_WifiStaEnterpriseEnable = 361,
   /*
-   * 0x16a
+   *0x16A
    */
-  RPC_ID__Req_GpioResetPin = 362,
+  RPC_ID__Req_WifiStaEnterpriseDisable = 362,
   /*
-   * 0x16b
+   *0x16B
    */
-  RPC_ID__Req_GpioSetLevel = 363,
+  RPC_ID__Req_EapSetIdentity = 363,
   /*
-   * 0x16c
+   *0x16C
    */
-  RPC_ID__Req_GpioGetLevel = 364,
+  RPC_ID__Req_EapClearIdentity = 364,
   /*
-   * 0x16d
+   *0x16D
    */
-  RPC_ID__Req_GpioSetDirection = 365,
+  RPC_ID__Req_EapSetUsername = 365,
   /*
-   * 0x16e
+   *0x16E
    */
-  RPC_ID__Req_GpioInputEnable = 366,
+  RPC_ID__Req_EapClearUsername = 366,
   /*
-   * 0x16f
+   *0x16F
    */
-  RPC_ID__Req_GpioSetPullMode = 367,
+  RPC_ID__Req_EapSetPassword = 367,
+  /*
+   *0x170
+   */
+  RPC_ID__Req_EapClearPassword = 368,
+  /*
+   *0x171
+   */
+  RPC_ID__Req_EapSetNewPassword = 369,
+  /*
+   *0x172
+   */
+  RPC_ID__Req_EapClearNewPassword = 370,
+  /*
+   *0x173
+   */
+  RPC_ID__Req_EapSetCaCert = 371,
+  /*
+   *0x174
+   */
+  RPC_ID__Req_EapClearCaCert = 372,
+  /*
+   *0x175
+   */
+  RPC_ID__Req_EapSetCertificateAndKey = 373,
+  /*
+   *0x176
+   */
+  RPC_ID__Req_EapClearCertificateAndKey = 374,
+  /*
+   *0x177
+   */
+  RPC_ID__Req_EapGetDisableTimeCheck = 375,
+  /*
+   *0x178
+   */
+  RPC_ID__Req_EapSetTtlsPhase2Method = 376,
+  /*
+   *0x179
+   */
+  RPC_ID__Req_EapSetSuitebCertification = 377,
+  /*
+   *0x17A
+   */
+  RPC_ID__Req_EapSetPacFile = 378,
+  /*
+   *0x17B
+   */
+  RPC_ID__Req_EapSetFastParams = 379,
+  /*
+   *0x17C
+   */
+  RPC_ID__Req_EapUseDefaultCertBundle = 380,
+  /*
+   *0x17D
+   */
+  RPC_ID__Req_WifiSetOkcSupport = 381,
+  /*
+   *0x17E
+   */
+  RPC_ID__Req_EapSetDomainName = 382,
+  /*
+   *0x17F
+   */
+  RPC_ID__Req_EapSetDisableTimeCheck = 383,
+  /*
+   *0x180
+   */
+  RPC_ID__Req_EapSetEapMethods = 384,
+  /*
+   *0x181
+   */
+  RPC_ID__Req_IfaceMacAddrSetGet = 385,
+  /*
+   *0x182
+   */
+  RPC_ID__Req_IfaceMacAddrLenGet = 386,
+  /*
+   * Common RPC to handle simple feature control with one optional parameter
+   * Supported Features:
+   * - BT Init/Deinit/Enable/Disable
+   */
+  /*
+   *0x183
+   */
+  RPC_ID__Req_FeatureControl = 387,
+  /*
+   * 0x184
+   */
+  RPC_ID__Req_GpioConfig = 388,
+  /*
+   * 0x185
+   */
+  RPC_ID__Req_GpioResetPin = 389,
+  /*
+   * 0x186
+   */
+  RPC_ID__Req_GpioSetLevel = 390,
+  /*
+   * 0x187
+   */
+  RPC_ID__Req_GpioGetLevel = 391,
+  /*
+   * 0x188
+   */
+  RPC_ID__Req_GpioSetDirection = 392,
+  /*
+   * 0x189
+   */
+  RPC_ID__Req_GpioInputEnable = 393,
+  /*
+   * 0x18A
+   */
+  RPC_ID__Req_GpioSetPullMode = 394,
   /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   *0x170
+   *0x18B
    */
-  RPC_ID__Req_Max = 368,
+  RPC_ID__Req_Max = 395,
   /*
    ** Response Msgs *
    */
@@ -708,6 +960,18 @@ typedef enum _RpcId {
   RPC_ID__Resp_SetMacAddress = 514,
   RPC_ID__Resp_GetWifiMode = 515,
   RPC_ID__Resp_SetWifiMode = 516,
+  RPC_ID__Resp_SuppDppInit = 517,
+  RPC_ID__Resp_SuppDppDeinit = 518,
+  RPC_ID__Resp_SuppDppBootstrapGen = 519,
+  RPC_ID__Resp_SuppDppStartListen = 520,
+  RPC_ID__Resp_SuppDppStopListen = 521,
+  /*
+   *Resp_SetSoftAPVendorSpecificIE    = 522;
+   *Resp_StartSoftAP                  = 523;
+   *Resp_GetSoftAPConnectedSTAList    = 524;
+   *Resp_StopSoftAP                   = 525;
+   */
+  RPC_ID__Resp_OTAActivate = 522,
   RPC_ID__Resp_WifiSetPs = 526,
   RPC_ID__Resp_WifiGetPs = 527,
   RPC_ID__Resp_OTABegin = 528,
@@ -810,18 +1074,38 @@ typedef enum _RpcId {
   RPC_ID__Resp_WifiStaItwtGetFlowIdStatus = 614,
   RPC_ID__Resp_WifiStaItwtSendProbeReq = 615,
   RPC_ID__Resp_WifiStaItwtSetTargetWakeTimeOffset = 616,
-  RPC_ID__Resp_GpioConfig = 617,
-  RPC_ID__Resp_GpioResetPin = 618,
-  RPC_ID__Resp_GpioSetLevel = 619,
-  RPC_ID__Resp_GpioGetLevel = 620,
-  RPC_ID__Resp_GpioSetDirection = 621,
-  RPC_ID__Resp_GpioInputEnable = 622,
-  RPC_ID__Resp_GpioSetPullMode = 623,
+  RPC_ID__Resp_WifiStaEnterpriseEnable = 617,
+  RPC_ID__Resp_WifiStaEnterpriseDisable = 618,
+  RPC_ID__Resp_EapSetIdentity = 619,
+  RPC_ID__Resp_EapClearIdentity = 620,
+  RPC_ID__Resp_EapSetUsername = 621,
+  RPC_ID__Resp_EapClearUsername = 622,
+  RPC_ID__Resp_EapSetPassword = 623,
+  RPC_ID__Resp_EapClearPassword = 624,
+  RPC_ID__Resp_EapSetNewPassword = 625,
+  RPC_ID__Resp_EapClearNewPassword = 626,
+  RPC_ID__Resp_EapSetCaCert = 627,
+  RPC_ID__Resp_EapClearCaCert = 628,
+  RPC_ID__Resp_EapSetCertificateAndKey = 629,
+  RPC_ID__Resp_EapClearCertificateAndKey = 630,
+  RPC_ID__Resp_EapGetDisableTimeCheck = 631,
+  RPC_ID__Resp_EapSetTtlsPhase2Method = 632,
+  RPC_ID__Resp_EapSetSuitebCertification = 633,
+  RPC_ID__Resp_EapSetPacFile = 634,
+  RPC_ID__Resp_EapSetFastParams = 635,
+  RPC_ID__Resp_EapUseDefaultCertBundle = 636,
+  RPC_ID__Resp_WifiSetOkcSupport = 637,
+  RPC_ID__Resp_EapSetDomainName = 638,
+  RPC_ID__Resp_EapSetDisableTimeCheck = 639,
+  RPC_ID__Resp_EapSetEapMethods = 640,
+  RPC_ID__Resp_IfaceMacAddrSetGet = 641,
+  RPC_ID__Resp_IfaceMacAddrLenGet = 642,
+  RPC_ID__Resp_FeatureControl = 643,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 624,
+  RPC_ID__Resp_Max = 644,
   /*
    ** Event Msgs *
    */
@@ -840,10 +1124,29 @@ typedef enum _RpcId {
   RPC_ID__Event_StaItwtSuspend = 780,
   RPC_ID__Event_StaItwtProbe = 781,
   /*
+   * Supplicant DPP Events received by dpp callback on host
+   */
+  RPC_ID__Event_SuppDppUriReady = 782,
+  RPC_ID__Event_SuppDppCfgRecvd = 783,
+  RPC_ID__Event_SuppDppFail = 784,
+  /*
+   * Wifi DPP Events
+   */
+  RPC_ID__Event_WifiDppUriReady = 785,
+  RPC_ID__Event_WifiDppCfgRecvd = 786,
+  RPC_ID__Event_WifiDppFail = 787,
+  RPC_ID__Resp_GpioConfig = 788,
+  RPC_ID__Resp_GpioResetPin = 789,
+  RPC_ID__Resp_GpioSetLevel = 790,
+  RPC_ID__Resp_GpioGetLevel = 791,
+  RPC_ID__Resp_GpioSetDirection = 792,
+  RPC_ID__Resp_GpioInputEnable = 793,
+  RPC_ID__Resp_GpioSetPullMode = 794,
+  /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  RPC_ID__Event_Max = 782
+  RPC_ID__Event_Max = 795
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_ID)
 } RpcId;
 typedef enum _RpcGpioMode {
@@ -2262,6 +2565,27 @@ struct  ConnectedSTAList
     , {0,NULL}, 0 }
 
 
+struct  EapFastConfig
+{
+  ProtobufCMessage base;
+  /*
+   * Enable or disable Fast Provisioning in EAP-FAST (0 = disabled, 1 = enabled)
+   */
+  int32_t fast_provisioning;
+  /*
+   * Maximum length of the PAC (Protected Access Credential) list
+   */
+  int32_t fast_max_pac_list_len;
+  /*
+   * Set to true for binary format PAC, false for ASCII format PAC
+   */
+  protobuf_c_boolean fast_pac_format_binary;
+};
+#define EAP_FAST_CONFIG__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&eap_fast_config__descriptor) \
+    , 0, 0, 0 }
+
+
 /*
  ** Req/Resp structure *
  */
@@ -2442,6 +2766,25 @@ struct  RpcRespOTAEnd
 };
 #define RPC__RESP__OTAEND__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__otaend__descriptor) \
+    , 0 }
+
+
+struct  RpcReqOTAActivate
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__OTAACTIVATE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__otaactivate__descriptor) \
+     }
+
+
+struct  RpcRespOTAActivate
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__OTAACTIVATE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__otaactivate__descriptor) \
     , 0 }
 
 
@@ -3624,6 +3967,196 @@ struct  RpcRespGetDhcpDnsStatus
     , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0, 0 }
 
 
+struct  RpcReqSuppDppInit
+{
+  ProtobufCMessage base;
+  /*
+   * enables sending of Event_SuppDpp to host via callback
+   */
+  protobuf_c_boolean cb;
+};
+#define RPC__REQ__SUPP_DPP_INIT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__supp_dpp_init__descriptor) \
+    , 0 }
+
+
+struct  RpcRespSuppDppInit
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__SUPP_DPP_INIT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__supp_dpp_init__descriptor) \
+    , 0 }
+
+
+struct  RpcReqSuppDppDeinit
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__SUPP_DPP_DEINIT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__supp_dpp_deinit__descriptor) \
+     }
+
+
+struct  RpcRespSuppDppDeinit
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__SUPP_DPP_DEINIT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__supp_dpp_deinit__descriptor) \
+    , 0 }
+
+
+struct  RpcReqSuppDppBootstrapGen
+{
+  ProtobufCMessage base;
+  /*
+   * DPP Bootstrapping listen channels separated by commas
+   */
+  ProtobufCBinaryData chan_list;
+  /*
+   * Bootstrap method type, only QR Code method is supported for now.
+   */
+  int32_t type;
+  /*
+   * (Optional) 32 byte Raw Private Key for generating a Bootstrapping Public Key
+   */
+  ProtobufCBinaryData key;
+  /*
+   * (Optional) Ancillary Device Information like Serial Number
+   */
+  ProtobufCBinaryData info;
+};
+#define RPC__REQ__SUPP_DPP_BOOTSTRAP_GEN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__supp_dpp_bootstrap_gen__descriptor) \
+    , {0,NULL}, 0, {0,NULL}, {0,NULL} }
+
+
+struct  RpcRespSuppDppBootstrapGen
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__SUPP_DPP_BOOTSTRAP_GEN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__supp_dpp_bootstrap_gen__descriptor) \
+    , 0 }
+
+
+struct  RpcReqSuppDppStartListen
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__SUPP_DPP_START_LISTEN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__supp_dpp_start_listen__descriptor) \
+     }
+
+
+struct  RpcRespSuppDppStartListen
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__SUPP_DPP_START_LISTEN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__supp_dpp_start_listen__descriptor) \
+    , 0 }
+
+
+struct  RpcReqSuppDppStopListen
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__SUPP_DPP_STOP_LISTEN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__supp_dpp_stop_listen__descriptor) \
+     }
+
+
+struct  RpcRespSuppDppStopListen
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__SUPP_DPP_STOP_LISTEN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__supp_dpp_stop_listen__descriptor) \
+    , 0 }
+
+
+struct  RpcReqIfaceMacAddrSetGet
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean set;
+  uint32_t type;
+  /*
+   * only valid for set
+   */
+  ProtobufCBinaryData mac;
+};
+#define RPC__REQ__IFACE_MAC_ADDR_SET_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__iface_mac_addr_set_get__descriptor) \
+    , 0, 0, {0,NULL} }
+
+
+struct  RpcRespIfaceMacAddrSetGet
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  protobuf_c_boolean set;
+  uint32_t type;
+  ProtobufCBinaryData mac;
+};
+#define RPC__RESP__IFACE_MAC_ADDR_SET_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__iface_mac_addr_set_get__descriptor) \
+    , 0, 0, 0, {0,NULL} }
+
+
+struct  RpcReqIfaceMacAddrLenGet
+{
+  ProtobufCMessage base;
+  uint32_t type;
+};
+#define RPC__REQ__IFACE_MAC_ADDR_LEN_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__iface_mac_addr_len_get__descriptor) \
+    , 0 }
+
+
+struct  RpcRespIfaceMacAddrLenGet
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  uint32_t type;
+  uint32_t len;
+};
+#define RPC__RESP__IFACE_MAC_ADDR_LEN_GET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__iface_mac_addr_len_get__descriptor) \
+    , 0, 0, 0 }
+
+
+struct  RpcReqFeatureControl
+{
+  ProtobufCMessage base;
+  RpcFeature feature;
+  RpcFeatureCommand command;
+  RpcFeatureOption option;
+};
+#define RPC__REQ__FEATURE_CONTROL__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__feature_control__descriptor) \
+    , RPC_FEATURE__Feature_None, RPC_FEATURE_COMMAND__Feature_Command_None, RPC_FEATURE_OPTION__Feature_Option_None }
+
+
+struct  RpcRespFeatureControl
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  RpcFeature feature;
+  RpcFeatureCommand command;
+  RpcFeatureOption option;
+};
+#define RPC__RESP__FEATURE_CONTROL__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__feature_control__descriptor) \
+    , 0, RPC_FEATURE__Feature_None, RPC_FEATURE_COMMAND__Feature_Command_None, RPC_FEATURE_OPTION__Feature_Option_None }
+
+
 struct  RpcEventWifiEventNoArgs
 {
   ProtobufCMessage base;
@@ -3713,6 +4246,641 @@ struct  RpcEventStaDisconnected
 #define RPC__EVENT__STA_DISCONNECTED__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_disconnected__descriptor) \
     , 0, NULL }
+
+
+struct  RpcEventDhcpDnsStatus
+{
+  ProtobufCMessage base;
+  int32_t iface;
+  int32_t net_link_up;
+  int32_t dhcp_up;
+  ProtobufCBinaryData dhcp_ip;
+  ProtobufCBinaryData dhcp_nm;
+  ProtobufCBinaryData dhcp_gw;
+  int32_t dns_up;
+  ProtobufCBinaryData dns_ip;
+  int32_t dns_type;
+  int32_t resp;
+};
+#define RPC__EVENT__DHCP_DNS_STATUS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__dhcp_dns_status__descriptor) \
+    , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0, 0 }
+
+
+struct  RpcEventStaItwtSetup
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  WifiItwtSetupConfig *config;
+  int32_t status;
+  uint32_t reason;
+  uint64_t target_wake_time;
+};
+#define RPC__EVENT__STA_ITWT_SETUP__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_setup__descriptor) \
+    , 0, NULL, 0, 0, 0 }
+
+
+struct  RpcEventStaItwtTeardown
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  uint32_t flow_id;
+  uint32_t status;
+};
+#define RPC__EVENT__STA_ITWT_TEARDOWN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_teardown__descriptor) \
+    , 0, 0, 0 }
+
+
+struct  RpcEventStaItwtSuspend
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  int32_t status;
+  uint32_t flow_id_bitmap;
+  /*
+   * represents uint32_t actual_suspend_time_ms[]
+   */
+  size_t n_actual_suspend_time_ms;
+  uint32_t *actual_suspend_time_ms;
+};
+#define RPC__EVENT__STA_ITWT_SUSPEND__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_suspend__descriptor) \
+    , 0, 0, 0, 0,NULL }
+
+
+struct  RpcEventStaItwtProbe
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  int32_t status;
+  uint32_t reason;
+};
+#define RPC__EVENT__STA_ITWT_PROBE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_probe__descriptor) \
+    , 0, 0, 0 }
+
+
+struct  RpcReqWifiStaEnterpriseEnable
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__WIFI_STA_ENTERPRISE_ENABLE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_enterprise_enable__descriptor) \
+     }
+
+
+struct  RpcRespWifiStaEnterpriseEnable
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_ENTERPRISE_ENABLE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_enterprise_enable__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiStaEnterpriseDisable
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__WIFI_STA_ENTERPRISE_DISABLE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_sta_enterprise_disable__descriptor) \
+     }
+
+
+struct  RpcRespWifiStaEnterpriseDisable
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_STA_ENTERPRISE_DISABLE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_sta_enterprise_disable__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetIdentity
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData identity;
+  int32_t len;
+};
+#define RPC__REQ__EAP_SET_IDENTITY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_identity__descriptor) \
+    , {0,NULL}, 0 }
+
+
+struct  RpcRespEapSetIdentity
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_IDENTITY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_identity__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapClearIdentity
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__EAP_CLEAR_IDENTITY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_clear_identity__descriptor) \
+     }
+
+
+struct  RpcRespEapClearIdentity
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_CLEAR_IDENTITY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_clear_identity__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetUsername
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData username;
+  int32_t len;
+};
+#define RPC__REQ__EAP_SET_USERNAME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_username__descriptor) \
+    , {0,NULL}, 0 }
+
+
+struct  RpcRespEapSetUsername
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_USERNAME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_username__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapClearUsername
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__EAP_CLEAR_USERNAME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_clear_username__descriptor) \
+     }
+
+
+struct  RpcRespEapClearUsername
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_CLEAR_USERNAME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_clear_username__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetPassword
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData password;
+  int32_t len;
+};
+#define RPC__REQ__EAP_SET_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_password__descriptor) \
+    , {0,NULL}, 0 }
+
+
+struct  RpcRespEapSetPassword
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_password__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapClearPassword
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__EAP_CLEAR_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_clear_password__descriptor) \
+     }
+
+
+struct  RpcRespEapClearPassword
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_CLEAR_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_clear_password__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetNewPassword
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData new_password;
+  int32_t len;
+};
+#define RPC__REQ__EAP_SET_NEW_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_new_password__descriptor) \
+    , {0,NULL}, 0 }
+
+
+struct  RpcRespEapSetNewPassword
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_NEW_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_new_password__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapClearNewPassword
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__EAP_CLEAR_NEW_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_clear_new_password__descriptor) \
+     }
+
+
+struct  RpcRespEapClearNewPassword
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_CLEAR_NEW_PASSWORD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_clear_new_password__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetCaCert
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData ca_cert;
+  int32_t ca_cert_len;
+};
+#define RPC__REQ__EAP_SET_CA_CERT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_ca_cert__descriptor) \
+    , {0,NULL}, 0 }
+
+
+struct  RpcRespEapSetCaCert
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_CA_CERT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_ca_cert__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapClearCaCert
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__EAP_CLEAR_CA_CERT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_clear_ca_cert__descriptor) \
+     }
+
+
+struct  RpcRespEapClearCaCert
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_CLEAR_CA_CERT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_clear_ca_cert__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetCertificateAndKey
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData client_cert;
+  int32_t client_cert_len;
+  ProtobufCBinaryData private_key;
+  int32_t private_key_len;
+  ProtobufCBinaryData private_key_password;
+  int32_t private_key_passwd_len;
+};
+#define RPC__REQ__EAP_SET_CERTIFICATE_AND_KEY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_certificate_and_key__descriptor) \
+    , {0,NULL}, 0, {0,NULL}, 0, {0,NULL}, 0 }
+
+
+struct  RpcRespEapSetCertificateAndKey
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_CERTIFICATE_AND_KEY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_certificate_and_key__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapClearCertificateAndKey
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__EAP_CLEAR_CERTIFICATE_AND_KEY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_clear_certificate_and_key__descriptor) \
+     }
+
+
+struct  RpcRespEapClearCertificateAndKey
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_CLEAR_CERTIFICATE_AND_KEY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_clear_certificate_and_key__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetDisableTimeCheck
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean disable;
+};
+#define RPC__REQ__EAP_SET_DISABLE_TIME_CHECK__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_disable_time_check__descriptor) \
+    , 0 }
+
+
+struct  RpcRespEapSetDisableTimeCheck
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_DISABLE_TIME_CHECK__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_disable_time_check__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapGetDisableTimeCheck
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__EAP_GET_DISABLE_TIME_CHECK__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_get_disable_time_check__descriptor) \
+     }
+
+
+struct  RpcRespEapGetDisableTimeCheck
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  protobuf_c_boolean disable;
+};
+#define RPC__RESP__EAP_GET_DISABLE_TIME_CHECK__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_get_disable_time_check__descriptor) \
+    , 0, 0 }
+
+
+struct  RpcReqEapSetTtlsPhase2Method
+{
+  ProtobufCMessage base;
+  int32_t type;
+};
+#define RPC__REQ__EAP_SET_TTLS_PHASE2_METHOD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_ttls_phase2_method__descriptor) \
+    , 0 }
+
+
+struct  RpcRespEapSetTtlsPhase2Method
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_TTLS_PHASE2_METHOD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_ttls_phase2_method__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetSuiteb192bitCertification
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean enable;
+};
+#define RPC__REQ__EAP_SET_SUITEB192BIT_CERTIFICATION__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_suiteb192bit_certification__descriptor) \
+    , 0 }
+
+
+struct  RpcRespEapSetSuiteb192bitCertification
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_SUITEB192BIT_CERTIFICATION__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_suiteb192bit_certification__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetPacFile
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData pac_file;
+  int32_t pac_file_len;
+};
+#define RPC__REQ__EAP_SET_PAC_FILE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_pac_file__descriptor) \
+    , {0,NULL}, 0 }
+
+
+struct  RpcRespEapSetPacFile
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_PAC_FILE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_pac_file__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetFastParams
+{
+  ProtobufCMessage base;
+  EapFastConfig *eap_fast_config;
+};
+#define RPC__REQ__EAP_SET_FAST_PARAMS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_fast_params__descriptor) \
+    , NULL }
+
+
+struct  RpcRespEapSetFastParams
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_FAST_PARAMS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_fast_params__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapUseDefaultCertBundle
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean use_default_bundle;
+};
+#define RPC__REQ__EAP_USE_DEFAULT_CERT_BUNDLE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_use_default_cert_bundle__descriptor) \
+    , 0 }
+
+
+struct  RpcRespEapUseDefaultCertBundle
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_USE_DEFAULT_CERT_BUNDLE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_use_default_cert_bundle__descriptor) \
+    , 0 }
+
+
+struct  RpcReqWifiSetOkcSupport
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean enable;
+};
+#define RPC__REQ__WIFI_SET_OKC_SUPPORT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_set_okc_support__descriptor) \
+    , 0 }
+
+
+struct  RpcRespWifiSetOkcSupport
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_SET_OKC_SUPPORT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_set_okc_support__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetDomainName
+{
+  ProtobufCMessage base;
+  ProtobufCBinaryData domain_name;
+};
+#define RPC__REQ__EAP_SET_DOMAIN_NAME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_domain_name__descriptor) \
+    , {0,NULL} }
+
+
+struct  RpcRespEapSetDomainName
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_DOMAIN_NAME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_domain_name__descriptor) \
+    , 0 }
+
+
+struct  RpcReqEapSetEapMethods
+{
+  ProtobufCMessage base;
+  int32_t methods;
+};
+#define RPC__REQ__EAP_SET_EAP_METHODS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__eap_set_eap_methods__descriptor) \
+    , 0 }
+
+
+struct  RpcRespEapSetEapMethods
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EAP_SET_EAP_METHODS__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__eap_set_eap_methods__descriptor) \
+    , 0 }
+
+
+struct  RpcEventSuppDppUriReady
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  /*
+   * QR Code to configure the enrollee
+   */
+  ProtobufCBinaryData qrcode;
+};
+#define RPC__EVENT__SUPP_DPP_URI_READY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__supp_dpp_uri_ready__descriptor) \
+    , 0, {0,NULL} }
+
+
+struct  RpcEventSuppDppCfgRecvd
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  WifiConfig *cfg;
+};
+#define RPC__EVENT__SUPP_DPP_CFG_RECVD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__supp_dpp_cfg_recvd__descriptor) \
+    , 0, NULL }
+
+
+struct  RpcEventSuppDppFail
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  /*
+   * failure reason
+   */
+  int32_t reason;
+};
+#define RPC__EVENT__SUPP_DPP_FAIL__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__supp_dpp_fail__descriptor) \
+    , 0, 0 }
+
+
+struct  RpcEventWifiDppUriReady
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  /*
+   * QR Code to configure the enrollee
+   */
+  ProtobufCBinaryData qrcode;
+};
+#define RPC__EVENT__WIFI_DPP_URI_READY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__wifi_dpp_uri_ready__descriptor) \
+    , 0, {0,NULL} }
+
+
+struct  RpcEventWifiDppCfgRecvd
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  WifiConfig *cfg;
+};
+#define RPC__EVENT__WIFI_DPP_CFG_RECVD__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__wifi_dpp_cfg_recvd__descriptor) \
+    , 0, NULL }
+
+
+struct  RpcEventWifiDppFail
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  /*
+   * failure reason
+   */
+  int32_t reason;
+};
+#define RPC__EVENT__WIFI_DPP_FAIL__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__wifi_dpp_fail__descriptor) \
+    , 0, 0 }
 
 
 struct  RpcGpioConfig
@@ -3876,86 +5044,18 @@ struct  RpcRespGpioSetPullMode
     , 0 }
 
 
-struct  RpcEventDhcpDnsStatus
-{
-  ProtobufCMessage base;
-  int32_t iface;
-  int32_t net_link_up;
-  int32_t dhcp_up;
-  ProtobufCBinaryData dhcp_ip;
-  ProtobufCBinaryData dhcp_nm;
-  ProtobufCBinaryData dhcp_gw;
-  int32_t dns_up;
-  ProtobufCBinaryData dns_ip;
-  int32_t dns_type;
-  int32_t resp;
-};
-#define RPC__EVENT__DHCP_DNS_STATUS__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&rpc__event__dhcp_dns_status__descriptor) \
-    , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0, 0 }
-
-
-struct  RpcEventStaItwtSetup
-{
-  ProtobufCMessage base;
-  int32_t resp;
-  WifiItwtSetupConfig *config;
-  int32_t status;
-  uint32_t reason;
-  uint64_t target_wake_time;
-};
-#define RPC__EVENT__STA_ITWT_SETUP__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_setup__descriptor) \
-    , 0, NULL, 0, 0, 0 }
-
-
-struct  RpcEventStaItwtTeardown
-{
-  ProtobufCMessage base;
-  int32_t resp;
-  uint32_t flow_id;
-  uint32_t status;
-};
-#define RPC__EVENT__STA_ITWT_TEARDOWN__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_teardown__descriptor) \
-    , 0, 0, 0 }
-
-
-struct  RpcEventStaItwtSuspend
-{
-  ProtobufCMessage base;
-  int32_t resp;
-  int32_t status;
-  uint32_t flow_id_bitmap;
-  /*
-   * represents uint32_t actual_suspend_time_ms[]
-   */
-  size_t n_actual_suspend_time_ms;
-  uint32_t *actual_suspend_time_ms;
-};
-#define RPC__EVENT__STA_ITWT_SUSPEND__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_suspend__descriptor) \
-    , 0, 0, 0, 0,NULL }
-
-
-struct  RpcEventStaItwtProbe
-{
-  ProtobufCMessage base;
-  int32_t resp;
-  int32_t status;
-  uint32_t reason;
-};
-#define RPC__EVENT__STA_ITWT_PROBE__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&rpc__event__sta_itwt_probe__descriptor) \
-    , 0, 0, 0 }
-
-
 typedef enum {
   RPC__PAYLOAD__NOT_SET = 0,
   RPC__PAYLOAD_REQ_GET_MAC_ADDRESS = 257,
   RPC__PAYLOAD_REQ_SET_MAC_ADDRESS = 258,
   RPC__PAYLOAD_REQ_GET_WIFI_MODE = 259,
   RPC__PAYLOAD_REQ_SET_WIFI_MODE = 260,
+  RPC__PAYLOAD_REQ_SUPP_DPP_INIT = 261,
+  RPC__PAYLOAD_REQ_SUPP_DPP_DEINIT = 262,
+  RPC__PAYLOAD_REQ_SUPP_DPP_BOOTSTRAP_GEN = 263,
+  RPC__PAYLOAD_REQ_SUPP_DPP_START_LISTEN = 264,
+  RPC__PAYLOAD_REQ_SUPP_DPP_STOP_LISTEN = 265,
+  RPC__PAYLOAD_REQ_OTA_ACTIVATE = 266,
   RPC__PAYLOAD_REQ_WIFI_SET_PS = 270,
   RPC__PAYLOAD_REQ_WIFI_GET_PS = 271,
   RPC__PAYLOAD_REQ_OTA_BEGIN = 272,
@@ -4018,17 +5118,50 @@ typedef enum {
   RPC__PAYLOAD_REQ_WIFI_STA_ITWT_GET_FLOW_ID_STATUS = 358,
   RPC__PAYLOAD_REQ_WIFI_STA_ITWT_SEND_PROBE_REQ = 359,
   RPC__PAYLOAD_REQ_WIFI_STA_ITWT_SET_TARGET_WAKE_TIME_OFFSET = 360,
-  RPC__PAYLOAD_REQ_GPIO_CONFIG = 361,
-  RPC__PAYLOAD_REQ_GPIO_RESET = 362,
-  RPC__PAYLOAD_REQ_GPIO_SET_LEVEL = 363,
-  RPC__PAYLOAD_REQ_GPIO_GET_LEVEL = 364,
-  RPC__PAYLOAD_REQ_GPIO_SET_DIRECTION = 365,
-  RPC__PAYLOAD_REQ_GPIO_INPUT_ENABLE = 366,
-  RPC__PAYLOAD_REQ_GPIO_SET_PULL_MODE = 367,
+  RPC__PAYLOAD_REQ_WIFI_STA_ENTERPRISE_ENABLE = 361,
+  RPC__PAYLOAD_REQ_WIFI_STA_ENTERPRISE_DISABLE = 362,
+  RPC__PAYLOAD_REQ_EAP_SET_IDENTITY = 363,
+  RPC__PAYLOAD_REQ_EAP_CLEAR_IDENTITY = 364,
+  RPC__PAYLOAD_REQ_EAP_SET_USERNAME = 365,
+  RPC__PAYLOAD_REQ_EAP_CLEAR_USERNAME = 366,
+  RPC__PAYLOAD_REQ_EAP_SET_PASSWORD = 367,
+  RPC__PAYLOAD_REQ_EAP_CLEAR_PASSWORD = 368,
+  RPC__PAYLOAD_REQ_EAP_SET_NEW_PASSWORD = 369,
+  RPC__PAYLOAD_REQ_EAP_CLEAR_NEW_PASSWORD = 370,
+  RPC__PAYLOAD_REQ_EAP_SET_CA_CERT = 371,
+  RPC__PAYLOAD_REQ_EAP_CLEAR_CA_CERT = 372,
+  RPC__PAYLOAD_REQ_EAP_SET_CERTIFICATE_AND_KEY = 373,
+  RPC__PAYLOAD_REQ_EAP_CLEAR_CERTIFICATE_AND_KEY = 374,
+  RPC__PAYLOAD_REQ_EAP_GET_DISABLE_TIME_CHECK = 375,
+  RPC__PAYLOAD_REQ_EAP_SET_TTLS_PHASE2_METHOD = 376,
+  RPC__PAYLOAD_REQ_EAP_SET_SUITEB_CERTIFICATION = 377,
+  RPC__PAYLOAD_REQ_EAP_SET_PAC_FILE = 378,
+  RPC__PAYLOAD_REQ_EAP_SET_FAST_PARAMS = 379,
+  RPC__PAYLOAD_REQ_EAP_USE_DEFAULT_CERT_BUNDLE = 380,
+  RPC__PAYLOAD_REQ_WIFI_SET_OKC_SUPPORT = 381,
+  RPC__PAYLOAD_REQ_EAP_SET_DOMAIN_NAME = 382,
+  RPC__PAYLOAD_REQ_EAP_SET_DISABLE_TIME_CHECK = 383,
+  RPC__PAYLOAD_REQ_EAP_SET_EAP_METHODS = 384,
+  RPC__PAYLOAD_REQ_IFACE_MAC_ADDR_SET_GET = 385,
+  RPC__PAYLOAD_REQ_IFACE_MAC_ADDR_LEN_GET = 386,
+  RPC__PAYLOAD_REQ_FEATURE_CONTROL = 387,
+  RPC__PAYLOAD_REQ_GPIO_CONFIG = 388,
+  RPC__PAYLOAD_REQ_GPIO_RESET = 389,
+  RPC__PAYLOAD_REQ_GPIO_SET_LEVEL = 390,
+  RPC__PAYLOAD_REQ_GPIO_GET_LEVEL = 391,
+  RPC__PAYLOAD_REQ_GPIO_SET_DIRECTION = 392,
+  RPC__PAYLOAD_REQ_GPIO_INPUT_ENABLE = 393,
+  RPC__PAYLOAD_REQ_GPIO_SET_PULL_MODE = 394,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
   RPC__PAYLOAD_RESP_SET_WIFI_MODE = 516,
+  RPC__PAYLOAD_RESP_SUPP_DPP_INIT = 517,
+  RPC__PAYLOAD_RESP_SUPP_DPP_DEINIT = 518,
+  RPC__PAYLOAD_RESP_SUPP_DPP_BOOTSTRAP_GEN = 519,
+  RPC__PAYLOAD_RESP_SUPP_DPP_START_LISTEN = 520,
+  RPC__PAYLOAD_RESP_SUPP_DPP_STOP_LISTEN = 521,
+  RPC__PAYLOAD_RESP_OTA_ACTIVATE = 522,
   RPC__PAYLOAD_RESP_WIFI_SET_PS = 526,
   RPC__PAYLOAD_RESP_WIFI_GET_PS = 527,
   RPC__PAYLOAD_RESP_OTA_BEGIN = 528,
@@ -4091,13 +5224,40 @@ typedef enum {
   RPC__PAYLOAD_RESP_WIFI_STA_ITWT_GET_FLOW_ID_STATUS = 614,
   RPC__PAYLOAD_RESP_WIFI_STA_ITWT_SEND_PROBE_REQ = 615,
   RPC__PAYLOAD_RESP_WIFI_STA_ITWT_SET_TARGET_WAKE_TIME_OFFSET = 616,
-  RPC__PAYLOAD_RESP_GPIO_CONFIG = 617,
-  RPC__PAYLOAD_RESP_GPIO_RESET = 618,
-  RPC__PAYLOAD_RESP_GPIO_SET_LEVEL = 629,
-  RPC__PAYLOAD_RESP_GPIO_GET_LEVEL = 620,
-  RPC__PAYLOAD_RESP_GPIO_SET_DIRECTION = 621,
-  RPC__PAYLOAD_RESP_GPIO_INPUT_ENABLE = 622,
-  RPC__PAYLOAD_RESP_GPIO_SET_PULL_MODE = 623,
+  RPC__PAYLOAD_RESP_WIFI_STA_ENTERPRISE_ENABLE = 617,
+  RPC__PAYLOAD_RESP_WIFI_STA_ENTERPRISE_DISABLE = 618,
+  RPC__PAYLOAD_RESP_EAP_SET_IDENTITY = 619,
+  RPC__PAYLOAD_RESP_EAP_CLEAR_IDENTITY = 620,
+  RPC__PAYLOAD_RESP_EAP_SET_USERNAME = 621,
+  RPC__PAYLOAD_RESP_EAP_CLEAR_USERNAME = 622,
+  RPC__PAYLOAD_RESP_EAP_SET_PASSWORD = 623,
+  RPC__PAYLOAD_RESP_EAP_CLEAR_PASSWORD = 624,
+  RPC__PAYLOAD_RESP_EAP_SET_NEW_PASSWORD = 625,
+  RPC__PAYLOAD_RESP_EAP_CLEAR_NEW_PASSWORD = 626,
+  RPC__PAYLOAD_RESP_EAP_SET_CA_CERT = 627,
+  RPC__PAYLOAD_RESP_EAP_CLEAR_CA_CERT = 628,
+  RPC__PAYLOAD_RESP_EAP_SET_CERTIFICATE_AND_KEY = 629,
+  RPC__PAYLOAD_RESP_EAP_CLEAR_CERTIFICATE_AND_KEY = 630,
+  RPC__PAYLOAD_RESP_EAP_GET_DISABLE_TIME_CHECK = 631,
+  RPC__PAYLOAD_RESP_EAP_SET_TTLS_PHASE2_METHOD = 632,
+  RPC__PAYLOAD_RESP_EAP_SET_SUITEB_CERTIFICATION = 633,
+  RPC__PAYLOAD_RESP_EAP_SET_PAC_FILE = 634,
+  RPC__PAYLOAD_RESP_EAP_SET_FAST_PARAMS = 635,
+  RPC__PAYLOAD_RESP_EAP_USE_DEFAULT_CERT_BUNDLE = 636,
+  RPC__PAYLOAD_RESP_WIFI_SET_OKC_SUPPORT = 637,
+  RPC__PAYLOAD_RESP_EAP_SET_DOMAIN_NAME = 638,
+  RPC__PAYLOAD_RESP_EAP_SET_DISABLE_TIME_CHECK = 639,
+  RPC__PAYLOAD_RESP_EAP_SET_EAP_METHODS = 640,
+  RPC__PAYLOAD_RESP_IFACE_MAC_ADDR_SET_GET = 641,
+  RPC__PAYLOAD_RESP_IFACE_MAC_ADDR_LEN_GET = 642,
+  RPC__PAYLOAD_RESP_FEATURE_CONTROL = 643,
+  RPC__PAYLOAD_RESP_GPIO_CONFIG = 644,
+  RPC__PAYLOAD_RESP_GPIO_RESET = 645,
+  RPC__PAYLOAD_RESP_GPIO_SET_LEVEL = 646,
+  RPC__PAYLOAD_RESP_GPIO_GET_LEVEL = 647,
+  RPC__PAYLOAD_RESP_GPIO_SET_DIRECTION = 648,
+  RPC__PAYLOAD_RESP_GPIO_INPUT_ENABLE = 649,
+  RPC__PAYLOAD_RESP_GPIO_SET_PULL_MODE = 650,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -4110,7 +5270,13 @@ typedef enum {
   RPC__PAYLOAD_EVENT_STA_ITWT_SETUP = 778,
   RPC__PAYLOAD_EVENT_STA_ITWT_TEARDOWN = 779,
   RPC__PAYLOAD_EVENT_STA_ITWT_SUSPEND = 780,
-  RPC__PAYLOAD_EVENT_STA_ITWT_PROBE = 781
+  RPC__PAYLOAD_EVENT_STA_ITWT_PROBE = 781,
+  RPC__PAYLOAD_EVENT_SUPP_DPP_URI_READY = 782,
+  RPC__PAYLOAD_EVENT_SUPP_DPP_CFG_RECVD = 783,
+  RPC__PAYLOAD_EVENT_SUPP_DPP_FAIL = 784,
+  RPC__PAYLOAD_EVENT_WIFI_DPP_URI_READY = 785,
+  RPC__PAYLOAD_EVENT_WIFI_DPP_CFG_RECVD = 786,
+  RPC__PAYLOAD_EVENT_WIFI_DPP_FAIL = 787
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC__PAYLOAD__CASE)
 } Rpc__PayloadCase;
 
@@ -4138,6 +5304,17 @@ struct  Rpc
     RpcReqSetMacAddress *req_set_mac_address;
     RpcReqGetMode *req_get_wifi_mode;
     RpcReqSetMode *req_set_wifi_mode;
+    RpcReqSuppDppInit *req_supp_dpp_init;
+    RpcReqSuppDppDeinit *req_supp_dpp_deinit;
+    RpcReqSuppDppBootstrapGen *req_supp_dpp_bootstrap_gen;
+    RpcReqSuppDppStartListen *req_supp_dpp_start_listen;
+    RpcReqSuppDppStopListen *req_supp_dpp_stop_listen;
+    /*
+     *Rpc_Req_StartSoftAP                 req_start_softap                  = 267;
+     *Rpc_Req_SoftAPConnectedSTA          req_softap_connected_stas_list    = 268;
+     *Rpc_Req_GetStatus                   req_stop_softap                   = 269;
+     */
+    RpcReqOTAActivate *req_ota_activate;
     RpcReqSetPs *req_wifi_set_ps;
     RpcReqGetPs *req_wifi_get_ps;
     RpcReqOTABegin *req_ota_begin;
@@ -4200,6 +5377,33 @@ struct  Rpc
     RpcReqWifiStaItwtGetFlowIdStatus *req_wifi_sta_itwt_get_flow_id_status;
     RpcReqWifiStaItwtSendProbeReq *req_wifi_sta_itwt_send_probe_req;
     RpcReqWifiStaItwtSetTargetWakeTimeOffset *req_wifi_sta_itwt_set_target_wake_time_offset;
+    RpcReqWifiStaEnterpriseEnable *req_wifi_sta_enterprise_enable;
+    RpcReqWifiStaEnterpriseDisable *req_wifi_sta_enterprise_disable;
+    RpcReqEapSetIdentity *req_eap_set_identity;
+    RpcReqEapClearIdentity *req_eap_clear_identity;
+    RpcReqEapSetUsername *req_eap_set_username;
+    RpcReqEapClearUsername *req_eap_clear_username;
+    RpcReqEapSetPassword *req_eap_set_password;
+    RpcReqEapClearPassword *req_eap_clear_password;
+    RpcReqEapSetNewPassword *req_eap_set_new_password;
+    RpcReqEapClearNewPassword *req_eap_clear_new_password;
+    RpcReqEapSetCaCert *req_eap_set_ca_cert;
+    RpcReqEapClearCaCert *req_eap_clear_ca_cert;
+    RpcReqEapSetCertificateAndKey *req_eap_set_certificate_and_key;
+    RpcReqEapClearCertificateAndKey *req_eap_clear_certificate_and_key;
+    RpcReqEapGetDisableTimeCheck *req_eap_get_disable_time_check;
+    RpcReqEapSetTtlsPhase2Method *req_eap_set_ttls_phase2_method;
+    RpcReqEapSetSuiteb192bitCertification *req_eap_set_suiteb_certification;
+    RpcReqEapSetPacFile *req_eap_set_pac_file;
+    RpcReqEapSetFastParams *req_eap_set_fast_params;
+    RpcReqEapUseDefaultCertBundle *req_eap_use_default_cert_bundle;
+    RpcReqWifiSetOkcSupport *req_wifi_set_okc_support;
+    RpcReqEapSetDomainName *req_eap_set_domain_name;
+    RpcReqEapSetDisableTimeCheck *req_eap_set_disable_time_check;
+    RpcReqEapSetEapMethods *req_eap_set_eap_methods;
+    RpcReqIfaceMacAddrSetGet *req_iface_mac_addr_set_get;
+    RpcReqIfaceMacAddrLenGet *req_iface_mac_addr_len_get;
+    RpcReqFeatureControl *req_feature_control;
     RpcReqGpioConfig *req_gpio_config;
     RpcReqGpioReset *req_gpio_reset;
     RpcReqGpioSetLevel *req_gpio_set_level;
@@ -4214,6 +5418,18 @@ struct  Rpc
     RpcRespSetMacAddress *resp_set_mac_address;
     RpcRespGetMode *resp_get_wifi_mode;
     RpcRespSetMode *resp_set_wifi_mode;
+    RpcRespSuppDppInit *resp_supp_dpp_init;
+    RpcRespSuppDppDeinit *resp_supp_dpp_deinit;
+    RpcRespSuppDppBootstrapGen *resp_supp_dpp_bootstrap_gen;
+    RpcRespSuppDppStartListen *resp_supp_dpp_start_listen;
+    RpcRespSuppDppStopListen *resp_supp_dpp_stop_listen;
+    /*
+     *Rpc_Resp_SetSoftAPVendorSpecificIE  resp_set_softap_vendor_specific_ie = 522;
+     *Rpc_Resp_StartSoftAP                resp_start_softap                  = 523;
+     *Rpc_Resp_SoftAPConnectedSTA         resp_softap_connected_stas_list    = 524;
+     *Rpc_Resp_GetStatus                  resp_stop_softap                   = 525;
+     */
+    RpcRespOTAActivate *resp_ota_activate;
     RpcRespSetPs *resp_wifi_set_ps;
     RpcRespGetPs *resp_wifi_get_ps;
     RpcRespOTABegin *resp_ota_begin;
@@ -4276,6 +5492,33 @@ struct  Rpc
     RpcRespWifiStaItwtGetFlowIdStatus *resp_wifi_sta_itwt_get_flow_id_status;
     RpcRespWifiStaItwtSendProbeReq *resp_wifi_sta_itwt_send_probe_req;
     RpcRespWifiStaItwtSetTargetWakeTimeOffset *resp_wifi_sta_itwt_set_target_wake_time_offset;
+    RpcRespWifiStaEnterpriseEnable *resp_wifi_sta_enterprise_enable;
+    RpcRespWifiStaEnterpriseDisable *resp_wifi_sta_enterprise_disable;
+    RpcRespEapSetIdentity *resp_eap_set_identity;
+    RpcRespEapClearIdentity *resp_eap_clear_identity;
+    RpcRespEapSetUsername *resp_eap_set_username;
+    RpcRespEapClearUsername *resp_eap_clear_username;
+    RpcRespEapSetPassword *resp_eap_set_password;
+    RpcRespEapClearPassword *resp_eap_clear_password;
+    RpcRespEapSetNewPassword *resp_eap_set_new_password;
+    RpcRespEapClearNewPassword *resp_eap_clear_new_password;
+    RpcRespEapSetCaCert *resp_eap_set_ca_cert;
+    RpcRespEapClearCaCert *resp_eap_clear_ca_cert;
+    RpcRespEapSetCertificateAndKey *resp_eap_set_certificate_and_key;
+    RpcRespEapClearCertificateAndKey *resp_eap_clear_certificate_and_key;
+    RpcRespEapGetDisableTimeCheck *resp_eap_get_disable_time_check;
+    RpcRespEapSetTtlsPhase2Method *resp_eap_set_ttls_phase2_method;
+    RpcRespEapSetSuiteb192bitCertification *resp_eap_set_suiteb_certification;
+    RpcRespEapSetPacFile *resp_eap_set_pac_file;
+    RpcRespEapSetFastParams *resp_eap_set_fast_params;
+    RpcRespEapUseDefaultCertBundle *resp_eap_use_default_cert_bundle;
+    RpcRespWifiSetOkcSupport *resp_wifi_set_okc_support;
+    RpcRespEapSetDomainName *resp_eap_set_domain_name;
+    RpcRespEapSetDisableTimeCheck *resp_eap_set_disable_time_check;
+    RpcRespEapSetEapMethods *resp_eap_set_eap_methods;
+    RpcRespIfaceMacAddrSetGet *resp_iface_mac_addr_set_get;
+    RpcRespIfaceMacAddrLenGet *resp_iface_mac_addr_len_get;
+    RpcRespFeatureControl *resp_feature_control;
     RpcRespGpioConfig *resp_gpio_config;
     RpcRespGpioResetPin *resp_gpio_reset;
     RpcRespGpioSetLevel *resp_gpio_set_level;
@@ -4299,6 +5542,12 @@ struct  Rpc
     RpcEventStaItwtTeardown *event_sta_itwt_teardown;
     RpcEventStaItwtSuspend *event_sta_itwt_suspend;
     RpcEventStaItwtProbe *event_sta_itwt_probe;
+    RpcEventSuppDppUriReady *event_supp_dpp_uri_ready;
+    RpcEventSuppDppCfgRecvd *event_supp_dpp_cfg_recvd;
+    RpcEventSuppDppFail *event_supp_dpp_fail;
+    RpcEventWifiDppUriReady *event_wifi_dpp_uri_ready;
+    RpcEventWifiDppCfgRecvd *event_wifi_dpp_cfg_recvd;
+    RpcEventWifiDppFail *event_wifi_dpp_fail;
   };
 };
 #define RPC__INIT \
@@ -5199,6 +6448,25 @@ ConnectedSTAList *
 void   connected_stalist__free_unpacked
                      (ConnectedSTAList *message,
                       ProtobufCAllocator *allocator);
+/* EapFastConfig methods */
+void   eap_fast_config__init
+                     (EapFastConfig         *message);
+size_t eap_fast_config__get_packed_size
+                     (const EapFastConfig   *message);
+size_t eap_fast_config__pack
+                     (const EapFastConfig   *message,
+                      uint8_t             *out);
+size_t eap_fast_config__pack_to_buffer
+                     (const EapFastConfig   *message,
+                      ProtobufCBuffer     *buffer);
+EapFastConfig *
+       eap_fast_config__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   eap_fast_config__free_unpacked
+                     (EapFastConfig *message,
+                      ProtobufCAllocator *allocator);
 /* RpcReqGetMacAddress methods */
 void   rpc__req__get_mac_address__init
                      (RpcReqGetMacAddress         *message);
@@ -5540,6 +6808,44 @@ RpcRespOTAEnd *
                       const uint8_t       *data);
 void   rpc__resp__otaend__free_unpacked
                      (RpcRespOTAEnd *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqOTAActivate methods */
+void   rpc__req__otaactivate__init
+                     (RpcReqOTAActivate         *message);
+size_t rpc__req__otaactivate__get_packed_size
+                     (const RpcReqOTAActivate   *message);
+size_t rpc__req__otaactivate__pack
+                     (const RpcReqOTAActivate   *message,
+                      uint8_t             *out);
+size_t rpc__req__otaactivate__pack_to_buffer
+                     (const RpcReqOTAActivate   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqOTAActivate *
+       rpc__req__otaactivate__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__otaactivate__free_unpacked
+                     (RpcReqOTAActivate *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespOTAActivate methods */
+void   rpc__resp__otaactivate__init
+                     (RpcRespOTAActivate         *message);
+size_t rpc__resp__otaactivate__get_packed_size
+                     (const RpcRespOTAActivate   *message);
+size_t rpc__resp__otaactivate__pack
+                     (const RpcRespOTAActivate   *message,
+                      uint8_t             *out);
+size_t rpc__resp__otaactivate__pack_to_buffer
+                     (const RpcRespOTAActivate   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespOTAActivate *
+       rpc__resp__otaactivate__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__otaactivate__free_unpacked
+                     (RpcRespOTAActivate *message,
                       ProtobufCAllocator *allocator);
 /* RpcReqWifiSetMaxTxPower methods */
 void   rpc__req__wifi_set_max_tx_power__init
@@ -7707,6 +9013,310 @@ RpcRespGetDhcpDnsStatus *
 void   rpc__resp__get_dhcp_dns_status__free_unpacked
                      (RpcRespGetDhcpDnsStatus *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqSuppDppInit methods */
+void   rpc__req__supp_dpp_init__init
+                     (RpcReqSuppDppInit         *message);
+size_t rpc__req__supp_dpp_init__get_packed_size
+                     (const RpcReqSuppDppInit   *message);
+size_t rpc__req__supp_dpp_init__pack
+                     (const RpcReqSuppDppInit   *message,
+                      uint8_t             *out);
+size_t rpc__req__supp_dpp_init__pack_to_buffer
+                     (const RpcReqSuppDppInit   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqSuppDppInit *
+       rpc__req__supp_dpp_init__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__supp_dpp_init__free_unpacked
+                     (RpcReqSuppDppInit *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespSuppDppInit methods */
+void   rpc__resp__supp_dpp_init__init
+                     (RpcRespSuppDppInit         *message);
+size_t rpc__resp__supp_dpp_init__get_packed_size
+                     (const RpcRespSuppDppInit   *message);
+size_t rpc__resp__supp_dpp_init__pack
+                     (const RpcRespSuppDppInit   *message,
+                      uint8_t             *out);
+size_t rpc__resp__supp_dpp_init__pack_to_buffer
+                     (const RpcRespSuppDppInit   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespSuppDppInit *
+       rpc__resp__supp_dpp_init__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__supp_dpp_init__free_unpacked
+                     (RpcRespSuppDppInit *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqSuppDppDeinit methods */
+void   rpc__req__supp_dpp_deinit__init
+                     (RpcReqSuppDppDeinit         *message);
+size_t rpc__req__supp_dpp_deinit__get_packed_size
+                     (const RpcReqSuppDppDeinit   *message);
+size_t rpc__req__supp_dpp_deinit__pack
+                     (const RpcReqSuppDppDeinit   *message,
+                      uint8_t             *out);
+size_t rpc__req__supp_dpp_deinit__pack_to_buffer
+                     (const RpcReqSuppDppDeinit   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqSuppDppDeinit *
+       rpc__req__supp_dpp_deinit__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__supp_dpp_deinit__free_unpacked
+                     (RpcReqSuppDppDeinit *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespSuppDppDeinit methods */
+void   rpc__resp__supp_dpp_deinit__init
+                     (RpcRespSuppDppDeinit         *message);
+size_t rpc__resp__supp_dpp_deinit__get_packed_size
+                     (const RpcRespSuppDppDeinit   *message);
+size_t rpc__resp__supp_dpp_deinit__pack
+                     (const RpcRespSuppDppDeinit   *message,
+                      uint8_t             *out);
+size_t rpc__resp__supp_dpp_deinit__pack_to_buffer
+                     (const RpcRespSuppDppDeinit   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespSuppDppDeinit *
+       rpc__resp__supp_dpp_deinit__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__supp_dpp_deinit__free_unpacked
+                     (RpcRespSuppDppDeinit *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqSuppDppBootstrapGen methods */
+void   rpc__req__supp_dpp_bootstrap_gen__init
+                     (RpcReqSuppDppBootstrapGen         *message);
+size_t rpc__req__supp_dpp_bootstrap_gen__get_packed_size
+                     (const RpcReqSuppDppBootstrapGen   *message);
+size_t rpc__req__supp_dpp_bootstrap_gen__pack
+                     (const RpcReqSuppDppBootstrapGen   *message,
+                      uint8_t             *out);
+size_t rpc__req__supp_dpp_bootstrap_gen__pack_to_buffer
+                     (const RpcReqSuppDppBootstrapGen   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqSuppDppBootstrapGen *
+       rpc__req__supp_dpp_bootstrap_gen__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__supp_dpp_bootstrap_gen__free_unpacked
+                     (RpcReqSuppDppBootstrapGen *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespSuppDppBootstrapGen methods */
+void   rpc__resp__supp_dpp_bootstrap_gen__init
+                     (RpcRespSuppDppBootstrapGen         *message);
+size_t rpc__resp__supp_dpp_bootstrap_gen__get_packed_size
+                     (const RpcRespSuppDppBootstrapGen   *message);
+size_t rpc__resp__supp_dpp_bootstrap_gen__pack
+                     (const RpcRespSuppDppBootstrapGen   *message,
+                      uint8_t             *out);
+size_t rpc__resp__supp_dpp_bootstrap_gen__pack_to_buffer
+                     (const RpcRespSuppDppBootstrapGen   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespSuppDppBootstrapGen *
+       rpc__resp__supp_dpp_bootstrap_gen__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__supp_dpp_bootstrap_gen__free_unpacked
+                     (RpcRespSuppDppBootstrapGen *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqSuppDppStartListen methods */
+void   rpc__req__supp_dpp_start_listen__init
+                     (RpcReqSuppDppStartListen         *message);
+size_t rpc__req__supp_dpp_start_listen__get_packed_size
+                     (const RpcReqSuppDppStartListen   *message);
+size_t rpc__req__supp_dpp_start_listen__pack
+                     (const RpcReqSuppDppStartListen   *message,
+                      uint8_t             *out);
+size_t rpc__req__supp_dpp_start_listen__pack_to_buffer
+                     (const RpcReqSuppDppStartListen   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqSuppDppStartListen *
+       rpc__req__supp_dpp_start_listen__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__supp_dpp_start_listen__free_unpacked
+                     (RpcReqSuppDppStartListen *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespSuppDppStartListen methods */
+void   rpc__resp__supp_dpp_start_listen__init
+                     (RpcRespSuppDppStartListen         *message);
+size_t rpc__resp__supp_dpp_start_listen__get_packed_size
+                     (const RpcRespSuppDppStartListen   *message);
+size_t rpc__resp__supp_dpp_start_listen__pack
+                     (const RpcRespSuppDppStartListen   *message,
+                      uint8_t             *out);
+size_t rpc__resp__supp_dpp_start_listen__pack_to_buffer
+                     (const RpcRespSuppDppStartListen   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespSuppDppStartListen *
+       rpc__resp__supp_dpp_start_listen__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__supp_dpp_start_listen__free_unpacked
+                     (RpcRespSuppDppStartListen *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqSuppDppStopListen methods */
+void   rpc__req__supp_dpp_stop_listen__init
+                     (RpcReqSuppDppStopListen         *message);
+size_t rpc__req__supp_dpp_stop_listen__get_packed_size
+                     (const RpcReqSuppDppStopListen   *message);
+size_t rpc__req__supp_dpp_stop_listen__pack
+                     (const RpcReqSuppDppStopListen   *message,
+                      uint8_t             *out);
+size_t rpc__req__supp_dpp_stop_listen__pack_to_buffer
+                     (const RpcReqSuppDppStopListen   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqSuppDppStopListen *
+       rpc__req__supp_dpp_stop_listen__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__supp_dpp_stop_listen__free_unpacked
+                     (RpcReqSuppDppStopListen *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespSuppDppStopListen methods */
+void   rpc__resp__supp_dpp_stop_listen__init
+                     (RpcRespSuppDppStopListen         *message);
+size_t rpc__resp__supp_dpp_stop_listen__get_packed_size
+                     (const RpcRespSuppDppStopListen   *message);
+size_t rpc__resp__supp_dpp_stop_listen__pack
+                     (const RpcRespSuppDppStopListen   *message,
+                      uint8_t             *out);
+size_t rpc__resp__supp_dpp_stop_listen__pack_to_buffer
+                     (const RpcRespSuppDppStopListen   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespSuppDppStopListen *
+       rpc__resp__supp_dpp_stop_listen__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__supp_dpp_stop_listen__free_unpacked
+                     (RpcRespSuppDppStopListen *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqIfaceMacAddrSetGet methods */
+void   rpc__req__iface_mac_addr_set_get__init
+                     (RpcReqIfaceMacAddrSetGet         *message);
+size_t rpc__req__iface_mac_addr_set_get__get_packed_size
+                     (const RpcReqIfaceMacAddrSetGet   *message);
+size_t rpc__req__iface_mac_addr_set_get__pack
+                     (const RpcReqIfaceMacAddrSetGet   *message,
+                      uint8_t             *out);
+size_t rpc__req__iface_mac_addr_set_get__pack_to_buffer
+                     (const RpcReqIfaceMacAddrSetGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqIfaceMacAddrSetGet *
+       rpc__req__iface_mac_addr_set_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__iface_mac_addr_set_get__free_unpacked
+                     (RpcReqIfaceMacAddrSetGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespIfaceMacAddrSetGet methods */
+void   rpc__resp__iface_mac_addr_set_get__init
+                     (RpcRespIfaceMacAddrSetGet         *message);
+size_t rpc__resp__iface_mac_addr_set_get__get_packed_size
+                     (const RpcRespIfaceMacAddrSetGet   *message);
+size_t rpc__resp__iface_mac_addr_set_get__pack
+                     (const RpcRespIfaceMacAddrSetGet   *message,
+                      uint8_t             *out);
+size_t rpc__resp__iface_mac_addr_set_get__pack_to_buffer
+                     (const RpcRespIfaceMacAddrSetGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespIfaceMacAddrSetGet *
+       rpc__resp__iface_mac_addr_set_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__iface_mac_addr_set_get__free_unpacked
+                     (RpcRespIfaceMacAddrSetGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqIfaceMacAddrLenGet methods */
+void   rpc__req__iface_mac_addr_len_get__init
+                     (RpcReqIfaceMacAddrLenGet         *message);
+size_t rpc__req__iface_mac_addr_len_get__get_packed_size
+                     (const RpcReqIfaceMacAddrLenGet   *message);
+size_t rpc__req__iface_mac_addr_len_get__pack
+                     (const RpcReqIfaceMacAddrLenGet   *message,
+                      uint8_t             *out);
+size_t rpc__req__iface_mac_addr_len_get__pack_to_buffer
+                     (const RpcReqIfaceMacAddrLenGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqIfaceMacAddrLenGet *
+       rpc__req__iface_mac_addr_len_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__iface_mac_addr_len_get__free_unpacked
+                     (RpcReqIfaceMacAddrLenGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespIfaceMacAddrLenGet methods */
+void   rpc__resp__iface_mac_addr_len_get__init
+                     (RpcRespIfaceMacAddrLenGet         *message);
+size_t rpc__resp__iface_mac_addr_len_get__get_packed_size
+                     (const RpcRespIfaceMacAddrLenGet   *message);
+size_t rpc__resp__iface_mac_addr_len_get__pack
+                     (const RpcRespIfaceMacAddrLenGet   *message,
+                      uint8_t             *out);
+size_t rpc__resp__iface_mac_addr_len_get__pack_to_buffer
+                     (const RpcRespIfaceMacAddrLenGet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespIfaceMacAddrLenGet *
+       rpc__resp__iface_mac_addr_len_get__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__iface_mac_addr_len_get__free_unpacked
+                     (RpcRespIfaceMacAddrLenGet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqFeatureControl methods */
+void   rpc__req__feature_control__init
+                     (RpcReqFeatureControl         *message);
+size_t rpc__req__feature_control__get_packed_size
+                     (const RpcReqFeatureControl   *message);
+size_t rpc__req__feature_control__pack
+                     (const RpcReqFeatureControl   *message,
+                      uint8_t             *out);
+size_t rpc__req__feature_control__pack_to_buffer
+                     (const RpcReqFeatureControl   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqFeatureControl *
+       rpc__req__feature_control__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__feature_control__free_unpacked
+                     (RpcReqFeatureControl *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespFeatureControl methods */
+void   rpc__resp__feature_control__init
+                     (RpcRespFeatureControl         *message);
+size_t rpc__resp__feature_control__get_packed_size
+                     (const RpcRespFeatureControl   *message);
+size_t rpc__resp__feature_control__pack
+                     (const RpcRespFeatureControl   *message,
+                      uint8_t             *out);
+size_t rpc__resp__feature_control__pack_to_buffer
+                     (const RpcRespFeatureControl   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespFeatureControl *
+       rpc__resp__feature_control__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__feature_control__free_unpacked
+                     (RpcRespFeatureControl *message,
+                      ProtobufCAllocator *allocator);
 /* RpcEventWifiEventNoArgs methods */
 void   rpc__event__wifi_event_no_args__init
                      (RpcEventWifiEventNoArgs         *message);
@@ -7858,6 +9468,1127 @@ RpcEventStaDisconnected *
                       const uint8_t       *data);
 void   rpc__event__sta_disconnected__free_unpacked
                      (RpcEventStaDisconnected *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventDhcpDnsStatus methods */
+void   rpc__event__dhcp_dns_status__init
+                     (RpcEventDhcpDnsStatus         *message);
+size_t rpc__event__dhcp_dns_status__get_packed_size
+                     (const RpcEventDhcpDnsStatus   *message);
+size_t rpc__event__dhcp_dns_status__pack
+                     (const RpcEventDhcpDnsStatus   *message,
+                      uint8_t             *out);
+size_t rpc__event__dhcp_dns_status__pack_to_buffer
+                     (const RpcEventDhcpDnsStatus   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventDhcpDnsStatus *
+       rpc__event__dhcp_dns_status__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__dhcp_dns_status__free_unpacked
+                     (RpcEventDhcpDnsStatus *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventStaItwtSetup methods */
+void   rpc__event__sta_itwt_setup__init
+                     (RpcEventStaItwtSetup         *message);
+size_t rpc__event__sta_itwt_setup__get_packed_size
+                     (const RpcEventStaItwtSetup   *message);
+size_t rpc__event__sta_itwt_setup__pack
+                     (const RpcEventStaItwtSetup   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_setup__pack_to_buffer
+                     (const RpcEventStaItwtSetup   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtSetup *
+       rpc__event__sta_itwt_setup__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_setup__free_unpacked
+                     (RpcEventStaItwtSetup *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventStaItwtTeardown methods */
+void   rpc__event__sta_itwt_teardown__init
+                     (RpcEventStaItwtTeardown         *message);
+size_t rpc__event__sta_itwt_teardown__get_packed_size
+                     (const RpcEventStaItwtTeardown   *message);
+size_t rpc__event__sta_itwt_teardown__pack
+                     (const RpcEventStaItwtTeardown   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_teardown__pack_to_buffer
+                     (const RpcEventStaItwtTeardown   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtTeardown *
+       rpc__event__sta_itwt_teardown__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_teardown__free_unpacked
+                     (RpcEventStaItwtTeardown *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventStaItwtSuspend methods */
+void   rpc__event__sta_itwt_suspend__init
+                     (RpcEventStaItwtSuspend         *message);
+size_t rpc__event__sta_itwt_suspend__get_packed_size
+                     (const RpcEventStaItwtSuspend   *message);
+size_t rpc__event__sta_itwt_suspend__pack
+                     (const RpcEventStaItwtSuspend   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_suspend__pack_to_buffer
+                     (const RpcEventStaItwtSuspend   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtSuspend *
+       rpc__event__sta_itwt_suspend__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_suspend__free_unpacked
+                     (RpcEventStaItwtSuspend *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventStaItwtProbe methods */
+void   rpc__event__sta_itwt_probe__init
+                     (RpcEventStaItwtProbe         *message);
+size_t rpc__event__sta_itwt_probe__get_packed_size
+                     (const RpcEventStaItwtProbe   *message);
+size_t rpc__event__sta_itwt_probe__pack
+                     (const RpcEventStaItwtProbe   *message,
+                      uint8_t             *out);
+size_t rpc__event__sta_itwt_probe__pack_to_buffer
+                     (const RpcEventStaItwtProbe   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventStaItwtProbe *
+       rpc__event__sta_itwt_probe__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__sta_itwt_probe__free_unpacked
+                     (RpcEventStaItwtProbe *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaEnterpriseEnable methods */
+void   rpc__req__wifi_sta_enterprise_enable__init
+                     (RpcReqWifiStaEnterpriseEnable         *message);
+size_t rpc__req__wifi_sta_enterprise_enable__get_packed_size
+                     (const RpcReqWifiStaEnterpriseEnable   *message);
+size_t rpc__req__wifi_sta_enterprise_enable__pack
+                     (const RpcReqWifiStaEnterpriseEnable   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_enterprise_enable__pack_to_buffer
+                     (const RpcReqWifiStaEnterpriseEnable   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaEnterpriseEnable *
+       rpc__req__wifi_sta_enterprise_enable__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_enterprise_enable__free_unpacked
+                     (RpcReqWifiStaEnterpriseEnable *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaEnterpriseEnable methods */
+void   rpc__resp__wifi_sta_enterprise_enable__init
+                     (RpcRespWifiStaEnterpriseEnable         *message);
+size_t rpc__resp__wifi_sta_enterprise_enable__get_packed_size
+                     (const RpcRespWifiStaEnterpriseEnable   *message);
+size_t rpc__resp__wifi_sta_enterprise_enable__pack
+                     (const RpcRespWifiStaEnterpriseEnable   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_enterprise_enable__pack_to_buffer
+                     (const RpcRespWifiStaEnterpriseEnable   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaEnterpriseEnable *
+       rpc__resp__wifi_sta_enterprise_enable__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_enterprise_enable__free_unpacked
+                     (RpcRespWifiStaEnterpriseEnable *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiStaEnterpriseDisable methods */
+void   rpc__req__wifi_sta_enterprise_disable__init
+                     (RpcReqWifiStaEnterpriseDisable         *message);
+size_t rpc__req__wifi_sta_enterprise_disable__get_packed_size
+                     (const RpcReqWifiStaEnterpriseDisable   *message);
+size_t rpc__req__wifi_sta_enterprise_disable__pack
+                     (const RpcReqWifiStaEnterpriseDisable   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_sta_enterprise_disable__pack_to_buffer
+                     (const RpcReqWifiStaEnterpriseDisable   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiStaEnterpriseDisable *
+       rpc__req__wifi_sta_enterprise_disable__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_sta_enterprise_disable__free_unpacked
+                     (RpcReqWifiStaEnterpriseDisable *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiStaEnterpriseDisable methods */
+void   rpc__resp__wifi_sta_enterprise_disable__init
+                     (RpcRespWifiStaEnterpriseDisable         *message);
+size_t rpc__resp__wifi_sta_enterprise_disable__get_packed_size
+                     (const RpcRespWifiStaEnterpriseDisable   *message);
+size_t rpc__resp__wifi_sta_enterprise_disable__pack
+                     (const RpcRespWifiStaEnterpriseDisable   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_sta_enterprise_disable__pack_to_buffer
+                     (const RpcRespWifiStaEnterpriseDisable   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiStaEnterpriseDisable *
+       rpc__resp__wifi_sta_enterprise_disable__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_sta_enterprise_disable__free_unpacked
+                     (RpcRespWifiStaEnterpriseDisable *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetIdentity methods */
+void   rpc__req__eap_set_identity__init
+                     (RpcReqEapSetIdentity         *message);
+size_t rpc__req__eap_set_identity__get_packed_size
+                     (const RpcReqEapSetIdentity   *message);
+size_t rpc__req__eap_set_identity__pack
+                     (const RpcReqEapSetIdentity   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_identity__pack_to_buffer
+                     (const RpcReqEapSetIdentity   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetIdentity *
+       rpc__req__eap_set_identity__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_identity__free_unpacked
+                     (RpcReqEapSetIdentity *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetIdentity methods */
+void   rpc__resp__eap_set_identity__init
+                     (RpcRespEapSetIdentity         *message);
+size_t rpc__resp__eap_set_identity__get_packed_size
+                     (const RpcRespEapSetIdentity   *message);
+size_t rpc__resp__eap_set_identity__pack
+                     (const RpcRespEapSetIdentity   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_identity__pack_to_buffer
+                     (const RpcRespEapSetIdentity   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetIdentity *
+       rpc__resp__eap_set_identity__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_identity__free_unpacked
+                     (RpcRespEapSetIdentity *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapClearIdentity methods */
+void   rpc__req__eap_clear_identity__init
+                     (RpcReqEapClearIdentity         *message);
+size_t rpc__req__eap_clear_identity__get_packed_size
+                     (const RpcReqEapClearIdentity   *message);
+size_t rpc__req__eap_clear_identity__pack
+                     (const RpcReqEapClearIdentity   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_clear_identity__pack_to_buffer
+                     (const RpcReqEapClearIdentity   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapClearIdentity *
+       rpc__req__eap_clear_identity__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_clear_identity__free_unpacked
+                     (RpcReqEapClearIdentity *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapClearIdentity methods */
+void   rpc__resp__eap_clear_identity__init
+                     (RpcRespEapClearIdentity         *message);
+size_t rpc__resp__eap_clear_identity__get_packed_size
+                     (const RpcRespEapClearIdentity   *message);
+size_t rpc__resp__eap_clear_identity__pack
+                     (const RpcRespEapClearIdentity   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_clear_identity__pack_to_buffer
+                     (const RpcRespEapClearIdentity   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapClearIdentity *
+       rpc__resp__eap_clear_identity__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_clear_identity__free_unpacked
+                     (RpcRespEapClearIdentity *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetUsername methods */
+void   rpc__req__eap_set_username__init
+                     (RpcReqEapSetUsername         *message);
+size_t rpc__req__eap_set_username__get_packed_size
+                     (const RpcReqEapSetUsername   *message);
+size_t rpc__req__eap_set_username__pack
+                     (const RpcReqEapSetUsername   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_username__pack_to_buffer
+                     (const RpcReqEapSetUsername   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetUsername *
+       rpc__req__eap_set_username__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_username__free_unpacked
+                     (RpcReqEapSetUsername *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetUsername methods */
+void   rpc__resp__eap_set_username__init
+                     (RpcRespEapSetUsername         *message);
+size_t rpc__resp__eap_set_username__get_packed_size
+                     (const RpcRespEapSetUsername   *message);
+size_t rpc__resp__eap_set_username__pack
+                     (const RpcRespEapSetUsername   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_username__pack_to_buffer
+                     (const RpcRespEapSetUsername   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetUsername *
+       rpc__resp__eap_set_username__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_username__free_unpacked
+                     (RpcRespEapSetUsername *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapClearUsername methods */
+void   rpc__req__eap_clear_username__init
+                     (RpcReqEapClearUsername         *message);
+size_t rpc__req__eap_clear_username__get_packed_size
+                     (const RpcReqEapClearUsername   *message);
+size_t rpc__req__eap_clear_username__pack
+                     (const RpcReqEapClearUsername   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_clear_username__pack_to_buffer
+                     (const RpcReqEapClearUsername   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapClearUsername *
+       rpc__req__eap_clear_username__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_clear_username__free_unpacked
+                     (RpcReqEapClearUsername *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapClearUsername methods */
+void   rpc__resp__eap_clear_username__init
+                     (RpcRespEapClearUsername         *message);
+size_t rpc__resp__eap_clear_username__get_packed_size
+                     (const RpcRespEapClearUsername   *message);
+size_t rpc__resp__eap_clear_username__pack
+                     (const RpcRespEapClearUsername   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_clear_username__pack_to_buffer
+                     (const RpcRespEapClearUsername   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapClearUsername *
+       rpc__resp__eap_clear_username__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_clear_username__free_unpacked
+                     (RpcRespEapClearUsername *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetPassword methods */
+void   rpc__req__eap_set_password__init
+                     (RpcReqEapSetPassword         *message);
+size_t rpc__req__eap_set_password__get_packed_size
+                     (const RpcReqEapSetPassword   *message);
+size_t rpc__req__eap_set_password__pack
+                     (const RpcReqEapSetPassword   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_password__pack_to_buffer
+                     (const RpcReqEapSetPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetPassword *
+       rpc__req__eap_set_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_password__free_unpacked
+                     (RpcReqEapSetPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetPassword methods */
+void   rpc__resp__eap_set_password__init
+                     (RpcRespEapSetPassword         *message);
+size_t rpc__resp__eap_set_password__get_packed_size
+                     (const RpcRespEapSetPassword   *message);
+size_t rpc__resp__eap_set_password__pack
+                     (const RpcRespEapSetPassword   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_password__pack_to_buffer
+                     (const RpcRespEapSetPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetPassword *
+       rpc__resp__eap_set_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_password__free_unpacked
+                     (RpcRespEapSetPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapClearPassword methods */
+void   rpc__req__eap_clear_password__init
+                     (RpcReqEapClearPassword         *message);
+size_t rpc__req__eap_clear_password__get_packed_size
+                     (const RpcReqEapClearPassword   *message);
+size_t rpc__req__eap_clear_password__pack
+                     (const RpcReqEapClearPassword   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_clear_password__pack_to_buffer
+                     (const RpcReqEapClearPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapClearPassword *
+       rpc__req__eap_clear_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_clear_password__free_unpacked
+                     (RpcReqEapClearPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapClearPassword methods */
+void   rpc__resp__eap_clear_password__init
+                     (RpcRespEapClearPassword         *message);
+size_t rpc__resp__eap_clear_password__get_packed_size
+                     (const RpcRespEapClearPassword   *message);
+size_t rpc__resp__eap_clear_password__pack
+                     (const RpcRespEapClearPassword   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_clear_password__pack_to_buffer
+                     (const RpcRespEapClearPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapClearPassword *
+       rpc__resp__eap_clear_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_clear_password__free_unpacked
+                     (RpcRespEapClearPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetNewPassword methods */
+void   rpc__req__eap_set_new_password__init
+                     (RpcReqEapSetNewPassword         *message);
+size_t rpc__req__eap_set_new_password__get_packed_size
+                     (const RpcReqEapSetNewPassword   *message);
+size_t rpc__req__eap_set_new_password__pack
+                     (const RpcReqEapSetNewPassword   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_new_password__pack_to_buffer
+                     (const RpcReqEapSetNewPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetNewPassword *
+       rpc__req__eap_set_new_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_new_password__free_unpacked
+                     (RpcReqEapSetNewPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetNewPassword methods */
+void   rpc__resp__eap_set_new_password__init
+                     (RpcRespEapSetNewPassword         *message);
+size_t rpc__resp__eap_set_new_password__get_packed_size
+                     (const RpcRespEapSetNewPassword   *message);
+size_t rpc__resp__eap_set_new_password__pack
+                     (const RpcRespEapSetNewPassword   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_new_password__pack_to_buffer
+                     (const RpcRespEapSetNewPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetNewPassword *
+       rpc__resp__eap_set_new_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_new_password__free_unpacked
+                     (RpcRespEapSetNewPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapClearNewPassword methods */
+void   rpc__req__eap_clear_new_password__init
+                     (RpcReqEapClearNewPassword         *message);
+size_t rpc__req__eap_clear_new_password__get_packed_size
+                     (const RpcReqEapClearNewPassword   *message);
+size_t rpc__req__eap_clear_new_password__pack
+                     (const RpcReqEapClearNewPassword   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_clear_new_password__pack_to_buffer
+                     (const RpcReqEapClearNewPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapClearNewPassword *
+       rpc__req__eap_clear_new_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_clear_new_password__free_unpacked
+                     (RpcReqEapClearNewPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapClearNewPassword methods */
+void   rpc__resp__eap_clear_new_password__init
+                     (RpcRespEapClearNewPassword         *message);
+size_t rpc__resp__eap_clear_new_password__get_packed_size
+                     (const RpcRespEapClearNewPassword   *message);
+size_t rpc__resp__eap_clear_new_password__pack
+                     (const RpcRespEapClearNewPassword   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_clear_new_password__pack_to_buffer
+                     (const RpcRespEapClearNewPassword   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapClearNewPassword *
+       rpc__resp__eap_clear_new_password__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_clear_new_password__free_unpacked
+                     (RpcRespEapClearNewPassword *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetCaCert methods */
+void   rpc__req__eap_set_ca_cert__init
+                     (RpcReqEapSetCaCert         *message);
+size_t rpc__req__eap_set_ca_cert__get_packed_size
+                     (const RpcReqEapSetCaCert   *message);
+size_t rpc__req__eap_set_ca_cert__pack
+                     (const RpcReqEapSetCaCert   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_ca_cert__pack_to_buffer
+                     (const RpcReqEapSetCaCert   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetCaCert *
+       rpc__req__eap_set_ca_cert__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_ca_cert__free_unpacked
+                     (RpcReqEapSetCaCert *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetCaCert methods */
+void   rpc__resp__eap_set_ca_cert__init
+                     (RpcRespEapSetCaCert         *message);
+size_t rpc__resp__eap_set_ca_cert__get_packed_size
+                     (const RpcRespEapSetCaCert   *message);
+size_t rpc__resp__eap_set_ca_cert__pack
+                     (const RpcRespEapSetCaCert   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_ca_cert__pack_to_buffer
+                     (const RpcRespEapSetCaCert   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetCaCert *
+       rpc__resp__eap_set_ca_cert__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_ca_cert__free_unpacked
+                     (RpcRespEapSetCaCert *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapClearCaCert methods */
+void   rpc__req__eap_clear_ca_cert__init
+                     (RpcReqEapClearCaCert         *message);
+size_t rpc__req__eap_clear_ca_cert__get_packed_size
+                     (const RpcReqEapClearCaCert   *message);
+size_t rpc__req__eap_clear_ca_cert__pack
+                     (const RpcReqEapClearCaCert   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_clear_ca_cert__pack_to_buffer
+                     (const RpcReqEapClearCaCert   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapClearCaCert *
+       rpc__req__eap_clear_ca_cert__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_clear_ca_cert__free_unpacked
+                     (RpcReqEapClearCaCert *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapClearCaCert methods */
+void   rpc__resp__eap_clear_ca_cert__init
+                     (RpcRespEapClearCaCert         *message);
+size_t rpc__resp__eap_clear_ca_cert__get_packed_size
+                     (const RpcRespEapClearCaCert   *message);
+size_t rpc__resp__eap_clear_ca_cert__pack
+                     (const RpcRespEapClearCaCert   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_clear_ca_cert__pack_to_buffer
+                     (const RpcRespEapClearCaCert   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapClearCaCert *
+       rpc__resp__eap_clear_ca_cert__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_clear_ca_cert__free_unpacked
+                     (RpcRespEapClearCaCert *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetCertificateAndKey methods */
+void   rpc__req__eap_set_certificate_and_key__init
+                     (RpcReqEapSetCertificateAndKey         *message);
+size_t rpc__req__eap_set_certificate_and_key__get_packed_size
+                     (const RpcReqEapSetCertificateAndKey   *message);
+size_t rpc__req__eap_set_certificate_and_key__pack
+                     (const RpcReqEapSetCertificateAndKey   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_certificate_and_key__pack_to_buffer
+                     (const RpcReqEapSetCertificateAndKey   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetCertificateAndKey *
+       rpc__req__eap_set_certificate_and_key__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_certificate_and_key__free_unpacked
+                     (RpcReqEapSetCertificateAndKey *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetCertificateAndKey methods */
+void   rpc__resp__eap_set_certificate_and_key__init
+                     (RpcRespEapSetCertificateAndKey         *message);
+size_t rpc__resp__eap_set_certificate_and_key__get_packed_size
+                     (const RpcRespEapSetCertificateAndKey   *message);
+size_t rpc__resp__eap_set_certificate_and_key__pack
+                     (const RpcRespEapSetCertificateAndKey   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_certificate_and_key__pack_to_buffer
+                     (const RpcRespEapSetCertificateAndKey   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetCertificateAndKey *
+       rpc__resp__eap_set_certificate_and_key__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_certificate_and_key__free_unpacked
+                     (RpcRespEapSetCertificateAndKey *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapClearCertificateAndKey methods */
+void   rpc__req__eap_clear_certificate_and_key__init
+                     (RpcReqEapClearCertificateAndKey         *message);
+size_t rpc__req__eap_clear_certificate_and_key__get_packed_size
+                     (const RpcReqEapClearCertificateAndKey   *message);
+size_t rpc__req__eap_clear_certificate_and_key__pack
+                     (const RpcReqEapClearCertificateAndKey   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_clear_certificate_and_key__pack_to_buffer
+                     (const RpcReqEapClearCertificateAndKey   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapClearCertificateAndKey *
+       rpc__req__eap_clear_certificate_and_key__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_clear_certificate_and_key__free_unpacked
+                     (RpcReqEapClearCertificateAndKey *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapClearCertificateAndKey methods */
+void   rpc__resp__eap_clear_certificate_and_key__init
+                     (RpcRespEapClearCertificateAndKey         *message);
+size_t rpc__resp__eap_clear_certificate_and_key__get_packed_size
+                     (const RpcRespEapClearCertificateAndKey   *message);
+size_t rpc__resp__eap_clear_certificate_and_key__pack
+                     (const RpcRespEapClearCertificateAndKey   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_clear_certificate_and_key__pack_to_buffer
+                     (const RpcRespEapClearCertificateAndKey   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapClearCertificateAndKey *
+       rpc__resp__eap_clear_certificate_and_key__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_clear_certificate_and_key__free_unpacked
+                     (RpcRespEapClearCertificateAndKey *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetDisableTimeCheck methods */
+void   rpc__req__eap_set_disable_time_check__init
+                     (RpcReqEapSetDisableTimeCheck         *message);
+size_t rpc__req__eap_set_disable_time_check__get_packed_size
+                     (const RpcReqEapSetDisableTimeCheck   *message);
+size_t rpc__req__eap_set_disable_time_check__pack
+                     (const RpcReqEapSetDisableTimeCheck   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_disable_time_check__pack_to_buffer
+                     (const RpcReqEapSetDisableTimeCheck   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetDisableTimeCheck *
+       rpc__req__eap_set_disable_time_check__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_disable_time_check__free_unpacked
+                     (RpcReqEapSetDisableTimeCheck *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetDisableTimeCheck methods */
+void   rpc__resp__eap_set_disable_time_check__init
+                     (RpcRespEapSetDisableTimeCheck         *message);
+size_t rpc__resp__eap_set_disable_time_check__get_packed_size
+                     (const RpcRespEapSetDisableTimeCheck   *message);
+size_t rpc__resp__eap_set_disable_time_check__pack
+                     (const RpcRespEapSetDisableTimeCheck   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_disable_time_check__pack_to_buffer
+                     (const RpcRespEapSetDisableTimeCheck   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetDisableTimeCheck *
+       rpc__resp__eap_set_disable_time_check__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_disable_time_check__free_unpacked
+                     (RpcRespEapSetDisableTimeCheck *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapGetDisableTimeCheck methods */
+void   rpc__req__eap_get_disable_time_check__init
+                     (RpcReqEapGetDisableTimeCheck         *message);
+size_t rpc__req__eap_get_disable_time_check__get_packed_size
+                     (const RpcReqEapGetDisableTimeCheck   *message);
+size_t rpc__req__eap_get_disable_time_check__pack
+                     (const RpcReqEapGetDisableTimeCheck   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_get_disable_time_check__pack_to_buffer
+                     (const RpcReqEapGetDisableTimeCheck   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapGetDisableTimeCheck *
+       rpc__req__eap_get_disable_time_check__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_get_disable_time_check__free_unpacked
+                     (RpcReqEapGetDisableTimeCheck *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapGetDisableTimeCheck methods */
+void   rpc__resp__eap_get_disable_time_check__init
+                     (RpcRespEapGetDisableTimeCheck         *message);
+size_t rpc__resp__eap_get_disable_time_check__get_packed_size
+                     (const RpcRespEapGetDisableTimeCheck   *message);
+size_t rpc__resp__eap_get_disable_time_check__pack
+                     (const RpcRespEapGetDisableTimeCheck   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_get_disable_time_check__pack_to_buffer
+                     (const RpcRespEapGetDisableTimeCheck   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapGetDisableTimeCheck *
+       rpc__resp__eap_get_disable_time_check__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_get_disable_time_check__free_unpacked
+                     (RpcRespEapGetDisableTimeCheck *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetTtlsPhase2Method methods */
+void   rpc__req__eap_set_ttls_phase2_method__init
+                     (RpcReqEapSetTtlsPhase2Method         *message);
+size_t rpc__req__eap_set_ttls_phase2_method__get_packed_size
+                     (const RpcReqEapSetTtlsPhase2Method   *message);
+size_t rpc__req__eap_set_ttls_phase2_method__pack
+                     (const RpcReqEapSetTtlsPhase2Method   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_ttls_phase2_method__pack_to_buffer
+                     (const RpcReqEapSetTtlsPhase2Method   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetTtlsPhase2Method *
+       rpc__req__eap_set_ttls_phase2_method__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_ttls_phase2_method__free_unpacked
+                     (RpcReqEapSetTtlsPhase2Method *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetTtlsPhase2Method methods */
+void   rpc__resp__eap_set_ttls_phase2_method__init
+                     (RpcRespEapSetTtlsPhase2Method         *message);
+size_t rpc__resp__eap_set_ttls_phase2_method__get_packed_size
+                     (const RpcRespEapSetTtlsPhase2Method   *message);
+size_t rpc__resp__eap_set_ttls_phase2_method__pack
+                     (const RpcRespEapSetTtlsPhase2Method   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_ttls_phase2_method__pack_to_buffer
+                     (const RpcRespEapSetTtlsPhase2Method   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetTtlsPhase2Method *
+       rpc__resp__eap_set_ttls_phase2_method__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_ttls_phase2_method__free_unpacked
+                     (RpcRespEapSetTtlsPhase2Method *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetSuiteb192bitCertification methods */
+void   rpc__req__eap_set_suiteb192bit_certification__init
+                     (RpcReqEapSetSuiteb192bitCertification         *message);
+size_t rpc__req__eap_set_suiteb192bit_certification__get_packed_size
+                     (const RpcReqEapSetSuiteb192bitCertification   *message);
+size_t rpc__req__eap_set_suiteb192bit_certification__pack
+                     (const RpcReqEapSetSuiteb192bitCertification   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_suiteb192bit_certification__pack_to_buffer
+                     (const RpcReqEapSetSuiteb192bitCertification   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetSuiteb192bitCertification *
+       rpc__req__eap_set_suiteb192bit_certification__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_suiteb192bit_certification__free_unpacked
+                     (RpcReqEapSetSuiteb192bitCertification *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetSuiteb192bitCertification methods */
+void   rpc__resp__eap_set_suiteb192bit_certification__init
+                     (RpcRespEapSetSuiteb192bitCertification         *message);
+size_t rpc__resp__eap_set_suiteb192bit_certification__get_packed_size
+                     (const RpcRespEapSetSuiteb192bitCertification   *message);
+size_t rpc__resp__eap_set_suiteb192bit_certification__pack
+                     (const RpcRespEapSetSuiteb192bitCertification   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_suiteb192bit_certification__pack_to_buffer
+                     (const RpcRespEapSetSuiteb192bitCertification   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetSuiteb192bitCertification *
+       rpc__resp__eap_set_suiteb192bit_certification__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_suiteb192bit_certification__free_unpacked
+                     (RpcRespEapSetSuiteb192bitCertification *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetPacFile methods */
+void   rpc__req__eap_set_pac_file__init
+                     (RpcReqEapSetPacFile         *message);
+size_t rpc__req__eap_set_pac_file__get_packed_size
+                     (const RpcReqEapSetPacFile   *message);
+size_t rpc__req__eap_set_pac_file__pack
+                     (const RpcReqEapSetPacFile   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_pac_file__pack_to_buffer
+                     (const RpcReqEapSetPacFile   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetPacFile *
+       rpc__req__eap_set_pac_file__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_pac_file__free_unpacked
+                     (RpcReqEapSetPacFile *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetPacFile methods */
+void   rpc__resp__eap_set_pac_file__init
+                     (RpcRespEapSetPacFile         *message);
+size_t rpc__resp__eap_set_pac_file__get_packed_size
+                     (const RpcRespEapSetPacFile   *message);
+size_t rpc__resp__eap_set_pac_file__pack
+                     (const RpcRespEapSetPacFile   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_pac_file__pack_to_buffer
+                     (const RpcRespEapSetPacFile   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetPacFile *
+       rpc__resp__eap_set_pac_file__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_pac_file__free_unpacked
+                     (RpcRespEapSetPacFile *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetFastParams methods */
+void   rpc__req__eap_set_fast_params__init
+                     (RpcReqEapSetFastParams         *message);
+size_t rpc__req__eap_set_fast_params__get_packed_size
+                     (const RpcReqEapSetFastParams   *message);
+size_t rpc__req__eap_set_fast_params__pack
+                     (const RpcReqEapSetFastParams   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_fast_params__pack_to_buffer
+                     (const RpcReqEapSetFastParams   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetFastParams *
+       rpc__req__eap_set_fast_params__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_fast_params__free_unpacked
+                     (RpcReqEapSetFastParams *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetFastParams methods */
+void   rpc__resp__eap_set_fast_params__init
+                     (RpcRespEapSetFastParams         *message);
+size_t rpc__resp__eap_set_fast_params__get_packed_size
+                     (const RpcRespEapSetFastParams   *message);
+size_t rpc__resp__eap_set_fast_params__pack
+                     (const RpcRespEapSetFastParams   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_fast_params__pack_to_buffer
+                     (const RpcRespEapSetFastParams   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetFastParams *
+       rpc__resp__eap_set_fast_params__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_fast_params__free_unpacked
+                     (RpcRespEapSetFastParams *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapUseDefaultCertBundle methods */
+void   rpc__req__eap_use_default_cert_bundle__init
+                     (RpcReqEapUseDefaultCertBundle         *message);
+size_t rpc__req__eap_use_default_cert_bundle__get_packed_size
+                     (const RpcReqEapUseDefaultCertBundle   *message);
+size_t rpc__req__eap_use_default_cert_bundle__pack
+                     (const RpcReqEapUseDefaultCertBundle   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_use_default_cert_bundle__pack_to_buffer
+                     (const RpcReqEapUseDefaultCertBundle   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapUseDefaultCertBundle *
+       rpc__req__eap_use_default_cert_bundle__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_use_default_cert_bundle__free_unpacked
+                     (RpcReqEapUseDefaultCertBundle *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapUseDefaultCertBundle methods */
+void   rpc__resp__eap_use_default_cert_bundle__init
+                     (RpcRespEapUseDefaultCertBundle         *message);
+size_t rpc__resp__eap_use_default_cert_bundle__get_packed_size
+                     (const RpcRespEapUseDefaultCertBundle   *message);
+size_t rpc__resp__eap_use_default_cert_bundle__pack
+                     (const RpcRespEapUseDefaultCertBundle   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_use_default_cert_bundle__pack_to_buffer
+                     (const RpcRespEapUseDefaultCertBundle   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapUseDefaultCertBundle *
+       rpc__resp__eap_use_default_cert_bundle__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_use_default_cert_bundle__free_unpacked
+                     (RpcRespEapUseDefaultCertBundle *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiSetOkcSupport methods */
+void   rpc__req__wifi_set_okc_support__init
+                     (RpcReqWifiSetOkcSupport         *message);
+size_t rpc__req__wifi_set_okc_support__get_packed_size
+                     (const RpcReqWifiSetOkcSupport   *message);
+size_t rpc__req__wifi_set_okc_support__pack
+                     (const RpcReqWifiSetOkcSupport   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_set_okc_support__pack_to_buffer
+                     (const RpcReqWifiSetOkcSupport   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiSetOkcSupport *
+       rpc__req__wifi_set_okc_support__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_set_okc_support__free_unpacked
+                     (RpcReqWifiSetOkcSupport *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiSetOkcSupport methods */
+void   rpc__resp__wifi_set_okc_support__init
+                     (RpcRespWifiSetOkcSupport         *message);
+size_t rpc__resp__wifi_set_okc_support__get_packed_size
+                     (const RpcRespWifiSetOkcSupport   *message);
+size_t rpc__resp__wifi_set_okc_support__pack
+                     (const RpcRespWifiSetOkcSupport   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_set_okc_support__pack_to_buffer
+                     (const RpcRespWifiSetOkcSupport   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiSetOkcSupport *
+       rpc__resp__wifi_set_okc_support__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_set_okc_support__free_unpacked
+                     (RpcRespWifiSetOkcSupport *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetDomainName methods */
+void   rpc__req__eap_set_domain_name__init
+                     (RpcReqEapSetDomainName         *message);
+size_t rpc__req__eap_set_domain_name__get_packed_size
+                     (const RpcReqEapSetDomainName   *message);
+size_t rpc__req__eap_set_domain_name__pack
+                     (const RpcReqEapSetDomainName   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_domain_name__pack_to_buffer
+                     (const RpcReqEapSetDomainName   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetDomainName *
+       rpc__req__eap_set_domain_name__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_domain_name__free_unpacked
+                     (RpcReqEapSetDomainName *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetDomainName methods */
+void   rpc__resp__eap_set_domain_name__init
+                     (RpcRespEapSetDomainName         *message);
+size_t rpc__resp__eap_set_domain_name__get_packed_size
+                     (const RpcRespEapSetDomainName   *message);
+size_t rpc__resp__eap_set_domain_name__pack
+                     (const RpcRespEapSetDomainName   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_domain_name__pack_to_buffer
+                     (const RpcRespEapSetDomainName   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetDomainName *
+       rpc__resp__eap_set_domain_name__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_domain_name__free_unpacked
+                     (RpcRespEapSetDomainName *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqEapSetEapMethods methods */
+void   rpc__req__eap_set_eap_methods__init
+                     (RpcReqEapSetEapMethods         *message);
+size_t rpc__req__eap_set_eap_methods__get_packed_size
+                     (const RpcReqEapSetEapMethods   *message);
+size_t rpc__req__eap_set_eap_methods__pack
+                     (const RpcReqEapSetEapMethods   *message,
+                      uint8_t             *out);
+size_t rpc__req__eap_set_eap_methods__pack_to_buffer
+                     (const RpcReqEapSetEapMethods   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqEapSetEapMethods *
+       rpc__req__eap_set_eap_methods__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__eap_set_eap_methods__free_unpacked
+                     (RpcReqEapSetEapMethods *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespEapSetEapMethods methods */
+void   rpc__resp__eap_set_eap_methods__init
+                     (RpcRespEapSetEapMethods         *message);
+size_t rpc__resp__eap_set_eap_methods__get_packed_size
+                     (const RpcRespEapSetEapMethods   *message);
+size_t rpc__resp__eap_set_eap_methods__pack
+                     (const RpcRespEapSetEapMethods   *message,
+                      uint8_t             *out);
+size_t rpc__resp__eap_set_eap_methods__pack_to_buffer
+                     (const RpcRespEapSetEapMethods   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespEapSetEapMethods *
+       rpc__resp__eap_set_eap_methods__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__eap_set_eap_methods__free_unpacked
+                     (RpcRespEapSetEapMethods *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventSuppDppUriReady methods */
+void   rpc__event__supp_dpp_uri_ready__init
+                     (RpcEventSuppDppUriReady         *message);
+size_t rpc__event__supp_dpp_uri_ready__get_packed_size
+                     (const RpcEventSuppDppUriReady   *message);
+size_t rpc__event__supp_dpp_uri_ready__pack
+                     (const RpcEventSuppDppUriReady   *message,
+                      uint8_t             *out);
+size_t rpc__event__supp_dpp_uri_ready__pack_to_buffer
+                     (const RpcEventSuppDppUriReady   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventSuppDppUriReady *
+       rpc__event__supp_dpp_uri_ready__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__supp_dpp_uri_ready__free_unpacked
+                     (RpcEventSuppDppUriReady *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventSuppDppCfgRecvd methods */
+void   rpc__event__supp_dpp_cfg_recvd__init
+                     (RpcEventSuppDppCfgRecvd         *message);
+size_t rpc__event__supp_dpp_cfg_recvd__get_packed_size
+                     (const RpcEventSuppDppCfgRecvd   *message);
+size_t rpc__event__supp_dpp_cfg_recvd__pack
+                     (const RpcEventSuppDppCfgRecvd   *message,
+                      uint8_t             *out);
+size_t rpc__event__supp_dpp_cfg_recvd__pack_to_buffer
+                     (const RpcEventSuppDppCfgRecvd   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventSuppDppCfgRecvd *
+       rpc__event__supp_dpp_cfg_recvd__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__supp_dpp_cfg_recvd__free_unpacked
+                     (RpcEventSuppDppCfgRecvd *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventSuppDppFail methods */
+void   rpc__event__supp_dpp_fail__init
+                     (RpcEventSuppDppFail         *message);
+size_t rpc__event__supp_dpp_fail__get_packed_size
+                     (const RpcEventSuppDppFail   *message);
+size_t rpc__event__supp_dpp_fail__pack
+                     (const RpcEventSuppDppFail   *message,
+                      uint8_t             *out);
+size_t rpc__event__supp_dpp_fail__pack_to_buffer
+                     (const RpcEventSuppDppFail   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventSuppDppFail *
+       rpc__event__supp_dpp_fail__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__supp_dpp_fail__free_unpacked
+                     (RpcEventSuppDppFail *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventWifiDppUriReady methods */
+void   rpc__event__wifi_dpp_uri_ready__init
+                     (RpcEventWifiDppUriReady         *message);
+size_t rpc__event__wifi_dpp_uri_ready__get_packed_size
+                     (const RpcEventWifiDppUriReady   *message);
+size_t rpc__event__wifi_dpp_uri_ready__pack
+                     (const RpcEventWifiDppUriReady   *message,
+                      uint8_t             *out);
+size_t rpc__event__wifi_dpp_uri_ready__pack_to_buffer
+                     (const RpcEventWifiDppUriReady   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventWifiDppUriReady *
+       rpc__event__wifi_dpp_uri_ready__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__wifi_dpp_uri_ready__free_unpacked
+                     (RpcEventWifiDppUriReady *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventWifiDppCfgRecvd methods */
+void   rpc__event__wifi_dpp_cfg_recvd__init
+                     (RpcEventWifiDppCfgRecvd         *message);
+size_t rpc__event__wifi_dpp_cfg_recvd__get_packed_size
+                     (const RpcEventWifiDppCfgRecvd   *message);
+size_t rpc__event__wifi_dpp_cfg_recvd__pack
+                     (const RpcEventWifiDppCfgRecvd   *message,
+                      uint8_t             *out);
+size_t rpc__event__wifi_dpp_cfg_recvd__pack_to_buffer
+                     (const RpcEventWifiDppCfgRecvd   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventWifiDppCfgRecvd *
+       rpc__event__wifi_dpp_cfg_recvd__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__wifi_dpp_cfg_recvd__free_unpacked
+                     (RpcEventWifiDppCfgRecvd *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventWifiDppFail methods */
+void   rpc__event__wifi_dpp_fail__init
+                     (RpcEventWifiDppFail         *message);
+size_t rpc__event__wifi_dpp_fail__get_packed_size
+                     (const RpcEventWifiDppFail   *message);
+size_t rpc__event__wifi_dpp_fail__pack
+                     (const RpcEventWifiDppFail   *message,
+                      uint8_t             *out);
+size_t rpc__event__wifi_dpp_fail__pack_to_buffer
+                     (const RpcEventWifiDppFail   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventWifiDppFail *
+       rpc__event__wifi_dpp_fail__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__wifi_dpp_fail__free_unpacked
+                     (RpcEventWifiDppFail *message,
                       ProtobufCAllocator *allocator);
 /* RpcGpioConfig methods */
 void   rpc__gpio_config__init
@@ -8144,101 +10875,6 @@ RpcRespGpioSetPullMode *
 void   rpc__resp__gpio_set_pull_mode__free_unpacked
                      (RpcRespGpioSetPullMode *message,
                       ProtobufCAllocator *allocator);
-/* RpcEventDhcpDnsStatus methods */
-void   rpc__event__dhcp_dns_status__init
-                     (RpcEventDhcpDnsStatus         *message);
-size_t rpc__event__dhcp_dns_status__get_packed_size
-                     (const RpcEventDhcpDnsStatus   *message);
-size_t rpc__event__dhcp_dns_status__pack
-                     (const RpcEventDhcpDnsStatus   *message,
-                      uint8_t             *out);
-size_t rpc__event__dhcp_dns_status__pack_to_buffer
-                     (const RpcEventDhcpDnsStatus   *message,
-                      ProtobufCBuffer     *buffer);
-RpcEventDhcpDnsStatus *
-       rpc__event__dhcp_dns_status__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data);
-void   rpc__event__dhcp_dns_status__free_unpacked
-                     (RpcEventDhcpDnsStatus *message,
-                      ProtobufCAllocator *allocator);
-/* RpcEventStaItwtSetup methods */
-void   rpc__event__sta_itwt_setup__init
-                     (RpcEventStaItwtSetup         *message);
-size_t rpc__event__sta_itwt_setup__get_packed_size
-                     (const RpcEventStaItwtSetup   *message);
-size_t rpc__event__sta_itwt_setup__pack
-                     (const RpcEventStaItwtSetup   *message,
-                      uint8_t             *out);
-size_t rpc__event__sta_itwt_setup__pack_to_buffer
-                     (const RpcEventStaItwtSetup   *message,
-                      ProtobufCBuffer     *buffer);
-RpcEventStaItwtSetup *
-       rpc__event__sta_itwt_setup__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data);
-void   rpc__event__sta_itwt_setup__free_unpacked
-                     (RpcEventStaItwtSetup *message,
-                      ProtobufCAllocator *allocator);
-/* RpcEventStaItwtTeardown methods */
-void   rpc__event__sta_itwt_teardown__init
-                     (RpcEventStaItwtTeardown         *message);
-size_t rpc__event__sta_itwt_teardown__get_packed_size
-                     (const RpcEventStaItwtTeardown   *message);
-size_t rpc__event__sta_itwt_teardown__pack
-                     (const RpcEventStaItwtTeardown   *message,
-                      uint8_t             *out);
-size_t rpc__event__sta_itwt_teardown__pack_to_buffer
-                     (const RpcEventStaItwtTeardown   *message,
-                      ProtobufCBuffer     *buffer);
-RpcEventStaItwtTeardown *
-       rpc__event__sta_itwt_teardown__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data);
-void   rpc__event__sta_itwt_teardown__free_unpacked
-                     (RpcEventStaItwtTeardown *message,
-                      ProtobufCAllocator *allocator);
-/* RpcEventStaItwtSuspend methods */
-void   rpc__event__sta_itwt_suspend__init
-                     (RpcEventStaItwtSuspend         *message);
-size_t rpc__event__sta_itwt_suspend__get_packed_size
-                     (const RpcEventStaItwtSuspend   *message);
-size_t rpc__event__sta_itwt_suspend__pack
-                     (const RpcEventStaItwtSuspend   *message,
-                      uint8_t             *out);
-size_t rpc__event__sta_itwt_suspend__pack_to_buffer
-                     (const RpcEventStaItwtSuspend   *message,
-                      ProtobufCBuffer     *buffer);
-RpcEventStaItwtSuspend *
-       rpc__event__sta_itwt_suspend__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data);
-void   rpc__event__sta_itwt_suspend__free_unpacked
-                     (RpcEventStaItwtSuspend *message,
-                      ProtobufCAllocator *allocator);
-/* RpcEventStaItwtProbe methods */
-void   rpc__event__sta_itwt_probe__init
-                     (RpcEventStaItwtProbe         *message);
-size_t rpc__event__sta_itwt_probe__get_packed_size
-                     (const RpcEventStaItwtProbe   *message);
-size_t rpc__event__sta_itwt_probe__pack
-                     (const RpcEventStaItwtProbe   *message,
-                      uint8_t             *out);
-size_t rpc__event__sta_itwt_probe__pack_to_buffer
-                     (const RpcEventStaItwtProbe   *message,
-                      ProtobufCBuffer     *buffer);
-RpcEventStaItwtProbe *
-       rpc__event__sta_itwt_probe__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data);
-void   rpc__event__sta_itwt_probe__free_unpacked
-                     (RpcEventStaItwtProbe *message,
-                      ProtobufCAllocator *allocator);
 /* Rpc methods */
 void   rpc__init
                      (Rpc         *message);
@@ -8401,6 +11037,9 @@ typedef void (*WifiTwtConfig_Closure)
 typedef void (*ConnectedSTAList_Closure)
                  (const ConnectedSTAList *message,
                   void *closure_data);
+typedef void (*EapFastConfig_Closure)
+                 (const EapFastConfig *message,
+                  void *closure_data);
 typedef void (*RpcReqGetMacAddress_Closure)
                  (const RpcReqGetMacAddress *message,
                   void *closure_data);
@@ -8454,6 +11093,12 @@ typedef void (*RpcReqOTAEnd_Closure)
                   void *closure_data);
 typedef void (*RpcRespOTAEnd_Closure)
                  (const RpcRespOTAEnd *message,
+                  void *closure_data);
+typedef void (*RpcReqOTAActivate_Closure)
+                 (const RpcReqOTAActivate *message,
+                  void *closure_data);
+typedef void (*RpcRespOTAActivate_Closure)
+                 (const RpcRespOTAActivate *message,
                   void *closure_data);
 typedef void (*RpcReqWifiSetMaxTxPower_Closure)
                  (const RpcReqWifiSetMaxTxPower *message,
@@ -8797,6 +11442,54 @@ typedef void (*RpcReqGetDhcpDnsStatus_Closure)
 typedef void (*RpcRespGetDhcpDnsStatus_Closure)
                  (const RpcRespGetDhcpDnsStatus *message,
                   void *closure_data);
+typedef void (*RpcReqSuppDppInit_Closure)
+                 (const RpcReqSuppDppInit *message,
+                  void *closure_data);
+typedef void (*RpcRespSuppDppInit_Closure)
+                 (const RpcRespSuppDppInit *message,
+                  void *closure_data);
+typedef void (*RpcReqSuppDppDeinit_Closure)
+                 (const RpcReqSuppDppDeinit *message,
+                  void *closure_data);
+typedef void (*RpcRespSuppDppDeinit_Closure)
+                 (const RpcRespSuppDppDeinit *message,
+                  void *closure_data);
+typedef void (*RpcReqSuppDppBootstrapGen_Closure)
+                 (const RpcReqSuppDppBootstrapGen *message,
+                  void *closure_data);
+typedef void (*RpcRespSuppDppBootstrapGen_Closure)
+                 (const RpcRespSuppDppBootstrapGen *message,
+                  void *closure_data);
+typedef void (*RpcReqSuppDppStartListen_Closure)
+                 (const RpcReqSuppDppStartListen *message,
+                  void *closure_data);
+typedef void (*RpcRespSuppDppStartListen_Closure)
+                 (const RpcRespSuppDppStartListen *message,
+                  void *closure_data);
+typedef void (*RpcReqSuppDppStopListen_Closure)
+                 (const RpcReqSuppDppStopListen *message,
+                  void *closure_data);
+typedef void (*RpcRespSuppDppStopListen_Closure)
+                 (const RpcRespSuppDppStopListen *message,
+                  void *closure_data);
+typedef void (*RpcReqIfaceMacAddrSetGet_Closure)
+                 (const RpcReqIfaceMacAddrSetGet *message,
+                  void *closure_data);
+typedef void (*RpcRespIfaceMacAddrSetGet_Closure)
+                 (const RpcRespIfaceMacAddrSetGet *message,
+                  void *closure_data);
+typedef void (*RpcReqIfaceMacAddrLenGet_Closure)
+                 (const RpcReqIfaceMacAddrLenGet *message,
+                  void *closure_data);
+typedef void (*RpcRespIfaceMacAddrLenGet_Closure)
+                 (const RpcRespIfaceMacAddrLenGet *message,
+                  void *closure_data);
+typedef void (*RpcReqFeatureControl_Closure)
+                 (const RpcReqFeatureControl *message,
+                  void *closure_data);
+typedef void (*RpcRespFeatureControl_Closure)
+                 (const RpcRespFeatureControl *message,
+                  void *closure_data);
 typedef void (*RpcEventWifiEventNoArgs_Closure)
                  (const RpcEventWifiEventNoArgs *message,
                   void *closure_data);
@@ -8820,6 +11513,183 @@ typedef void (*RpcEventStaConnected_Closure)
                   void *closure_data);
 typedef void (*RpcEventStaDisconnected_Closure)
                  (const RpcEventStaDisconnected *message,
+                  void *closure_data);
+typedef void (*RpcEventDhcpDnsStatus_Closure)
+                 (const RpcEventDhcpDnsStatus *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtSetup_Closure)
+                 (const RpcEventStaItwtSetup *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtTeardown_Closure)
+                 (const RpcEventStaItwtTeardown *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtSuspend_Closure)
+                 (const RpcEventStaItwtSuspend *message,
+                  void *closure_data);
+typedef void (*RpcEventStaItwtProbe_Closure)
+                 (const RpcEventStaItwtProbe *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaEnterpriseEnable_Closure)
+                 (const RpcReqWifiStaEnterpriseEnable *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaEnterpriseEnable_Closure)
+                 (const RpcRespWifiStaEnterpriseEnable *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiStaEnterpriseDisable_Closure)
+                 (const RpcReqWifiStaEnterpriseDisable *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiStaEnterpriseDisable_Closure)
+                 (const RpcRespWifiStaEnterpriseDisable *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetIdentity_Closure)
+                 (const RpcReqEapSetIdentity *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetIdentity_Closure)
+                 (const RpcRespEapSetIdentity *message,
+                  void *closure_data);
+typedef void (*RpcReqEapClearIdentity_Closure)
+                 (const RpcReqEapClearIdentity *message,
+                  void *closure_data);
+typedef void (*RpcRespEapClearIdentity_Closure)
+                 (const RpcRespEapClearIdentity *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetUsername_Closure)
+                 (const RpcReqEapSetUsername *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetUsername_Closure)
+                 (const RpcRespEapSetUsername *message,
+                  void *closure_data);
+typedef void (*RpcReqEapClearUsername_Closure)
+                 (const RpcReqEapClearUsername *message,
+                  void *closure_data);
+typedef void (*RpcRespEapClearUsername_Closure)
+                 (const RpcRespEapClearUsername *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetPassword_Closure)
+                 (const RpcReqEapSetPassword *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetPassword_Closure)
+                 (const RpcRespEapSetPassword *message,
+                  void *closure_data);
+typedef void (*RpcReqEapClearPassword_Closure)
+                 (const RpcReqEapClearPassword *message,
+                  void *closure_data);
+typedef void (*RpcRespEapClearPassword_Closure)
+                 (const RpcRespEapClearPassword *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetNewPassword_Closure)
+                 (const RpcReqEapSetNewPassword *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetNewPassword_Closure)
+                 (const RpcRespEapSetNewPassword *message,
+                  void *closure_data);
+typedef void (*RpcReqEapClearNewPassword_Closure)
+                 (const RpcReqEapClearNewPassword *message,
+                  void *closure_data);
+typedef void (*RpcRespEapClearNewPassword_Closure)
+                 (const RpcRespEapClearNewPassword *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetCaCert_Closure)
+                 (const RpcReqEapSetCaCert *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetCaCert_Closure)
+                 (const RpcRespEapSetCaCert *message,
+                  void *closure_data);
+typedef void (*RpcReqEapClearCaCert_Closure)
+                 (const RpcReqEapClearCaCert *message,
+                  void *closure_data);
+typedef void (*RpcRespEapClearCaCert_Closure)
+                 (const RpcRespEapClearCaCert *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetCertificateAndKey_Closure)
+                 (const RpcReqEapSetCertificateAndKey *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetCertificateAndKey_Closure)
+                 (const RpcRespEapSetCertificateAndKey *message,
+                  void *closure_data);
+typedef void (*RpcReqEapClearCertificateAndKey_Closure)
+                 (const RpcReqEapClearCertificateAndKey *message,
+                  void *closure_data);
+typedef void (*RpcRespEapClearCertificateAndKey_Closure)
+                 (const RpcRespEapClearCertificateAndKey *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetDisableTimeCheck_Closure)
+                 (const RpcReqEapSetDisableTimeCheck *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetDisableTimeCheck_Closure)
+                 (const RpcRespEapSetDisableTimeCheck *message,
+                  void *closure_data);
+typedef void (*RpcReqEapGetDisableTimeCheck_Closure)
+                 (const RpcReqEapGetDisableTimeCheck *message,
+                  void *closure_data);
+typedef void (*RpcRespEapGetDisableTimeCheck_Closure)
+                 (const RpcRespEapGetDisableTimeCheck *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetTtlsPhase2Method_Closure)
+                 (const RpcReqEapSetTtlsPhase2Method *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetTtlsPhase2Method_Closure)
+                 (const RpcRespEapSetTtlsPhase2Method *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetSuiteb192bitCertification_Closure)
+                 (const RpcReqEapSetSuiteb192bitCertification *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetSuiteb192bitCertification_Closure)
+                 (const RpcRespEapSetSuiteb192bitCertification *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetPacFile_Closure)
+                 (const RpcReqEapSetPacFile *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetPacFile_Closure)
+                 (const RpcRespEapSetPacFile *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetFastParams_Closure)
+                 (const RpcReqEapSetFastParams *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetFastParams_Closure)
+                 (const RpcRespEapSetFastParams *message,
+                  void *closure_data);
+typedef void (*RpcReqEapUseDefaultCertBundle_Closure)
+                 (const RpcReqEapUseDefaultCertBundle *message,
+                  void *closure_data);
+typedef void (*RpcRespEapUseDefaultCertBundle_Closure)
+                 (const RpcRespEapUseDefaultCertBundle *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiSetOkcSupport_Closure)
+                 (const RpcReqWifiSetOkcSupport *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiSetOkcSupport_Closure)
+                 (const RpcRespWifiSetOkcSupport *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetDomainName_Closure)
+                 (const RpcReqEapSetDomainName *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetDomainName_Closure)
+                 (const RpcRespEapSetDomainName *message,
+                  void *closure_data);
+typedef void (*RpcReqEapSetEapMethods_Closure)
+                 (const RpcReqEapSetEapMethods *message,
+                  void *closure_data);
+typedef void (*RpcRespEapSetEapMethods_Closure)
+                 (const RpcRespEapSetEapMethods *message,
+                  void *closure_data);
+typedef void (*RpcEventSuppDppUriReady_Closure)
+                 (const RpcEventSuppDppUriReady *message,
+                  void *closure_data);
+typedef void (*RpcEventSuppDppCfgRecvd_Closure)
+                 (const RpcEventSuppDppCfgRecvd *message,
+                  void *closure_data);
+typedef void (*RpcEventSuppDppFail_Closure)
+                 (const RpcEventSuppDppFail *message,
+                  void *closure_data);
+typedef void (*RpcEventWifiDppUriReady_Closure)
+                 (const RpcEventWifiDppUriReady *message,
+                  void *closure_data);
+typedef void (*RpcEventWifiDppCfgRecvd_Closure)
+                 (const RpcEventWifiDppCfgRecvd *message,
+                  void *closure_data);
+typedef void (*RpcEventWifiDppFail_Closure)
+                 (const RpcEventWifiDppFail *message,
                   void *closure_data);
 typedef void (*RpcGpioConfig_Closure)
                  (const RpcGpioConfig *message,
@@ -8866,21 +11736,6 @@ typedef void (*RpcReqGpioSetPullMode_Closure)
 typedef void (*RpcRespGpioSetPullMode_Closure)
                  (const RpcRespGpioSetPullMode *message,
                   void *closure_data);
-typedef void (*RpcEventDhcpDnsStatus_Closure)
-                 (const RpcEventDhcpDnsStatus *message,
-                  void *closure_data);
-typedef void (*RpcEventStaItwtSetup_Closure)
-                 (const RpcEventStaItwtSetup *message,
-                  void *closure_data);
-typedef void (*RpcEventStaItwtTeardown_Closure)
-                 (const RpcEventStaItwtTeardown *message,
-                  void *closure_data);
-typedef void (*RpcEventStaItwtSuspend_Closure)
-                 (const RpcEventStaItwtSuspend *message,
-                  void *closure_data);
-typedef void (*RpcEventStaItwtProbe_Closure)
-                 (const RpcEventStaItwtProbe *message,
-                  void *closure_data);
 typedef void (*Rpc_Closure)
                  (const Rpc *message,
                   void *closure_data);
@@ -8895,6 +11750,9 @@ extern const ProtobufCEnumDescriptor    rpc__wifi_power_save__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__wifi_sec_prot__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__status__descriptor;
 extern const ProtobufCEnumDescriptor    rpc_type__descriptor;
+extern const ProtobufCEnumDescriptor    rpc_feature__descriptor;
+extern const ProtobufCEnumDescriptor    rpc_feature_command__descriptor;
+extern const ProtobufCEnumDescriptor    rpc_feature_option__descriptor;
 extern const ProtobufCEnumDescriptor    rpc_id__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__gpio_mode__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__gpio_pull_mode__descriptor;
@@ -8945,6 +11803,7 @@ extern const ProtobufCMessageDescriptor wifi_bandwidths__descriptor;
 extern const ProtobufCMessageDescriptor wifi_itwt_setup_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_twt_config__descriptor;
 extern const ProtobufCMessageDescriptor connected_stalist__descriptor;
+extern const ProtobufCMessageDescriptor eap_fast_config__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__get_mac_address__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__get_mac_address__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__get_mode__descriptor;
@@ -8963,6 +11822,8 @@ extern const ProtobufCMessageDescriptor rpc__req__otawrite__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__otawrite__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__otaend__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__otaend__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__otaactivate__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__otaactivate__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__wifi_set_max_tx_power__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_max_tx_power__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__wifi_get_max_tx_power__descriptor;
@@ -9077,6 +11938,22 @@ extern const ProtobufCMessageDescriptor rpc__req__set_dhcp_dns_status__descripto
 extern const ProtobufCMessageDescriptor rpc__resp__set_dhcp_dns_status__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__get_dhcp_dns_status__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__get_dhcp_dns_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_init__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_init__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_deinit__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_deinit__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_bootstrap_gen__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_bootstrap_gen__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_start_listen__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_start_listen__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_stop_listen__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_stop_listen__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__iface_mac_addr_set_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__iface_mac_addr_set_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__iface_mac_addr_len_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__iface_mac_addr_len_get__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__feature_control__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__feature_control__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_event_no_args__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__espinit__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__heartbeat__descriptor;
@@ -9085,6 +11962,65 @@ extern const ProtobufCMessageDescriptor rpc__event__ap__sta_connected__descripto
 extern const ProtobufCMessageDescriptor rpc__event__sta_scan_done__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_connected__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_disconnected__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__dhcp_dns_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_setup__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_teardown__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_suspend__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_probe__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_enterprise_enable__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_enterprise_enable__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_sta_enterprise_disable__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_sta_enterprise_disable__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_identity__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_identity__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_clear_identity__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_clear_identity__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_username__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_username__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_clear_username__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_clear_username__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_clear_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_clear_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_new_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_new_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_clear_new_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_clear_new_password__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_ca_cert__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_ca_cert__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_clear_ca_cert__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_clear_ca_cert__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_certificate_and_key__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_certificate_and_key__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_clear_certificate_and_key__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_clear_certificate_and_key__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_disable_time_check__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_disable_time_check__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_get_disable_time_check__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_get_disable_time_check__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_ttls_phase2_method__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_ttls_phase2_method__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_suiteb192bit_certification__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_suiteb192bit_certification__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_pac_file__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_pac_file__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_fast_params__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_fast_params__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_use_default_cert_bundle__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_use_default_cert_bundle__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_set_okc_support__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_okc_support__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_domain_name__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_domain_name__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__eap_set_eap_methods__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__eap_set_eap_methods__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__supp_dpp_uri_ready__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__supp_dpp_cfg_recvd__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__supp_dpp_fail__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_uri_ready__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_cfg_recvd__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_fail__descriptor;
 extern const ProtobufCMessageDescriptor rpc__gpio_config__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__gpio_config__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_config__descriptor;
@@ -9100,11 +12036,6 @@ extern const ProtobufCMessageDescriptor rpc__req__gpio_input_enable__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_input_enable__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__gpio_set_pull_mode__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_set_pull_mode__descriptor;
-extern const ProtobufCMessageDescriptor rpc__event__dhcp_dns_status__descriptor;
-extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_setup__descriptor;
-extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_teardown__descriptor;
-extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_suspend__descriptor;
-extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_probe__descriptor;
 extern const ProtobufCMessageDescriptor rpc__descriptor;
 
 PROTOBUF_C__END_DECLS

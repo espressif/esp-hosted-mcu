@@ -27,10 +27,6 @@
 #define H_TRANSPORT_SPI 3
 #define H_TRANSPORT_UART 4
 
-#ifdef CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE
-  #include "driver/sdmmc_host.h"
-#endif
-
 #ifdef CONFIG_ESP_HOSTED_UART_HOST_INTERFACE
   #include "hal/uart_types.h"
 #endif
@@ -69,6 +65,8 @@ enum {
   #define H_SLAVE_TARGET_ESP32C6 1
 #elif CONFIG_SLAVE_IDF_TARGET_ESP32C5
   #define H_SLAVE_TARGET_ESP32C5 1
+#elif CONFIG_SLAVE_IDF_TARGET_ESP32C61
+  #define H_SLAVE_TARGET_ESP32C61 1
 #else
   #error "Unknown Slave Target"
 #endif

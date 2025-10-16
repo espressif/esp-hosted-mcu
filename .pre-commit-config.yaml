@@ -8,6 +8,17 @@ repos:
       args: [ "--update" ]
       always_run: true
       pass_filenames: false
+    - id: rpc-checker
+      name: ESP-Hosted RPC Checker
+      entry: tools/check_rpc_calls.py
+      language: python
+      always_run: true
+      pass_filenames: false
+    - id: changelog-checker
+      name: ESP-Hosted Changelog Checker
+      entry: tools/check_changelog.py
+      language: python
+      files: ^idf_component.yml$
   - repo: https://github.com/espressif/check-copyright/
     rev: v1.1.1
     hooks:

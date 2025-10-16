@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -26,6 +26,7 @@
 #include "ble_compatibility_test.h"
 #include "esp_gatt_common_api.h"
 
+#include "esp_hosted.h"
 #include "esp_hosted_bluedroid.h"
 
 #define DEBUG_ON  0
@@ -509,7 +510,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 ESP_LOGE(EXAMPLE_TAG, "create attr table failed, error code = %x", create_attr_ret);
             }
         }
-       	    break;
+            break;
         case ESP_GATTS_READ_EVT:
             //ESP_LOGE(EXAMPLE_TAG, "ESP_GATTS_READ_EVT, handle=0x%d, offset=%d", param->read.handle, param->read.offset);
             if(gatt_db_handle_table[IDX_CHAR_VAL_A] == param->read.handle) {
@@ -518,7 +519,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             if(gatt_db_handle_table[IDX_CHAR_VAL_B] == param->read.handle) {
                 ESP_LOGE(EXAMPLE_TAG, "(5) ***** read char2 ***** ");
             }
-       	    break;
+            break;
         case ESP_GATTS_WRITE_EVT:
             if (!param->write.is_prep){
                 // the data length of gattc write  must be less than GATTS_EXAMPLE_CHAR_VAL_LEN_MAX.
@@ -561,7 +562,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 /* handle prepare write */
                 example_prepare_write_event_env(gatts_if, &prepare_write_env, param);
             }
-      	    break;
+            break;
         case ESP_GATTS_EXEC_WRITE_EVT:
             // the length of gattc prepare write data must be less than GATTS_EXAMPLE_CHAR_VAL_LEN_MAX.
             ESP_LOGI(EXAMPLE_TAG, "ESP_GATTS_EXEC_WRITE_EVT, Length=%d",  prepare_write_env.prepare_len);
@@ -645,7 +646,29 @@ void app_main(void)
     }
     ESP_ERROR_CHECK( ret );
 
-    /* initialize TRANSPORT first */
+    // initialise connection to co-processor
+    esp_hosted_connect_to_slave();
+
+    // get fw version
+    ESP_LOGI("INFO", "getting fw version");
+    esp_hosted_coprocessor_fwver_t fwver;
+    if (ESP_OK == esp_hosted_get_coprocessor_fwversion(&fwver)) {
+        ESP_LOGI("INFO", "FW Version: %" PRIu32 ".%" PRIu32 ".%" PRIu32,
+                fwver.major1, fwver.minor1, fwver.patch1);
+    } else {
+        ESP_LOGW("INFO", "failed to get fw version");
+    }
+
+    // init bt controller
+    if (ESP_OK != esp_hosted_bt_controller_init()) {
+        ESP_LOGW("INFO", "failed to init bt controller");
+    }
+
+    // enable bt controller
+    if (ESP_OK != esp_hosted_bt_controller_enable()) {
+        ESP_LOGW("INFO", "failed to enable bt controller");
+    }
+
     hosted_hci_bluedroid_open();
 
     /* get HCI driver operations */
@@ -655,7 +678,6 @@ void app_main(void)
         .register_host_callback = hosted_hci_bluedroid_register_host_callback,
     };
     esp_bluedroid_attach_hci_driver(&operations);
-
 
 #if 0
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));

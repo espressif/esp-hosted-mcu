@@ -29,6 +29,7 @@ This can be any generic microcontroller (MCU). We demonstrate any ESP as host. U
 - Host extends the capabilities of the Hosted co-processor through Remote Procedure Calls (RPCs). The Host MCU sends these RPC commands to the Hosted co-processor using a reliable communication bus, like SPI, SDIO, or UART. The Hosted co-processor then handles the RPC and provides the requested functionality to the Host MCU.
 - The data (network or Bluetooth) is packaged efficiently at the transport layer to minimize overhead and delays when passing between the Host and co-processor.
 - This modular design allows any MCU to be used as the Host, and any ESP chip with Wi-Fi and/or Bluetooth to be used as the Hosted co-processor. The RPC calls can also be extended to provide any function required by the Host, as long as the co-processor can support it.
+- The RPCs implemented are [listed in this document](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/implemented_rpcs.md), including the ESP-Hosted release version that implements the RPCs.
 
 ## 3 Solution Flexibility
 
@@ -44,6 +45,10 @@ This can be any generic microcontroller (MCU). We demonstrate any ESP as host. U
   - The user is not limited to just using the co-processor for wireless connectivity. They have complete control over the co-processor's resources, allowing for a more flexible and powerful system.
 - **Extensible RPC library**
   - The Remote Procedure Call (RPC) used by ESP-Hosted can be extended to provide any function required by the Host, as long as the co-processor can support it. Currently, the essential [ESP-IDF](https://github.com/espressif/esp-idf) Wi-Fi functions have been implemented.
+
+## 3.1 Features Supported by ESP-Hosted
+
+See the [Features](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/features.md) document for features currently supported by ESP-Hosted.
 
 ## 4 Quick Demo with ESP32-P4-Function-EV-Board
 
@@ -167,18 +172,15 @@ Legends:
 | Standard SPI | FD | 6 | jumper or PCB | Any_Slave | udp: 24 tcp: 22 | udp: 25 tcp: 22| Simplest solution for quick test |
 | Dual SPI | HD | 5 | jumper or PCB | Any_Slave [1] | udp: 32 tcp: 26 (O) | udp: 33 tcp: 25 (O) | Better throughput, but half duplex |
 | Quad SPI | HD | 7 | PCB only | Any_Slave [1] | udp: 41 tcp: 29 (O) | udp: 42 tcp: 28 (O) | Due to signal integrity, PCB is mandatory |
-| SDIO 1-Bit | HD | 4  | jumper or PCB | ESP32, ESP32-C6, ESP32-C5 [3] | TBD | TBD | Stepping stone for PCB based SDIO 4-bit |
-| SDIO 4-Bit | HD | 6 | PCB only | ESP32, ESP32-C6, ESP32-C5 [3] | udp: 79.5 tcp: 53.4 (S) | udp: 68.1 tcp: 44 (S) | Highest performance |
+| SDIO 1-Bit | HD | 4  | jumper or PCB | ESP32, ESP32-C6, ESP32-C5, ESP32-C61 | TBD | TBD | Stepping stone for PCB based SDIO 4-bit |
+| SDIO 4-Bit | HD | 6 | PCB only | ESP32, ESP32-C6, ESP32-C5, ESP32-C61 | udp: 79.5 tcp: 53.4 (S) | udp: 68.1 tcp: 44 (S) | Highest performance |
 | Only BT over UART | FD | 2 or 4 | jumper or PCB | Any_Slave | NA | NA | Dedicated Bluetooth over UART pins |
 | UART | FD | 2 | jumper or PCB | Any_Slave | udp: 0.68 tcp: 0.67 (O) | udp: 0.68 tcp: 0.60 (O) | UART dedicated for BT & Wi-Fi [2] |
 | Dedicated platforms | FD | Extra 2 or 4 | jumper or PCB | Any_Slave | NA | NA | UART dedicated for BT & Wi-Fi on any other transport |
 
 > [!NOTE]
 > - [1] Dual/Quad SPI is not supported on ESP32
->
-> - [2] UART is only suitable for low throughput environments
->
-> - [3] Currently in BETA support for ESP32-C5 (`--preview` in ESP-IDF master branch)
+> - [2] UART is suitable only for low throughput environments. Throughput was obtained with a baud rate of 921600. On the ESP32-P4 + C6 development board, a baud rate of 4 Mbits/s can be achieved, giving TCP/UDP throughput of around 3.3 MBits/s.
 
 With jumper cables, 'Standard SPI' and 'Dual SPI' solutions are easiest to evaluate, without much of hardware dependencies. SDIO 1-Bit can be tested with jumper cables, but it needs some additional hardware config, such as installation of external pull-up registers.
 
@@ -267,6 +269,8 @@ Check [examples](https://github.com/espressif/esp-hosted-mcu/tree/main/examples)
 If you encounter issues with using ESP-Hosted, see the following guide:
 
 - [Troubleshooting Guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/troubleshooting.md)
+- [Migration Guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/migration_guide.md)
+- if you are upgrading to ESP-Hosted version V2.5.2 (or later) from an earlier version, there has been a change in the operation of the Bluetooth Controller on the co-processor. See [Migrating to V2.5.2](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/migration_guide.md#migrating-to-v252) in the Migration Guide for more information.
 
 ## 11 References
 

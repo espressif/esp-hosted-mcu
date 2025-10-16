@@ -7,6 +7,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${host_dir}/api/src/esp_wifi_weak.c"
 		"${host_dir}/api/src/esp_hosted_api.c"
 		"${host_dir}/api/src/esp_hosted_transport_config.c"
+		"${host_dir}/api/src/esp_hosted_ota_api.c"
 		"${host_dir}/drivers/transport/transport_drv.c"
 		"${host_dir}/drivers/serial/serial_ll_if.c"
 		"${host_dir}/utils/stats.c"
@@ -36,6 +37,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${rpc_core_dir}/rpc_req.c"
 		"${rpc_core_dir}/rpc_rsp.c"
 		"${rpc_core_dir}/rpc_evt.c"
+		"${rpc_core_dir}/rpc_utils.c"
 		"${rpc_slaveif_dir}/rpc_slave_if.c"
 		"${rpc_wrap_dir}/rpc_wrap.c")
 
@@ -68,8 +70,6 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${common_dir}/protobuf-c"
 		"${common_dir}/proto" )
 
-	# host ESP32 specific files
-	list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c")
 	list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_gpio.c")
 	
 	# cli
@@ -107,7 +107,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	list(APPEND srcs
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_init.c"
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_os.c"
-		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c"
+		#"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c"
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_transport_defaults.c"
 	)
 
@@ -124,7 +124,8 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 endif()
 
 idf_component_register(SRCS ${srcs}
-	PRIV_REQUIRES soc esp_event esp_netif esp_timer driver esp_wifi bt esp_http_client console
+	PRIV_REQUIRES soc esp_event esp_netif esp_timer esp_wifi bt esp_http_client console wpa_supplicant esp_driver_spi esp_driver_gpio
+	REQUIRES esp_driver_sdmmc esp_driver_uart
 	INCLUDE_DIRS ${pub_include}
 	PRIV_INCLUDE_DIRS ${priv_include})
 

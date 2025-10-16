@@ -41,10 +41,9 @@ menu "Example Configuration"
 				help
 					Enable/Disable SDIO host interface
 
-			# SPI Half Duplex is not supported in ESP32
 			config ESP_SPI_HD_HOST_INTERFACE
 				bool "SPI Half-duplex"
-				depends on !IDF_TARGET_ESP32
+				depends on SOC_SPI_SUPPORT_SLAVE_HD_VER2
 				help
 					Enable/Disable SPI Half-duplex host interface
 
@@ -146,6 +145,7 @@ menu "Example Configuration"
 					default 18 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
 					default 15 if IDF_TARGET_ESP32
 					default 10 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+					default 8 if IDF_TARGET_ESP32C61
 					default 10
 					help
 						SPI controller Host CS
@@ -201,12 +201,13 @@ menu "Example Configuration"
 				config ESP_SPI_GPIO_HANDSHAKE
 					int "Slave GPIO pin for handshake"
 					default 22 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
-					default 18 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
+					default 4 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
 					default 3 if IDF_TARGET_ESP32C2 && !C2_C5_MODULE_SUB_BOARD
 					default 4 if IDF_TARGET_ESP32C5 && C2_C5_MODULE_SUB_BOARD
 					default 1 if IDF_TARGET_ESP32C5 && !C2_C5_MODULE_SUB_BOARD
 					default 3 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
 					default 17 if IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S2
+					default 22 if IDF_TARGET_ESP32C61
 					default 26
 					help
 						Slave GPIO pin to use for handshake with other spi controller
@@ -218,6 +219,7 @@ menu "Example Configuration"
 					default 4 if IDF_TARGET_ESP32C2 && !C2_C5_MODULE_SUB_BOARD
 					default 0 if IDF_TARGET_ESP32C5 && C2_C5_MODULE_SUB_BOARD
 					default 4 if IDF_TARGET_ESP32C5 && !C2_C5_MODULE_SUB_BOARD
+					default 23 if IDF_TARGET_ESP32C61
 					default 4
 					help
 						Slave GPIO pin for indicating host that SPI slave has data to be read by host
@@ -243,7 +245,8 @@ menu "Example Configuration"
 				int "ESP to Host SPI queue size"
 				default 10 if IDF_TARGET_ESP32
 				default 6 if IDF_TARGET_ESP32C2 && BT_ENABLED
-				default 10 if IDF_TARGET_ESP32C2
+				default 10 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C61
+				default 10 if IDF_TARGET_ESP32C61
 				default 20
 				help
 					Very small tx queue will lower ESP -- SPI --> Host data rate
@@ -253,6 +256,7 @@ menu "Example Configuration"
 				default 10 if IDF_TARGET_ESP32
 				default 6 if IDF_TARGET_ESP32C2 && BT_ENABLED
 				default 7 if IDF_TARGET_ESP32C2
+				default 10 if IDF_TARGET_ESP32C61
 				default 20
 				help
 					Very small RX queue will lower ESP <-- SPI -- Host data rate
@@ -301,6 +305,7 @@ menu "Example Configuration"
 					int "CMD GPIO number"
 					range 15 15 if IDF_TARGET_ESP32
 					range 18 18 if IDF_TARGET_ESP32C6
+					range 25 25 if IDF_TARGET_ESP32C61
 					range 10 10 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -309,6 +314,7 @@ menu "Example Configuration"
 					int "CLK GPIO number"
 					range 14 14 if IDF_TARGET_ESP32
 					range 19 19 if IDF_TARGET_ESP32C6
+					range 26 26 if IDF_TARGET_ESP32C61
 					range 9 9 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -317,6 +323,7 @@ menu "Example Configuration"
 					int "D0 GPIO number"
 					range 2 2 if IDF_TARGET_ESP32
 					range 20 20 if IDF_TARGET_ESP32C6
+					range 27 27 if IDF_TARGET_ESP32C61
 					range 8 8 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -325,6 +332,7 @@ menu "Example Configuration"
 					int "D1 GPIO number"
 					range 4 4 if IDF_TARGET_ESP32
 					range 21 21 if IDF_TARGET_ESP32C6
+					range 28 28 if IDF_TARGET_ESP32C61
 					range 7 7 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -333,6 +341,7 @@ menu "Example Configuration"
 					int "D2 GPIO number"
 					range 12 12 if IDF_TARGET_ESP32
 					range 22 22 if IDF_TARGET_ESP32C6
+					range 22 22 if IDF_TARGET_ESP32C61
 					range 14 14 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -341,6 +350,7 @@ menu "Example Configuration"
 					int "D3 GPIO number"
 					range 13 13 if IDF_TARGET_ESP32
 					range 23 23 if IDF_TARGET_ESP32C6
+					range 23 23 if IDF_TARGET_ESP32C61
 					range 13 13 if IDF_TARGET_ESP32C5
 					help
 						"Value cannot be configured. Displayed for reference."
@@ -371,12 +381,14 @@ menu "Example Configuration"
 
 			config ESP_SDIO_TX_Q_SIZE
 				int "SDIO TX queue size"
+				default 10 if IDF_TARGET_ESP32C61
 				default 20
 				help
 					Very small TX queue will lower ESP --> SDIO -- Host data rate
 
 			config ESP_SDIO_RX_Q_SIZE
 				int "SDIO RX queue size"
+				default 10 if IDF_TARGET_ESP32C61
 				default 20
 				help
 					Very small RX queue will lower ESP <-- SDIO -- Host data rate
@@ -441,6 +453,7 @@ menu "Example Configuration"
 				config ESP_SPI_HD_GPIO_CS
 					int "Slave GPIO pin for Host CS"
 					default 18 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 8 if IDF_TARGET_ESP32C61
 					default 10
 					help
 						SPI HD controller Host CS
@@ -472,6 +485,7 @@ menu "Example Configuration"
 					depends on ESP_SPI_HD_PRIV_INTERFACE_4_DATA_LINES
 					int "Slave GPIO pin for Host D2"
 					default 22 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 4 if IDF_TARGET_ESP32C61
 					default 5
 					help
 						SPI HD controller Host D2
@@ -480,6 +494,7 @@ menu "Example Configuration"
 					depends on ESP_SPI_HD_PRIV_INTERFACE_4_DATA_LINES
 					int "Slave GPIO pin for Host D3"
 					default 23 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 3 if IDF_TARGET_ESP32C61
 					default 4
 					help
 						SPI HD controller Host D3
@@ -489,6 +504,7 @@ menu "Example Configuration"
 					default 2 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
 					default 0 if IDF_TARGET_ESP32C5
 					default 1 if IDF_TARGET_ESP32C2
+					default 23 if IDF_TARGET_ESP32C61
 					default 11
 					help
 						Slave GPIO pin for indicating host that SPI slave has data to be read by host
@@ -517,6 +533,7 @@ menu "Example Configuration"
 				int "Queue size"
 				default 12 if IDF_TARGET_ESP32C2
 				default 10 if IDF_TARGET_ESP32C5
+				default 10 if IDF_TARGET_ESP32C61
 				default 20
 				help
 					Very small queue will lower SPI HD data rate
@@ -549,6 +566,7 @@ menu "Example Configuration"
 				default 5 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3
 				default 14 if IDF_TARGET_ESP32C5
 				default 21 if IDF_TARGET_ESP32C6
+				default 23 if IDF_TARGET_ESP32C61
 				default 5 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 				help
 					GPIO used for UART TX
@@ -559,6 +577,7 @@ menu "Example Configuration"
 				default 4 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3
 				default 13 if IDF_TARGET_ESP32C5
 				default 20 if IDF_TARGET_ESP32C6
+				default 22 if IDF_TARGET_ESP32C61
 				default 4 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 				help
 					GPIO used for UART RX
@@ -845,6 +864,12 @@ menu "Example Configuration"
 		default y
 		help
 			Enable/disable sleeps while OTA operations
+
+	config ESP_WIFI_DPP_SUPPORT
+		bool "Enable Wi-Fi Easy Connect (DPP)"
+		default n
+		help
+			Enable Wi-Fi Easy Connect (DPP) support
 
 	menu "Hosted Debugging"
 		config ESP_RAW_THROUGHPUT_TRANSPORT
