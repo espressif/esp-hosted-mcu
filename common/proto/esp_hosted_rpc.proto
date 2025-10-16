@@ -415,9 +415,17 @@ enum RpcId {
 	Resp_IfaceMacAddrLenGet           = 642;
 	Resp_FeatureControl               = 643;
 
+	Resp_GpioConfig                           = 644;
+	Resp_GpioResetPin                         = 645;
+	Resp_GpioSetLevel                         = 646;
+	Resp_GpioGetLevel                         = 647;
+	Resp_GpioSetDirection                     = 648;
+	Resp_GpioInputEnable                      = 649;
+	Resp_GpioSetPullMode                      = 650;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 644;
+	Resp_Max = 651;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -445,17 +453,9 @@ enum RpcId {
 	Event_WifiDppCfgRecvd = 786;
 	Event_WifiDppFail = 787;
 
-	Resp_GpioConfig                   = 788;
-	Resp_GpioResetPin                 = 789;
-	Resp_GpioSetLevel                 = 790;
-	Resp_GpioGetLevel                 = 791;
-	Resp_GpioSetDirection             = 792;
-	Resp_GpioInputEnable              = 793;
-	Resp_GpioSetPullMode              = 794;
-
 	/* Add new control path command notification before Event_Max
 	 * and update Event_Max */
-	Event_Max = 795;
+	Event_Max = 788;
 }
 
 message wifi_init_config {

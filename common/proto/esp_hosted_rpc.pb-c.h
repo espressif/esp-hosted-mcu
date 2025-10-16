@@ -1101,11 +1101,18 @@ typedef enum _RpcId {
   RPC_ID__Resp_IfaceMacAddrSetGet = 641,
   RPC_ID__Resp_IfaceMacAddrLenGet = 642,
   RPC_ID__Resp_FeatureControl = 643,
+  RPC_ID__Resp_GpioConfig = 644,
+  RPC_ID__Resp_GpioResetPin = 645,
+  RPC_ID__Resp_GpioSetLevel = 646,
+  RPC_ID__Resp_GpioGetLevel = 647,
+  RPC_ID__Resp_GpioSetDirection = 648,
+  RPC_ID__Resp_GpioInputEnable = 649,
+  RPC_ID__Resp_GpioSetPullMode = 650,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 644,
+  RPC_ID__Resp_Max = 651,
   /*
    ** Event Msgs *
    */
@@ -1135,18 +1142,11 @@ typedef enum _RpcId {
   RPC_ID__Event_WifiDppUriReady = 785,
   RPC_ID__Event_WifiDppCfgRecvd = 786,
   RPC_ID__Event_WifiDppFail = 787,
-  RPC_ID__Resp_GpioConfig = 788,
-  RPC_ID__Resp_GpioResetPin = 789,
-  RPC_ID__Resp_GpioSetLevel = 790,
-  RPC_ID__Resp_GpioGetLevel = 791,
-  RPC_ID__Resp_GpioSetDirection = 792,
-  RPC_ID__Resp_GpioInputEnable = 793,
-  RPC_ID__Resp_GpioSetPullMode = 794,
   /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  RPC_ID__Event_Max = 795
+  RPC_ID__Event_Max = 788
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_ID)
 } RpcId;
 typedef enum _RpcGpioMode {
