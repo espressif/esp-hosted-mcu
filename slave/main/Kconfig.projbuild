@@ -664,17 +664,7 @@ menu "Example Configuration"
 			default ESP_SPI_GPIO_RESET if ESP_SPI_HOST_INTERFACE
 			default ESP_SDIO_GPIO_RESET if ESP_SDIO_HOST_INTERFACE
 			default ESP_SPI_HD_GPIO_RESET if ESP_SPI_HD_HOST_INTERFACE
-			default ESP_UART_GPIO_RESET if ESP_UART_HOST_INTERFACE
-		menu "Hosted GPIO"
-			config ESP_HOSTED_ENABLE_GPIO_RPC
-			    bool "Expose GPIO RPC APIs (host can control slave GPIOs)"
-			    default n
-			    help
-			      Enable RPC methods that allow the HOST MCU to configure and control
-			      GPIOs on the SLAVE. Leave disabled unless you really need it. This
-			      will additionally reject GPIO requests that target pins used by the
-			       active transport (SPI/SDIO/SPI-HD/UART)
-  		endmenu
+			default ESP_UART_GPIO_RESET if ESP_UART_HOST_INTERFACE		
 	endmenu
 
 	# HCI UART menu for ESP32-C3/S3
@@ -1135,6 +1125,13 @@ menu "Example Configuration"
 			This can be useful for testing and development purposes where a known
 			Wi-Fi setup is required.
 
+	config ESP_HOSTED_ENABLE_GPIO_RPC
+	    bool "Enable GPIO control on SLAVE (host can control slave GPIOs)"
+	    default n
+	    help
+	      Enable RPC methods that allow the HOST MCU to configure and control
+	      GPIOs on the SLAVE. Leave disabled unless you really need it. 
+	      Access to GPIOs used by the transport (SPI/SDIO/SPI-HD/UART) are always blocked.
 
 	menu "Wi-Fi default config (pre-provisioning)"
 		depends on ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG

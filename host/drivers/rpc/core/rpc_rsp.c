@@ -640,7 +640,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
 		RPC_ERR_IN_RESP(resp_set_dhcp_dns);
 		break;
-		#if H_WIFI_ENTERPRISE_SUPPORT
+#if H_WIFI_ENTERPRISE_SUPPORT
 	} case RPC_ID__Resp_WifiStaEnterpriseEnable: {
 		RPC_FAIL_ON_NULL(resp_wifi_sta_enterprise_enable);
 		RPC_ERR_IN_RESP(resp_wifi_sta_enterprise_enable);

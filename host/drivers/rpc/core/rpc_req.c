@@ -690,7 +690,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		RPC_REQ_COPY_STR(p_c->dhcp_gw, p_a->dhcp_gw, 64);
 		RPC_REQ_COPY_STR(p_c->dns_ip, p_a->dns_ip, 64);
 		break;
-		#if H_WIFI_ENTERPRISE_SUPPORT
+#if H_WIFI_ENTERPRISE_SUPPORT
 	} case RPC_ID__Req_EapSetIdentity: {
 		RPC_ALLOC_ASSIGN(RpcReqEapSetIdentity, req_eap_set_identity,
 				rpc__req__eap_set_identity__init);
