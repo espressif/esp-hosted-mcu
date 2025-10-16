@@ -13,6 +13,7 @@
 #include "esp_hosted_rpc.h"
 #include "esp_log.h"
 #include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_os.h"
 #include "esp_hosted_transport.h"
 #include "port_esp_hosted_host_log.h"
@@ -691,6 +692,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_SuppDppStartListen:
 	case RPC_ID__Resp_SuppDppStopListen:
 #endif
+#if H_ENABLE_GPIO_CONTROL
 	case RPC_ID__Resp_GetCoprocessorFwVersion: 
 	case RPC_ID__Resp_GpioConfig:
 	case RPC_ID__Resp_GpioResetPin:
@@ -698,7 +700,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_GpioGetLevel:
 	case RPC_ID__Resp_GpioSetDirection:
 	case RPC_ID__Resp_GpioInputEnable:
-	case RPC_ID__Resp_GpioSetPullMode:	{
+	case RPC_ID__Resp_GpioSetPullMode:
+#endif
+	{
 		/* Intended fallthrough */
 		break;
 	} default: {
@@ -2395,6 +2399,7 @@ static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_contro
 	return rpc_rsp_callback(resp);
 }
 
+#if H_ENABLE_GPIO_CONTROL
 esp_err_t rpc_gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode)
 {
   /* implemented synchronous */
@@ -2431,3 +2436,4 @@ esp_err_t rpc_gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pull_mode
   resp = rpc_slaveif_gpio_set_pull_mode(req);
   return rpc_rsp_callback(resp);
 }
+#endif

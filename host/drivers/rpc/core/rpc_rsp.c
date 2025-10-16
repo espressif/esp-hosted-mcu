@@ -761,7 +761,8 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_ERR_IN_RESP(resp_supp_dpp_stop_listen);
 		break;
 #endif
-	} case RPC_ID__Resp_GpioConfig: {
+#if H_ENABLE_GPIO_CONTROL
+    } case RPC_ID__Resp_GpioConfig: {
 	    RPC_FAIL_ON_NULL(resp_gpio_config);
 	    RPC_ERR_IN_RESP(resp_gpio_config);
 	    break;
@@ -790,6 +791,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
         RPC_FAIL_ON_NULL(resp_gpio_set_pull_mode);
         RPC_ERR_IN_RESP(resp_gpio_set_pull_mode);
         break;
+#endif // H_ENABLE_GPIO_CONTROL
 	} default: {
 		ESP_LOGE(TAG, "Unsupported rpc Resp[%u]", rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;

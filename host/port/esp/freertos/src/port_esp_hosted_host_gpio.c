@@ -1,17 +1,15 @@
-/* Current GPIO method(s) supported:
- * - gpio_config()
- * - gpio_reset_pin()
- * - gpio_set_level()
- * - gpio_get_level()
- * - gpio_set_direction()
- * - gpio_input_enable()
- * - gpio_set_pull_mode()
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "esp_log.h"
 
 #include "rpc_wrap.h"
 #include "esp_hosted_gpio.h"
+
+#if H_ENABLE_GPIO_CONTROL
 
 static char *TAG = "hosted_gpio";
 
@@ -51,3 +49,5 @@ esp_err_t esp_hosted_gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pu
 {
   return rpc_gpio_set_pull_mode(gpio_num, pull);
 }
+
+#endif // H_ENABLE_GPIO_CONTROL

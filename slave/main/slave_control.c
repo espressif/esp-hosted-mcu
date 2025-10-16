@@ -21,8 +21,11 @@
 #include "esp_hosted_log.h"
 #include "slave_bt.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
+
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
 #include "driver/gpio.h"
 #include "transport_gpio_pin_guard.h"
+#endif
 
 #if H_DPP_SUPPORT
 #include "esp_dpp.h"

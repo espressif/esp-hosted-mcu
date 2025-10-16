@@ -649,7 +649,7 @@ ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 #endif
-
+#if H_ENABLE_GPIO_CONTROL
 ctrl_cmd_t * rpc_slaveif_gpio_config(ctrl_cmd_t *req)
 {
   RPC_SEND_REQ(RPC_ID__Req_GpioConfig);
@@ -691,3 +691,4 @@ ctrl_cmd_t * rpc_slaveif_gpio_set_pull_mode(ctrl_cmd_t *req)
   RPC_SEND_REQ(RPC_ID__Req_GpioSetPullMode);
   RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
+#endif //H_ENABLE_GPIO_CONTROL

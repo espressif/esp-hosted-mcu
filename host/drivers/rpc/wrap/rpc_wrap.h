@@ -14,8 +14,7 @@ extern "C" {
 
 /** Includes **/
 #include "esp_wifi.h"
-#include "driver/gpio.h"
-#include "port_esp_hosted_host_wifi_config.h"
+v#include "port_esp_hosted_host_wifi_config.h"
 #include "esp_mac.h"
 #include "esp_hosted_api_types.h"
 
@@ -171,15 +170,15 @@ esp_err_t rpc_supp_dpp_bootstrap_gen(const char *chan_list,
 esp_err_t rpc_supp_dpp_start_listen(void);
 esp_err_t rpc_supp_dpp_stop_listen(void);
 #endif
-
+#if H_ENABLE_GPIO_CONTROL
 esp_err_t rpc_gpio_config(const gpio_config_t *pGPIOConfig);
 esp_err_t rpc_gpio_reset_pin(gpio_num_t gpio_num);
 esp_err_t rpc_gpio_set_level(gpio_num_t gpio_num, uint32_t level);
 int rpc_gpio_get_level(gpio_num_t gpio_num, int *level);
 esp_err_t rpc_gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode);
 esp_err_t rpc_gpio_input_enable(gpio_num_t gpio_num);
-esp_err_t rpc_gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pull);
-
+esp_err_t rpc_gpio_set_puall_mode(gpio_num_t gpio_num, gpio_pull_mode_t pull);
+#endif
 
 #ifdef __cplusplus
 }

@@ -1,7 +1,11 @@
 #pragma once
 
-#include "driver/gpio.h"
 #include <stdbool.h>
+#include "sdkconfig.h"
+
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
+
+#include "driver/gpio.h"
 
 /**
  * @brief   Check if a GPIO pin is free for general use.
@@ -12,3 +16,4 @@
  */
 uint8_t transport_gpio_pin_guard_is_eligible(gpio_num_t pin);
 
+#endif

@@ -819,6 +819,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		}
 		break;
 #endif
+#if H_ENABLE_GPIO_CONTROL
 	} case RPC_ID__Req_GpioConfig: {
         RPC_ALLOC_ASSIGN(RpcReqGpioConfig, req_gpio_config,
                                rpc__req__gpio_config__init);
@@ -868,6 +869,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
         req_payload->gpio_num = app_req->u.gpio_set_pull_mode.gpio_num;
         req_payload->pull = app_req->u.gpio_set_pull_mode.pull_mode;
         break;
+#endif
 	} default: {
 		*failure_status = RPC_ERR_UNSUPPORTED_MSG;
 		ESP_LOGE(TAG, "Unsupported RPC Req[%u]",req->msg_id);

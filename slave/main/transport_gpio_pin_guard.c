@@ -1,5 +1,7 @@
-#include "transport_gpio_pin_guard.h"
 #include "sdkconfig.h"
+
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
+#include "transport_gpio_pin_guard.h"
 
 static inline void add_pin(uint64_t *mask, int pin)
 {
@@ -35,11 +37,6 @@ static uint64_t get_reserved_pin_mask(void)
     add_pin(&mask, CONFIG_ESP_SPI_GPIO_HANDSHAKE);
     add_pin(&mask, CONFIG_ESP_SPI_GPIO_DATA_READY);
     add_pin(&mask, CONFIG_ESP_SPI_GPIO_RESET);
-
-    add_pin(&mask, CONFIG_ESP_SPI_HSPI_GPIO_MOSI);
-    add_pin(&mask, CONFIG_ESP_SPI_HSPI_GPIO_MISO);
-    add_pin(&mask, CONFIG_ESP_SPI_HSPI_GPIO_CLK);
-    add_pin(&mask, CONFIG_ESP_SPI_HSPI_GPIO_CS);
 #endif
 
     /* ---------- SPI (half duplex) ---------- */
@@ -70,3 +67,5 @@ uint8_t transport_gpio_pin_guard_is_eligible(gpio_num_t pin)
     uint64_t reserved = get_reserved_pin_mask();
     return ((reserved & (1ULL << pin)) == 0);
 }
+
+#endif // CONFIG_ESP_HOSTED_ENABLE_GPIO_RPC
