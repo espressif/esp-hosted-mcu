@@ -23,7 +23,7 @@
 
 static const char* TAG = "https_ota";
 
-extern void establish_wifi_connection(void);
+extern esp_err_t establish_wifi_connection(void);
 
 /* Self-signed certificate - embedded at compile time (only if enabled) */
 #ifdef CONFIG_OTA_USE_SELF_SIGNED_CERT
@@ -170,16 +170,20 @@ esp_err_t ota_https_perform(const char* image_url)
 
     if ((image_url == NULL) || (image_url[0] == '\0')) {
         ESP_LOGE(TAG, "Invalid image URL");
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     // Validate HTTPS URL
     if (strncmp(image_url, "https://", 8) != 0) {
         ESP_LOGE(TAG, "URL must use HTTPS protocol");
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
-    establish_wifi_connection();
+    err = establish_wifi_connection();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "WiFi connection failed: %s", esp_err_to_name(err));
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
+    }
 
     ESP_LOGI(TAG, "Starting HTTPS OTA from URL: %s", image_url);
 
@@ -191,7 +195,7 @@ esp_err_t ota_https_perform(const char* image_url)
 
     if (cert_len == 0) {
         ESP_LOGE(TAG, "Certificate not embedded properly! Check CMakeLists.txt");
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 #else
     ESP_LOGI(TAG, "Security: CA Certificate Bundle (Production mode)");
@@ -227,7 +231,7 @@ esp_err_t ota_https_perform(const char* image_url)
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == NULL) {
         ESP_LOGE(TAG, "Failed to initialize HTTPS client");
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     /* Open connection */
@@ -240,14 +244,14 @@ esp_err_t ota_https_perform(const char* image_url)
         ESP_LOGE(TAG, "   - WiFi connection issues");
         ESP_LOGE(TAG, "   - Firewall blocking port 8443");
         esp_http_client_cleanup(client);
-        return err;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     if (http_err) {
         ESP_LOGE(TAG, "Exiting OTA, due to http failure");
         esp_http_client_cleanup(client);
         http_err = 0;
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     /* Fetch headers */
@@ -258,7 +262,7 @@ esp_err_t ota_https_perform(const char* image_url)
     if (http_status != 200) {
         ESP_LOGE(TAG, "HTTPS request failed with status: %d", http_status);
         esp_http_client_cleanup(client);
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     if (content_length <= 0) {
@@ -268,7 +272,7 @@ esp_err_t ota_https_perform(const char* image_url)
 				 esp_http_client_get_content_length(client));
 		 esp_http_client_close(client);
         esp_http_client_cleanup(client);
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
 	 ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
@@ -282,7 +286,7 @@ esp_err_t ota_https_perform(const char* image_url)
 		ESP_LOGI(TAG, "esp_ota_begin failed, error=%s", esp_err_to_name(err));
 		esp_http_client_close(client);
         esp_http_client_cleanup(client);
-        return err;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     ota_chunk = (uint8_t*)calloc(1, CHUNK_SIZE);
@@ -290,7 +294,7 @@ esp_err_t ota_https_perform(const char* image_url)
         ESP_LOGE(TAG, "Failed to allocate OTA chunk memory");
 		 esp_http_client_close(client);
         esp_http_client_cleanup(client);
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     ESP_LOGI(TAG, "Starting OTA data transfer over HTTPS");
@@ -376,13 +380,13 @@ esp_err_t ota_https_perform(const char* image_url)
 		ESP_LOGE(TAG, "esp_ota_end failed, error=%s", esp_err_to_name(err));
 		esp_http_client_close(client);
 		esp_http_client_cleanup(client);
-        return err;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
     /* Final result */
     if (ota_failed) {
         ESP_LOGE(TAG, "********* Slave OTA Failed *******************");
-        return ESP_FAIL;
+        return ESP_HOSTED_SLAVE_OTA_FAILED;
     } else {
         ESP_LOGI(TAG, "********* Slave OTA Complete *******************");
         return ESP_HOSTED_SLAVE_OTA_COMPLETED;
