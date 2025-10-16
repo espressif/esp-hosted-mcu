@@ -14,6 +14,7 @@
 #include "esp_mac.h"
 #include "esp_wifi_types.h"
 #include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_config.h"
 
 #if H_WIFI_ENTERPRISE_SUPPORT
 #include "esp_eap_client.h"
@@ -337,18 +338,29 @@ typedef struct {
 
 #if H_ENABLE_GPIO_CONTROL
 typedef struct {
-  gpio_num_t gpio_num;
+    uint64_t pin_bit_mask;   /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+    uint32_t mode;           /*!< GPIO mode: set input/output mode                     */
+    uint32_t pull_up_en;     /*!< GPIO pull-up                                         */
+    uint32_t pull_down_en;   /*!< GPIO pull-down                                       */
+    uint32_t intr_type;      /*!< GPIO interrupt type                                  */
+//#if SOC_GPIO_SUPPORT_PIN_HYS_FILTER
+//    uint32_t hys_ctrl_mode;       /*!< GPIO hysteresis: hysteresis filter on slope input    */
+//#endif
+} rpc_gpio_config_t;
+
+typedef struct {
+  uint32_t gpio_num;
   uint32_t level;
 } rpc_gpio_set_level_t;
 
 typedef struct {
-  gpio_num_t gpio_num;
-  gpio_mode_t mode;
+  uint32_t gpio_num;
+  uint32_t mode;
 } rpc_gpio_set_direction_t;
 
 typedef struct {
-  gpio_num_t gpio_num;
-  gpio_pull_mode_t pull_mode;
+  uint32_t gpio_num;
+  uint32_t pull_mode;
 } rpc_gpio_set_pull_mode_t;
 #endif
 
@@ -524,9 +536,9 @@ typedef struct Ctrl_cmd_t {
 		supp_wifi_event_dpp_failed_t   e_dpp_failed;
 #endif
 #if H_ENABLE_GPIO_CONTROL
-		gpio_config_t               gpio_config;
+		rpc_gpio_config_t           gpio_config;
 
-		gpio_num_t                  gpio_num;
+		uint32_t                    gpio_num;
 
 		rpc_gpio_set_level_t        gpio_set_level;
 
