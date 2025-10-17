@@ -1,6 +1,15 @@
 # Changelog
 
+## 2.6.2
+
+### Bug Fixes
+
+- fixed bug in enabling `esp_eap_client_set_eap_methods` on co-processor based on ESP-IDF version
+
 ## 2.6.1
+
+### Bug Fixes
+
 Minor fixes in Slave OTA example
 
 ## 2.6.0
