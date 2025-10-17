@@ -66,7 +66,12 @@
   #define H_WIFI_ENTERPRISE_SUPPORT 0
 #endif
 
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 4)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3)) || (H_PRESENT_IN_ESP_IDF_5_5_0)
+/** esp_eap_client_set_eap_methods() is only found in these versions of ESP-IDF:
+ * release/v5.3, v5.3.4, not in earlier versions.
+ * release/v5.4, not in v5.4.2 or earlier.
+ * release/v5.5, v5.5.1, not in v5.5.
+ */
+#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 4)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 1))
 #define H_GOT_SET_EAP_METHODS_API 0
 #else
 #define H_GOT_SET_EAP_METHODS_API 1
