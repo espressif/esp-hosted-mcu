@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.6.1
+Minor fixes in Slave OTA example
+
 ## 2.6.0
 - Added public OTA APIs for slave firmware updates
 - Added host-triggered slave OTA example with support for HTTP, partition, and filesystem sources

@@ -113,10 +113,21 @@ void wifi_init_sta(void)
     }
 }
 
-void establish_wifi_connection(void)
+esp_err_t establish_wifi_connection(void)
 {
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
+
+    EventBits_t bits = xEventGroupGetBits(s_wifi_event_group);
+    if (bits & WIFI_CONNECTED_BIT) {
+        return ESP_OK;
+    } else if (bits & WIFI_FAIL_BIT) {
+        ESP_LOGE(TAG, "WiFi connection failed after maximum retries");
+        return ESP_FAIL;
+    } else {
+        ESP_LOGE(TAG, "WiFi connection in unexpected state");
+        return ESP_ERR_INVALID_STATE;
+    }
 }
 
 #endif
