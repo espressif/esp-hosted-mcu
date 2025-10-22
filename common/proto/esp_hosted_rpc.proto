@@ -240,9 +240,17 @@ enum RpcId {
 	 */
 	Req_FeatureControl                = 387; //0x183
 
+	Req_GpioConfig                    = 388; // 0x184
+	Req_GpioResetPin                  = 389; // 0x185
+	Req_GpioSetLevel                  = 390; // 0x186
+	Req_GpioGetLevel                  = 391; // 0x187
+	Req_GpioSetDirection              = 392; // 0x188
+	Req_GpioInputEnable               = 393; // 0x189
+	Req_GpioSetPullMode               = 394; // 0x18A
+
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 388; //0x184
+	Req_Max = 395; //0x18B
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -407,9 +415,17 @@ enum RpcId {
 	Resp_IfaceMacAddrLenGet           = 642;
 	Resp_FeatureControl               = 643;
 
+	Resp_GpioConfig                           = 644;
+	Resp_GpioResetPin                         = 645;
+	Resp_GpioSetLevel                         = 646;
+	Resp_GpioGetLevel                         = 647;
+	Resp_GpioSetDirection                     = 648;
+	Resp_GpioInputEnable                      = 649;
+	Resp_GpioSetPullMode                      = 650;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 644;
+	Resp_Max = 651;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -1879,6 +1895,80 @@ message Rpc_Event_WifiDppFail {
 	int32 reason = 2; // failure reason
 }
 
+enum Rpc_GpioMode {
+    GPIO_MODE_DISABLE = 0;
+    GPIO_MODE_INPUT = 1;
+    GPIO_MODE_OUTPUT = 2;
+    GPIO_MODE_INPUT_OUTPUT = 3;
+}
+
+enum Rpc_GpioPullMode {
+    GPIO_PULL_NONE = 0;
+    GPIO_PULL_UP = 1;
+    GPIO_PULL_DOWN = 2;
+}
+
+message Rpc_GpioConfig {
+    uint64 pin_bit_mask = 1;
+    Rpc_GpioMode mode = 2;
+    bool pull_up_en = 3;
+    bool pull_down_en = 4;
+    int32 intr_type = 5;
+}
+
+message Rpc_Req_GpioConfig {
+    Rpc_GpioConfig config = 1;
+}
+message Rpc_Resp_GpioConfig {
+    int32 resp = 1;
+}
+
+message Rpc_Req_GpioReset {
+    int32 gpio_num = 1;
+}
+message Rpc_Resp_GpioResetPin {
+    int32 resp = 1;
+}
+
+message Rpc_Req_GpioSetLevel {
+    int32 gpio_num = 1;
+    uint32 level = 2; // 0 or 1
+}
+message Rpc_Resp_GpioSetLevel {
+    int32 resp = 1;
+}
+
+message Rpc_Req_GpioGetLevel {
+    int32 gpio_num = 1;
+}
+message Rpc_Resp_GpioGetLevel {
+    int32 resp = 1;
+    uint32 level = 2;
+}
+
+message Rpc_Req_GpioSetDirection {
+    int32 gpio_num = 1;
+    Rpc_GpioMode mode = 2;
+}
+message Rpc_Resp_GpioSetDirection {
+    int32 resp = 1;
+}
+
+message Rpc_Req_GpioInputEnable {
+    int32 gpio_num = 1;
+}
+message Rpc_Resp_GpioInputEnable {
+    int32 resp = 1;
+}
+
+message Rpc_Req_GpioSetPullMode {
+    int32 gpio_num = 1;
+    Rpc_GpioPullMode pull = 2;
+}
+message Rpc_Resp_GpioSetPullMode {
+    int32 resp = 1;
+}
+
 message Rpc {
 	/* msg_type could be req, resp or Event */
 	RpcType msg_type = 1;
@@ -2017,6 +2107,14 @@ message Rpc {
 
 		Rpc_Req_FeatureControl              req_feature_control               = 387;
 
+		Rpc_Req_GpioConfig                  req_gpio_config                   = 388;
+		Rpc_Req_GpioReset                   req_gpio_reset                    = 389;
+		Rpc_Req_GpioSetLevel                req_gpio_set_level                = 390;
+		Rpc_Req_GpioGetLevel                req_gpio_get_level                = 391;
+		Rpc_Req_GpioSetDirection            req_gpio_set_direction            = 392;
+		Rpc_Req_GpioInputEnable             req_gpio_input_enable             = 393;
+		Rpc_Req_GpioSetPullMode             req_gpio_set_pull_mode            = 394;		
+
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
 		Rpc_Resp_SetMacAddress              resp_set_mac_address               = 514;
@@ -2142,6 +2240,14 @@ message Rpc {
 		Rpc_Resp_IfaceMacAddrLenGet         resp_iface_mac_addr_len_get        = 642;
 
 		Rpc_Resp_FeatureControl             resp_feature_control               = 643;
+
+		Rpc_Resp_GpioConfig               	resp_gpio_config                   = 644;
+		Rpc_Resp_GpioResetPin               resp_gpio_reset                    = 645;
+		Rpc_Resp_GpioSetLevel               resp_gpio_set_level                = 646;
+		Rpc_Resp_GpioGetLevel               resp_gpio_get_level                = 647;
+		Rpc_Resp_GpioSetDirection           resp_gpio_set_direction            = 648;
+		Rpc_Resp_GpioInputEnable            resp_gpio_input_enable             = 649;
+		Rpc_Resp_GpioSetPullMode            resp_gpio_set_pull_mode            = 650;
 
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
