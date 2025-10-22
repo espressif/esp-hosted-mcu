@@ -46,10 +46,11 @@
  * IDF v5.3.3 and above, or
  * IDF v5.4.1 and above
  */
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 3)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 1))
-#define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 0
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 3) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 1))
+  #define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 1
 #else
-#define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 1
+  #define H_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 0
 #endif
 
 /* WIFI_ENABLE_CACHE_TX_BUFFER only found in
@@ -66,10 +67,24 @@
   #define H_WIFI_ENTERPRISE_SUPPORT 0
 #endif
 
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 4)) || (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3)) || (H_PRESENT_IN_ESP_IDF_5_5_0)
-#define H_GOT_SET_EAP_METHODS_API 0
+/** esp_eap_client_set_eap_methods() is only found in these versions of ESP-IDF:
+ * release/v5.3, v5.3.4, not in earlier versions.
+ * release/v5.4, not in v5.4.2 or earlier.
+ * release/v5.5, v5.5.1, not in v5.5.
+ */
+#if ((ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
+     (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 3) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)) || \
+     (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 1)))
+  #define H_GOT_SET_EAP_METHODS_API 1
 #else
-#define H_GOT_SET_EAP_METHODS_API 1
+  #define H_GOT_SET_EAP_METHODS_API 0
+#endif
+
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 3))
+  #define H_GOT_EAP_SET_DOMAIN_NAME 1
+#else
+  #define H_GOT_EAP_SET_DOMAIN_NAME 0
 #endif
 
 /**
