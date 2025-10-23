@@ -661,9 +661,9 @@ int ensure_slave_bus_ready(void *bus_handle)
 		ESP_LOGI(TAG, "Resetting slave on UART bus with pin %d", reset_pin.pin);
 		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_msleep(10);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_msleep(10);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 		g_h.funcs->_h_msleep(1500);
 	} else {

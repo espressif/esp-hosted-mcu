@@ -47,7 +47,14 @@ For immediate performance gains, add these to your host's `sdkconfig.defaults.es
 Test conditions for throughput numbers using the performance settings:
 
 - raw: data transferred from sender to receiver over transport
-- iPerf: `<P4 + co-processor>` <--`open air`--> `<WiFi Router>` <--`Lan Cable`--> `<Test PC>`
+- iPerf used to measure TCP and UDP throughput
+
+A diagram showing the setup used to get the throughput numbers.
+
+<img src="images/PerformanceSetup-ShieldBox.png" alt="Shield box testing setup" width="800" />
+
+> [!NOTE]
+> The diagram shows the router and ESP board in a shield box. The performance numbers here were obtained from an 'Open Air' configuration, without using a shield box.
 
 ### 1.1 ESP32-C6 as Co-Procesor
 

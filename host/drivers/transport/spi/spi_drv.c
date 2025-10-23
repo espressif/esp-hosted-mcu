@@ -855,9 +855,9 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 	ESP_LOGI(TAG, "Resetting slave on SPI bus with pin %d", reset_pin.pin);
 	g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_msleep(10);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_msleep(10);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 	/* Delay for a short while to allow co-processor to take control
 	 * of GPIO signals after reset. Otherwise, we may false detect on
