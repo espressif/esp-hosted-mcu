@@ -31,8 +31,14 @@ static uint8_t esp_hosted_init_done;
 static uint8_t esp_hosted_transport_up;
 
 
-#define check_transport_up() \
-if (!esp_hosted_transport_up) return ESP_FAIL
+#define check_transport_up()                                                    \
+    do {                                                                        \
+        if (!(esp_hosted_transport_up)) {                                       \
+            ESP_LOGE(TAG, "ESP-Hosted link not yet up");                        \
+            return ESP_FAIL;                                                    \
+        }                                                                       \
+    } while (0)
+
 
 
 /** Exported variables **/
@@ -136,6 +142,7 @@ int esp_hosted_deinit(void)
 	ESP_ERROR_CHECK(rpc_deinit());
 	ESP_ERROR_CHECK(teardown_transport());
 	esp_hosted_init_done = 0;
+	esp_hosted_transport_up = 0;
 	return ESP_OK;
 }
 
@@ -197,7 +204,6 @@ esp_err_t esp_wifi_remote_init(const wifi_init_config_t *arg)
 
 esp_err_t esp_wifi_remote_deinit(void)
 {
-	esp_hosted_transport_up = 0;
 	check_transport_up();
 	return rpc_wifi_deinit();
 }
