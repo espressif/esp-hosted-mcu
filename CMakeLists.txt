@@ -70,7 +70,10 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${common_dir}/protobuf-c"
 		"${common_dir}/proto" )
 
-
+    if(CONFIG_ESP_HOSTED_ENABLE_GPIO_CONTROL)
+	    list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_gpio.c")
+	endif()
+	
 	# cli
 	list(APPEND srcs "${common_dir}/utils/esp_hosted_cli.c")
 	list(APPEND priv_include "${common_dir}/utils")

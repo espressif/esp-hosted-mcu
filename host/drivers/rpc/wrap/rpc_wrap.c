@@ -13,6 +13,7 @@
 #include "esp_hosted_rpc.h"
 #include "esp_log.h"
 #include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_os.h"
 #include "esp_hosted_transport.h"
 #include "port_esp_hosted_host_log.h"
@@ -691,7 +692,17 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_SuppDppStartListen:
 	case RPC_ID__Resp_SuppDppStopListen:
 #endif
-	case RPC_ID__Resp_GetCoprocessorFwVersion: {
+#if H_ENABLE_GPIO_CONTROL
+	case RPC_ID__Resp_GetCoprocessorFwVersion: 
+	case RPC_ID__Resp_GpioConfig:
+	case RPC_ID__Resp_GpioResetPin:
+	case RPC_ID__Resp_GpioSetLevel:
+	case RPC_ID__Resp_GpioGetLevel:
+	case RPC_ID__Resp_GpioSetDirection:
+	case RPC_ID__Resp_GpioInputEnable:
+	case RPC_ID__Resp_GpioSetPullMode:
+#endif
+	{
 		/* Intended fallthrough */
 		break;
 	} default: {
@@ -2387,3 +2398,103 @@ static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_contro
 
 	return rpc_rsp_callback(resp);
 }
+
+#if H_ENABLE_GPIO_CONTROL
+esp_err_t rpc_gpio_config(const esp_hosted_gpio_config_t *pGPIOConfig)
+{
+  /* implemented synchronous */
+  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+  ctrl_cmd_t *resp = NULL;
+
+  if (!pGPIOConfig)
+    return FAILURE;
+
+  req->u.gpio_config.pin_bit_mask = pGPIOConfig->pin_bit_mask;
+  req->u.gpio_config.mode = pGPIOConfig->mode;
+  req->u.gpio_config.pull_up_en = pGPIOConfig->pull_up_en;
+  req->u.gpio_config.pull_down_en = pGPIOConfig->pull_down_en;
+  req->u.gpio_config.intr_type = pGPIOConfig->intr_type;
+
+  resp = rpc_slaveif_gpio_config(req);
+
+  return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_gpio_reset(uint32_t gpio_num)
+{
+  /* implemented synchronous */
+  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+  ctrl_cmd_t *resp = NULL;
+
+  req->u.gpio_num = gpio_num;
+  resp = rpc_slaveif_gpio_reset_pin(req);
+
+  return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_gpio_set_level(uint32_t gpio_num, uint32_t level)
+{
+  /* implemented synchronous */
+  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+  ctrl_cmd_t *resp = NULL;
+
+  req->u.gpio_set_level.gpio_num = gpio_num;
+  req->u.gpio_set_level.level = level;
+
+  resp = rpc_slaveif_gpio_set_level(req);
+  return rpc_rsp_callback(resp);
+}
+
+int rpc_gpio_get_level(uint32_t gpio_num, int *level)
+{
+  /* implemented synchronous */
+  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+  ctrl_cmd_t *resp = NULL;
+
+  req->u.gpio_num = gpio_num;
+  resp = rpc_slaveif_gpio_get_level(req);
+
+  if (resp && resp->resp_event_status == SUCCESS) {
+        *level = resp->u.gpio_get_level;
+    }
+
+  return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_gpio_set_direction(uint32_t gpio_num, uint32_t mode)
+{
+  /* implemented synchronous */
+  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+  ctrl_cmd_t *resp = NULL;
+
+  req->u.gpio_set_direction.gpio_num = gpio_num;
+  req->u.gpio_set_direction.mode = mode;
+
+  resp = rpc_slaveif_gpio_set_direction(req);
+  return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_gpio_input_enable(uint32_t gpio_num)
+{
+  /* implemented synchronous */
+  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+  ctrl_cmd_t *resp = NULL;
+
+  req->u.gpio_num = gpio_num;
+  resp = rpc_slaveif_gpio_input_enable(req);
+  return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode)
+{
+  /* implemented synchronous */
+  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+  ctrl_cmd_t *resp = NULL;
+
+  req->u.gpio_set_pull_mode.gpio_num = gpio_num;
+  req->u.gpio_set_pull_mode.pull_mode = pull_mode;
+
+  resp = rpc_slaveif_gpio_set_pull_mode(req);
+  return rpc_rsp_callback(resp);
+}
+#endif
