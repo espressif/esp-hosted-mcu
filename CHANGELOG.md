@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.6.4
+
+- Fix the esp_wifi_deinit() call from host
+
 ## 2.6.3
 
 ### Bug Fixes
