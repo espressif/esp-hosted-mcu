@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.6.5
+
+### Features
+
+- Add example showing concurrent use of a SD Card and ESP-Hosted.
+
 ## 2.6.4
 
 - Fix the esp_wifi_deinit() call from host
