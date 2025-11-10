@@ -157,7 +157,7 @@ Legends:
 - (S) : Shield box reading
 - (O) : Over the air reading
 - TBD : To be determined
-- iperf : iperf2 with test resukts in mbps
+- iperf : iperf2 with test results in mbps
 
 > [!NOTE]
 >
