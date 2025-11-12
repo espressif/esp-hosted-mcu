@@ -28,6 +28,8 @@
 /** for ESP-IDF v5.5.0 and above, DPP events come in as Wi-Fi Events
  ** set EXAMPLE_DPP_USE_WIFI_EVENTS to 0 to use the older Supplicant
  ** based DPP events
+ *
+ ** Note: ESP-IDF v6.0 and above removed Supplicant based DPP events
  */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
 #define EXAMPLE_DPP_USE_WIFI_EVENTS 1
@@ -107,7 +109,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
             wifi_event_dpp_config_received_t *config = event_data;
             memcpy(&s_dpp_wifi_config, &config->wifi_cfg, sizeof(s_dpp_wifi_config));
             s_retry_num = 0;
-            esp_wifi_set_config(ESP_IF_WIFI_STA, &s_dpp_wifi_config);
+            esp_wifi_set_config(WIFI_IF_STA, &s_dpp_wifi_config);
             esp_wifi_connect();
             break;
         case WIFI_EVENT_DPP_FAILED:
@@ -150,7 +152,7 @@ void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data)
     case ESP_SUPP_DPP_CFG_RECVD:
         memcpy(&s_dpp_wifi_config, data, sizeof(s_dpp_wifi_config));
         s_retry_num = 0;
-        esp_wifi_set_config(ESP_IF_WIFI_STA, &s_dpp_wifi_config);
+        esp_wifi_set_config(WIFI_IF_STA, &s_dpp_wifi_config);
         esp_wifi_connect();
         break;
     case ESP_SUPP_DPP_FAIL:
@@ -219,7 +221,11 @@ void dpp_enrollee_init(void)
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
 #if EXAMPLE_DPP_USE_WIFI_EVENTS
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+    ESP_ERROR_CHECK(esp_supp_dpp_init());
+#else
     ESP_ERROR_CHECK(esp_supp_dpp_init(NULL));
+#endif
 #else
     ESP_ERROR_CHECK(esp_supp_dpp_init(dpp_enrollee_event_cb));
 #endif

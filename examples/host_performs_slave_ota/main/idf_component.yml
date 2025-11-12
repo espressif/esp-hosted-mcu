@@ -1,0 +1,15 @@
+dependencies:
+  cmd_system:
+    path: ${IDF_PATH}/examples/system/console/advanced/components/cmd_system
+  cmd_nvs:
+    path: ${IDF_PATH}/examples/system/console/advanced/components/cmd_nvs
+  espressif/esp_wifi_remote:
+    version: ">=0.10,<2.0"
+    rules:
+      - if: "target in [esp32p4, esp32h2]"
+  espressif/esp_hosted:
+    rules:
+      - if: "target in [esp32p4, esp32h2]"
+  joltwallet/littlefs:
+    version: "*"
+

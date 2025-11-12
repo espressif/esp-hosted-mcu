@@ -13,11 +13,13 @@
 #include "slave_control.h"
 #include "esp_hosted_rpc.pb-c.h"
 #include "esp_ota_ops.h"
+#include "esp_mac.h"
 #include "esp_hosted_rpc.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
 #include "slave_wifi_config.h"
 #include "esp_hosted_log.h"
+#include "slave_bt.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
 
 #if H_DPP_SUPPORT
@@ -50,11 +52,13 @@
 #define MIN_TX_POWER                8
 #define MAX_TX_POWER                84
 
+#define IFACE_MAC_SIZE              8 // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
+
 #define MAX_STA_CONNECT_ATTEMPTS    3
 
 #define TIMEOUT_IN_MIN              (60*TIMEOUT_IN_SEC)
 #define TIMEOUT_IN_HOUR             (60*TIMEOUT_IN_MIN)
-#define RESTART_TIMEOUT             (5*TIMEOUT_IN_SEC)
+#define RESTART_TIMEOUT             (2*TIMEOUT_IN_SEC)
 
 #define MIN_HEARTBEAT_INTERVAL      (10)
 #define MAX_HEARTBEAT_INTERVAL      (60*60)
@@ -64,6 +68,16 @@
 static wifi_config_t new_wifi_config = {0};
 static bool new_config_recvd = false;
 static wifi_event_sta_connected_t lkg_sta_connected_event = {0};
+
+enum {
+	OTA_NOT_STARTED,
+	OTA_IN_PROGRESS,
+	OTA_FAILED,
+	OTA_COMPLETED,
+	OTA_ACTIVATED,
+};
+
+uint8_t ota_status = OTA_NOT_STARTED;
 
 #if H_WIFI_ENTERPRISE_SUPPORT
 #define CLEAR_CERT(ptr, len) \
@@ -395,6 +409,7 @@ static esp_err_t req_ota_begin_handler (Rpc *req,
 		ESP_LOGE(TAG, "OTA begin failed[%d]", ret);
 		goto err;
 	}
+	ota_status = OTA_IN_PROGRESS;
 
 	ota_msg = 1;
 
@@ -449,7 +464,6 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 {
 	esp_err_t ret = ESP_OK;
 	RpcRespOTAEnd *resp_payload = NULL;
-	TimerHandle_t xTimer = NULL;
 
 	if (!req || !resp) {
 		ESP_LOGE(TAG, "Invalid parameters");
@@ -472,7 +486,61 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 		} else {
 			ESP_LOGE(TAG, "OTA update failed in end (%s)!", esp_err_to_name(ret));
 		}
+		ota_status = OTA_FAILED;
 		goto err;
+	}
+
+	ESP_LOGI(TAG, "**** OTA updated successful, ready for activation ****");
+	ota_status = OTA_COMPLETED;
+	resp_payload->resp = SUCCESS;
+	return ESP_OK;
+err:
+	resp_payload->resp = ret;
+	return ESP_OK;
+}
+
+/* Function OTA activate */
+static esp_err_t req_ota_activate_handler (Rpc *req,
+		Rpc *resp, void *priv_data)
+{
+	esp_err_t ret = ESP_OK;
+	RpcRespOTAActivate *resp_payload = NULL;
+	TimerHandle_t xTimer = NULL;
+
+	if (!req || !resp) {
+		ESP_LOGE(TAG, "Invalid parameters");
+		return ESP_FAIL;
+	}
+
+	resp_payload = (RpcRespOTAActivate *)calloc(1,sizeof(RpcRespOTAActivate));
+	if (!resp_payload) {
+		ESP_LOGE(TAG,"Failed to allocate memory");
+		return ESP_ERR_NO_MEM;
+	}
+	rpc__resp__otaactivate__init(resp_payload);
+	resp->payload_case = RPC__PAYLOAD_RESP_OTA_ACTIVATE;
+	resp->resp_ota_activate = resp_payload;
+
+	ret = ESP_OK;
+	switch (ota_status) {
+		case OTA_COMPLETED:
+			break;
+		case OTA_IN_PROGRESS:
+			ESP_LOGW(TAG, "OTA in progress");
+			goto err;
+			break;
+		case OTA_NOT_STARTED:
+			ESP_LOGW(TAG, "OTA not started");
+			goto err;
+			break;
+		case OTA_FAILED:
+			ESP_LOGW(TAG, "OTA failed");
+			goto err;
+			break;
+		default:
+			ESP_LOGW(TAG, "OTA status unknown");
+			goto err;
+			break;
 	}
 
 	/* set OTA partition for next boot */
@@ -481,7 +549,9 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 		ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(ret));
 		goto err;
 	}
-	xTimer = xTimerCreate("Timer", RESTART_TIMEOUT , pdFALSE, 0, vTimerCallback);
+	ota_status = OTA_ACTIVATED;
+	/* Create timer to reboot system and activate OTA */
+	xTimer = xTimerCreate("OTAActivateTimer", RESTART_TIMEOUT , pdFALSE, 0, vTimerCallback);
 	if (xTimer == NULL) {
 		ESP_LOGE(TAG, "Failed to create timer to restart system");
 		ret = -1;
@@ -493,7 +563,7 @@ static esp_err_t req_ota_end_handler (Rpc *req,
 		ret = -2;
 		goto err;
 	}
-	ESP_LOGE(TAG, "**** OTA updated successful, ESP32 will reboot in 5 sec ****");
+	ESP_LOGE(TAG, "**** OTA activation initiated, ESP32 will reboot in 2 sec ****");
 	resp_payload->resp = SUCCESS;
 	return ESP_OK;
 err:
@@ -764,7 +834,7 @@ static esp_err_t set_slave_static_ip(wifi_interface_t iface, char *ip, char *nm,
 
 	ESP_LOGI(TAG, "Set static IP addr ip:%s nm:%s gw:%s", ip, nm, gw);
 	ESP_ERROR_CHECK(esp_netif_set_ip_info(slave_sta_netif, &ip_info));
-	esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
+	esp_wifi_internal_reg_rxcb(WIFI_IF_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
 
 	return ESP_OK;
 }
@@ -811,7 +881,7 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 			send_event_data_to_host(RPC_ID__Event_StaConnected,
 				event_data, sizeof(wifi_event_sta_connected_t));
 			memcpy(&lkg_sta_connected_event, event_data, sizeof(wifi_event_sta_connected_t));
-			esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
+			esp_wifi_internal_reg_rxcb(WIFI_IF_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
 			station_connected = true;
 		} else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
 			station_connected = false;
@@ -825,7 +895,7 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 					new_config_recvd = 0;
 				}
 			}
-			esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_STA, NULL);
+			esp_wifi_internal_reg_rxcb(WIFI_IF_STA, NULL);
 			ESP_LOGI(TAG, "Sta mode disconnect");
 			station_connecting = false;
 			send_event_data_to_host(RPC_ID__Event_StaDisconnected,
@@ -870,7 +940,7 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 			if (event_id == WIFI_EVENT_AP_START) {
 				if (!softap_started) {
 					ESP_LOGI(TAG,"softap started");
-					esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, (wifi_rxcb_t) wlan_ap_rx_callback);
+					esp_wifi_internal_reg_rxcb(WIFI_IF_AP, (wifi_rxcb_t) wlan_ap_rx_callback);
 					softap_started = 1;
 					send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
 							&event_id, sizeof(event_id));
@@ -878,7 +948,7 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 			} else if (event_id == WIFI_EVENT_AP_STOP) {
 				if (softap_started) {
 					ESP_LOGI(TAG,"softap stopped");
-					esp_wifi_internal_reg_rxcb(ESP_IF_WIFI_AP, NULL);
+					esp_wifi_internal_reg_rxcb(WIFI_IF_AP, NULL);
 					softap_started = 0;
 					send_event_data_to_host(RPC_ID__Event_WifiEventNoArgs,
 							&event_id, sizeof(event_id));
@@ -3210,7 +3280,106 @@ static esp_err_t req_get_coprocessor_fw_version(Rpc *req, Rpc *resp, void *priv_
 	return ESP_OK;
 }
 
+static esp_err_t req_iface_mac_addr_len_get(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespIfaceMacAddrLenGet, resp_iface_mac_addr_len_get,
+			RpcReqIfaceMacAddrLenGet, req_iface_mac_addr_len_get,
+			rpc__resp__iface_mac_addr_len_get__init);
+
+	size_t len = esp_mac_addr_len_get(req_payload->type);
+
+	resp_payload->type = req_payload->type;
+	resp_payload->len = len;
+
+	return ESP_OK;
+}
+
+static esp_err_t req_iface_mac_addr_set_get(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespIfaceMacAddrSetGet, resp_iface_mac_addr_set_get,
+			RpcReqIfaceMacAddrSetGet, req_iface_mac_addr_set_get,
+			rpc__resp__iface_mac_addr_set_get__init);
+
+	// copy the incoming request to the outgoing response
+	resp_payload->set = req_payload->set;
+	resp_payload->type = req_payload->type;
+
+	// get the expected len based on the type
+	size_t len = esp_mac_addr_len_get(req_payload->type);
+
+	if (req_payload->set) {
+		// set the interface mac address
+		if (req_payload->mac.len) {
+			if (req_payload->mac.len == len) {
+				RPC_RET_FAIL_IF(esp_iface_mac_addr_set(req_payload->mac.data, req_payload->type));
+				// copy the mac address that was set in the response
+				RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->mac, req_payload->mac.data, len);
+			} else {
+				ESP_LOGE(TAG, "expected mac length %" PRIu16 ", but got %" PRIu16, len, req_payload->mac.len);
+				resp_payload->resp = ESP_ERR_INVALID_ARG;
+			}
+		} else {
+			// no mac data provided
+			ESP_LOGE(TAG, "error: set iface mac address without mac data");
+			resp_payload->resp = ESP_ERR_INVALID_ARG;
+		}
+	} else {
+		// get the interface mac address
+		uint8_t iface_mac[IFACE_MAC_SIZE] = {0};
+		RPC_RET_FAIL_IF(esp_read_mac(iface_mac, req_payload->type));
+
+		RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->mac, iface_mac, len);
+	}
+
+	return ESP_OK;
+}
+
+static esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespFeatureControl, resp_feature_control,
+			RpcReqFeatureControl, req_feature_control,
+			rpc__resp__feature_control__init);
+
+	// copy the incoming request to the outgoing response
+	resp_payload->feature = req_payload->feature;
+	resp_payload->command = req_payload->command;
+	resp_payload->option  = req_payload->option;
+
+	if (req_payload->feature == RPC_FEATURE__Feature_Bluetooth) {
+		// decode the requested Bluetooth control
+		switch (req_payload->command) {
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Init:
+			RPC_RET_FAIL_IF(init_bluetooth());
+			break;
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit:
+			bool mem_release = false;
+			if (req_payload->option == RPC_FEATURE_OPTION__Feature_Option_BT_Deinit_Release_Memory) {
+				mem_release = true;
+			}
+			RPC_RET_FAIL_IF(deinit_bluetooth(mem_release));
+			break;
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Enable:
+			RPC_RET_FAIL_IF(enable_bluetooth());
+			break;
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Disable:
+			RPC_RET_FAIL_IF(disable_bluetooth());
+			break;
+		default:
+			// invalid Bluetooth control feature
+			ESP_LOGE(TAG, "error: invalid Bluetooth Feature Control");
+			resp_payload->resp = ESP_ERR_INVALID_ARG;
+			break;
+		}
+	} else {
+		// invalid feature
+		ESP_LOGE(TAG, "error: invalid Feature Control");
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+	}
+	return ESP_OK;
+}
+
 #if CONFIG_SOC_WIFI_HE_SUPPORT
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 static esp_err_t req_wifi_sta_twt_config(Rpc *req, Rpc *resp, void *priv_data)
 {
 	RPC_TEMPLATE(RpcRespWifiStaTwtConfig, resp_wifi_sta_twt_config,
@@ -3227,16 +3396,25 @@ static esp_err_t req_wifi_sta_twt_config(Rpc *req, Rpc *resp, void *priv_data)
 
 	return ESP_OK;
 }
+#endif
 
 static esp_err_t req_wifi_sta_itwt_setup(Rpc *req, Rpc *resp, void *priv_data)
 {
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	wifi_itwt_setup_config_t cfg = {0};
+#else
+	wifi_twt_setup_config_t cfg = {0};
+#endif
 
 	RPC_TEMPLATE(RpcRespWifiStaItwtSetup, resp_wifi_sta_itwt_setup,
 			RpcReqWifiStaItwtSetup, req_wifi_sta_itwt_setup,
 			rpc__resp__wifi_sta_itwt_setup__init);
 
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	wifi_itwt_setup_config_t * p_a_cfg = &cfg;
+#else
+	wifi_twt_setup_config_t * p_a_cfg = &cfg;
+#endif
 	WifiItwtSetupConfig *p_c_cfg = req_payload->setup_config;
 
 	p_a_cfg->setup_cmd = p_c_cfg->setup_cmd;
@@ -3330,7 +3508,9 @@ static esp_err_t req_wifi_sta_itwt_set_target_wake_time_offset(Rpc *req, Rpc *re
 #endif // CONFIG_SOC_WIFI_HE_SUPPORT
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data);
+#endif
 
 static esp_err_t req_supp_dpp_init(Rpc *req, Rpc *resp, void *priv_data)
 {
@@ -3339,13 +3519,22 @@ static esp_err_t req_supp_dpp_init(Rpc *req, Rpc *resp, void *priv_data)
 			rpc__resp__supp_dpp_init__init);
 
 	if (req_payload->cb) {
+#if H_SUPP_DPP_SUPPORT
 		// init with callback
 		ESP_LOGI(TAG, "dpp init with callback");
 		RPC_RET_FAIL_IF(esp_supp_dpp_init(dpp_enrollee_event_cb));
+#else
+		ESP_LOGE(TAG, "dpp init with callback NOT supported");
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+#endif
 	} else {
 		// init without callback
 		ESP_LOGI(TAG, "dpp init WITHOUT callback");
+#if H_SUPP_DPP_SUPPORT
 		RPC_RET_FAIL_IF(esp_supp_dpp_init(NULL));
+#else
+		RPC_RET_FAIL_IF(esp_supp_dpp_init());
+#endif
 	}
 	return ESP_OK;
 }
@@ -3445,6 +3634,10 @@ static esp_rpc_req_t req_table[] = {
 	{
 		.req_num = RPC_ID__Req_OTAEnd,
 		.command_handler = req_ota_end_handler
+	},
+	{
+		.req_num = RPC_ID__Req_OTAActivate,
+		.command_handler = req_ota_activate_handler
 	},
 	{
 		.req_num = RPC_ID__Req_WifiSetMaxTxPower,
@@ -3649,10 +3842,12 @@ static esp_rpc_req_t req_table[] = {
 		.command_handler = req_get_dhcp_dns_status
 	},
 #if CONFIG_SOC_WIFI_HE_SUPPORT
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	{
 		.req_num = RPC_ID__Req_WifiStaTwtConfig,
 		.command_handler = req_wifi_sta_twt_config
 	},
+#endif
 	{
 		.req_num = RPC_ID__Req_WifiStaItwtSetup,
 		.command_handler = req_wifi_sta_itwt_setup
@@ -3808,6 +4003,18 @@ static esp_rpc_req_t req_table[] = {
 		.command_handler = req_supp_dpp_stop_listen,
 	},
 #endif
+	{
+		.req_num = RPC_ID__Req_IfaceMacAddrSetGet,
+		.command_handler = req_iface_mac_addr_set_get
+	},
+	{
+		.req_num = RPC_ID__Req_IfaceMacAddrLenGet,
+		.command_handler = req_iface_mac_addr_len_get
+	},
+	{
+		.req_num = RPC_ID__Req_FeatureControl,
+		.command_handler = req_feature_control
+	},
 };
 
 
@@ -3839,7 +4046,9 @@ static esp_err_t esp_rpc_command_dispatcher(
 		goto err_not_supported;
 	}
 
-	ESP_LOGI(TAG, "Received Req [0x%x]", req->msg_id);
+	if (req->msg_id != RPC_ID__Req_OTAWrite) {
+		ESP_LOGI(TAG, "Received Req [0x%x]", req->msg_id);
+	}
 
 	req_index = lookup_req_handler(req->msg_id);
 	if (req_index < 0) {
@@ -3902,7 +4111,10 @@ esp_err_t data_transfer_handler(uint32_t session_id,const uint8_t *inbuf,
 	resp->msg_id = req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base;
 	resp->uid = req->uid;
 	resp->payload_case = resp->msg_id;
-	ESP_LOGI(TAG, "Resp_MSGId for req[0x%x] is [0x%x], uid %ld", req->msg_id, resp->msg_id, resp->uid);
+
+	if (resp->msg_id != RPC_ID__Resp_OTAWrite) {
+		ESP_LOGI(TAG, "Resp_MSGId for req[0x%x] is [0x%x], uid %ld", req->msg_id, resp->msg_id, resp->uid);
+	}
 	ret = esp_rpc_command_dispatcher(req,resp,NULL);
 	if (ret) {
 		ESP_LOGE(TAG, "Command dispatching not happening");
@@ -4266,9 +4478,9 @@ static esp_err_t rpc_evt_Event_DhcpDnsStatus(Rpc *ntfy,
 #endif
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data)
 {
-#if H_SUPP_DPP_SUPPORT
 	switch (event) {
 	case ESP_SUPP_DPP_URI_READY:
 		if (data != NULL) {
@@ -4301,9 +4513,6 @@ void dpp_enrollee_event_cb(esp_supp_dpp_event_t event, void *data)
 		}
 		break;
 	}
-#else // H_SUPP_DPP_SUPPORT
-	ESP_LOGW(TAG, "DPP Supplicant Callback not supported: ignoring event");
-#endif // H_SUPP_DPP_SUPPORT
 }
 
 static esp_err_t rpc_evt_supp_dpp_uri_ready(Rpc *ntfy,
@@ -4362,6 +4571,7 @@ static esp_err_t rpc_evt_supp_dpp_fail(Rpc *ntfy,
 	ntfy_payload->resp = SUCCESS;
 	return ESP_OK;
 }
+#endif // H_SUPP_DPP_SUPPORT
 
 #if H_WIFI_DPP_SUPPORT
 static esp_err_t rpc_evt_wifi_dpp_uri_ready(Rpc *ntfy,
@@ -4508,7 +4718,7 @@ esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 		} case RPC_ID__Event_WifiDppFail: {
 			ret = rpc_evt_wifi_dpp_fail(ntfy, inbuf, inlen);
 			break;
-#endif
+#endif // H_WIFI_DPP_SUPPORT
 		} default: {
 			ESP_LOGE(TAG, "Incorrect/unsupported Ctrl Notification[%u]\n",ntfy->msg_id);
 			goto err;

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1401,10 +1401,26 @@ void check_if_max_freq_used(uint8_t chip_type)
 #endif
 }
 
+#define CARD_INIT_DELAY_MS 100
 
-static esp_err_t transport_card_init(void *bus_handle)
+// retry until timeout_ms
+static esp_err_t transport_card_init(void *bus_handle, uint32_t timeout_ms)
 {
-	return g_h.funcs->_h_sdio_card_init(bus_handle);
+	int num_loops = timeout_ms / CARD_INIT_DELAY_MS;
+	int i = 0;
+	int res = ESP_FAIL;
+
+	// call card init, even if timeout_ms is 0
+	do {
+		res = g_h.funcs->_h_sdio_card_init(bus_handle, (i == 0) ? true : false);
+		g_h.funcs->_h_msleep(100);
+		if (res == ESP_OK) {
+			break;
+		}
+		i++;
+	} while (i < num_loops);
+
+	return res;
 }
 
 static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
@@ -1415,14 +1431,16 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 #else
 	g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_msleep(10);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-	g_h.funcs->_h_msleep(1);
+	g_h.funcs->_h_msleep(10);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-	g_h.funcs->_h_msleep(1200);
+	g_h.funcs->_h_msleep(H_HOST_SDIO_RESET_DELAY_MS);
 	return ESP_OK;
 #endif
 }
+
+#define CARD_INIT_TIMEOUT_MS 1500
 
 int ensure_slave_bus_ready(void *bus_handle)
 {
@@ -1445,7 +1463,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 #if H_SLAVE_RESET_ONLY_IF_NECESSARY
 	{
 		/* Reset will be done later if needed during communication initialization */
-		res = transport_card_init(bus_handle);
+		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
 		if (res) {
 			ESP_LOGE(TAG, "card init failed");
 		} else {
@@ -1460,7 +1478,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 			transport_gpio_reset(bus_handle, reset_pin);
 		}
 
-		res = transport_card_init(bus_handle);
+		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
 		if (res) {
 			ESP_LOGE(TAG, "card init failed even after slave reset");
 		} else {
@@ -1476,7 +1494,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 		g_h.funcs->_h_msleep(500);
 		set_transport_state(TRANSPORT_RX_ACTIVE);
 
-		res = transport_card_init(bus_handle);
+		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
 		if (res) {
 			ESP_LOGE(TAG, "card init failed");
 		} else {
@@ -1492,7 +1510,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 #endif
 		transport_gpio_reset(bus_handle, reset_pin);
 
-		res = transport_card_init(bus_handle);
+		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
 		if (res) {
 			ESP_LOGE(TAG, "card init failed");
 		} else {

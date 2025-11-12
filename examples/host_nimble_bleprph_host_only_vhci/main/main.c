@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,6 +14,8 @@
 #include "console/console.h"
 #include "services/gap/ble_svc_gap.h"
 #include "bleprph.h"
+
+#include "esp_hosted.h"
 
 #if CONFIG_EXAMPLE_EXTENDED_ADV
 static uint8_t ext_adv_pattern_1[] = {
@@ -496,11 +498,35 @@ app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    // initialise connection to co-processor
+    esp_hosted_connect_to_slave();
+
+    // get fw version
+    ESP_LOGI("INFO", "getting fw version");
+    esp_hosted_coprocessor_fwver_t fwver;
+    if (ESP_OK == esp_hosted_get_coprocessor_fwversion(&fwver)) {
+        ESP_LOGI("INFO", "FW Version: %" PRIu32 ".%" PRIu32 ".%" PRIu32,
+                fwver.major1, fwver.minor1, fwver.patch1);
+    } else {
+        ESP_LOGW("INFO", "failed to get fw version");
+    }
+
+    // init bt controller
+    if (ESP_OK != esp_hosted_bt_controller_init()) {
+        ESP_LOGW("INFO", "failed to init bt controller");
+    }
+
+    // enable bt controller
+    if (ESP_OK != esp_hosted_bt_controller_enable()) {
+        ESP_LOGW("INFO", "failed to enable bt controller");
+    }
+
     ret = nimble_port_init();
     if (ret != ESP_OK) {
-        ESP_LOGE(tag, "Failed to init nimble %d ", ret);
+        ESP_LOGW("INFO", "Failed to init nimble %d ", ret);
         return;
     }
+
     /* Initialize the NimBLE host configuration. */
     ble_hs_cfg.reset_cb = bleprph_on_reset;
     ble_hs_cfg.sync_cb = bleprph_on_sync;

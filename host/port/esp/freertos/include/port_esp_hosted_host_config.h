@@ -27,10 +27,6 @@
 #define H_TRANSPORT_SPI 3
 #define H_TRANSPORT_UART 4
 
-#ifdef CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE
-  #include "driver/sdmmc_host.h"
-#endif
-
 #ifdef CONFIG_ESP_HOSTED_UART_HOST_INTERFACE
   #include "hal/uart_types.h"
 #endif
@@ -512,6 +508,14 @@ enum {
   #define H_HOST_WAKEUP_GPIO_LEVEL CONFIG_ESP_HOSTED_HOST_WAKEUP_GPIO_LEVEL
 #else
   #define H_HOST_WAKEUP_GPIO_LEVEL 1 /* High */
+#endif
+
+// adjust this value if co-processor needs more time to be ready
+// after reset from host
+#if CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS
+  #define H_HOST_SDIO_RESET_DELAY_MS CONFIG_ESP_HOSTED_SDIO_RESET_DELAY_MS
+#else
+  #define H_HOST_SDIO_RESET_DELAY_MS 1500
 #endif
 
 /* Conflict checks for host power save configuration */

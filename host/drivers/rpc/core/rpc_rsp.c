@@ -198,6 +198,13 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			goto fail_parse_rpc_msg;
 		}
 		break;
+	} case RPC_ID__Resp_OTAActivate: {
+		RPC_FAIL_ON_NULL(resp_ota_activate);
+		if (rpc_msg->resp_ota_activate->resp) {
+			ESP_LOGE(TAG, "OTA activate failed");
+			goto fail_parse_rpc_msg;
+		}
+		break;
 	} case RPC_ID__Resp_WifiSetMaxTxPower: {
 		RPC_FAIL_ON_NULL(resp_set_wifi_max_tx_power);
 		RPC_ERR_IN_RESP(resp_set_wifi_max_tx_power);
@@ -557,7 +564,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_wifi_sta_itwt_set_target_wake_time_offset);
 		RPC_ERR_IN_RESP(resp_wifi_sta_itwt_set_target_wake_time_offset);
 		break;
-#endif
+#endif // H_WIFI_HE_SUPPORT
 #if H_WIFI_DUALBAND_SUPPORT
 	} case RPC_ID__Resp_WifiSetProtocols: {
 		RPC_FAIL_ON_NULL(resp_wifi_set_protocols);
@@ -611,7 +618,24 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		app_resp->u.wifi_band_mode =
 			rpc_msg->resp_wifi_get_bandmode->bandmode;
 		break;
-#endif
+#endif // H_WIFI_DUALBAND_SUPPORT
+	} case RPC_ID__Resp_IfaceMacAddrSetGet: {
+		RPC_FAIL_ON_NULL(resp_iface_mac_addr_set_get);
+		RPC_ERR_IN_RESP(resp_iface_mac_addr_set_get);
+		RPC_RSP_COPY_BYTES(app_resp->u.iface_mac.mac, rpc_msg->resp_iface_mac_addr_set_get->mac);
+		break;
+	} case RPC_ID__Resp_IfaceMacAddrLenGet: {
+		RPC_FAIL_ON_NULL(resp_iface_mac_addr_len_get);
+		RPC_ERR_IN_RESP(resp_iface_mac_addr_len_get);
+		app_resp->u.iface_mac_len.type =
+				rpc_msg->resp_iface_mac_addr_len_get->type;
+		app_resp->u.iface_mac_len.len =
+				rpc_msg->resp_iface_mac_addr_len_get->len;
+		break;
+	} case RPC_ID__Resp_FeatureControl: {
+		RPC_FAIL_ON_NULL(resp_feature_control);
+		RPC_ERR_IN_RESP(resp_feature_control);
+		break;
 	} case RPC_ID__Resp_SetDhcpDnsStatus: {
 		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
 		RPC_ERR_IN_RESP(resp_set_dhcp_dns);

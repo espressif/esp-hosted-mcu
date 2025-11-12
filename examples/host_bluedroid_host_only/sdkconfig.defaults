@@ -1,3 +1,5 @@
+CONFIG_FREERTOS_HZ=1000
+
 #
 # BT config
 # - ESP32 co-processor only supports BLE 4.2
