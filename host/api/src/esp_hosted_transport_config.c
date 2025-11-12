@@ -85,7 +85,11 @@ esp_hosted_transport_err_t esp_hosted_transport_get_reset_config(gpio_pin_t *pin
 	default:
 		// transport config not yet initialised. Use default Reset pin config
 		pin_config->port = H_GPIO_PORT_RESET;
+#ifndef CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
 		pin_config->pin  = H_GPIO_PIN_RESET;
+#else
+		pin_config->pin  = -1;
+#endif
 		break;
 	}
 
