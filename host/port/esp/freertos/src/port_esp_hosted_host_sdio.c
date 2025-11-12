@@ -1,17 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "driver/sdmmc_defs.h"
 #include "driver/sdmmc_host.h"
@@ -159,25 +150,34 @@ static esp_err_t hosted_sdio_card_fn_init(sdmmc_card_t *card)
 
 	SDIO_FAIL_IF_NULL(card);
 
-	ESP_ERROR_CHECK(sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_ENABLE, &ioe));
+	/** initial register reads may fail if SDIO device is not yet ready
+	 * return ESP_FAIL to let upper layers retry card init
+	 */
+	if (ESP_OK != sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_ENABLE, &ioe))
+		return ESP_FAIL;
 
 	ESP_LOGD(TAG, "IOE: 0x%02x", ioe);
 
-	ESP_ERROR_CHECK(sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_READY, &ior));
+	if (ESP_OK != sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_READY, &ior))
+		return ESP_FAIL;
+
 	ESP_LOGD(TAG, "IOR: 0x%02x", ior);
 
 	// enable function 1
 	ioe |= FUNC1_EN_MASK;
-	ESP_ERROR_CHECK(sdmmc_io_write_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_ENABLE, ioe, &ioe));
+	if (ESP_OK != sdmmc_io_write_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_ENABLE, ioe, &ioe))
+		return ESP_FAIL;
 	ESP_LOGD(TAG, "IOE: 0x%02x", ioe);
 
-	ESP_ERROR_CHECK(sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_ENABLE, &ioe));
+	if (ESP_OK != sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_ENABLE, &ioe))
+		return ESP_FAIL;
 	ESP_LOGD(TAG, "IOE: 0x%02x", ioe);
 
 	// wait for the card to become ready
 	ior = 0;
 	for (i = 0; i < SDIO_INIT_MAX_RETRY; i++) {
-		ESP_ERROR_CHECK(sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_READY, &ior));
+		if (ESP_OK != sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_FN_READY, &ior))
+			return ESP_FAIL;
 		ESP_LOGD(TAG, "IOR: 0x%02x", ior);
 		if (ior & FUNC1_EN_MASK) {
 			break;
@@ -292,11 +292,16 @@ static esp_err_t sdio_write_toio(sdmmc_card_t *card, uint32_t function, uint32_t
 
 int hosted_sdio_deinit(void* ctx)
 {
-	sdmmc_host_t *host = (sdmmc_host_t *)ctx;
-	if (host) {
-		sdmmc_host_deinit();
-		HOSTED_FREE(host);
+	SDIO_FAIL_IF_NULL(ctx);
+
+	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
+
+	if (context->card) {
+		HOSTED_FREE(context->card);
 	}
+
+	sdmmc_host_deinit();
+
 	return ESP_OK;
 }
 
@@ -378,12 +383,11 @@ void * hosted_sdio_init(void)
 	return (void *)&context;
 }
 
-int hosted_sdio_card_init(void *ctx)
+int hosted_sdio_card_init(void *ctx, bool show_config)
 {
 	SDIO_FAIL_IF_NULL(ctx);
 
 	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
-	SDIO_FAIL_IF_NULL(ctx);
 
 	struct esp_hosted_sdio_config *sdio_config = &context->config;
 	SDIO_FAIL_IF_NULL(sdio_config);
@@ -397,25 +401,27 @@ int hosted_sdio_card_init(void *ctx)
 	}
 
 	config.max_freq_khz = sdio_config->clock_freq_khz;
-	ESP_LOGI(TAG, "SDIO master: Slot %d, Data-Lines: %d-bit Freq(KHz)[%u KHz]",
-			config.slot,
-			sdio_config->bus_width==4? 4:1,
-			config.max_freq_khz);
-	if (sdio_config->bus_width == 4) {
-		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] D2[%u] D3[%u] Slave_Reset[%u]",
-				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
-				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
-				sdio_config->pin_d2.pin, sdio_config->pin_d3.pin,
-				sdio_config->pin_reset.pin);
-	} else {
-		ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] Slave_Reset[%u]",
-				sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
-				sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
-				sdio_config->pin_reset.pin);
+	if (show_config) {
+		ESP_LOGI(TAG, "SDIO master: Slot %d, Data-Lines: %d-bit Freq(KHz)[%u KHz]",
+				config.slot,
+				sdio_config->bus_width==4? 4:1,
+				config.max_freq_khz);
+		if (sdio_config->bus_width == 4) {
+			ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] D2[%u] D3[%u] Slave_Reset[%u]",
+					sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
+					sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
+					sdio_config->pin_d2.pin, sdio_config->pin_d3.pin,
+					sdio_config->pin_reset.pin);
+		} else {
+			ESP_LOGI(TAG, "GPIOs: CLK[%u] CMD[%u] D0[%u] D1[%u] Slave_Reset[%u]",
+					sdio_config->pin_clk.pin, sdio_config->pin_cmd.pin,
+					sdio_config->pin_d0.pin, sdio_config->pin_d1.pin,
+					sdio_config->pin_reset.pin);
+		}
+		ESP_LOGI(TAG, "Queues: Tx[%u] Rx[%u] SDIO-Rx-Mode[%u]",
+				sdio_config->tx_queue_size, sdio_config->rx_queue_size,
+				sdio_config->rx_mode);
 	}
-	ESP_LOGI(TAG, "Queues: Tx[%u] Rx[%u] SDIO-Rx-Mode[%u]",
-			sdio_config->tx_queue_size, sdio_config->rx_queue_size,
-			sdio_config->rx_mode);
 
 #ifdef CONFIG_IDF_TARGET_ESP32P4
 	// Set this flag to allocate aligned buffer of 512 bytes to meet
@@ -429,7 +435,7 @@ int hosted_sdio_card_init(void *ctx)
 		goto fail;
 	}
 
-	if (esp_log_level_get(TAG) >= ESP_LOG_INFO) {
+	if (esp_log_level_get(TAG) >= ESP_LOG_DEBUG) {
 		// output CIS info from the slave
 		sdmmc_card_print_info(stdout, context->card);
 
@@ -440,16 +446,12 @@ int hosted_sdio_card_init(void *ctx)
 
 	// initialise the card functions
 	if (hosted_sdio_card_fn_init(context->card) != ESP_OK) {
-		ESP_LOGE(TAG, "sdio_cared_fn_init failed");
+		ESP_LOGE(TAG, "sdio_card_fn_init failed");
 		goto fail;
 	}
 	return ESP_OK;
 
 fail:
-	sdmmc_host_deinit();
-	if (context->card) {
-		HOSTED_FREE(context->card);
-	}
 	return ESP_FAIL;
 }
 
@@ -457,14 +459,8 @@ int hosted_sdio_card_deinit(void *ctx)
 {
 	SDIO_FAIL_IF_NULL(ctx);
 
-	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
-	sdmmc_card_t *card = context->card;
-
-	if (card) {
-		sdmmc_host_deinit();
-		return ESP_OK;
-	}
-	return ESP_FAIL;
+	/* Nothing to do in idf sdmmc host driver */
+	return ESP_OK;
 }
 
 int hosted_sdio_read_reg(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required)

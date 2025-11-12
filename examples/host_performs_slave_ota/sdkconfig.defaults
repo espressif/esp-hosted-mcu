@@ -1,0 +1,17 @@
+# Default configuration for Host Slave OTA Simple Example
+
+# Flash size configuration
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="8MB"
+
+# Force enable ESP-Hosted component
+CONFIG_ESP_WIFI_REMOTE_ENABLED=y
+CONFIG_ESP_HOSTED_ENABLED=y
+
+# FreeRTOS configuration
+CONFIG_FREERTOS_HZ=1000
+
+# Partition table
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"

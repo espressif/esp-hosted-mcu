@@ -45,6 +45,30 @@ MsgType_Invalid = 0;
 	MsgType_Max = 4;
 }
 
+enum RpcFeature {
+	Feature_None = 0;
+	// Bluetooth (BT) Feature
+	Feature_Bluetooth = 1;
+	// add additional features here
+}
+
+enum RpcFeatureCommand {
+	Feature_Command_None = 0;
+	// Bluetooth (BT) Feature Commands
+	Feature_Command_BT_Init = 1;
+	Feature_Command_BT_Deinit = 2;
+	Feature_Command_BT_Enable = 3;
+	Feature_Command_BT_Disable = 4;
+	// add additional feature commands here
+}
+
+enum RpcFeatureOption {
+	Feature_Option_None = 0;
+	// Bluetooth (BT) Feature Options
+	Feature_Option_BT_Deinit_Release_Memory = 1; // release memory when deinit BT
+	// add additional feature options here
+}
+
 enum RpcId {
 	MsgId_Invalid = 0;
 
@@ -66,6 +90,7 @@ enum RpcId {
 	//Req_StartSoftAP                   = 267; //0x10b
 	//Req_GetSoftAPConnectedSTAList     = 268; //0x10c
 	//Req_StopSoftAP                    = 269; //0x10d
+	Req_OTAActivate                   = 266; //0x112
 
 	Req_WifiSetPs                     = 270; //0x10e
 	Req_WifiGetPs                     = 271; //0x10f
@@ -204,11 +229,20 @@ enum RpcId {
 	Req_WifiSetOkcSupport             = 381; //0x17D
 	Req_EapSetDomainName              = 382; //0x17E
 	Req_EapSetDisableTimeCheck        = 383; //0x17F
-	Req_EapSetEapMethods              = 384; // 0x180
+	Req_EapSetEapMethods              = 384; //0x180
+
+	Req_IfaceMacAddrSetGet            = 385; //0x181
+	Req_IfaceMacAddrLenGet            = 386; //0x182
+
+	/* Common RPC to handle simple feature control with one optional parameter
+	 * Supported Features:
+	 * - BT Init/Deinit/Enable/Disable
+	 */
+	Req_FeatureControl                = 387; //0x183
+
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max                           = 385; // 0x181
-
+	Req_Max = 388; //0x184
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -228,6 +262,7 @@ enum RpcId {
 	//Resp_StartSoftAP                  = 523;
 	//Resp_GetSoftAPConnectedSTAList    = 524;
 	//Resp_StopSoftAP                   = 525;
+	Resp_OTAActivate                  = 522;
 
 	Resp_WifiSetPs                    = 526;
 	Resp_WifiGetPs                    = 527;
@@ -367,10 +402,14 @@ enum RpcId {
 	Resp_EapSetDomainName                     = 638;
 	Resp_EapSetDisableTimeCheck               = 639;
 	Resp_EapSetEapMethods                     = 640;
+
+	Resp_IfaceMacAddrSetGet           = 641;
+	Resp_IfaceMacAddrLenGet           = 642;
+	Resp_FeatureControl               = 643;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max                          = 641;
-
+	Resp_Max = 644;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -947,6 +986,13 @@ message Rpc_Resp_OTAEnd {
 	int32 resp = 1;
 }
 
+message Rpc_Req_OTAActivate {
+}
+
+message Rpc_Resp_OTAActivate {
+	int32 resp = 1;
+}
+
 message Rpc_Req_WifiSetMaxTxPower {
 	int32 power = 1;
 }
@@ -1485,6 +1531,42 @@ message Rpc_Resp_SuppDppStopListen {
 	int32 resp = 1;
 }
 
+message Rpc_Req_IfaceMacAddrSetGet {
+	bool set = 1;
+	uint32 type = 2;
+	bytes mac = 3; // only valid for set
+};
+
+message Rpc_Resp_IfaceMacAddrSetGet {
+	int32 resp = 1;
+	bool set = 2;
+	uint32 type = 3;
+	bytes mac = 4;
+};
+
+message Rpc_Req_IfaceMacAddrLenGet {
+	uint32 type = 1;
+};
+
+message Rpc_Resp_IfaceMacAddrLenGet {
+	int32 resp = 1;
+	uint32 type = 2;
+	uint32 len = 3;
+};
+
+message Rpc_Req_FeatureControl {
+	RpcFeature feature = 1;
+	RpcFeatureCommand command = 2;
+	RpcFeatureOption option = 3;
+};
+
+message Rpc_Resp_FeatureControl {
+	int32 resp = 1;
+	RpcFeature feature = 2;
+	RpcFeatureCommand command = 3;
+	RpcFeatureOption option = 4;
+};
+
 /** Event structure **/
 
 message Rpc_Event_WifiEventNoArgs {
@@ -1821,10 +1903,10 @@ message Rpc {
 		Rpc_Req_SuppDppStartListen          req_supp_dpp_start_listen         = 264;
 		Rpc_Req_SuppDppStopListen           req_supp_dpp_stop_listen          = 265;
 
-		//Rpc_Req_SetSoftAPVendorSpecificIE   req_set_softap_vendor_specific_ie = 266;
 		//Rpc_Req_StartSoftAP                 req_start_softap                  = 267;
 		//Rpc_Req_SoftAPConnectedSTA          req_softap_connected_stas_list    = 268;
 		//Rpc_Req_GetStatus                   req_stop_softap                   = 269;
+		Rpc_Req_OTAActivate                 req_ota_activate                  = 266;
 
 		Rpc_Req_SetPs                       req_wifi_set_ps                   = 270;
 		Rpc_Req_GetPs                       req_wifi_get_ps                   = 271;
@@ -1930,6 +2012,11 @@ message Rpc {
 		Rpc_Req_EapSetDisableTimeCheck          req_eap_set_disable_time_check          = 383;
 		Rpc_Req_EapSetEapMethods                req_eap_set_eap_methods                 = 384;
 
+		Rpc_Req_IfaceMacAddrSetGet          req_iface_mac_addr_set_get        = 385;
+		Rpc_Req_IfaceMacAddrLenGet          req_iface_mac_addr_len_get        = 386;
+
+		Rpc_Req_FeatureControl              req_feature_control               = 387;
+
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
 		Rpc_Resp_SetMacAddress              resp_set_mac_address               = 514;
@@ -1946,6 +2033,7 @@ message Rpc {
 		//Rpc_Resp_StartSoftAP                resp_start_softap                  = 523;
 		//Rpc_Resp_SoftAPConnectedSTA         resp_softap_connected_stas_list    = 524;
 		//Rpc_Resp_GetStatus                  resp_stop_softap                   = 525;
+		Rpc_Resp_OTAActivate                resp_ota_activate                  = 522;
 
 		Rpc_Resp_SetPs                      resp_wifi_set_ps                   = 526;
 		Rpc_Resp_GetPs                      resp_wifi_get_ps                   = 527;
@@ -2024,6 +2112,7 @@ message Rpc {
 		Rpc_Resp_WifiStaItwtGetFlowIdStatus resp_wifi_sta_itwt_get_flow_id_status = 614;
 		Rpc_Resp_WifiStaItwtSendProbeReq    resp_wifi_sta_itwt_send_probe_req  = 615;
 		Rpc_Resp_WifiStaItwtSetTargetWakeTimeOffset resp_wifi_sta_itwt_set_target_wake_time_offset = 616;
+
 		Rpc_Resp_WifiStaEnterpriseEnable       resp_wifi_sta_enterprise_enable         = 617;
 		Rpc_Resp_WifiStaEnterpriseDisable      resp_wifi_sta_enterprise_disable        = 618;
 		Rpc_Resp_EapSetIdentity                resp_eap_set_identity                   = 619;
@@ -2048,6 +2137,12 @@ message Rpc {
 		Rpc_Resp_EapSetDomainName              resp_eap_set_domain_name                = 638;
 		Rpc_Resp_EapSetDisableTimeCheck        resp_eap_set_disable_time_check         = 639;
 		Rpc_Resp_EapSetEapMethods              resp_eap_set_eap_methods                = 640;
+
+		Rpc_Resp_IfaceMacAddrSetGet         resp_iface_mac_addr_set_get        = 641;
+		Rpc_Resp_IfaceMacAddrLenGet         resp_iface_mac_addr_len_get        = 642;
+
+		Rpc_Resp_FeatureControl             resp_feature_control               = 643;
+
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
 		Rpc_Event_Heartbeat                 event_heartbeat                    = 770;

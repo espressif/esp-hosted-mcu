@@ -16,6 +16,8 @@
 #include "bleprph.h"
 #include "uart_driver.h"
 
+#include "esp_hosted.h"
+
 #if CONFIG_EXAMPLE_EXTENDED_ADV
 static uint8_t ext_adv_pattern_1[] = {
     0x02, 0x01, 0x06,
@@ -223,19 +225,23 @@ bleprph_gap_event(struct ble_gap_event *event, void *arg)
     int rc;
 
     switch (event->type) {
+#if defined(BLE_GAP_EVENT_LINK_ESTAB)
     case BLE_GAP_EVENT_LINK_ESTAB:
+#else
+    case BLE_GAP_EVENT_CONNECT:
+#endif
         /* A new connection was established or a connection attempt failed. */
         MODLOG_DFLT(INFO, "connection %s; status=%d ",
-                    event->link_estab.status == 0 ? "established" : "failed",
-                    event->link_estab.status);
-        if (event->link_estab.status == 0) {
-            rc = ble_gap_conn_find(event->link_estab.conn_handle, &desc);
+                    event->connect.status == 0 ? "established" : "failed",
+                    event->connect.status);
+        if (event->connect.status == 0) {
+            rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
             assert(rc == 0);
             bleprph_print_conn_desc(&desc);
         }
         MODLOG_DFLT(INFO, "\n");
 
-        if (event->link_estab.status != 0) {
+        if (event->connect.status != 0) {
             /* Connection failed; resume advertising. */
 #if CONFIG_EXAMPLE_EXTENDED_ADV
             ext_bleprph_advertise();
@@ -493,12 +499,27 @@ app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    // initialise connection to co-processor
+    esp_hosted_connect_to_slave();
+
+    // init bt controller
+    if (ESP_OK != esp_hosted_bt_controller_init()) {
+        ESP_LOGW("INFO", "failed to init bt controller");
+    }
+
+    // enable bt controller
+    if (ESP_OK != esp_hosted_bt_controller_enable()) {
+        ESP_LOGW("INFO", "failed to enable bt controller");
+    }
+
     hci_uart_open();
+
     ret = nimble_port_init();
     if (ret != ESP_OK) {
         ESP_LOGE(tag, "Failed to init nimble %d ", ret);
         return;
     }
+
     /* Initialize the NimBLE host configuration. */
     ble_hs_cfg.reset_cb = bleprph_on_reset;
     ble_hs_cfg.sync_cb = bleprph_on_sync;

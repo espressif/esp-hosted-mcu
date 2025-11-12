@@ -17,7 +17,6 @@ extern "C" {
 #include "esp_wifi.h"
 #include "esp_wifi_remote.h"
 #include "esp_hosted_api_types.h"
-#include "esp_hosted_ota.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
 
@@ -78,7 +77,11 @@ esp_err_t esp_wifi_remote_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
 
 #if H_WIFI_HE_SUPPORT
 esp_err_t esp_wifi_remote_sta_twt_config(wifi_twt_config_t *config);
+#if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config);
+#else
+esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_twt_setup_config_t *setup_config);
+#endif
 esp_err_t esp_wifi_remote_sta_itwt_teardown(int flow_id);
 esp_err_t esp_wifi_remote_sta_itwt_suspend(int flow_id, int suspend_time_ms);
 esp_err_t esp_wifi_remote_sta_itwt_get_flow_id_status(int *flow_id_bitmap);
@@ -130,7 +133,11 @@ esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods);
 #endif
 
 #if H_DPP_SUPPORT
+#if H_SUPP_DPP_SUPPORT
 esp_err_t esp_supp_remote_dpp_init(esp_supp_dpp_event_cb_t evt_cb);
+#else
+esp_err_t esp_supp_remote_dpp_init(void);
+#endif
 esp_err_t esp_supp_remote_dpp_deinit(void);
 esp_err_t esp_supp_remote_dpp_bootstrap_gen(const char *chan_list,
 		esp_supp_dpp_bootstrap_t type,

@@ -1,6 +1,8 @@
 # Override some defaults so BT stack is enabled
 # in this example
 
+CONFIG_FREERTOS_HZ=1000
+
 #
 # BT config
 #

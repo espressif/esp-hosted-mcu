@@ -906,11 +906,11 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 #endif
 	._h_config_gpio              =  hosted_config_gpio             ,
 	._h_config_gpio_as_interrupt =  hosted_setup_gpio_interrupt,
-	._h_teardown_gpio_interrupt  = hosted_teardown_gpio_interrupt,
-	._h_hold_gpio                = hosted_hold_gpio,
+	._h_teardown_gpio_interrupt  =  hosted_teardown_gpio_interrupt,
+	._h_hold_gpio                =  hosted_hold_gpio,
 	._h_read_gpio                =  hosted_read_gpio               ,
 	._h_write_gpio               =  hosted_write_gpio              ,
-	._h_pull_gpio                = hosted_pull_gpio,
+	._h_pull_gpio                =  hosted_pull_gpio,
 
 	._h_get_host_wakeup_or_reboot_reason = hosted_get_host_wakeup_or_reboot_reason,
 
@@ -933,22 +933,22 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_sdio_wait_slave_intr     =  hosted_sdio_wait_slave_intr    ,
 #endif
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
-	._h_bus_init                 =  hosted_spi_hd_init               ,
-	._h_bus_deinit               =  hosted_spi_hd_deinit             ,
-	._h_spi_hd_read_reg          =  hosted_spi_hd_read_reg           ,
-	._h_spi_hd_write_reg         =  hosted_spi_hd_write_reg          ,
-	._h_spi_hd_read_dma          =  hosted_spi_hd_read_dma           ,
-	._h_spi_hd_write_dma         =  hosted_spi_hd_write_dma          ,
-	._h_spi_hd_set_data_lines    =  hosted_spi_hd_set_data_lines     ,
-	._h_spi_hd_send_cmd9         =  hosted_spi_hd_send_cmd9          ,
+	._h_bus_init                 =  hosted_spi_hd_init             ,
+	._h_bus_deinit               =  hosted_spi_hd_deinit           ,
+	._h_spi_hd_read_reg          =  hosted_spi_hd_read_reg         ,
+	._h_spi_hd_write_reg         =  hosted_spi_hd_write_reg        ,
+	._h_spi_hd_read_dma          =  hosted_spi_hd_read_dma         ,
+	._h_spi_hd_write_dma         =  hosted_spi_hd_write_dma        ,
+	._h_spi_hd_set_data_lines    =  hosted_spi_hd_set_data_lines   ,
+	._h_spi_hd_send_cmd9         =  hosted_spi_hd_send_cmd9        ,
 #endif
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_UART
-	._h_bus_init                 = hosted_uart_init                ,
-	._h_bus_deinit               = hosted_uart_deinit              ,
-	._h_uart_read                = hosted_uart_read                ,
-	._h_uart_write               = hosted_uart_write               ,
+	._h_bus_init                 =  hosted_uart_init               ,
+	._h_bus_deinit               =  hosted_uart_deinit             ,
+	._h_uart_read                =  hosted_uart_read               ,
+	._h_uart_write               =  hosted_uart_write              ,
 #endif
-	._h_restart_host             = hosted_restart_host             ,
+	._h_restart_host             =  hosted_restart_host            ,
 
 	._h_config_host_power_save_hal_impl = hosted_config_host_power_save,
 	._h_start_host_power_save_hal_impl = hosted_start_host_power_save,

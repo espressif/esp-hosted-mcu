@@ -5,10 +5,24 @@ cmake_minimum_required(VERSION 3.5)
 # Add the wrap flag for esp_wifi_init
 add_compile_options(-Wl,--wrap=esp_wifi_init)
 
+# Read version from header file before project() call
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/main/esp_hosted_coprocessor_fw_ver.h" HEADER_CONTENTS)
+set(PROJECT_VERSION_REGEX "#define[ \t]+PROJECT_VERSION_MAJOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_MINOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_PATCH_1[ \t]+([0-9]+)")
+string(REGEX MATCH "${PROJECT_VERSION_REGEX}" PROJECT_VERSION_MATCH "${HEADER_CONTENTS}")
+
+if(PROJECT_VERSION_MATCH)
+    set(PROJECT_VERSION_MAJOR_1 "${CMAKE_MATCH_1}")
+    set(PROJECT_VERSION_MINOR_1 "${CMAKE_MATCH_2}")
+    set(PROJECT_VERSION_PATCH_1 "${CMAKE_MATCH_3}")
+    # Set PROJECT_VER before project() call to override git versioning
+    set(PROJECT_VER "${PROJECT_VERSION_MAJOR_1}.${PROJECT_VERSION_MINOR_1}.${PROJECT_VERSION_PATCH_1}")
+    message(STATUS "Setting PROJECT_VER to: ${PROJECT_VER}")
+endif()
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 list(APPEND EXCLUDE_COMPONENTS lwip esp_netif)
 
-set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning)
+set(COMPONENTS esp_timer esptool_py bootloader main nvs_flash esp_rom esp_wifi protocomm driver mqtt wpa_supplicant wifi_provisioning esp_driver_sdio)
 
 #list(APPEND COMPONENTS esp_gdbstub) # incase gdbstub needed
 project(network_adapter)
@@ -39,22 +53,7 @@ if(TARGET ${lwip})
 endif()
 endif()
 
-### read and display FW Version
-file(READ "${CMAKE_CURRENT_LIST_DIR}/main/esp_hosted_coprocessor_fw_ver.h" HEADER_CONTENTS)
-set(PROJECT_VERSION_REGEX "#define[ \t]+PROJECT_VERSION_MAJOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_MINOR_1[ \t]+([0-9]+)[ \t\n]+#define[ \t]+PROJECT_VERSION_PATCH_1[ \t]+([0-9]+)")
-string(REGEX MATCH "${PROJECT_VERSION_REGEX}" PROJECT_VERSION_MATCH "${HEADER_CONTENTS}")
-
-if(PROJECT_VERSION_MATCH)
-    set(PROJECT_VERSION_MAJOR_1 "${CMAKE_MATCH_1}")
-    set(PROJECT_VERSION_MINOR_1 "${CMAKE_MATCH_2}")
-    set(PROJECT_VERSION_PATCH_1 "${CMAKE_MATCH_3}")
-
-    # Construct project version
-    set(PROJECT_VER "${PROJECT_VERSION_MAJOR_1}.${PROJECT_VERSION_MINOR_1}.${PROJECT_VERSION_PATCH_1}")
-
-    message(*************************************************************************************)
-    message("                    Building ESP-Hosted-MCU FW :: ${PROJECT_VER} ")
-    message(*************************************************************************************)
-else()
-    message(FATAL_ERROR "Failed to read project version from main/esp_hosted_coprocessor_fw_ver.h")
-endif()
+### Display FW Version (already read before project() call)
+message(*************************************************************************************)
+message("                    Building ESP-Hosted-MCU FW :: ${PROJECT_VER} ")
+message(*************************************************************************************)

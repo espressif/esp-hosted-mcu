@@ -124,6 +124,12 @@ ctrl_cmd_t * rpc_slaveif_ota_end(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 
+ctrl_cmd_t * rpc_slaveif_ota_activate(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_OTAActivate);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
 ctrl_cmd_t * rpc_slaveif_wifi_init(ctrl_cmd_t *req)
 {
 	RPC_SEND_REQ(RPC_ID__Req_WifiInit);
@@ -393,6 +399,24 @@ ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_set_target_wake_time_offset(ctrl_cmd_t *r
 ctrl_cmd_t * rpc_slaveif_get_coprocessor_fwversion(ctrl_cmd_t *req)
 {
 	RPC_SEND_REQ(RPC_ID__Req_GetCoprocessorFwVersion);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_IfaceMacAddrSetGet);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_FeatureControl);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
+ctrl_cmd_t * rpc_slaveif_iface_mac_addr_len_get(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_IfaceMacAddrLenGet);
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 

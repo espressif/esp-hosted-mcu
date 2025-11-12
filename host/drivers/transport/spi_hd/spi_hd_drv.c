@@ -102,7 +102,7 @@ static void spi_hd_read_task(void const* pvParameters);
 static void spi_hd_process_rx_task(void const* pvParameters);
 static int update_flow_ctrl(uint8_t *rxbuff);
 
-static inline void spi_hd_mempool_create()
+static inline void spi_hd_mempool_create(void)
 {
 	MEM_DUMP("spi_hd_mempool_create");
 	buf_mp_g = mempool_create(MAX_SPI_HD_BUFFER_SIZE);
@@ -111,7 +111,7 @@ static inline void spi_hd_mempool_create()
 #endif
 }
 
-static inline void spi_hd_mempool_destroy()
+static inline void spi_hd_mempool_destroy(void)
 {
 	mempool_destroy(buf_mp_g);
 }
@@ -902,9 +902,9 @@ int ensure_slave_bus_ready(void *bus_handle)
 		ESP_LOGI(TAG, "Reseting slave on SPI HD bus with pin %d", reset_pin.pin);
 		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_msleep(10);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-		g_h.funcs->_h_msleep(1);
+		g_h.funcs->_h_msleep(10);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 	} else {
 		stop_host_power_save();
