@@ -146,6 +146,15 @@ Configure the co-processor project using
 idf.py menuconfig
 ```
 
+> [!NOTE]
+> When building with ESP-IDF v5.5, you may see this build error:
+>
+> `Building for UART transport can fail due to lack of IRAM space`
+>
+> To reduce IRAM usage, you can either:
+> - run `idf.py menuconfig` and enable `Component config` --> `ESP Ringbuf` ---> `Place non-ISR ringbuf functions into flash`, or
+> - uncomment `CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y` in `slave/sdkconfig.defaults.esp32` and regenerate the `sdkconfig`
+
 #### 6.2.1 Transport config
   - Navigate to "Example configuration" -> "Bus Config in between Host and Co-processor"
   - In "Transport layer", select "UART"
