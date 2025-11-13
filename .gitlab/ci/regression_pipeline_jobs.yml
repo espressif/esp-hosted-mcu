@@ -70,17 +70,18 @@ regression_build_idf_v5.5_iperf:
 regression_build_idf_master_mqtt_tcp:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
+    IDF_REGISTRY_COMPONENT: "espressif/mqtt"
+    IDF_REGISTRY_COMPONENT_EXAMPLE: "tcp"
   tags:
     - build
   rules:
     - !reference [.staging_branch_rules, rules]
-  extends: .build_template
+  extends: .build_template_mqtt_tcp_component
   image: espressif/idf:latest
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
-        IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
 regression_build_idf_master_iperf:
   tags:

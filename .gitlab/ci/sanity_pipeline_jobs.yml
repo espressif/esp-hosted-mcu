@@ -15,18 +15,20 @@ premerge_check:
 ###
 
 ### protocols/mqtt/tcp example
+### for master, mqtt/tcp example is now in Component Registry
 sanity_build_idf_master_mqtt_tcp:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
+    IDF_REGISTRY_COMPONENT: "espressif/mqtt"
+    IDF_REGISTRY_COMPONENT_EXAMPLE: "tcp"
   rules:
     - !reference [.default_rules, rules]
-  extends: .build_template
+  extends: .build_template_mqtt_tcp_component
   image: espressif/idf:latest
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
-        IDF_EXAMPLE_PATH: ["examples/protocols/mqtt/tcp"]
 
 ### wifi/iperf example
 sanity_build_idf_v5.5_iperf:

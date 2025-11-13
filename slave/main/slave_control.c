@@ -67,6 +67,7 @@
 
 static wifi_config_t new_wifi_config = {0};
 static bool new_config_recvd = false;
+static bool suppress_disconnect = false; // true when we want to suppress the disconnect event
 static wifi_event_sta_connected_t lkg_sta_connected_event = {0};
 
 enum {
@@ -871,10 +872,10 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 				int ret = esp_wifi_set_config(WIFI_IF_STA, &new_wifi_config);
 				if (ret) {
 					ESP_LOGE(TAG, "Error[0x%x] while setting the wifi config", ret);
-				} else {
-					new_config_recvd = 0;
 				}
 				esp_wifi_disconnect();
+				// suppress the disconnect event since we force disconnect here
+				suppress_disconnect = true;
 				return;
 			}
 			station_connecting = false;
@@ -884,7 +885,7 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 			esp_wifi_internal_reg_rxcb(WIFI_IF_STA, (wifi_rxcb_t) wlan_sta_rx_callback);
 			station_connected = true;
 		} else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
-			station_connected = false;
+			ESP_LOGI(TAG, "Sta mode disconnect");
 			if (new_config_recvd) {
 				ESP_LOGI(TAG, "New wifi config still unapplied, applying it");
 				/* Still not applied new config, so apply it */
@@ -892,14 +893,23 @@ static void event_handler_wifi(void* arg, esp_event_base_t event_base,
 				if (ret) {
 					ESP_LOGE(TAG, "Error[0x%x] while setting the wifi config", ret);
 				} else {
-					new_config_recvd = 0;
+					new_config_recvd = false;
 				}
+				station_connecting = true;
+				esp_wifi_connect();
 			}
+			station_connected = false;
 			esp_wifi_internal_reg_rxcb(WIFI_IF_STA, NULL);
-			ESP_LOGI(TAG, "Sta mode disconnect");
 			station_connecting = false;
-			send_event_data_to_host(RPC_ID__Event_StaDisconnected,
-				event_data, sizeof(wifi_event_sta_disconnected_t));
+			if (!suppress_disconnect) {
+				send_event_data_to_host(RPC_ID__Event_StaDisconnected,
+					event_data, sizeof(wifi_event_sta_disconnected_t));
+				wifi_event_sta_disconnected_t *ptr = (wifi_event_sta_disconnected_t *)event_data;
+				ESP_LOGI(TAG, "disconnect due to reason: %d", ptr->reason);
+			} else {
+				ESP_LOGI(TAG, "suppressing disconnect event due to new config");
+				suppress_disconnect = false;
+			}
 #if CONFIG_SOC_WIFI_HE_SUPPORT
 		} else if (event_id == WIFI_EVENT_ITWT_SETUP) {
 			ESP_LOGI(TAG, "Itwt Setup");
@@ -1474,7 +1484,7 @@ static esp_err_t req_wifi_connect(Rpc *req, Rpc *resp, void *priv_data)
 
 	if (new_config_recvd || !station_connected) {
 		ESP_LOGI(TAG, "************ connect ****************");
-		//station_connecting = true;
+		station_connecting = true;
 		ret = esp_wifi_connect();
 		if (ret != ESP_OK) {
 			ESP_LOGE(TAG, "Failed to connect to WiFi: %d", ret);
@@ -1527,7 +1537,7 @@ static bool wifi_is_provisioned(wifi_config_t *wifi_cfg)
 		ESP_LOGI(TAG, "Wifi provisioned");
 		return true;
 	}
-	ESP_LOGI(TAG, "Wifi not provisioned, Fallback to example config");
+	ESP_LOGI(TAG, "Wifi not provisioned");
 
 	return false;
 }
@@ -1584,16 +1594,26 @@ esp_err_t esp_hosted_set_sta_config(wifi_interface_t iface, wifi_config_t *cfg)
 			ESP_LOGW(TAG, "not provisioned and failed to set wifi config");
 		} else {
 			ESP_LOGI(TAG, "Provisioned new Wi-Fi config");
-			new_config_recvd = true;
-			station_connecting = false;
+			new_config_recvd = false;
+			return ESP_OK;
 		}
 	}
 
 	if (!is_wifi_config_equal(cfg, &current_config)) {
-		new_config_recvd = true;
-		station_connecting = false;
-		ESP_LOGI(TAG, "Setting new WiFi config SSID: %s", cfg->sta.ssid);
-		memcpy(&new_wifi_config, cfg, sizeof(wifi_config_t));
+		if (station_connecting) {
+			ESP_LOGI(TAG, "Caching new WiFi config SSID: %s", cfg->sta.ssid);
+			memcpy(&new_wifi_config, cfg, sizeof(wifi_config_t));
+			new_config_recvd = true;
+		} else {
+			if (esp_wifi_set_config(WIFI_IF_STA, cfg) != ESP_OK) {
+				ESP_LOGW(TAG, "already provisioned but failed to set wifi config: copying to cache instead");
+				memcpy(&new_wifi_config, cfg, sizeof(wifi_config_t));
+				new_config_recvd = true;
+			} else {
+				ESP_LOGI(TAG, "Setting new WiFi config SSID: %s", cfg->sta.ssid);
+				new_config_recvd = false;
+			}
+		}
 	} else {
 		ESP_LOGI(TAG, "WiFi config unchanged, keeping current connection");
 		new_config_recvd = false;
@@ -2048,8 +2068,12 @@ static esp_err_t req_wifi_get_protocol(Rpc *req, Rpc *resp, void *priv_data)
 			RpcReqWifiGetProtocol, req_wifi_get_protocol,
 			rpc__resp__wifi_get_protocol__init);
 
-	uint8_t protocol_bitmap = 0;
-	RPC_RET_FAIL_IF(esp_wifi_get_protocol(req_payload->ifx, &protocol_bitmap));
+	/** due to a bug in some ESP-IDF releases, esp_wifi_get_protocol() treats
+	 * the incoming pointer as a uint16_t *, corrupting the next byte
+	 * see https://github.com/espressif/esp-idf/issues/17502
+	 */
+	uint32_t protocol_bitmap = 0; // for safety
+	RPC_RET_FAIL_IF(esp_wifi_get_protocol(req_payload->ifx, (uint8_t *)&protocol_bitmap));
 
 	resp_payload->protocol_bitmap = protocol_bitmap;
 	return ESP_OK;
