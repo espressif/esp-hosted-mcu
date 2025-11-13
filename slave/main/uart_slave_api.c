@@ -1,17 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2024 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "sdkconfig.h"
 
@@ -28,6 +19,7 @@
 #include "interface.h"
 #include "mempool.h"
 #include "stats.h"
+#include "esp_idf_version.h"
 #include "esp_hosted_interface.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_transport_init.h"
@@ -46,6 +38,20 @@
 #define HOSTED_UART_CHECKSUM       CONFIG_ESP_UART_CHECKSUM
 
 #define BUFFER_SIZE                MAX_TRANSPORT_BUF_SIZE
+
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
+/**
+ * For ESP-IDF v5.5, Building with UART Transport can fail due to
+ * lack of IRAM space.
+ * To reduce IRAM usage, `CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y`
+ * should be enabled
+ */
+#if !CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH
+#error Building for UART transport can fail due to lack of IRAM space
+#error To free up IRAM, enable Component config --> ESP Ringbuf ---> Place non-ISR ringbuf functions into flash
+#error or uncomment CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y in sdkconfig.defaults.esp32 and regenerate sdkconfig
+#endif
+#endif
 
 static const char TAG[] = "UART_DRIVER";
 
