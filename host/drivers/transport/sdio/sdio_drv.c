@@ -1425,6 +1425,10 @@ static esp_err_t transport_card_init(void *bus_handle, uint32_t timeout_ms)
 
 static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 {
+#ifdef CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
+	extern esp_err_t hosted_sdio_reset_slave_callback(void);
+	return hosted_sdio_reset_slave_callback();
+#else
 	g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 	g_h.funcs->_h_msleep(10);
@@ -1433,6 +1437,7 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 	g_h.funcs->_h_msleep(H_HOST_SDIO_RESET_DELAY_MS);
 	return ESP_OK;
+#endif
 }
 
 #define CARD_INIT_TIMEOUT_MS 1500
@@ -1440,6 +1445,7 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 int ensure_slave_bus_ready(void *bus_handle)
 {
 	int res = -1;
+#ifndef CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
 	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
@@ -1448,6 +1454,9 @@ int ensure_slave_bus_ready(void *bus_handle)
 	}
 
 	assert(reset_pin.pin != -1);
+#else
+	gpio_pin_t reset_pin = { .port = NULL, .pin = -1 };
+#endif
 
 	release_slave_reset_gpio_post_wakeup();
 
@@ -1494,7 +1503,11 @@ int ensure_slave_bus_ready(void *bus_handle)
 		}
 	} else {
 		/* Always reset slave on host bootup */
+#ifndef CONFIG_ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
 		ESP_LOGW(TAG, "Reset slave using GPIO[%u]", reset_pin.pin);
+#else
+		ESP_LOGW(TAG, "Reset slave using callback");
+#endif
 		transport_gpio_reset(bus_handle, reset_pin);
 
 		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
