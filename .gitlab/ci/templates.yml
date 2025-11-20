@@ -100,7 +100,7 @@
     - idf.py create-project-from-example "${IDF_REGISTRY_COMPONENT}:${IDF_REGISTRY_COMPONENT_EXAMPLE}"
     - cd "${IDF_REGISTRY_COMPONENT_EXAMPLE}"
     # Override esp_hosted component in example's deps with the one from the current repository
-    - mkdir components
+    - mkdir -p components
     - ln -sf ${OVERRIDE_PATH} components/esp_hosted
     # Add slave target configuration if specified
     - |
