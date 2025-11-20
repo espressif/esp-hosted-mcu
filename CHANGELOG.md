@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.6.6
+
+### Bug Fixes
+
+- Fixed sta connection to remove extra disconnected event if incoming station config is different from current station config
+- IRAM size limitation when using UART transport only applies to ESP32, not to all SOCs.
+- workaround a bug in `esp_wifi_get_protocol()` that can cause memory corruption. See this [ESP-IDF Issue](https://github.com/espressif/esp-idf/issues/17502).
+- updated CI pipelines to build mqtt/tcp example from Registry Component on master branch
+
 ## 2.6.5
 
 ### Features
@@ -8,7 +17,9 @@
 
 ## 2.6.4
 
-- Fix the esp_wifi_deinit() call from host
+### Bug Fixes
+
+- Fix the `esp_wifi_deinit()` call from host
 
 ## 2.6.3
 
