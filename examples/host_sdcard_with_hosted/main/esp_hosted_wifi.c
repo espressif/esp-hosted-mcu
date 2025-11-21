@@ -12,6 +12,7 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 
+#include "esp_hosted.h"
 #include "esp_hosted_wifi.h"
 
 static const char *TAG = "sd_card_wifi";
@@ -25,6 +26,16 @@ void init_wifi(void)
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+	// get co-processor app desc
+	esp_hosted_app_desc_t desc = { 0 };
+	if (ESP_OK == esp_hosted_get_coprocessor_app_desc(&desc)) {
+		ESP_LOGW(TAG, "Co-processor Name   : %s", desc.project_name);
+		ESP_LOGW(TAG, "Co-processor Version: %s", desc.version);
+		ESP_LOGW(TAG, "Co-processor IDF Ver: %s", desc.idf_ver);
+		ESP_LOGW(TAG, "Co-processor Time   : %s", desc.time);
+		ESP_LOGW(TAG, "Co-processor Date   : %s", desc.date);
+	}
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());

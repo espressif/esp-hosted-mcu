@@ -9,7 +9,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_log.h"
+#include "esp_app_desc.h"
 #include "esp_private/wifi.h"
+
 #include "slave_control.h"
 #include "esp_hosted_rpc.pb-c.h"
 #include "esp_ota_ops.h"
@@ -18,6 +20,7 @@
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
 #include "slave_wifi_config.h"
+#include "slave_config.h"
 #include "esp_hosted_log.h"
 #include "slave_bt.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
@@ -3402,6 +3405,45 @@ static esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
 	return ESP_OK;
 }
 
+static esp_err_t req_app_get_desc(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE_SIMPLE(RpcRespAppGetDesc, resp_app_get_desc,
+			RpcReqAppGetDesc, req_app_get_desc,
+			rpc__resp__app_get_desc__init);
+
+	RPC_ALLOC_ELEMENT(EspAppDesc, resp_payload->app_desc, esp_app_desc__init);
+	EspAppDesc * p_c = resp_payload->app_desc;
+
+	const esp_app_desc_t *app_desc = esp_app_get_description();
+	if (app_desc) {
+		// copy basic info: project name, version, IDF version
+		RPC_RESP_COPY_STR(p_c->project_name, app_desc->project_name, sizeof(app_desc->project_name));
+		RPC_RESP_COPY_STR(p_c->version, app_desc->version, sizeof(app_desc->version));
+		RPC_RESP_COPY_STR(p_c->idf_ver, app_desc->idf_ver, sizeof(app_desc->idf_ver));
+#if H_ALLOW_FULL_APP_DESC
+		// copy full info
+		p_c->magic_word     = app_desc->magic_word;
+		p_c->secure_version = app_desc->secure_version;
+
+		RPC_RESP_COPY_STR(p_c->time, app_desc->time, sizeof(app_desc->time));
+		RPC_RESP_COPY_STR(p_c->date, app_desc->date, sizeof(app_desc->date));
+		RPC_RESP_COPY_BYTES(p_c->app_elf_sha256, app_desc->app_elf_sha256, sizeof(app_desc->app_elf_sha256));
+
+#if H_GOT_EFUSE_BLK_REV_FULL_APP_DESC
+		p_c->min_efuse_blk_rev_full = app_desc->min_efuse_blk_rev_full;
+		p_c->max_efuse_blk_rev_full = app_desc->max_efuse_blk_rev_full;
+#endif
+#if H_GOT_MMU_PAGE_SIZE_FULL_APP_DESC
+		p_c->mmu_page_size          = app_desc->mmu_page_size;
+#endif
+#endif
+	} else {
+		resp_payload->resp = ESP_FAIL;
+	}
+err:
+	return ESP_OK;
+}
+
 #if CONFIG_SOC_WIFI_HE_SUPPORT
 #if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 static esp_err_t req_wifi_sta_twt_config(Rpc *req, Rpc *resp, void *priv_data)
@@ -4038,6 +4080,10 @@ static esp_rpc_req_t req_table[] = {
 	{
 		.req_num = RPC_ID__Req_FeatureControl,
 		.command_handler = req_feature_control
+	},
+	{
+		.req_num = RPC_ID__Req_AppGetDesc,
+		.command_handler = req_app_get_desc
 	},
 };
 
