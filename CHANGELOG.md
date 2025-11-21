@@ -5,6 +5,12 @@
 ### Bug Fixes
 Restructured the ESP-Hosted-MCU commits
 
+## 2.6.7
+
+### Features
+
+- Added Hosted API call to get co-processor Application Descriptor
+
 ## 2.6.6
 
 ### Bug Fixes

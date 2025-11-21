@@ -13,6 +13,7 @@
 #include "esp_wifi.h"
 #include "esp_mac.h"
 #include "esp_wifi_types.h"
+#include "esp_hosted_misc.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
 #if H_WIFI_ENTERPRISE_SUPPORT
@@ -406,6 +407,7 @@ typedef struct Ctrl_cmd_t {
 
 		rcp_feature_control_t       feature_control;
 
+		esp_hosted_app_desc_t       app_desc;
 #if H_WIFI_HE_SUPPORT
 		wifi_twt_config_t           wifi_twt_config;
 
@@ -718,6 +720,7 @@ ctrl_cmd_t * rpc_slaveif_wifi_get_band_mode(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_set_slave_dhcp_dns_status(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_get_coprocessor_app_desc(ctrl_cmd_t *req);
 
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slave_feature_command(ctrl_cmd_t *req);;

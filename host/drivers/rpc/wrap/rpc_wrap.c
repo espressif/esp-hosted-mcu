@@ -649,6 +649,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_IfaceMacAddrSetGet:
 	case RPC_ID__Resp_IfaceMacAddrLenGet:
 	case RPC_ID__Resp_FeatureControl:
+	case RPC_ID__Resp_AppGetDesc:
 #if H_WIFI_HE_SUPPORT
 	case RPC_ID__Resp_WifiStaTwtConfig:
 	case RPC_ID__Resp_WifiStaItwtSetup:
@@ -2306,6 +2307,20 @@ esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp
 	// copy mac address for get
 	if (!set && resp && resp->resp_event_status == SUCCESS) {
 		memcpy(mac, resp->u.iface_mac.mac, mac_len);
+	}
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_iface_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_get_coprocessor_app_desc(req);
+
+	if (resp && resp->resp_event_status == SUCCESS) {
+		g_h.funcs->_h_memcpy(app_desc, &resp->u.app_desc, sizeof(esp_hosted_app_desc_t));
 	}
 	return rpc_rsp_callback(resp);
 }

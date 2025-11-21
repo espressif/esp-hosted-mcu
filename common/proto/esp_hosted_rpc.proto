@@ -90,7 +90,9 @@ enum RpcId {
 	//Req_StartSoftAP                   = 267; //0x10b
 	//Req_GetSoftAPConnectedSTAList     = 268; //0x10c
 	//Req_StopSoftAP                    = 269; //0x10d
-	Req_OTAActivate                   = 266; //0x112
+	Req_OTAActivate                   = 266; //0x10a
+
+	Req_AppGetDesc                    = 267; //0x10b
 
 	Req_WifiSetPs                     = 270; //0x10e
 	Req_WifiGetPs                     = 271; //0x10f
@@ -263,6 +265,8 @@ enum RpcId {
 	//Resp_GetSoftAPConnectedSTAList    = 524;
 	//Resp_StopSoftAP                   = 525;
 	Resp_OTAActivate                  = 522;
+
+	Resp_AppGetDesc                   = 523;
 
 	Resp_WifiSetPs                    = 526;
 	Resp_WifiGetPs                    = 527;
@@ -892,6 +896,23 @@ message wifi_twt_config {
 	bool twt_enable_keep_alive = 2;          /**< twt enable send qos null to keep alive */
 }
 
+message esp_app_desc {
+	uint32 magic_word = 1;       /*!< Magic word ESP_APP_DESC_MAGIC_WORD */
+	uint32 secure_version = 2;   /*!< Secure version */
+	bytes reserv1 = 3;           /*!< reserv1 */
+	bytes version = 4;           /*!< Application version */
+	bytes project_name = 5;      /*!< Project name */
+	bytes time = 6;              /*!< Compile time */
+	bytes date = 7;              /*!< Compile date*/
+	bytes idf_ver = 8;           /*!< Version IDF */
+	bytes app_elf_sha256 = 9;    /*!< sha256 of elf file */
+	uint32 min_efuse_blk_rev_full = 10; /*!< Minimal eFuse block revision supported by image, in format: major * 100 + minor */
+	uint32 max_efuse_blk_rev_full = 11; /*!< Maximal eFuse block revision supported by image, in format: major * 100 + minor */
+	uint32 mmu_page_size = 12;   /*!< MMU page size in log base 2 format */
+	bytes reserv3 = 13;          /*!< reserv3 */
+	bytes reserv2 = 14;          /*!< reserv2 */
+}
+
 /* internal supporting structures for Rpc */
 //message ScanResult {
 //	bytes bssid = 1;
@@ -991,6 +1012,14 @@ message Rpc_Req_OTAActivate {
 
 message Rpc_Resp_OTAActivate {
 	int32 resp = 1;
+}
+
+message Rpc_Req_AppGetDesc {
+}
+
+message Rpc_Resp_AppGetDesc {
+	int32 resp = 1;
+	esp_app_desc app_desc = 2;
 }
 
 message Rpc_Req_WifiSetMaxTxPower {
@@ -1908,6 +1937,8 @@ message Rpc {
 		//Rpc_Req_GetStatus                   req_stop_softap                   = 269;
 		Rpc_Req_OTAActivate                 req_ota_activate                  = 266;
 
+		Rpc_Req_AppGetDesc                  req_app_get_desc                  = 267;
+
 		Rpc_Req_SetPs                       req_wifi_set_ps                   = 270;
 		Rpc_Req_GetPs                       req_wifi_get_ps                   = 271;
 
@@ -2034,6 +2065,8 @@ message Rpc {
 		//Rpc_Resp_SoftAPConnectedSTA         resp_softap_connected_stas_list    = 524;
 		//Rpc_Resp_GetStatus                  resp_stop_softap                   = 525;
 		Rpc_Resp_OTAActivate                resp_ota_activate                  = 522;
+
+		Rpc_Resp_AppGetDesc                 resp_app_get_desc                  = 523;
 
 		Rpc_Resp_SetPs                      resp_wifi_set_ps                   = 526;
 		Rpc_Resp_GetPs                      resp_wifi_get_ps                   = 527;

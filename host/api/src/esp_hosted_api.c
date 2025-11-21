@@ -818,6 +818,11 @@ size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type)
 	}
 }
 
+esp_err_t esp_hosted_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc)
+{
+	return rpc_iface_get_coprocessor_app_desc(app_desc);
+}
+
 /* esp_err_t esp_wifi_remote_scan_get_ap_record(wifi_ap_record_t *ap_record)
 esp_err_t esp_wifi_remote_set_csi(_Bool en)
 esp_err_t esp_wifi_remote_set_csi_rx_cb(wifi_csi_cb_t cb, void *ctx)
