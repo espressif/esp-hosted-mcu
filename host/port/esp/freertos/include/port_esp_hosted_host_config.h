@@ -578,4 +578,10 @@ enum {
 esp_err_t esp_hosted_set_default_config(void);
 bool esp_hosted_is_config_valid(void);
 
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_CONTROL
+#define H_ENABLE_GPIO_CONTROL 1
+#else
+#define H_ENABLE_GPIO_CONTROL 0
+#endif
+
 #endif /*__ESP_HOSTED_CONFIG_H__*/
