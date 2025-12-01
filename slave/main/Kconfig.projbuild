@@ -862,6 +862,18 @@ menu "Example Configuration"
 		help
 			Enable Wi-Fi Easy Connect (DPP) support
 
+	config ESP_HOSTED_ALLOW_FULL_APP_DESC
+		bool "Return the Full App Descriptor"
+		default n
+		help
+			Returns the full app descriptor when selected.
+			By default the returned app descriptor only contains:
+			- Project Name
+			- Project Version
+			- IDF Version
+			Full app descriptor returns all information contained in esp_app_desc_t.
+			**WARNING** The full app descriptor may include sensitive build-time metadata.
+
 	menu "Hosted Debugging"
 		config ESP_RAW_THROUGHPUT_TRANSPORT
 			bool "RawTP: Transport level throughput debug test"

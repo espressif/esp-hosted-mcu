@@ -414,6 +414,12 @@ ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 
+ctrl_cmd_t * rpc_slaveif_get_coprocessor_app_desc(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_AppGetDesc);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_len_get(ctrl_cmd_t *req)
 {
 	RPC_SEND_REQ(RPC_ID__Req_IfaceMacAddrLenGet);

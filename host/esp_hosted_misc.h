@@ -10,6 +10,31 @@
 #include <stdbool.h>
 #include "esp_mac.h"
 
+#define ESP_HOSTED_APP_DESC_MAGIC_WORD (0xABCD5432)  /*!< The magic word for the esp_hosted_app_desc structure */
+
+/**
+ * @brief Description about ESP-Hosted application on co-processor.
+ *
+ * @note Some fields may be empty if config to enable full app descriptor
+ *       is not enabled on the co-processor
+ */
+typedef struct {
+	uint32_t magic_word;        /*!< Magic word ESP_HOSTED_APP_DESC_MAGIC_WORD */
+	uint32_t secure_version;    /*!< Secure version */
+	uint32_t reserv1[2];        /*!< reserv1 */
+	char version[32];           /*!< Application version */
+	char project_name[32];      /*!< Project name */
+	char time[16];              /*!< Compile time */
+	char date[16];              /*!< Compile date*/
+	char idf_ver[32];           /*!< Version IDF */
+	uint8_t app_elf_sha256[32]; /*!< sha256 of elf file */
+	uint16_t min_efuse_blk_rev_full; /*!< Minimal eFuse block revision supported by image, in format: major * 100 + minor */
+	uint16_t max_efuse_blk_rev_full; /*!< Maximal eFuse block revision supported by image, in format: major * 100 + minor */
+	uint8_t mmu_page_size;      /*!< MMU page size in log base 2 format */
+	uint8_t reserv3[3];         /*!< reserv3 */
+	uint32_t reserv2[18];       /*!< reserv2 */
+} esp_hosted_app_desc_t;
+
 /**
   * @brief  Initialise the BT Controller on the co-processor
   *
@@ -79,5 +104,14 @@ esp_err_t esp_hosted_iface_mac_addr_get(uint8_t *mac, size_t mac_len, esp_mac_ty
   *         8 bytes for EUI-64.
   */
 size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type);
+
+/**
+  * @brief  Return the co-processor application descriptor
+  *
+  * @param  app_desc  Pointer to Application Descriptor structure to fill
+  *
+  * @return ESP_OK on success
+  */
+esp_err_t esp_hosted_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc);
 
 #endif

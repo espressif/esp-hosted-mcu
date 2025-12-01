@@ -636,6 +636,25 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_feature_control);
 		RPC_ERR_IN_RESP(resp_feature_control);
 		break;
+	} case RPC_ID__Resp_AppGetDesc: {
+		RPC_FAIL_ON_NULL(resp_app_get_desc);
+		RPC_ERR_IN_RESP(resp_app_get_desc);
+		RPC_FAIL_ON_NULL(resp_app_get_desc->app_desc);
+		// copy over the app descriptor elements
+		esp_hosted_app_desc_t *p_a = &app_resp->u.app_desc;
+		EspAppDesc *p_c = rpc_msg->resp_app_get_desc->app_desc;
+		p_a->magic_word = p_c->magic_word;
+		p_a->secure_version = p_c->secure_version;
+		RPC_RSP_COPY_BYTES(p_a->version, p_c->version);
+		RPC_RSP_COPY_BYTES(p_a->project_name, p_c->project_name);
+		RPC_RSP_COPY_BYTES(p_a->time, p_c->time);
+		RPC_RSP_COPY_BYTES(p_a->date, p_c->date);
+		RPC_RSP_COPY_BYTES(p_a->idf_ver, p_c->idf_ver);
+		RPC_RSP_COPY_BYTES(p_a->app_elf_sha256, p_c->app_elf_sha256);
+		p_a->min_efuse_blk_rev_full = p_c->min_efuse_blk_rev_full;
+		p_a->max_efuse_blk_rev_full = p_c->max_efuse_blk_rev_full;
+		p_a->mmu_page_size = p_c->mmu_page_size;
+		break;
 	} case RPC_ID__Resp_SetDhcpDnsStatus: {
 		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
 		RPC_ERR_IN_RESP(resp_set_dhcp_dns);

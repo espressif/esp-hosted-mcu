@@ -107,6 +107,7 @@ The RPC IDs listed here are for requests and events. Each request will have a co
 |  97 |    386 | IfaceMacAddrLenGet                 |            2.5.2 |
 |  98 |    387 | FeatureControl                     |            2.5.2 |
 |  99 |    266 | OTAActivate                        |            2.6.0 |
+| 100 |    267 | AppGetDesc                         |            2.6.7 |
 
 ## List of RPC Events
 
