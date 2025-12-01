@@ -29,9 +29,9 @@
 
 /* Format version tuple for printing */
 #define ESP_HOSTED_VERSION_PRINTF_ARGS(ver) \
-	ESP_HOSTED_VERSION_MAJOR(ver), \
-	ESP_HOSTED_VERSION_MINOR(ver), \
-	ESP_HOSTED_VERSION_PATCH(ver)
+	(unsigned int)ESP_HOSTED_VERSION_MAJOR(ver), \
+	(unsigned int)ESP_HOSTED_VERSION_MINOR(ver), \
+	(unsigned int)ESP_HOSTED_VERSION_PATCH(ver)
 
 #define ESP_HOSTED_VERSION_PRINTF_FMT "%u.%u.%u"
 
