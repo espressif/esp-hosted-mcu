@@ -49,6 +49,8 @@ endif()
 # Set COMPONENT_REQUIRES to include all necessary components
 set(COMPONENT_REQUIRES ${component_requires})
 
+set(COMPONENT_PRIV_REQUIRES wpa_supplicant)
+
 # Select BT UART code based on IDF Target
 if(CONFIG_IDF_TARGET_ESP32)
     list(APPEND COMPONENT_SRCS slave_bt_uart_esp32.c)
