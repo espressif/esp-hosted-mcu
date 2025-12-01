@@ -118,6 +118,19 @@ def write_host_footer(file_info):
 	file_info.write(" */\n")
 	file_info.write("#define ESP_HOSTED_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))\n")
 	file_info.write("\n")
+	file_info.write("/* Extract version components from version value */\n")
+	file_info.write("#define ESP_HOSTED_VERSION_MAJOR(ver) (((ver) >> 16) & 0xFF)\n")
+	file_info.write("#define ESP_HOSTED_VERSION_MINOR(ver) (((ver) >> 8) & 0xFF)\n")
+	file_info.write("#define ESP_HOSTED_VERSION_PATCH(ver) ((ver) & 0xFF)\n")
+	file_info.write("\n")
+	file_info.write("/* Format version tuple for printing */\n")
+	file_info.write("#define ESP_HOSTED_VERSION_PRINTF_ARGS(ver) \\\n")
+	file_info.write("\tESP_HOSTED_VERSION_MAJOR(ver), \\\n")
+	file_info.write("\tESP_HOSTED_VERSION_MINOR(ver), \\\n")
+	file_info.write("\tESP_HOSTED_VERSION_PATCH(ver)\n")
+	file_info.write("\n")
+	file_info.write("#define ESP_HOSTED_VERSION_PRINTF_FMT \"%u.%u.%u\"\n")
+	file_info.write("\n")
 
 def set_coprocessor_version(version: tuple) -> int:
 	# write the coprocessor file

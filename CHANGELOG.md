@@ -5,6 +5,11 @@
 ### Bug Fixes
 Restructured the ESP-Hosted-MCU commits
 
+## 2.6.8
+
+### Bug Fixes
+- Clean up ESP-Hosted prints at host
+
 ## 2.6.7
 
 ### Features

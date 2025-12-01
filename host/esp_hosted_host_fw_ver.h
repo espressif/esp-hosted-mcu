@@ -22,4 +22,17 @@
  */
 #define ESP_HOSTED_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 
+/* Extract version components from version value */
+#define ESP_HOSTED_VERSION_MAJOR(ver) (((ver) >> 16) & 0xFF)
+#define ESP_HOSTED_VERSION_MINOR(ver) (((ver) >> 8) & 0xFF)
+#define ESP_HOSTED_VERSION_PATCH(ver) ((ver) & 0xFF)
+
+/* Format version tuple for printing */
+#define ESP_HOSTED_VERSION_PRINTF_ARGS(ver) \
+	ESP_HOSTED_VERSION_MAJOR(ver), \
+	ESP_HOSTED_VERSION_MINOR(ver), \
+	ESP_HOSTED_VERSION_PATCH(ver)
+
+#define ESP_HOSTED_VERSION_PRINTF_FMT "%u.%u.%u"
+
 #endif

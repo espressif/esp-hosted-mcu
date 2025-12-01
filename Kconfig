@@ -1572,6 +1572,14 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 
 	menu "Debug Settings"
 
+		config ESP_HOSTED_FW_VERSION_MISMATCH_WARNING_SUPPRESS
+			bool "Suppress firmware version mismatch warnings"
+			default n
+			help
+				Suppress warnings when host and co-processor firmware versions do not match.
+				By default, version mismatch warnings are shown during initialization.
+				Enable this option to suppress these warnings.
+
 		config ESP_HOSTED_RAW_THROUGHPUT_TRANSPORT
 			bool "RawTP: Transport level throughput debug test"
 			default n

@@ -47,18 +47,17 @@ static int compare_self_version_with_slave_version(uint32_t slave_version)
         return 0;
     } else if (host_version > slave_version) {
         // host version > slave version
-        ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
-        printf("Version on Host is NEWER than version on co-processor\n");
-        printf("RPC requests sent by host may encounter timeout errors\n");
-        printf("or may not be supported by co-processor\n");
-        ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
+#ifndef CONFIG_ESP_HOSTED_FW_VERSION_MISMATCH_WARNING_SUPPRESS
+        ESP_LOGW(TAG, "Version mismatch: Host [%u.%u.%u] > Co-proc [%u.%u.%u] ==> Upgrade co-proc to avoid RPC timeouts",
+            ESP_HOSTED_VERSION_PRINTF_ARGS(host_version), ESP_HOSTED_VERSION_PRINTF_ARGS(slave_version));
+#endif
         return -1;
     } else {
         // host version < slave version
-        ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
-        printf("Version on Host is OLDER than version on co-processor\n");
-        printf("Host may not be compatible with co-processor\n");
-        ESP_LOGW(TAG, "=== ESP-Hosted Version Warning ===");
+#ifndef CONFIG_ESP_HOSTED_FW_VERSION_MISMATCH_WARNING_SUPPRESS
+        ESP_LOGW(TAG, "Version mismatch: Host [%u.%u.%u] < Co-proc [%u.%u.%u] ==> Upgrade host to avoid compatibility issues",
+            ESP_HOSTED_VERSION_PRINTF_ARGS(host_version), ESP_HOSTED_VERSION_PRINTF_ARGS(slave_version));
+#endif
         return 1;
     }
 }

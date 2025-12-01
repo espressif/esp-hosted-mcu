@@ -115,7 +115,7 @@ enum hardware_type_e {
 #define MILLISEC_TO_MICROSEC(x) (1000*(x))
 
 #define MEM_DUMP(s) \
-	printf("%s free:%lu min-free:%lu lfb-def:%u lfb-8bit:%u\n\n", s,	\
+	ESP_LOGD(TAG, "%s free:%lu min-free:%lu lfb-def:%u lfb-8bit:%u", s,	\
 			(unsigned long int)esp_get_free_heap_size(), (unsigned long int)esp_get_minimum_free_heap_size(), \
 			heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT),		\
 			heap_caps_get_largest_free_block(MALLOC_CAP_8BIT))
@@ -125,7 +125,7 @@ enum hardware_type_e {
 #define HOSTED_CREATE_HANDLE(tYPE, hANDLE) {                                   \
 	hANDLE = (tYPE *)g_h.funcs->_h_malloc(sizeof(tYPE));                       \
 	if (!hANDLE) {                                                             \
-		printf("%s:%u Mem alloc fail while create handle\n", __func__,__LINE__); \
+		ESP_LOGE(TAG, "%s:%u Mem alloc fail while create handle", __func__,__LINE__); \
 		return NULL;                                                           \
 	}                                                                          \
 }
@@ -142,7 +142,7 @@ enum hardware_type_e {
 #define HOSTED_CALLOC(struct_name, buff, nbytes, gotosym) do {    \
 	buff = (struct_name *)g_h.funcs->_h_calloc(1, nbytes);	  \
 	if (!buff) {                                                  \
-		printf("%s, Failed to allocate memory \n", __func__);     \
+		ESP_LOGE(TAG, "%s, Failed to allocate memory", __func__);     \
 		goto gotosym;                                             \
 	}                                                             \
 } while(0);
@@ -150,7 +150,7 @@ enum hardware_type_e {
 #define HOSTED_MALLOC(struct_name, buff, nbytes, gotosym) do {    \
 	buff = (struct_name *)g_h.funcs->_h_malloc(nbytes);		  \
 	if (!buff) {                                                  \
-		printf("%s, Failed to allocate memory \n", __func__);     \
+		ESP_LOGE(TAG, "%s, Failed to allocate memory", __func__);     \
 		goto gotosym;                                             \
 	}                                                             \
 } while(0);
