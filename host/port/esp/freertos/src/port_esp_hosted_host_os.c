@@ -796,7 +796,8 @@ void hosted_log_write(int  level,
 {
 	va_list list;
 	va_start(list, format);
-	printf(format, list);
+	/* Use ESP-IDF logging system with proper level and tag */
+	esp_log_writev((esp_log_level_t)level, tag, format, list);
 	va_end(list);
 }
 
