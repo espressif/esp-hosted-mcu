@@ -23,6 +23,7 @@
 #include "esp_hosted_coprocessor.h"
 #include "driver/gpio.h"
 
+#include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #if defined(CONFIG_BT_ENABLED) && defined(CONFIG_SOC_BT_SUPPORTED)

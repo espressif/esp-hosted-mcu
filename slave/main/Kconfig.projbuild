@@ -21,6 +21,14 @@ menu "Example Configuration"
 			config C2_C5_MODULE_SUB_BOARD
 				bool "ESP32-P4 EV Sub-Board for C2 & C5"
 				depends on IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C5
+
+			config ESP_HOST_DEV_BOARD_P4_C5_CORE
+				bool "ESP32-P4-C5 Core Board with on-board C5"
+				depends on IDF_TARGET_ESP32C5
+
+			config ESP_HOST_DEV_BOARD_P4_C6_CORE
+				bool "ESP32-P4-C6 Core Board with on-board C6"
+				depends on IDF_TARGET_ESP32C6
 		endchoice
 
 		choice ESP_HOST_INTERFACE
@@ -111,6 +119,8 @@ menu "Example Configuration"
 					depends on SPI_HSPI
 					int "Slave GPIO pin for Host MOSI"
 					default 20 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 8 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 20 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 13 if IDF_TARGET_ESP32
 					default 11 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 					default 7
@@ -121,6 +131,8 @@ menu "Example Configuration"
 					depends on SPI_HSPI
 					int "Slave GPIO pin for Host MISO"
 					default 21 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 7 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 21 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 12 if IDF_TARGET_ESP32
 					default 13 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 					default 2
@@ -131,6 +143,8 @@ menu "Example Configuration"
 					depends on SPI_HSPI
 					int "Slave GPIO pin for Host CLK"
 					default 19 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 9 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 19 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 3 if IDF_TARGET_ESP32C5
 					default 0 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
 					default 14 if IDF_TARGET_ESP32
@@ -143,6 +157,8 @@ menu "Example Configuration"
 					depends on SPI_HSPI
 					int "Slave GPIO pin for Host  CS"
 					default 18 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 10 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 18 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 15 if IDF_TARGET_ESP32
 					default 10 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 					default 8 if IDF_TARGET_ESP32C61
@@ -201,6 +217,8 @@ menu "Example Configuration"
 				config ESP_SPI_GPIO_HANDSHAKE
 					int "Slave GPIO pin for handshake"
 					default 22 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 14 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 22 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 4 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
 					default 3 if IDF_TARGET_ESP32C2 && !C2_C5_MODULE_SUB_BOARD
 					default 4 if IDF_TARGET_ESP32C5 && C2_C5_MODULE_SUB_BOARD
@@ -215,6 +233,8 @@ menu "Example Configuration"
 				config ESP_SPI_GPIO_DATA_READY
 					int "Slave GPIO pin for data ready interrupt"
 					default 23 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 13 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 23 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 1 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
 					default 4 if IDF_TARGET_ESP32C2 && !C2_C5_MODULE_SUB_BOARD
 					default 0 if IDF_TARGET_ESP32C5 && C2_C5_MODULE_SUB_BOARD
@@ -453,6 +473,8 @@ menu "Example Configuration"
 				config ESP_SPI_HD_GPIO_CS
 					int "Slave GPIO pin for Host CS"
 					default 18 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 10 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 18 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 8 if IDF_TARGET_ESP32C61
 					default 10
 					help
@@ -461,6 +483,8 @@ menu "Example Configuration"
 				config ESP_SPI_HD_GPIO_CLK
 					int "Slave GPIO pin for Host CLK"
 					default 19 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 9 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 19 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 3 if IDF_TARGET_ESP32C5
 					default 0 if IDF_TARGET_ESP32C2
 					default 6
@@ -470,6 +494,8 @@ menu "Example Configuration"
 				config ESP_SPI_HD_GPIO_D0
 					int "Slave GPIO pin for Host D0"
 					default 20 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 8 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 20 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 7
 					help
 						SPI HD controller Host D0
@@ -477,6 +503,8 @@ menu "Example Configuration"
 				config ESP_SPI_HD_GPIO_D1
 					int "Slave GPIO pin for Host D1"
 					default 21 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 7 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 21 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 2
 					help
 						SPI HD controller Host D1
@@ -485,6 +513,8 @@ menu "Example Configuration"
 					depends on ESP_SPI_HD_PRIV_INTERFACE_4_DATA_LINES
 					int "Slave GPIO pin for Host D2"
 					default 22 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 14 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 22 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 4 if IDF_TARGET_ESP32C61
 					default 5
 					help
@@ -494,6 +524,8 @@ menu "Example Configuration"
 					depends on ESP_SPI_HD_PRIV_INTERFACE_4_DATA_LINES
 					int "Slave GPIO pin for Host D3"
 					default 23 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 13 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 23 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 3 if IDF_TARGET_ESP32C61
 					default 4
 					help
@@ -502,6 +534,8 @@ menu "Example Configuration"
 				config ESP_SPI_HD_GPIO_DATA_READY
 					int "Slave GPIO pin for Data Ready"
 					default 2 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
+					default 28 if ESP_HOST_DEV_BOARD_P4_C5_CORE
+					default 9 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 0 if IDF_TARGET_ESP32C5
 					default 1 if IDF_TARGET_ESP32C2
 					default 23 if IDF_TARGET_ESP32C61
