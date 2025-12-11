@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.7.2
+
+### Bug Fixes
+
+- Stable workaround for ota writes to slave
+
 ## 2.7.1
 
 - Add support for more PCBs:
