@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.7.1
+
+- Add support for more PCBs:
+  - ESP32-P4 Core Board - with on-board C5
+  - ESP32-P4 Core Board - with on-board C6
+
 ## 2.7.0
 
 ### Bug Fixes
