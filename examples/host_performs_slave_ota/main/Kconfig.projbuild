@@ -61,7 +61,7 @@ menu "WiFi Connection"
 endmenu
 
 menu "HTTPS OTA Configuration"
-	depends on OTA_METHOD_HTTPS
+    depends on OTA_METHOD_HTTPS
 
     config OTA_USE_SELF_SIGNED_CERT
         bool "Use self-signed certificate (Testing Only)"
