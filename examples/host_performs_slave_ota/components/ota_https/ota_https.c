@@ -378,8 +378,6 @@ esp_err_t ota_https_perform(const char* image_url)
     /* End OTA */
     if ((err = esp_hosted_slave_ota_end()) != ESP_OK) {
 		ESP_LOGE(TAG, "esp_ota_end failed, error=%s", esp_err_to_name(err));
-		esp_http_client_close(client);
-		esp_http_client_cleanup(client);
         return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 

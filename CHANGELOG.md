@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.7.3
+
+### Bug Fixes
+
+- fixed RPC Response for OTA commands to return errors in responses correctly
+- fixed double free bug in host OTA example
+
 ## 2.7.2
 
 ### Bug Fixes
