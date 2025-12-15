@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.7.4
+
+### Bug Fixes
+
+- fixed co-processor to properly allow wifi init and deinit
+- fixed registration of event handlers in co-processor
+
 ## 2.7.3
 
 ### Bug Fixes

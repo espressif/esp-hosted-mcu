@@ -97,7 +97,7 @@ static TimerHandle_t handle_heartbeat_task;
 static uint32_t hb_num;
 
 /* FreeRTOS event group to signal when we are connected*/
-static esp_event_handler_instance_t instance_any_id;
+static esp_event_handler_instance_t instance_any_id = NULL;
 
 #if H_WIFI_ENTERPRISE_SUPPORT
 unsigned char *g_ca_cert = NULL;
@@ -900,7 +900,10 @@ esp_err_t esp_hosted_register_wifi_event_handlers(void)
 {
 	int ret1;
 
-	esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &instance_any_id);
+	if (instance_any_id) {
+		esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
+		instance_any_id = NULL;
+	}
 
 	ret1 = esp_event_handler_instance_register(WIFI_EVENT,
 				ESP_EVENT_ANY_ID,
@@ -1070,7 +1073,6 @@ static bool wifi_init_config_changed(const wifi_init_config_t *new_cfg, const wi
 esp_err_t __wrap_esp_wifi_init(const wifi_init_config_t *config)
 {
 	esp_err_t ret;
-	bool should_reinit = false;
 	ESP_LOGI(TAG, "=== __wrap_esp_wifi_init called ===");
 
 	if (wifi_initialized) {
@@ -1080,7 +1082,6 @@ esp_err_t __wrap_esp_wifi_init(const wifi_init_config_t *config)
 			esp_wifi_stop();
 			esp_wifi_deinit();
 			wifi_initialized = false;
-			should_reinit = true;
 		} else {
 			ESP_LOGW(TAG, "WiFi already initialized with same parameters");
 			return ESP_OK;
@@ -1100,7 +1101,7 @@ esp_err_t __wrap_esp_wifi_init(const wifi_init_config_t *config)
 	ret = __real_esp_wifi_init(config);
 	ESP_LOGI(TAG, "__real_esp_wifi_init returned: %d", ret);
 
-	if (ret == ESP_OK && !should_reinit) {
+	if (ret == ESP_OK) {
 		wifi_initialized = true;
 	}
 
@@ -1175,6 +1176,7 @@ static esp_err_t req_wifi_deinit(Rpc *req, Rpc *resp, void *priv_data)
 	free_g_ca_cert();
 	free_all_g_eap_cert_and_key();
 #endif
+	wifi_initialized = false;
 	RPC_RET_FAIL_IF(esp_wifi_deinit());
 
 	return ESP_OK;
