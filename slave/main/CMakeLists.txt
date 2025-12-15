@@ -10,7 +10,6 @@ set(COMPONENT_SRCS
 	"${common_dir}/utils/esp_hosted_cli.c"
 	"protocomm_pserial.c"
 	"esp_hosted_coprocessor.c"
-	"slave_bt.c"
 	"mempool.c"
 	"stats.c"
 	"mempool_ll.c"
@@ -18,6 +17,10 @@ set(COMPONENT_SRCS
 	"slave_light_sleep.c"
 	"nw_split_router.c"
 )
+
+if(CONFIG_SOC_BT_SUPPORTED)
+	list(APPEND COMPONENT_SRCS "slave_bt.c")
+endif()
 
 set(COMPONENT_ADD_INCLUDEDIRS
 	"."
@@ -28,6 +31,7 @@ set(COMPONENT_ADD_INCLUDEDIRS
 	"${common_dir}/transport"
 )
 
+if(CONFIG_SOC_BT_SUPPORTED)
 # Select BT UART code based on IDF Target
 if(CONFIG_IDF_TARGET_ESP32)
 	list(APPEND COMPONENT_SRCS slave_bt_uart_esp32.c)
@@ -35,6 +39,7 @@ elseif(CONFIG_IDF_TARGET_ESP32C3 OR CONFIG_IDF_TARGET_ESP32S3)
 	list(APPEND COMPONENT_SRCS slave_bt_uart_esp32c3_s3.c)
 else()
 	list(APPEND COMPONENT_SRCS slave_bt_uart_esp32xx.c)
+endif()
 endif()
 
 if(CONFIG_ESP_SDIO_HOST_INTERFACE)

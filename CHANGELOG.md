@@ -6,6 +6,8 @@
 
 - removed setting `scan_method` and `sort_method` in co-processor when station is connecting. Use the values sent by the Host in the Wi-Fi config.
 
+- fixed support for ESP32-S2 as a co-processor
+
 ## 2.9.2
 
 ### Fixed
