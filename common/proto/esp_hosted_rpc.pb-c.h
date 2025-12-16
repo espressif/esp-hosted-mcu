@@ -4216,11 +4216,15 @@ struct  RpcEventWifiEventNoArgs
 struct  RpcEventESPInit
 {
   ProtobufCMessage base;
+  /*
+   * reserved
+   */
   ProtobufCBinaryData init_data;
+  uint32_t cp_reset_reason;
 };
 #define RPC__EVENT__ESPINIT__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&rpc__event__espinit__descriptor) \
-    , {0,NULL} }
+    , {0,NULL}, 0 }
 
 
 struct  RpcEventHeartbeat

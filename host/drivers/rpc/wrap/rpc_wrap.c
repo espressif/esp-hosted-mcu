@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -17,6 +17,7 @@
 #include "esp_hosted_transport.h"
 #include "port_esp_hosted_host_log.h"
 #include "transport_drv.h"
+#include "esp_hosted_event.h"
 
 #if H_DPP_SUPPORT
 #include "esp_dpp.h"
@@ -93,6 +94,9 @@ static esp_err_t rpc_supp_cb_thread_stop(void);
 static esp_supp_dpp_event_cb_t dpp_evt_cb = NULL;
 #endif
 
+static volatile bool netif_started = false;
+static volatile bool netif_connected = false;
+
 typedef struct {
 	int event;
 	rpc_rsp_cb_t fun;
@@ -107,6 +111,8 @@ int rpc_init(void)
 int rpc_start(void)
 {
 	ESP_LOGD(TAG, "%s", __func__);
+	netif_started = false;
+	netif_connected = false;
 	return rpc_slaveif_start();
 }
 
@@ -131,8 +137,6 @@ static bool is_wifi_netif_started(wifi_interface_t wifi_if) {
 
 static int rpc_event_callback(ctrl_cmd_t * app_event)
 {
-	static bool netif_started = false;
-	static bool netif_connected = false;
 	static bool softap_started = false;
 
 	ESP_LOGV(TAG, "%u",app_event->msg_id);
@@ -151,11 +155,16 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 	switch(app_event->msg_id) {
 
 		case RPC_ID__Event_ESPInit: {
-			ESP_LOGI(TAG, "--- ESP Event: Slave ESP Init ---");
+			esp_hosted_event_init_t event = { 0 };
+			event.reason = app_event->u.e_init.cp_reset_reason;
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_COPROCESSOR_INIT,
+					&event, sizeof(event), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_Heartbeat: {
-			ESP_LOGI(TAG, "ESP Event: Heartbeat event [%lu]",
-					(long unsigned int)app_event->u.e_heartbeat.hb_num);
+			esp_hosted_event_heartbeat_t event = { 0 };
+			event.heartbeat = app_event->u.e_heartbeat.hb_num;
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_COPROCESSOR_HEARTBEAT,
+					&event, sizeof(event), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_AP_StaConnected: {
 			wifi_event_ap_staconnected_t *p_e = &app_event->u.e_wifi_ap_staconnected;
@@ -2441,3 +2450,17 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 	return rpc_slaveif_register_custom_callback(msg_id, callback);
 }
 #endif
+
+esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.e_heartbeat.enable = enable;
+	req->u.e_heartbeat.duration = duration_sec;
+
+	resp = rpc_slaveif_config_heartbeat(req);
+
+	return rpc_rsp_callback(resp);
+}

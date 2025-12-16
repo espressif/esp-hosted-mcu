@@ -130,8 +130,11 @@ else()
     list(APPEND driver_requires driver)
 endif()
 
+### to support ESP-Hosted events, make esp_event a public requirement
+list(APPEND driver_requires esp_event)
+
 idf_component_register(SRCS ${srcs}
-	PRIV_REQUIRES soc esp_event esp_netif esp_timer driver esp_wifi bt esp_http_client console wpa_supplicant
+	PRIV_REQUIRES soc esp_netif esp_timer driver esp_wifi bt esp_http_client console wpa_supplicant
 	REQUIRES ${driver_requires}
 	INCLUDE_DIRS ${pub_include}
 	PRIV_INCLUDE_DIRS ${priv_include})

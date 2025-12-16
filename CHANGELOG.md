@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.9.4
+
+### Features
+
+- enabled ESP-Hosted events. Host can register an event handler to receive these events from co-processor:
+  - INIT event, indicating the co-processor has started
+  - HEARTBEAT event, when enabled by the host
+  - TRANSPORT_FAILURE event, when ESP-Hosted encounters a transport failure
+- host can use these events to determine if the co-processor rebooted (unexpected INIT event) or hanged (missing HEARTBEAT)
+- added `examples/host_hosted_events` as an example to show how the host can use either event to reinitialise a Station connection to an AP
+
+### Bug Fixes
+
+- fixed ESP-Hosted and SDIO issues that prevent transport reinitialisation
+- fixed files to skip when running codespell during pre-commit
+
 ## 2.9.3
 
 ## Bug Fix

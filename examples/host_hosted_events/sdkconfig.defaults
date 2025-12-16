@@ -1,0 +1,2 @@
+### Disable transport option to restart on failure, so application will handle transport failures
+CONFIG_ESP_HOSTED_TRANSPORT_RESTART_ON_FAILURE=n

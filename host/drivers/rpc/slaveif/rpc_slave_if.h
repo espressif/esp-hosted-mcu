@@ -269,6 +269,10 @@ typedef struct {
 #endif
 
 typedef struct {
+	uint32_t cp_reset_reason;
+} event_init_t;
+
+typedef struct {
 	/* event */
 	uint32_t hb_num;
 	/* Req */
@@ -459,6 +463,7 @@ typedef struct Ctrl_cmd_t {
 		rpc_supp_dpp_bootstrap_gen_t dpp_bootstrap_gen;
 #endif
 
+		event_init_t                e_init;
 
 		event_heartbeat_t           e_heartbeat;
 

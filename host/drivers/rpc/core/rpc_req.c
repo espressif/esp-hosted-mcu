@@ -172,11 +172,11 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->enable = app_req->u.e_heartbeat.enable;
 		req_payload->duration = app_req->u.e_heartbeat.duration;
 		if (req_payload->enable) {
-			ESP_LOGW(TAG, "Enable heartbeat with duration %ld\n", (long int)req_payload->duration);
+			ESP_LOGD(TAG, "Enable heartbeat with duration %ld", (long int)req_payload->duration);
 			if (CALLBACK_AVAILABLE != is_event_callback_registered(RPC_ID__Event_Heartbeat))
-				ESP_LOGW(TAG, "Note: ** Subscribe heartbeat event to get notification **\n");
+				ESP_LOGD(TAG, "Note: ** Subscribe heartbeat event to get notification **");
 		} else {
-			ESP_LOGI(TAG, "Disable Heartbeat\n");
+			ESP_LOGD(TAG, "Disable Heartbeat");
 		}
 		break;
 	} case RPC_ID__Req_WifiInit: {

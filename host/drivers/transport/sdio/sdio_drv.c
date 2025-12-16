@@ -87,6 +87,7 @@
 #include "esp_hosted_transport_config.h"
 #include "esp_hosted_bt.h"
 #include "port_esp_hosted_host_config.h"
+#include "esp_hosted_event.h"
 
 static const char TAG[] = "H_SDIO_DRV";
 
@@ -155,7 +156,6 @@ static struct mempool * buf_mp_g;
 extern transport_channel_t *chan_arr[ESP_MAX_IF];
 
 static void * sdio_handle = NULL;
-static void * sdio_bus_lock;
 static void * sdio_read_thread;
 static void * sdio_process_rx_thread;
 static void * sdio_write_thread;
@@ -285,6 +285,20 @@ void bus_deinit_internal(void *bus_handle)
 		sdio_bus_lock = NULL;
 	}
 #endif
+
+	// free memory allocated in double buffering structs
+	if (double_buf.buffer[0].buf) {
+		ESP_LOGW(TAG, "free buffer[0] %p", double_buf.buffer[0].buf);
+		g_h.funcs->_h_free_align(double_buf.buffer[0].buf);
+		double_buf.buffer[0].buf = NULL;
+		double_buf.buffer[0].buf_size = 0;
+	}
+	if (double_buf.buffer[1].buf) {
+		ESP_LOGW(TAG, "free buffer[1] %p", double_buf.buffer[1].buf);
+		g_h.funcs->_h_free_align(double_buf.buffer[1].buf);
+		double_buf.buffer[1].buf = NULL;
+		double_buf.buffer[1].buf_size = 0;
+	}
 
 	sdio_mempool_destroy();
 	if (bus_handle) {
@@ -446,8 +460,14 @@ static int sdio_is_write_buffer_available(uint32_t buf_needed)
 				/* restart the host to avoid the sdio locked out state */
 
 				if (!max_retry_sdio_not_responding) {
-					ESP_LOGE(TAG, "%s: SDIO slave unresponsive, restart host", __func__);
+					ESP_LOGE(TAG, "%s: SDIO slave unresponsive", __func__);
+					g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+							ESP_HOSTED_EVENT_TRANSPORT_FAILURE,
+							NULL, 0, HOSTED_BLOCK_MAX);
+#if H_TRANSPORT_RESTART_ON_FAILURE
 					g_h.funcs->_h_restart_host();
+#endif
+					return BUFFER_UNAVAILABLE;
 				}
 				continue;
 			}
@@ -625,8 +645,13 @@ static void sdio_write_task(void const* pvParameters)
 					continue;
 				} else {
 					SDIO_DRV_UNLOCK();
-					ESP_LOGE(TAG, "Unrecoverable host sdio state, reset host mcu");
+					ESP_LOGE(TAG, "Unrecoverable host sdio state");
+					g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+							ESP_HOSTED_EVENT_TRANSPORT_FAILURE,
+							NULL, 0, HOSTED_BLOCK_MAX);
+#if H_TRANSPORT_RESTART_ON_FAILURE
 					g_h.funcs->_h_restart_host();
+#endif
 					goto done;
 				}
 			}
@@ -1019,8 +1044,13 @@ static void sdio_read_task(void const* pvParameters)
 			ESP_LOGE(TAG, "failed to read registers");
 
 			SDIO_DRV_UNLOCK();
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+					ESP_HOSTED_EVENT_TRANSPORT_FAILURE,
+					NULL, 0, HOSTED_BLOCK_MAX);
+#if H_TRANSPORT_RESTART_ON_FAILURE
 			ESP_LOGI(TAG, "Host is resetting itself, to avoid any sdio race condition");
 			g_h.funcs->_h_restart_host();
+#endif
 			continue;
 		}
 
@@ -1034,8 +1064,13 @@ static void sdio_read_task(void const* pvParameters)
 			ESP_LOGE(TAG, "failed to read interrupt register");
 
 			SDIO_DRV_UNLOCK();
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+					ESP_HOSTED_EVENT_TRANSPORT_FAILURE,
+					NULL, 0, HOSTED_BLOCK_MAX);
+#if H_TRANSPORT_RESTART_ON_FAILURE
 			ESP_LOGI(TAG, "Host is resetting itself, to avoid any sdio race condition");
 			g_h.funcs->_h_restart_host();
+#endif
 			continue;
 		}
 #endif
@@ -1271,8 +1306,10 @@ void *bus_init_internal(void)
 
 	/* register callback */
 
+#if defined(USE_DRIVER_LOCK)
 	sdio_bus_lock = g_h.funcs->_h_create_mutex();
 	assert(sdio_bus_lock);
+#endif
 
 	sem_to_slave_queue = g_h.funcs->_h_create_semaphore(tx_queue_size * MAX_PRIORITY_QUEUES);
 	assert(sem_to_slave_queue);

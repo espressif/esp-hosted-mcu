@@ -1640,6 +1640,14 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 
 	endmenu
 
+	config ESP_HOSTED_TRANSPORT_RESTART_ON_FAILURE
+		bool "Restart transport upon failure"
+		default y
+		help
+			When enabled, transport restarts the system when it encounters a failure.
+			Disable to custom handle the transport failure in application.
+			A transport failure will always be sent as an ESP_HOSTED_EVENT_TRANSPORT_FAILURE event, irrespective of the setting.
+
 	config ESP_HOSTED_ENABLE_ITWT
 		bool "Enable iTWT support"
 		depends on SLAVE_SOC_WIFI_HE_SUPPORT
