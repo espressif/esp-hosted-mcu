@@ -1827,6 +1827,86 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			Enable this option if you want to copy these values between host and co-processor.
 			It is usually safe to ignore these reserved values.
 
+	config ESP_HOSTED_NETWORK_SPLIT_ENABLED
+		bool "Enable Network Split: Shared IP address between host and slave"
+		default n
+		help
+			Enables the LWIP stack on the slave to process its own set of ports,
+			alongside the host stack. Helps split network traffic and allows
+			background tasks on the slave, even when the host is in low-power mode.
+
+	menu "LWIP port config"
+		depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED
+
+		menu "Host side (remote) LWIP port config"
+			config LWIP_TCP_LOCAL_PORT_RANGE_START
+				int "Host TCP start port"
+				default 49152
+				help
+					Host side TCP start port. Slave defaults to 61440
+					Slave range: 61440-65535
+					Host range: 49152-61439
+
+			config LWIP_TCP_LOCAL_PORT_RANGE_END
+				int "Host TCP end port"
+				default 61439
+				help
+					Host side TCP end port. Slave defaults to 65535
+					Slave range: 61440-65535
+					Host range: 49152-61439
+
+			config LWIP_UDP_LOCAL_PORT_RANGE_START
+				int "Host UDP start port"
+				default 49152
+				help
+					Host side UDP start port. Slave defaults to 61440
+					Slave range: 61440-65535
+					Host range: 49152-61439
+
+			config LWIP_UDP_LOCAL_PORT_RANGE_END
+				int "Host UDP end port"
+				default 61439
+				help
+					Host side UDP end port. Slave defaults to 65535
+					Slave range: 61440-65535
+					Host range: 49152-61439
+		endmenu
+
+		menu "Slave side (remote) LWIP port config"
+			config LWIP_TCP_REMOTE_PORT_RANGE_START
+				int "Slave TCP start port"
+				default 61440
+				help
+					Slave side TCP start port. Host defaults to 49152
+					Slave range: 61440-65535
+					Host range: 49152-61439
+
+			config LWIP_TCP_REMOTE_PORT_RANGE_END
+				int "Slave TCP end port"
+				default 65535
+				help
+					Slave side TCP end port. Host defaults to 61439
+					Slave range: 61440-65535
+					Host range: 49152-61439
+
+			config LWIP_UDP_REMOTE_PORT_RANGE_START
+				int "Slave UDP start port"
+				default 61440
+				help
+					Slave side UDP start port. Host defaults to 49152
+					Slave range: 61440-65535
+					Host range: 49152-61439
+
+			config LWIP_UDP_REMOTE_PORT_RANGE_END
+				int "Slave UDP end port"
+				default 65535
+				help
+					Slave side UDP end port. Host defaults to 61439
+					Slave range: 61440-65535
+					Host range: 49152-61439
+		endmenu
+
+	endmenu
 
 	config ESP_HOSTED_HOST_POWER_SAVE_ENABLED
 		bool "Allow host to power save"

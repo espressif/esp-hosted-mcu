@@ -7,6 +7,7 @@ This page documents the features implemented by ESP-Hosted-MCU.
 1. **Station** (scan, connect to an AP)
 2. **SoftAP** (configure, start, stop)
 3. **SoftAP+Station**
+4. (Optional) [**Network Split**](feature_network_split.md) for splitting network traffic support between the co-processor and the host
 5. (Optional) **iTWT** (individual Target Wake Time) Wi-Fi 6 (802.11ax) feature that lets a station negotiate its own wake/sleep schedule with an iTWT supporting AP to reduce power consumption
    - only works with co-processors that support iTWT like the ESP32-C6 and ESP32-C5
 6. (Optional) **Wi-Fi Enterprise** security mode for enhanced security in business environments

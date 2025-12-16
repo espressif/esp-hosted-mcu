@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -91,6 +91,11 @@ int is_host_wakeup_needed(interface_buffer_handle_t *buf_handle)
 
 		case ESP_STA_IF:
 
+			  /* User can parse the incoming Wi-Fi frame here, for any selective wake up, or drop.
+			   * if network split configured, you can also ammend function,
+			   * nw_split_filter_and_route_packet() to process at slave or selective forward to host,
+			   * by inspecting frame/packet
+			   **/
 			  strlcpy(reason, "sta tx msg", sizeof(reason));
 			  wakup_needed = 1;
 			  goto end;
@@ -172,9 +177,9 @@ static void clean_wakeup_gpio_timer_cb(void* arg)
 }
 #endif
 
-int wakeup_host_mandate(uint32_t timeout_ms)
-{
 #if H_HOST_PS_ALLOWED && H_HOST_PS_DEEP_SLEEP_ALLOWED
+static int trigger_host_wakeup(uint32_t timeout_ms)
+{
 	esp_timer_handle_t timer = NULL;
 	esp_err_t ret = ESP_OK;
 	uint64_t start_time = GET_CURR_TIME_IN_MS();
@@ -233,7 +238,14 @@ int wakeup_host_mandate(uint32_t timeout_ms)
 	}
 
 	return wakeup_success;
+}
+#endif
 
+int wakeup_host_mandate(uint32_t timeout_ms)
+{
+#if H_HOST_PS_ALLOWED && H_HOST_PS_DEEP_SLEEP_ALLOWED
+	ESP_LOGI(TAG, "Mandate host wakeup");
+	return trigger_host_wakeup(timeout_ms);
 #else
 	return 1;
 #endif
@@ -268,7 +280,7 @@ int wakeup_host(uint32_t timeout_ms)
 	}
 
 	if (power_save_on) {
-		wakeup_success = wakeup_host_mandate(timeout_ms);
+		wakeup_success = trigger_host_wakeup(timeout_ms);
 		ESP_LOGI(TAG, "host %s woke up", is_host_power_saving() ? "not" : "");
 	}
 

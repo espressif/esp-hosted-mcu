@@ -104,6 +104,13 @@ static void transport_drv_init(void)
 	bus_handle = bus_init_internal();
 	ESP_LOGD(TAG, "Bus handle: %p", bus_handle);
 	assert(bus_handle);
+#if H_NETWORK_SPLIT_ENABLED
+	ESP_LOGI(TAG, "Network split enabled. Port ranges- Host:TCP(%d-%d), UDP(%d-%d), Slave:TCP(%d-%d), UDP(%d-%d)",
+		H_HOST_TCP_LOCAL_PORT_RANGE_START, H_HOST_TCP_LOCAL_PORT_RANGE_END,
+		H_HOST_UDP_LOCAL_PORT_RANGE_START, H_HOST_UDP_LOCAL_PORT_RANGE_END,
+		H_SLAVE_TCP_REMOTE_PORT_RANGE_START, H_SLAVE_TCP_REMOTE_PORT_RANGE_END,
+		H_SLAVE_UDP_REMOTE_PORT_RANGE_START, H_SLAVE_UDP_REMOTE_PORT_RANGE_END);
+#endif
 	hci_drv_init();
 }
 

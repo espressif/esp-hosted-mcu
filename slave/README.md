@@ -4,7 +4,7 @@ This document details the **ESP-Hosted MCU Slave Example**, demonstrating the sl
 
 ## Overview
 
-The slave firmware enables host MCUs to utilize the Wi-Fi and Bluetooth capabilities of ESP32 series chips through **SDIO, SPI, or UART** interfaces. This minimal example focuses on basic connectivity; however, advanced features like Host Power Save can be configured for optimized power management.
+The slave firmware enables host MCUs to utilize the Wi-Fi and Bluetooth capabilities of ESP32 series chips through **SDIO, SPI, or UART** interfaces. This minimal example focuses on basic connectivity; however, advanced features like Network Split and Host Power Save can be optionally configured for optimized network traffic and power management.
 
 ## Supported Co-processors and Transports
 

@@ -295,7 +295,8 @@ regression_build_wifi_examples_h2:
         IDF_SLAVE_TARGET: ["esp32c6"]
         EXAMPLE_TO_BUILD: ["host_wifi_easy_connect_dpp_enrollee",
         "host_wifi_itwt",
-        "host_transport_config"]
+        "host_transport_config",
+        "host_network_split__power_save"]
 
 regression_build_wifi_examples_p4:
   tags:
@@ -312,4 +313,36 @@ regression_build_wifi_examples_p4:
         IDF_SLAVE_TARGET: ["esp32c6"]
         EXAMPLE_TO_BUILD: ["host_wifi_easy_connect_dpp_enrollee",
         "host_wifi_itwt",
-        "host_transport_config"]
+        "host_transport_config",
+        "host_network_split__power_save"]
+
+# build an example using the various transports
+# this is to verify transport builds as expected on the host
+# for h2, build only for ESP-IDF v5.3 and v5.3.1
+# for p4, build for other ESP-IDFs
+regression_build_transport_examples_h2:
+  rules:
+    - !reference [.staging_branch_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32h2"]
+        IDF_VER: ["v5.3", "v5.3.1"]
+        IDF_SLAVE_TARGET: ["esp32c6"]
+        EXAMPLE_TO_BUILD: ["host_network_split__power_save"]
+        EXAMPLE_CI_FILE: ["spi", "spi_hd", "uart"]
+
+regression_build_transport_examples_p4:
+  rules:
+    - !reference [.staging_branch_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_VER: ["v5.4", "v5.4.1", "v5.4.2", "release-v5.4",
+        "v5.3.2", "v5.3.3", "v5.3.4", "release-v5.3"]
+        IDF_SLAVE_TARGET: ["esp32c6"]
+        EXAMPLE_TO_BUILD: ["host_network_split__power_save"]
+        EXAMPLE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]

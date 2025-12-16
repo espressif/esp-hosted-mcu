@@ -20,6 +20,8 @@
 #define PASSWORD_LENGTH         64
 #define VENDOR_OUI_BUF          3
 
+
+
 #define mem_free(x)                 \
         {                           \
             if (x) {                \
@@ -27,6 +29,7 @@
                 x = NULL;           \
             }                       \
         }
+
 
 #define NTFY_TEMPLATE(NtFy_MsgId, NtFy_TyPe, NtFy_StRuCt, InIt_FuN)             \
   NtFy_TyPe *ntfy_payload = NULL;                                               \
@@ -57,6 +60,7 @@
   InIt_FuN(resp_payload);                                                       \
   resp_payload->resp = SUCCESS;                                                 \
 
+
 /* Simple is same above just, we dod not need req_payload unused warning */
 #define RPC_TEMPLATE_SIMPLE(RspTyPe, RspStRuCt, ReqType, ReqStruct, InIt_FuN)   \
   RspTyPe *resp_payload = NULL;                                                 \
@@ -84,6 +88,7 @@
     return ESP_OK;                                                              \
   }                                                                             \
 } while(0);
+
 
 #define RPC_ALLOC_ELEMENT(TyPe,MsG_StRuCt,InIt_FuN) {                         \
   TyPe *NeW_AllocN = (TyPe *)calloc(1, sizeof(TyPe));                         \
@@ -191,6 +196,8 @@
     }                                                                           \
   } while(0)
 
+
+
 esp_err_t data_transfer_handler(uint32_t session_id,const uint8_t *inbuf,
 		ssize_t inlen,uint8_t **outbuf, ssize_t *outlen, void *priv_data);
 esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
@@ -198,9 +205,28 @@ esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 void send_event_to_host(int event_id);
 void send_event_data_to_host(int event_id, void *data, int size);
 
+
 #include "esp_wifi.h"
 
 esp_err_t esp_hosted_set_sta_config(wifi_interface_t iface, wifi_config_t *cfg);
 esp_err_t esp_hosted_register_wifi_event_handlers(void);
+
+#ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
+/* DHCP/DNS status structure */
+typedef struct {
+    int iface;
+    int net_link_up;
+    int dhcp_up;
+    uint8_t dhcp_ip[64];
+    uint8_t dhcp_nm[64];
+    uint8_t dhcp_gw[64];
+    int dns_up;
+    uint8_t dns_ip[64];
+    int dns_type;
+} rpc_dhcp_dns_status_t;
+
+/* Function declarations */
+
+#endif /* CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED */
 
 #endif /*__SLAVE_CONTROL__H__*/

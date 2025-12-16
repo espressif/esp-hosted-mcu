@@ -1,17 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 //
 
 #ifndef __STATS__H__
@@ -149,6 +141,10 @@ struct pkt_stats_t {
 	uint32_t serial_tx_evt;
 	uint32_t sta_flowctrl_on;
 	uint32_t sta_flowctrl_off;
+	uint32_t sta_lwip_in;
+	uint32_t sta_slave_lwip_out;
+	uint32_t sta_host_lwip_out;
+	uint32_t sta_both_lwip_out;
 };
 
 extern struct pkt_stats_t pkt_stats;

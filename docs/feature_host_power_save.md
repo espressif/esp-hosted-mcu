@@ -12,6 +12,8 @@ Key features include:
 - Host enters power save mode, network stays online
 - Slave intelligently wakes host when needed
 - Power state synchronization between host and slave
+- Seamless network handover during power save
+- Integration with Network Split
 
 ---
 ## Configuration
@@ -191,6 +193,7 @@ sequenceDiagram
 
 -   `slave/main/host_power_save.h`: slave enums and APIs
 -   `slave/main/host_power_save.c`: wake-up management
+-   `slave/main/nw_split_router.c`: packet inspection (for wake-up)
 
 ### Functions
 
@@ -378,6 +381,7 @@ void app_main(void)
 
 3. **Network Connectivity Loss**
    - Verify the slave maintains its WiFi connection while the host is asleep.
+   - Check the Network Split configuration if enabled.
 
 4. **Transport Synchronization Issues**
    - Ensure the correct power state signals are being sent. After wake-up, the host should log that it is informing the slave it has woken up.
