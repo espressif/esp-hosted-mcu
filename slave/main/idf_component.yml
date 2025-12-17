@@ -22,4 +22,6 @@ dependencies:
   esp-qa/ping-cmd:
     version: "~1.0.0"
   espressif/mqtt:
-    version: "~1"
+    matches:
+      - if: "idf_version >5.3"
+        version: "~1"
