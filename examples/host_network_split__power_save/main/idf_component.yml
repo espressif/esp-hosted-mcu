@@ -1,8 +1,6 @@
 dependencies:
   cmd_system:
     path: ${IDF_PATH}/examples/system/console/advanced/components/cmd_system
-  espressif/iperf:
-    version: "~0.1.4"
   espressif/iperf-cmd:
     matches:
       - if: "idf_version >=6.0"
@@ -21,5 +19,11 @@ dependencies:
         version: "~0.1.0"
   esp-qa/ping-cmd:
     version: "~1.0.0"
-  espressif/mqtt:
-    version: "~1"
+  espressif/esp_wifi_remote:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4, esp32h2]"
+  espressif/esp_hosted:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4, esp32h2]"

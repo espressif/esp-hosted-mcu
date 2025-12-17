@@ -150,3 +150,18 @@ endif()
 # endif()
 
 
+if(CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED)
+    idf_component_get_property(lwip lwip COMPONENT_LIB)
+    if(TARGET ${lwip})
+    	# Use generator expressions to only apply to non-INTERFACE targets
+    	get_target_property(lwip_type ${lwip} TYPE)
+    	if(NOT lwip_type STREQUAL "INTERFACE_LIBRARY")
+			#target_include_directories(${lwip} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/common")
+			#target_compile_definitions(${lwip} PRIVATE "-DESP_IDF_LWIP_HOOK_FILENAME=\"${CMAKE_CURRENT_SOURCE_DIR}/common/esp_hosted_lwip_src_port_hook.h\"")
+
+            # Some IDF release/v5.4 commits fail to attach hook file for udp.c, so mandate attach for every file in lwip build
+        	message(STATUS "********** Configuring LWIP for network split port configs **********")
+            target_compile_options(${lwip} PRIVATE "-include" "${CMAKE_CURRENT_SOURCE_DIR}/common/esp_hosted_lwip_src_port_hook.h")
+    	endif()
+    endif()
+endif()

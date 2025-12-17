@@ -910,6 +910,46 @@ static void sdio_data_to_rx_buf_task(void const* pvParameters)
 }
 
 
+#if H_HOST_USES_STATIC_NETIF
+esp_netif_t *s_netif_sta = NULL;
+
+esp_netif_t * create_sta_netif_with_static_ip(void)
+{
+	ESP_LOGI(TAG, "Create netif with static IP");
+	/* Create "almost" default station, but with un-flagged DHCP client */
+	esp_netif_inherent_config_t netif_cfg;
+	memcpy(&netif_cfg, ESP_NETIF_BASE_DEFAULT_WIFI_STA, sizeof(netif_cfg));
+	netif_cfg.flags &= ~ESP_NETIF_DHCP_CLIENT;
+	esp_netif_config_t cfg_sta = {
+		.base = &netif_cfg,
+		.stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
+	};
+	esp_netif_t *sta_netif = esp_netif_new(&cfg_sta);
+	assert(sta_netif);
+
+	ESP_LOGI(TAG, "Creating slave sta netif with static IP");
+
+	ESP_ERROR_CHECK(esp_netif_attach_wifi_station(sta_netif));
+	ESP_ERROR_CHECK(esp_wifi_set_default_wifi_sta_handlers());
+
+	/* stop dhcpc */
+	ESP_ERROR_CHECK(esp_netif_dhcpc_stop(sta_netif));
+
+	return sta_netif;
+}
+
+static esp_err_t create_static_netif(void)
+{
+	/* Only initialize networking stack if not already initialized */
+	if (!s_netif_sta) {
+		esp_netif_init();
+		esp_event_loop_create_default();
+		s_netif_sta = create_sta_netif_with_static_ip();
+		assert(s_netif_sta);
+	}
+	return ESP_OK;
+}
+#endif
 
 static void sdio_read_task(void const* pvParameters)
 {
@@ -937,6 +977,9 @@ static void sdio_read_task(void const* pvParameters)
 			break;
 		}
 	}
+#if H_HOST_USES_STATIC_NETIF
+	create_static_netif();
+#endif
 
 
 #if DO_COMBINED_REG_READ

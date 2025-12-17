@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.8.0 - Network Split (Shared IP)
+
+**Network Split (Shared IP)** This major update allows the **Host MCU** and the **ESP Slave** to share a **single IP address** while running independent network stacks. This is ideal for low-power products where the Slave handles background tasks while the Host sleeps.
+
+* Disabled by default. Enable using `CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED` config
+* **Documentation**: [Network Split Guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/feature_network_split.md).
+
+### Example: [Network Split with Host Power Save Example](https://components.espressif.com/components/espressif/esp_hosted/examples/host_network_split__power_save)
+
+### **Key Additions**
+
+- Smart Traffic Routing:  `nw_split_router.c` automatically directs traffic through function, `nw_split_filter_and_route_packet()`
+  - **Port-based (TCP/UDP)**: Uses `CONFIG_LWIP_TCP_LOCAL_PORT_RANGE` and `CONFIG_LWIP_UDP_LOCAL_PORT_RANGE` to decide if the Host or Slave handles a packet.
+  - **Reserved Ports**: Mandate packets on specific ports (e.g., 80, 443) to the Host via `CONFIG_ESP_HOSTED_HOST_RESERVED_PORTS_CONFIGURED`.
+  - **Non TCP/UDP**: Built-in handling for `ARP`, `ICMP`, and `DHCP` on coprocessor (configurable) to offload host for other priority work or deep sleep
+- iperf Performance
+  -  Demo of sharing same port: Port `5001` is shared smartly, allowing performance testing on either stack (at a time) without reconfiguring.
+- Low-Power Support
+  - (Optionally) Deeply integrated with [Host Power Save](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/feature_host_power_save.md)
+- Smart Wakeup demo
+  -  The Slave can "wake up" the Host when it receives specific traffic or an MQTT message containing the `"wakeup-host"` string.
+- **Collision Prevention**
+  - Added `esp_hosted_lwip_src_port_hook.h` to ensure the Host and Slave never try to use the same source port.
+- **Supported Targets**
+  - **Slaves**: ESP32-C5, C6, S2, S3.
+  - **Hosts**: ESP32-P4, H2, and non ESP MCUs.
+
+ESP Component Registry Release: [2.8.0](https://components.espressif.com/components/espressif/esp_hosted/versions/2.8.0)
+
 ## 2.7.4
 
 ### Bug Fixes
