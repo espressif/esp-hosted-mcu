@@ -1819,6 +1819,13 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 				is lower than this threshold
 	endmenu
 
+	config ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+		bool "Enable peer data transfer (custom RPC)"
+		default y
+		help
+			Enable peer data transfer to send/receive raw bytes between host and coprocessor.
+			This is enabled by default. Disable only if you don't need this feature.
+
 	config ESP_HOSTED_DECODE_WIFI_RESERVED_FIELD
 		bool "Copy Wi-Fi configuration reserved field values"
 		default n

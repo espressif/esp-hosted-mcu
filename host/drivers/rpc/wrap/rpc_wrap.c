@@ -350,6 +350,11 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			break;
 		} case RPC_ID__Event_DhcpDnsStatus: {
 			break;
+#ifdef H_PEER_DATA_TRANSFER
+		} case RPC_ID__Event_CustomRpc: {
+			/* Custom RPC events are handled directly in rpc_evt.c via user callback */
+			break;
+#endif
 		} default: {
 			ESP_LOGW(TAG, "Invalid event[0x%x] to parse", app_event->msg_id);
 			break;
@@ -475,6 +480,9 @@ int rpc_register_event_callbacks(void)
 		{ RPC_ID__Event_WifiDppCfgRecvd,           rpc_event_callback },
 		{ RPC_ID__Event_WifiDppFail,               rpc_event_callback },
 #endif
+#endif
+#ifdef H_PEER_DATA_TRANSFER
+		{ RPC_ID__Event_CustomRpc,                 rpc_event_callback },
 #endif
 	};
 
@@ -691,6 +699,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_SuppDppBootstrapGen:
 	case RPC_ID__Resp_SuppDppStartListen:
 	case RPC_ID__Resp_SuppDppStopListen:
+#endif
+#ifdef H_PEER_DATA_TRANSFER
+	case RPC_ID__Resp_CustomRpc:
 #endif
 	case RPC_ID__Resp_GetCoprocessorFwVersion: {
 		/* Intended fallthrough */
@@ -2402,3 +2413,27 @@ static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_contro
 
 	return rpc_rsp_callback(resp);
 }
+
+#ifdef H_PEER_DATA_TRANSFER
+
+esp_err_t esp_hosted_send_custom_data(uint8_t *data, uint32_t data_len)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	/* Fill custom RPC data */
+	req->u.custom_rpc.custom_msg_id = 0; /* Not used */
+	req->u.custom_rpc.data = data;
+	req->u.custom_rpc.data_len = data_len;
+	req->u.custom_rpc.free_func = NULL; /* User owns this memory */
+
+	resp = rpc_slaveif_custom_rpc(req);
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_register_rx_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len))
+{
+	return rpc_slaveif_register_callback_custom_data(callback);
+}
+#endif

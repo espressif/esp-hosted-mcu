@@ -622,6 +622,26 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_feature_control);
 		RPC_ERR_IN_RESP(resp_feature_control);
 		break;
+#ifdef H_PEER_DATA_TRANSFER
+	} case RPC_ID__Resp_CustomRpc: {
+		RPC_FAIL_ON_NULL(resp_custom_rpc);
+		RPC_ERR_IN_RESP(resp_custom_rpc);
+		ESP_LOGD(TAG, "Custom RPC response received: %"PRIu32" bytes", rpc_msg->resp_custom_rpc->data.len);
+		app_resp->u.custom_rpc.custom_msg_id = rpc_msg->resp_custom_rpc->custom_msg_id;
+		if (rpc_msg->resp_custom_rpc->data.data && rpc_msg->resp_custom_rpc->data.len > 0) {
+			/* Allocate memory for response data */
+			app_resp->u.custom_rpc.data = (uint8_t *)g_h.funcs->_h_malloc(rpc_msg->resp_custom_rpc->data.len);
+
+			RPC_FAIL_ON_NULL_PRINT(app_resp->u.custom_rpc.data, "Malloc Failed");
+
+			if (app_resp->u.custom_rpc.data) {
+				g_h.funcs->_h_memcpy(app_resp->u.custom_rpc.data, rpc_msg->resp_custom_rpc->data.data, rpc_msg->resp_custom_rpc->data.len);
+				app_resp->u.custom_rpc.data_len = rpc_msg->resp_custom_rpc->data.len;
+				app_resp->u.custom_rpc.free_func = g_h.funcs->_h_free; /* Default free function */
+			}
+		}
+		break;
+#endif
 	} case RPC_ID__Resp_AppGetDesc: {
 		RPC_FAIL_ON_NULL(resp_app_get_desc);
 		RPC_ERR_IN_RESP(resp_app_get_desc);

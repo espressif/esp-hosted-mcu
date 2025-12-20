@@ -283,6 +283,9 @@ typedef struct RpcEventSuppDppFail RpcEventSuppDppFail;
 typedef struct RpcEventWifiDppUriReady RpcEventWifiDppUriReady;
 typedef struct RpcEventWifiDppCfgRecvd RpcEventWifiDppCfgRecvd;
 typedef struct RpcEventWifiDppFail RpcEventWifiDppFail;
+typedef struct RpcReqCustomRpc RpcReqCustomRpc;
+typedef struct RpcRespCustomRpc RpcRespCustomRpc;
+typedef struct RpcEventCustomRpc RpcEventCustomRpc;
 typedef struct Rpc Rpc;
 
 
@@ -909,13 +912,20 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_FeatureControl = 387,
   /*
-   * Add new control path command response before Req_Max
-   * and update Req_Max 
+   * Custom RPC for user-defined packed structures 
    */
   /*
    *0x184
    */
-  RPC_ID__Req_Max = 388,
+  RPC_ID__Req_CustomRpc = 388,
+  /*
+   * Add new control path command response before Req_Max
+   * and update Req_Max 
+   */
+  /*
+   *0x185
+   */
+  RPC_ID__Req_Max = 389,
   /*
    ** Response Msgs *
    */
@@ -1066,11 +1076,12 @@ typedef enum _RpcId {
   RPC_ID__Resp_IfaceMacAddrSetGet = 641,
   RPC_ID__Resp_IfaceMacAddrLenGet = 642,
   RPC_ID__Resp_FeatureControl = 643,
+  RPC_ID__Resp_CustomRpc = 644,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 644,
+  RPC_ID__Resp_Max = 645,
   /*
    ** Event Msgs *
    */
@@ -1101,10 +1112,14 @@ typedef enum _RpcId {
   RPC_ID__Event_WifiDppCfgRecvd = 786,
   RPC_ID__Event_WifiDppFail = 787,
   /*
+   * Custom RPC event for user-defined packed structures 
+   */
+  RPC_ID__Event_CustomRpc = 788,
+  /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  RPC_ID__Event_Max = 788
+  RPC_ID__Event_Max = 789
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_ID)
 } RpcId;
 
@@ -4913,6 +4928,68 @@ struct  RpcEventWifiDppFail
     , 0, 0 }
 
 
+/*
+ * Custom RPC messages for user-defined packed structures 
+ */
+struct  RpcReqCustomRpc
+{
+  ProtobufCMessage base;
+  /*
+   * User-defined message ID 
+   */
+  uint32_t custom_msg_id;
+  /*
+   * Raw packed data 
+   */
+  ProtobufCBinaryData data;
+};
+#define RPC__REQ__CUSTOM_RPC__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__custom_rpc__descriptor) \
+    , 0, {0,NULL} }
+
+
+struct  RpcRespCustomRpc
+{
+  ProtobufCMessage base;
+  /*
+   * Response status 
+   */
+  int32_t resp;
+  /*
+   * User-defined message ID (echoed from request) 
+   */
+  uint32_t custom_msg_id;
+  /*
+   * Raw packed response data 
+   */
+  ProtobufCBinaryData data;
+};
+#define RPC__RESP__CUSTOM_RPC__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__custom_rpc__descriptor) \
+    , 0, 0, {0,NULL} }
+
+
+struct  RpcEventCustomRpc
+{
+  ProtobufCMessage base;
+  /*
+   * Event status 
+   */
+  int32_t resp;
+  /*
+   * User-defined event ID 
+   */
+  uint32_t custom_event_id;
+  /*
+   * Raw packed event data 
+   */
+  ProtobufCBinaryData data;
+};
+#define RPC__EVENT__CUSTOM_RPC__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__custom_rpc__descriptor) \
+    , 0, 0, {0,NULL} }
+
+
 typedef enum {
   RPC__PAYLOAD__NOT_SET = 0,
   RPC__PAYLOAD_REQ_GET_MAC_ADDRESS = 257,
@@ -5015,6 +5092,7 @@ typedef enum {
   RPC__PAYLOAD_REQ_IFACE_MAC_ADDR_SET_GET = 385,
   RPC__PAYLOAD_REQ_IFACE_MAC_ADDR_LEN_GET = 386,
   RPC__PAYLOAD_REQ_FEATURE_CONTROL = 387,
+  RPC__PAYLOAD_REQ_CUSTOM_RPC = 388,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -5115,6 +5193,7 @@ typedef enum {
   RPC__PAYLOAD_RESP_IFACE_MAC_ADDR_SET_GET = 641,
   RPC__PAYLOAD_RESP_IFACE_MAC_ADDR_LEN_GET = 642,
   RPC__PAYLOAD_RESP_FEATURE_CONTROL = 643,
+  RPC__PAYLOAD_RESP_CUSTOM_RPC = 644,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -5133,7 +5212,8 @@ typedef enum {
   RPC__PAYLOAD_EVENT_SUPP_DPP_FAIL = 784,
   RPC__PAYLOAD_EVENT_WIFI_DPP_URI_READY = 785,
   RPC__PAYLOAD_EVENT_WIFI_DPP_CFG_RECVD = 786,
-  RPC__PAYLOAD_EVENT_WIFI_DPP_FAIL = 787
+  RPC__PAYLOAD_EVENT_WIFI_DPP_FAIL = 787,
+  RPC__PAYLOAD_EVENT_CUSTOM_RPC = 788
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC__PAYLOAD__CASE)
 } Rpc__PayloadCase;
 
@@ -5262,6 +5342,7 @@ struct  Rpc
     RpcReqIfaceMacAddrSetGet *req_iface_mac_addr_set_get;
     RpcReqIfaceMacAddrLenGet *req_iface_mac_addr_len_get;
     RpcReqFeatureControl *req_feature_control;
+    RpcReqCustomRpc *req_custom_rpc;
     /*
      ** Responses *
      */
@@ -5371,6 +5452,7 @@ struct  Rpc
     RpcRespIfaceMacAddrSetGet *resp_iface_mac_addr_set_get;
     RpcRespIfaceMacAddrLenGet *resp_iface_mac_addr_len_get;
     RpcRespFeatureControl *resp_feature_control;
+    RpcRespCustomRpc *resp_custom_rpc;
     /*
      ** Notifications *
      */
@@ -5393,6 +5475,7 @@ struct  Rpc
     RpcEventWifiDppUriReady *event_wifi_dpp_uri_ready;
     RpcEventWifiDppCfgRecvd *event_wifi_dpp_cfg_recvd;
     RpcEventWifiDppFail *event_wifi_dpp_fail;
+    RpcEventCustomRpc *event_custom_rpc;
   };
 };
 #define RPC__INIT \
@@ -10492,6 +10575,63 @@ RpcEventWifiDppFail *
 void   rpc__event__wifi_dpp_fail__free_unpacked
                      (RpcEventWifiDppFail *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqCustomRpc methods */
+void   rpc__req__custom_rpc__init
+                     (RpcReqCustomRpc         *message);
+size_t rpc__req__custom_rpc__get_packed_size
+                     (const RpcReqCustomRpc   *message);
+size_t rpc__req__custom_rpc__pack
+                     (const RpcReqCustomRpc   *message,
+                      uint8_t             *out);
+size_t rpc__req__custom_rpc__pack_to_buffer
+                     (const RpcReqCustomRpc   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqCustomRpc *
+       rpc__req__custom_rpc__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__custom_rpc__free_unpacked
+                     (RpcReqCustomRpc *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespCustomRpc methods */
+void   rpc__resp__custom_rpc__init
+                     (RpcRespCustomRpc         *message);
+size_t rpc__resp__custom_rpc__get_packed_size
+                     (const RpcRespCustomRpc   *message);
+size_t rpc__resp__custom_rpc__pack
+                     (const RpcRespCustomRpc   *message,
+                      uint8_t             *out);
+size_t rpc__resp__custom_rpc__pack_to_buffer
+                     (const RpcRespCustomRpc   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespCustomRpc *
+       rpc__resp__custom_rpc__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__custom_rpc__free_unpacked
+                     (RpcRespCustomRpc *message,
+                      ProtobufCAllocator *allocator);
+/* RpcEventCustomRpc methods */
+void   rpc__event__custom_rpc__init
+                     (RpcEventCustomRpc         *message);
+size_t rpc__event__custom_rpc__get_packed_size
+                     (const RpcEventCustomRpc   *message);
+size_t rpc__event__custom_rpc__pack
+                     (const RpcEventCustomRpc   *message,
+                      uint8_t             *out);
+size_t rpc__event__custom_rpc__pack_to_buffer
+                     (const RpcEventCustomRpc   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventCustomRpc *
+       rpc__event__custom_rpc__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__custom_rpc__free_unpacked
+                     (RpcEventCustomRpc *message,
+                      ProtobufCAllocator *allocator);
 /* Rpc methods */
 void   rpc__init
                      (Rpc         *message);
@@ -11317,6 +11457,15 @@ typedef void (*RpcEventWifiDppCfgRecvd_Closure)
 typedef void (*RpcEventWifiDppFail_Closure)
                  (const RpcEventWifiDppFail *message,
                   void *closure_data);
+typedef void (*RpcReqCustomRpc_Closure)
+                 (const RpcReqCustomRpc *message,
+                  void *closure_data);
+typedef void (*RpcRespCustomRpc_Closure)
+                 (const RpcRespCustomRpc *message,
+                  void *closure_data);
+typedef void (*RpcEventCustomRpc_Closure)
+                 (const RpcEventCustomRpc *message,
+                  void *closure_data);
 typedef void (*Rpc_Closure)
                  (const Rpc *message,
                   void *closure_data);
@@ -11603,6 +11752,9 @@ extern const ProtobufCMessageDescriptor rpc__event__supp_dpp_fail__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_uri_ready__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_cfg_recvd__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_fail__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__custom_rpc__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__custom_rpc__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__descriptor;
 
 PROTOBUF_C__END_DECLS

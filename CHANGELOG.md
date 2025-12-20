@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.8.1
+
+### Example: [Peer Data Transfer Example](https://components.espressif.com/components/espressif/esp_hosted/examples/host_peer_data_transfer)
+
+### Features
+- Supports sending and receiving arbitrary (preformatted) user data from/to host and slave
+- Maximum payload size: 8166 bytes per packet
+
+### APIs
+- `esp_hosted_send_custom_data(data, length)`: Send raw binary data to coprocessor
+- `esp_hosted_register_rx_callback_custom_data(callback)`: Register callback for receiving custom data
+
 ## 2.8.0 - Network Split (Shared IP)
 
 **Network Split (Shared IP)** This major update allows the **Host MCU** and the **ESP Slave** to share a **single IP address** while running independent network stacks. This is ideal for low-power products where the Slave handles background tasks while the Host sleeps.

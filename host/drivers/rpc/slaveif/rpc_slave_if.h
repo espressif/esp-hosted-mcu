@@ -14,6 +14,7 @@
 #include "esp_mac.h"
 #include "esp_wifi_types.h"
 #include "esp_hosted_misc.h"
+#include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
 #if H_WIFI_ENTERPRISE_SUPPORT
@@ -336,6 +337,15 @@ typedef struct {
 } rpc_eap_domain_name_t;
 #endif
 
+#ifdef H_PEER_DATA_TRANSFER
+typedef struct {
+	uint32_t custom_msg_id;     /* Not used - kept for struct compatibility */
+	uint8_t *data;              /* Pointer to raw data */
+	size_t data_len;            /* Length of data */
+	void (*free_func)(void *);  /* Optional: function to free data after use */
+} esp_hosted_rpc_data_t;
+#endif
+
 typedef struct Ctrl_cmd_t {
 	/* msg type could be 1. req 2. resp 3. notification */
 	uint8_t msg_type;
@@ -406,6 +416,9 @@ typedef struct Ctrl_cmd_t {
 		bool                        bt_mem_release;
 
 		rcp_feature_control_t       feature_control;
+#ifdef H_PEER_DATA_TRANSFER
+		esp_hosted_rpc_data_t       custom_rpc;
+#endif
 
 		esp_hosted_app_desc_t       app_desc;
 #if H_WIFI_HE_SUPPORT
@@ -766,6 +779,10 @@ ctrl_cmd_t * rpc_slaveif_supp_dpp_deinit(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_supp_dpp_bootstrap_gen(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_supp_dpp_start_listen(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req);
+#endif
+#ifdef H_PEER_DATA_TRANSFER
+ctrl_cmd_t * rpc_slaveif_custom_rpc(ctrl_cmd_t *req);
+int rpc_slaveif_register_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len));
 #endif
 #ifdef __cplusplus
 }

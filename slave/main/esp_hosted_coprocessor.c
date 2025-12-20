@@ -44,6 +44,7 @@
 #include "esp_hosted_coprocessor_fw_ver.h"
 #include "esp_hosted_cli.h"
 #include "host_power_save.h"
+#include "example_peer_data_transfer.h"
 
 #if CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
     #include "nw_split_router.h"
@@ -1233,4 +1234,7 @@ void app_main(void)
 #endif
 #endif
 
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+	example_peer_data_transfer_init();
+#endif
 }

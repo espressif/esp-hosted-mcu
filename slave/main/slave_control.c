@@ -140,6 +140,11 @@ extern volatile uint8_t softap_started;
 static volatile bool station_connecting = false;
 static volatile bool wifi_initialized = false;
 
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+/* RPC handler registration */
+static void (*registered_custom_data_handler)(const uint8_t *data, size_t data_len) = NULL;
+#endif
+
 static void send_wifi_event_data_to_host(int event, void *event_data, int event_size)
 {
 	send_event_data_to_host(event, event_data, event_size);
@@ -3436,6 +3441,77 @@ static esp_err_t req_app_get_desc(Rpc *req, Rpc *resp, void *priv_data)
 err:
 	return ESP_OK;
 }
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+/* Internal RPC bridge - delegates to registered handler */
+static esp_err_t handle_custom_rpc_request(uint8_t *req_data, uint32_t req_len)
+{
+	/* --------- Caution ----------
+	 *  Keep this function as simple, small and fast as possible
+	 *  This function is as callback in the Rx thread.
+	 *  Do not use any blocking calls here
+	 * ----------------------------
+	 */
+
+	/* Check if a custom handler is registered */
+	if (registered_custom_data_handler) {
+		/* Call registered handler - void return, just calls it */
+		registered_custom_data_handler(req_data, req_len);
+		return ESP_OK;
+	} else {
+		/* No handler registered - just acknowledge */
+		ESP_LOGW(TAG, "No custom data handler registered");
+		return ESP_OK;
+	}
+}
+
+esp_err_t esp_hosted_register_rx_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len))
+{
+	if (!callback) {
+		ESP_LOGE(TAG, "Callback cannot be NULL");
+		return ESP_ERR_INVALID_ARG;
+	}
+	if (registered_custom_data_handler) {
+		ESP_LOGW(TAG, "Replacing existing custom data handler");
+	}
+
+	registered_custom_data_handler = callback;
+	ESP_LOGI(TAG, "Custom data handler registered");
+	return ESP_OK;
+}
+
+esp_err_t esp_hosted_send_custom_data(uint8_t *data, uint32_t data_len)
+{
+	if (!data || data_len == 0) {
+		ESP_LOGW(TAG, "No data to send");
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	/* Send raw data using RPC_ID__Event_CustomRpc
+	 * User owns the data - we just pass it through */
+	send_event_data_to_host(RPC_ID__Event_CustomRpc, data, (int)data_len);
+
+	return ESP_OK;
+}
+
+static esp_err_t req_custom_rpc_handler(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespCustomRpc, resp_custom_rpc,
+			RpcReqCustomRpc, req_custom_rpc,
+			rpc__resp__custom_rpc__init);
+
+	/* Call the internal handler - just returns success/failure */
+	esp_err_t ret = handle_custom_rpc_request(
+		req_payload->data.data,
+		req_payload->data.len
+	);
+
+	/* Fill response with just status */
+	resp_payload->custom_msg_id = 0; /* Not used */
+	resp_payload->resp = ret;
+
+	return ESP_OK;
+}
+#endif /* CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER */
 
 #if CONFIG_SOC_WIFI_HE_SUPPORT
 #if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
@@ -4078,6 +4154,12 @@ static esp_rpc_req_t req_table[] = {
 		.req_num = RPC_ID__Req_AppGetDesc,
 		.command_handler = req_app_get_desc
 	},
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+	{
+		.req_num = RPC_ID__Req_CustomRpc,
+		.command_handler = req_custom_rpc_handler
+	},
+#endif
 };
 
 static int lookup_req_handler(int req_id)
@@ -4694,6 +4776,31 @@ static esp_err_t rpc_evt_wifi_dpp_fail(Rpc *ntfy,
 #endif // H_WIFI_DPP_SUPPORT
 #endif // H_DPP_SUPPORT
 
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+/* Custom RPC event handler - converts raw data to protobuf */
+static esp_err_t rpc_evt_custom_rpc(Rpc *ntfy, const uint8_t *data, ssize_t len)
+{
+	if (!data || len <= 0) {
+		ESP_LOGE(TAG, "Invalid custom RPC event data");
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	NTFY_TEMPLATE(RPC_ID__Event_CustomRpc,
+			RpcEventCustomRpc, event_custom_rpc,
+			rpc__event__custom_rpc__init);
+
+	ntfy_payload->resp = SUCCESS;
+	ntfy_payload->custom_event_id = 0;  /* Not used */
+
+	/* Copy raw data directly */
+	if (len > 0) {
+		NTFY_COPY_BYTES(ntfy_payload->data, data, len);
+	}
+
+	return ESP_OK;
+}
+#endif
+
 esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 		ssize_t inlen, uint8_t **outbuf, ssize_t *outlen, void *priv_data)
 {
@@ -4780,6 +4887,11 @@ esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 			ret = rpc_evt_wifi_dpp_fail(ntfy, inbuf, inlen);
 			break;
 #endif // H_WIFI_DPP_SUPPORT
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+		} case RPC_ID__Event_CustomRpc: {
+			ret = rpc_evt_custom_rpc(ntfy, inbuf, inlen);
+			break;
+#endif
 		} default: {
 			ESP_LOGE(TAG, "Incorrect/unsupported Ctrl Notification[%u]\n",ntfy->msg_id);
 			goto err;

@@ -114,4 +114,23 @@ size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type);
   */
 esp_err_t esp_hosted_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc);
 
+/**
+  * @brief  Send custom data to the co-processor
+  *
+  * @param  data Pointer to data
+  * @param  data_len Length of data
+  *
+  * @return ESP_OK on success
+  */
+esp_err_t esp_hosted_send_custom_data(uint8_t *data, uint32_t data_len);
+
+/**
+  * @brief  Register callback for receiving custom data from the co-processor
+  *
+  * @param  callback Function to call when data is received
+  *
+ * @return ESP_OK on success
+ */
+esp_err_t esp_hosted_register_rx_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len));
+
 #endif
