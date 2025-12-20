@@ -242,9 +242,12 @@ enum RpcId {
 	 */
 	Req_FeatureControl                = 387; //0x183
 
+	/* Custom RPC for user-defined packed structures */
+	Req_CustomRpc                     = 388; //0x184
+
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 388; //0x184
+	Req_Max = 389; //0x185
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -411,9 +414,11 @@ enum RpcId {
 	Resp_IfaceMacAddrLenGet           = 642;
 	Resp_FeatureControl               = 643;
 
+	Resp_CustomRpc                    = 644;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 644;
+	Resp_Max = 645;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -441,9 +446,12 @@ enum RpcId {
 	Event_WifiDppCfgRecvd = 786;
 	Event_WifiDppFail = 787;
 
+	/* Custom RPC event for user-defined packed structures */
+	Event_CustomRpc = 788;
+
 	/* Add new control path command notification before Event_Max
 	 * and update Event_Max */
-	Event_Max = 788;
+	Event_Max = 789;
 }
 
 message wifi_init_config {
@@ -1908,6 +1916,24 @@ message Rpc_Event_WifiDppFail {
 	int32 reason = 2; // failure reason
 }
 
+/* Custom RPC messages for user-defined packed structures */
+message Rpc_Req_CustomRpc {
+	uint32 custom_msg_id = 1;  /* User-defined message ID */
+	bytes data = 2;            /* Raw packed data */
+}
+
+message Rpc_Resp_CustomRpc {
+	int32 resp = 1;            /* Response status */
+	uint32 custom_msg_id = 2;  /* User-defined message ID (echoed from request) */
+	bytes data = 3;            /* Raw packed response data */
+}
+
+message Rpc_Event_CustomRpc {
+	int32 resp = 1;            /* Event status */
+	uint32 custom_event_id = 2; /* User-defined event ID */
+	bytes data = 3;            /* Raw packed event data */
+}
+
 message Rpc {
 	/* msg_type could be req, resp or Event */
 	RpcType msg_type = 1;
@@ -2048,6 +2074,8 @@ message Rpc {
 
 		Rpc_Req_FeatureControl              req_feature_control               = 387;
 
+		Rpc_Req_CustomRpc                   req_custom_rpc                    = 388;
+
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
 		Rpc_Resp_SetMacAddress              resp_set_mac_address               = 514;
@@ -2176,6 +2204,8 @@ message Rpc {
 
 		Rpc_Resp_FeatureControl             resp_feature_control               = 643;
 
+		Rpc_Resp_CustomRpc                  resp_custom_rpc                    = 644;
+
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
 		Rpc_Event_Heartbeat                 event_heartbeat                    = 770;
@@ -2196,5 +2226,7 @@ message Rpc {
 		Rpc_Event_WifiDppUriReady           event_wifi_dpp_uri_ready           = 785;
 		Rpc_Event_WifiDppCfgRecvd           event_wifi_dpp_cfg_recvd           = 786;
 		Rpc_Event_WifiDppFail               event_wifi_dpp_fail                = 787;
+
+		Rpc_Event_CustomRpc                 event_custom_rpc                   = 788;
 	}
 }

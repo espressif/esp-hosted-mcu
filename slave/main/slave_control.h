@@ -205,6 +205,9 @@ esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 void send_event_to_host(int event_id);
 void send_event_data_to_host(int event_id, void *data, int size);
 
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+#include "esp_hosted_peer_data.h"
+#endif
 
 #include "esp_wifi.h"
 

@@ -545,6 +545,13 @@ enum {
 
 /*  ---------------------- ESP-IDF Specific Config end ----------------------  */
 
+/* --------------------- Custom RPC ----------------------------------------- */
+#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+  #define H_PEER_DATA_TRANSFER 1
+#else
+  #define H_PEER_DATA_TRANSFER 0
+#endif
+
 /* --------------------- Network Split -------------------------------------- */
 #ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
   #define H_NETWORK_SPLIT_ENABLED 1

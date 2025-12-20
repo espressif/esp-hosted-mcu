@@ -1,0 +1,5 @@
+# ESP-Hosted Peer Data Transfer Example Configuration
+
+# Enable peer data transfer support (if available in slave)
+CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER=y
+

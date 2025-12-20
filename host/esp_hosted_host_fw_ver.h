@@ -15,7 +15,7 @@
 
 #define ESP_HOSTED_VERSION_MAJOR_1 2
 #define ESP_HOSTED_VERSION_MINOR_1 8
-#define ESP_HOSTED_VERSION_PATCH_1 0
+#define ESP_HOSTED_VERSION_PATCH_1 1
 
 /**
  * Macro to convert version number into an integer

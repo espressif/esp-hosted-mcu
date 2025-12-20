@@ -15,6 +15,16 @@
 
 DEFINE_LOG_TAG(rpc_evt);
 
+/* Custom RPC - user callback for data from coprocessor */
+static void (*g_custom_data_cb)(const uint8_t *data, size_t data_len) = NULL;
+
+/* Internal: set custom data callback */
+int rpc_evt_register_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len))
+{
+	g_custom_data_cb = callback;
+	return SUCCESS;
+}
+
 /* For new RPC event (from ESP to host), add up switch case for your message
  * In general, it is better to subscribe all events or notifications
  * at slave side & selective subscribe the events at host side.
@@ -333,6 +343,20 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		p_a->failure_reason = p_c->reason;
 		break;
 #endif // H_WIFI_DPP_SUPPORT
+#ifdef H_PEER_DATA_TRANSFER
+	} case RPC_ID__Event_CustomRpc: {
+		RpcEventCustomRpc *p_c = rpc_msg->event_custom_rpc;
+		RPC_FAIL_ON_NULL(event_custom_rpc);
+		app_ntfy->resp_event_status = p_c->resp;
+
+		/* Directly call user's callback with the raw data */
+		if (g_custom_data_cb && p_c->data.data && p_c->data.len > 0) {
+			g_custom_data_cb(p_c->data.data, p_c->data.len);
+		} else if (!g_custom_data_cb) {
+			ESP_LOGW(TAG, "Custom data received but no callback registered");
+		}
+		break;
+#endif
 	} default: {
 		ESP_LOGE(TAG, "Invalid/unsupported event[%u] received\n",rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;

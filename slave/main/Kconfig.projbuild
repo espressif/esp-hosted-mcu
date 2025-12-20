@@ -1257,8 +1257,15 @@ menu "Example Configuration"
 		endchoice
 	endmenu
 
+	config ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+		bool "Enable peer data transfer"
+		default y
+		help
+		Enable peer data transfer to send/receive raw bytes between host and coprocessor.
+		This is enabled by default. Disable only if you don't need this feature.
+
+
 	config ESP_HOSTED_EXTRA_EXAMPLES
-		depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED
 		bool "Additional higher layer examples to run"
 		default n
 		help
@@ -1267,7 +1274,17 @@ menu "Example Configuration"
 	menu "Select Examples to run"
 		depends on ESP_HOSTED_EXTRA_EXAMPLES
 
+		config EXAMPLE_PEER_DATA_TRANSFER_ECHO
+			bool "Echo back received data (for testing)"
+			depends on ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+			default n
+			help
+			Enable echo mode for peer data transfer example.
+			When enabled, any data received from host will be echoed back.
+			This is used by the host example to verify bidirectional communication.
+
 		config ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT
+			depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED
 			bool "MQTT client example"
 			default y
 
@@ -1297,6 +1314,7 @@ menu "Example Configuration"
 		endmenu
 
 		config ESP_HOSTED_COPROCESSOR_EXAMPLE_HTTP_CLIENT
+			depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED
 			bool "HTTP client example"
 			default y
 

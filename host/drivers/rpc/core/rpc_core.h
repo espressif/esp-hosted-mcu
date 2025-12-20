@@ -136,4 +136,7 @@ int is_event_callback_registered(int event);
 int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy);
 
 int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp);
+
+int rpc_evt_register_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len));
+
 #endif /* __RPC_CORE_H */

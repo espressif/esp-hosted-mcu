@@ -46,6 +46,10 @@ else(CONFIG_ESP_UART_HOST_INTERFACE)
 	list(APPEND COMPONENT_SRCS uart_slave_api.c)
 endif()
 
+if(CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER)
+	list(APPEND COMPONENT_SRCS example_peer_data_transfer.c)
+endif()
+
 if(CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT)
 	list(APPEND COMPONENT_SRCS example_mqtt_client.c)
 endif()

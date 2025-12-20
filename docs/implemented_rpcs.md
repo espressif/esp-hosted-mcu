@@ -108,6 +108,7 @@ The RPC IDs listed here are for requests and events. Each request will have a co
 |  98 |    387 | FeatureControl                     |            2.5.2 |
 |  99 |    266 | OTAActivate                        |            2.6.0 |
 | 100 |    267 | AppGetDesc                         |            2.6.7 |
+| 101 |    388 | CustomRpc                          |            2.8.1 |
 
 ## List of RPC Events
 
@@ -132,3 +133,4 @@ The RPC IDs listed here are for requests and events. Each request will have a co
 |  17 |    785 | WifiDppUriReady    |            2.4.3 |
 |  18 |    786 | WifiDppCfgRecvd    |            2.4.3 |
 |  19 |    787 | WifiDppFail        |            2.4.3 |
+|  20 |    788 | CustomRpc          |            2.8.1 |
