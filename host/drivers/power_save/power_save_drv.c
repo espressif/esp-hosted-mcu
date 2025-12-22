@@ -314,16 +314,11 @@ static void power_save_timer_callback(void *arg)
 	esp_hosted_power_save_start(HOSTED_POWER_SAVE_TYPE_DEEP_SLEEP);
 }
 #endif
-int esp_hosted_power_save_timer_start(uint32_t time_ms, int type)
+int esp_hosted_power_save_timer_start(uint32_t time_ms)
 {
 
 #if H_HOST_PS_ALLOWED
 	int err = 0;
-
-	if ((type != H_TIMER_TYPE_ONESHOT) && (type != H_TIMER_TYPE_PERIODIC)) {
-		ESP_LOGE(TAG, "Invalid timer type");
-		return -1;
-	}
 
 	if (time_ms == 0) {
 		ESP_LOGE(TAG, "Timer duration is 0, not starting timer");
@@ -342,7 +337,7 @@ int esp_hosted_power_save_timer_start(uint32_t time_ms, int type)
 	}
 
 
-	timer_handle = g_h.funcs->_h_timer_start("power_save_timer", time_ms, type, power_save_timer_callback, NULL);
+	timer_handle = g_h.funcs->_h_timer_start("power_save_timer", time_ms, H_TIMER_TYPE_ONESHOT, power_save_timer_callback, NULL);
 	if (err != 0) {
 		ESP_LOGE(TAG, "Failed to start timer");
 	}
