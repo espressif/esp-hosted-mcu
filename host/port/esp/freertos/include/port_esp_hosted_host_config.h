@@ -447,8 +447,6 @@ enum {
   #define H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD       0
 #endif
 
-#define H_PKT_STATS                                  CONFIG_ESP_HOSTED_PKT_STATS
-
 /* Raw Throughput Testing */
 #define H_TEST_RAW_TP     CONFIG_ESP_HOSTED_RAW_THROUGHPUT_TRANSPORT
 
@@ -472,9 +470,10 @@ enum {
 #endif
 
 /* ----------------------- Enable packet stats ------------------------------- */
-#ifdef CONFIG_ESP_PKT_STATS
+
+#ifdef CONFIG_ESP_HOSTED_PKT_STATS
   #define ESP_PKT_STATS 1
-  #define ESP_PKT_STATS_REPORT_INTERVAL  CONFIG_ESP_PKT_STATS_INTERVAL_SEC
+  #define ESP_PKT_STATS_REPORT_INTERVAL  CONFIG_ESP_HOSTED_PKT_STATS_INTERVAL_SEC
 #endif
 
 /* ----------------- Host to slave Wi-Fi flow control ------------------------ */

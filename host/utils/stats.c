@@ -216,11 +216,9 @@ void stats_timer_func(void * arg)
 void create_debugging_tasks(void)
 {
 #if ESP_PKT_STATS
-	if (ESP_PKT_STATS_REPORT_INTERVAL) {
 		ESP_LOGI(TAG, "Start Pkt_stats reporting thread [timer: %u sec]", ESP_PKT_STATS_REPORT_INTERVAL);
 		pkt_stats_thread = g_h.funcs->_h_timer_start("pkt_stats_timer", SEC_TO_MILLISEC(ESP_PKT_STATS_REPORT_INTERVAL),
-				HOSTED_TIMER_PERIODIC, stats_timer_func, NULL);
+				H_TIMER_TYPE_PERIODIC, stats_timer_func, NULL);
 		assert(pkt_stats_thread);
-	}
 #endif
 }

@@ -56,10 +56,6 @@ void process_test_capabilities(uint8_t cap);
 
 #endif
 
-#if H_PKT_STATS
-#define ESP_PKT_STATS 1
-#endif
-
 #if H_MEM_STATS
 struct mempool_stats
 {

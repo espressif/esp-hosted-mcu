@@ -1748,8 +1748,8 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			help
 				On comparing with slave packet stats helps to understand any packet loss at hosted
 
-		config ESP_PKT_STATS_INTERVAL_SEC
-			depends on ESP_PKT_STATS
+		config ESP_HOSTED_PKT_STATS_INTERVAL_SEC
+			depends on ESP_HOSTED_PKT_STATS
 			int "Packet stats reporting interval (sec)"
 			default 30
 
