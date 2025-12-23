@@ -1213,6 +1213,7 @@ esp_err_t esp_hosted_coprocessor_init(void)
 	return ESP_OK;
 }
 
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_APP_MAIN
 void app_main(void)
 {
 	/* Initialize NVS */
@@ -1238,3 +1239,4 @@ void app_main(void)
 	example_peer_data_transfer_init();
 #endif
 }
+#endif

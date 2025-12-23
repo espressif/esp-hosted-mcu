@@ -4,6 +4,19 @@ menu "Example Configuration"
 		bool
 		default y
 
+	config ESP_HOSTED_COPROCESSOR_APP_MAIN
+		bool "Use ESP-Hosted coprocessor app_main"
+		default y
+		help
+			Enable this to use the built-in app_main() from ESP-Hosted slave firmware.
+
+			When enabled (default for standalone slave builds), the slave firmware provides
+			its own app_main() that initializes NVS, event loop, and calls
+			esp_hosted_coprocessor_init().
+
+			Disable this when using ESP-Hosted as a component in your application where
+			you provide your own app_main() (e.g., in network_adapter, signaling_only examples).
+
 	menu "Bus Config in between Host and Co-processor"
 		choice ESP_HOST_DEV_BOARD
 			bool "Configure GPIOs based on an ESP Development Board"
