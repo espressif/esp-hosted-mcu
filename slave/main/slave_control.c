@@ -141,8 +141,19 @@ static volatile bool station_connecting = false;
 static volatile bool wifi_initialized = false;
 
 #ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
-/* RPC handler registration */
-static void (*registered_custom_data_handler)(const uint8_t *data, size_t data_len) = NULL;
+/* Array of callback slots (empty slot has callback = NULL, msg_id = -1 is invalid sentinel) */
+static struct {
+	uint32_t msg_id;
+	void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len);
+} custom_msg_callbacks[CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS] = {
+	[0 ... (CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS - 1)] = {
+		.msg_id = (uint32_t)-1,
+		.callback = NULL
+	}
+};
+
+static SemaphoreHandle_t custom_callbacks_mutex = NULL;
+
 #endif
 
 static void send_wifi_event_data_to_host(int event, void *event_data, int event_size)
@@ -3443,7 +3454,7 @@ err:
 }
 #ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
 /* Internal RPC bridge - delegates to registered handler */
-static esp_err_t handle_custom_rpc_request(uint8_t *req_data, uint32_t req_len)
+static esp_err_t handle_custom_rpc_request(uint32_t msg_id, uint8_t *req_data, uint32_t req_len)
 {
 	/* --------- Caution ----------
 	 *  Keep this function as simple, small and fast as possible
@@ -3452,45 +3463,138 @@ static esp_err_t handle_custom_rpc_request(uint8_t *req_data, uint32_t req_len)
 	 * ----------------------------
 	 */
 
-	/* Check if a custom handler is registered */
-	if (registered_custom_data_handler) {
-		/* Call registered handler - void return, just calls it */
-		registered_custom_data_handler(req_data, req_len);
-		return ESP_OK;
-	} else {
-		/* No handler registered - just acknowledge */
-		ESP_LOGW(TAG, "No custom data handler registered");
-		return ESP_OK;
-	}
-}
-
-esp_err_t esp_hosted_register_rx_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len))
-{
-	if (!callback) {
-		ESP_LOGE(TAG, "Callback cannot be NULL");
-		return ESP_ERR_INVALID_ARG;
-	}
-	if (registered_custom_data_handler) {
-		ESP_LOGW(TAG, "Replacing existing custom data handler");
-	}
-
-	registered_custom_data_handler = callback;
-	ESP_LOGI(TAG, "Custom data handler registered");
-	return ESP_OK;
-}
-
-esp_err_t esp_hosted_send_custom_data(uint8_t *data, uint32_t data_len)
-{
-	if (!data || data_len == 0) {
-		ESP_LOGW(TAG, "No data to send");
+	if (msg_id == (uint32_t)-1) {
+		ESP_LOGE(TAG, "Invalid message ID 0xFFFFFFFF received");
 		return ESP_ERR_INVALID_ARG;
 	}
 
-	/* Send raw data using RPC_ID__Event_CustomRpc
-	 * User owns the data - we just pass it through */
-	send_event_data_to_host(RPC_ID__Event_CustomRpc, data, (int)data_len);
+	/* Find callback under mutex protection */
+	void (*cb)(uint32_t, const uint8_t *, size_t) = NULL;
+	if (custom_callbacks_mutex && xSemaphoreTake(custom_callbacks_mutex, portMAX_DELAY) == pdTRUE) {
+		for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
+			if (custom_msg_callbacks[i].msg_id == msg_id && custom_msg_callbacks[i].callback) {
+				cb = custom_msg_callbacks[i].callback;
+				break;
+			}
+		}
+		xSemaphoreGive(custom_callbacks_mutex);
+	}
 
+	/* Invoke callback outside mutex to avoid deadlock */
+	if (cb) {
+		cb(msg_id, req_data, req_len);
+		return ESP_OK;
+	}
+
+	/* No handler registered for this message ID */
+	ESP_LOGW(TAG, "No custom handler registered for message ID %u", msg_id);
+	return ESP_ERR_NOT_FOUND;
+}
+
+esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size_t data_len)
+{
+	if ((!data && data_len != 0) || (data && data_len == 0)) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	/* Validate payload size */
+	if (data_len > 8166) {
+		/* Why 8166?
+		 * pserial r.data has max 8192 bytes size.
+		 * We want to get rid of this static buffer later.
+		 * to restrict the data size, 8192 - (serial header + esp hosted header + headroom)
+		 * we keep it 8166, as part of r.data[8192] removal, this code would be changed.
+		 */
+		return ESP_ERR_INVALID_SIZE;
+	}
+
+	/* Allocate buffer for [msg_id (4 bytes)][data...] */
+	size_t total_len = sizeof(msg_id) + data_len;
+	uint8_t *buf = malloc(total_len);
+	if (!buf) {
+		ESP_LOGE(TAG, "Failed to allocate %zu bytes", total_len);
+		return ESP_ERR_NO_MEM;
+	}
+
+	/* Pack msg_id as little-endian uint32_t */
+	memcpy(buf, &msg_id, sizeof(msg_id));
+
+	/* Copy user data after msg_id */
+	if (data_len > 0) {
+		memcpy(buf + sizeof(msg_id), data, data_len);
+	}
+
+	/* Send to RPC layer - rpc_evt_custom_rpc will unpack and wrap in protobuf */
+	send_event_data_to_host(RPC_ID__Event_CustomRpc, buf, (int)total_len);
+
+	free(buf);
 	return ESP_OK;
+}
+
+esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
+    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
+{
+	/* Validate message ID (-1/0xFFFFFFFF is invalid) */
+	if (msg_id == (uint32_t)-1) {
+		ESP_LOGE(TAG, "Invalid message ID 0xFFFFFFFF");
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	/* Initialize mutex on first use */
+	if (!custom_callbacks_mutex) {
+		custom_callbacks_mutex = xSemaphoreCreateMutex();
+		if (!custom_callbacks_mutex) {
+			ESP_LOGE(TAG, "Failed to create mutex");
+			return ESP_ERR_NO_MEM;
+		}
+	}
+
+	if (xSemaphoreTake(custom_callbacks_mutex, portMAX_DELAY) != pdTRUE) {
+		ESP_LOGE(TAG, "Failed to lock mutex");
+		return ESP_FAIL;
+	}
+
+	/* Search for existing registration */
+	for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
+		if (custom_msg_callbacks[i].msg_id == msg_id) {
+			/* Found existing registration */
+			if (callback == NULL) {
+				/* Deregister: clean up entry */
+				custom_msg_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
+				custom_msg_callbacks[i].callback = NULL;
+				ESP_LOGI(TAG, "Deregistered callback for message ID %u", msg_id);
+			} else {
+				/* Update existing callback */
+				custom_msg_callbacks[i].callback = callback;
+				ESP_LOGI(TAG, "Updated callback for message ID %u", msg_id);
+			}
+			xSemaphoreGive(custom_callbacks_mutex);
+			return ESP_OK;
+		}
+	}
+
+	/* msg_id not found */
+	if (callback == NULL) {
+		/* Cannot deregister what doesn't exist */
+		ESP_LOGW(TAG, "Cannot deregister message ID %u - not registered", msg_id);
+		xSemaphoreGive(custom_callbacks_mutex);
+		return ESP_ERR_NOT_FOUND;
+	}
+
+	/* Find empty slot for new registration */
+	for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
+		if (custom_msg_callbacks[i].callback == NULL) {
+			custom_msg_callbacks[i].msg_id = msg_id;
+			custom_msg_callbacks[i].callback = callback;
+			ESP_LOGI(TAG, "Registered callback for message ID %u", msg_id);
+			xSemaphoreGive(custom_callbacks_mutex);
+			return ESP_OK;
+		}
+	}
+
+	ESP_LOGW(TAG, "No space for callback (max %d)", CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS);
+	xSemaphoreGive(custom_callbacks_mutex);
+	return ESP_ERR_NO_MEM;
 }
 
 static esp_err_t req_custom_rpc_handler(Rpc *req, Rpc *resp, void *priv_data)
@@ -3499,8 +3603,9 @@ static esp_err_t req_custom_rpc_handler(Rpc *req, Rpc *resp, void *priv_data)
 			RpcReqCustomRpc, req_custom_rpc,
 			rpc__resp__custom_rpc__init);
 
-	/* Call the internal handler - just returns success/failure */
+	/* Call the internal handler with message ID */
 	esp_err_t ret = handle_custom_rpc_request(
+		req_payload->custom_msg_id,
 		req_payload->data.data,
 		req_payload->data.len
 	);
@@ -4780,21 +4885,22 @@ static esp_err_t rpc_evt_wifi_dpp_fail(Rpc *ntfy,
 /* Custom RPC event handler - converts raw data to protobuf */
 static esp_err_t rpc_evt_custom_rpc(Rpc *ntfy, const uint8_t *data, ssize_t len)
 {
-	if (!data || len <= 0) {
-		ESP_LOGE(TAG, "Invalid custom RPC event data");
-		return ESP_ERR_INVALID_ARG;
-	}
 
 	NTFY_TEMPLATE(RPC_ID__Event_CustomRpc,
 			RpcEventCustomRpc, event_custom_rpc,
 			rpc__event__custom_rpc__init);
 
 	ntfy_payload->resp = SUCCESS;
-	ntfy_payload->custom_event_id = 0;  /* Not used */
 
-	/* Copy raw data directly */
-	if (len > 0) {
-		NTFY_COPY_BYTES(ntfy_payload->data, data, len);
+	/* Extract msg_id from first 4 bytes */
+	uint32_t msg_id;
+	memcpy(&msg_id, data, sizeof(msg_id));
+	ntfy_payload->custom_event_id = msg_id;
+
+	/* Copy user data (skip msg_id at start) */
+	ssize_t user_data_len = len - sizeof(msg_id);
+	if (user_data_len > 0) {
+		NTFY_COPY_BYTES(ntfy_payload->data, data + sizeof(msg_id), user_data_len);
 	}
 
 	return ESP_OK;

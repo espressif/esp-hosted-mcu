@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -343,7 +343,7 @@ static esp_console_cmd_t diag_cmds[] = {
 	extern int wifi_cmd_clr_rx_statistics(int argc, char **argv);
   #endif
 
-void iperf_hook_show_wifi_stats(iperf_traffic_type_t type, iperf_status_t status)
+static void hosted_iperf_hook_show_wifi_stats(iperf_traffic_type_t type, iperf_status_t status)
 {
 	if (status == IPERF_STARTED) {
   #if CONFIG_ESP_WIFI_ENABLE_WIFI_TX_STATS
@@ -374,7 +374,7 @@ void iperf_hook_show_wifi_stats(iperf_traffic_type_t type, iperf_status_t status
 }
 #endif
 
-int esp_cli_register_cmds(void)
+static int esp_hosted_cli_register_cmds(void)
 {
 	int cmds_num = sizeof(diag_cmds) / sizeof(esp_console_cmd_t);
 	int i;
@@ -396,7 +396,7 @@ int esp_cli_register_cmds(void)
 	app_register_all_wifi_commands();
 	app_register_iperf_commands();
 	ping_cmd_register_ping();
-	app_register_iperf_hook_func(iperf_hook_show_wifi_stats);
+	app_register_iperf_hook_func(hosted_iperf_hook_show_wifi_stats);
 #endif
 	return 0;
 }
@@ -418,7 +418,7 @@ int esp_hosted_cli_start(void)
 	repl_config.prompt = "host> ";
   #endif
 	esp_console_register_help_command();
-	esp_cli_register_cmds();
+	esp_hosted_cli_register_cmds();
 
   #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
 	esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
@@ -441,7 +441,7 @@ int esp_hosted_cli_start(void)
 #else
 int esp_hosted_cli_start(void)
 {
-	return esp_cli_register_cmds();
+	return esp_hosted_cli_register_cmds();
 }
 #endif
 

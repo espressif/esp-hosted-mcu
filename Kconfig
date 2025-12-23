@@ -1748,8 +1748,8 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			help
 				On comparing with slave packet stats helps to understand any packet loss at hosted
 
-		config ESP_PKT_STATS_INTERVAL_SEC
-			depends on ESP_PKT_STATS
+		config ESP_HOSTED_PKT_STATS_INTERVAL_SEC
+			depends on ESP_HOSTED_PKT_STATS
 			int "Packet stats reporting interval (sec)"
 			default 30
 
@@ -1825,6 +1825,16 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 		help
 			Enable peer data transfer to send/receive raw bytes between host and coprocessor.
 			This is enabled by default. Disable only if you don't need this feature.
+
+	config ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS
+		int "Maximum number of custom message handlers"
+		depends on ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+		range 1 32
+		default 3
+		help
+			Maximum number of concurrent custom message handlers that can be registered.
+			Each handler consumes ~12 bytes of RAM. Reduce this value to save memory
+			if you dont need many concurrent message types.
 
 	config ESP_HOSTED_DECODE_WIFI_RESERVED_FIELD
 		bool "Copy Wi-Fi configuration reserved field values"

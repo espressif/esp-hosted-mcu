@@ -307,7 +307,7 @@ static void stats_timer_func(void* arg)
 		struct timing_stats *s = &timing_entries[i].stats;
 
 		/* Calculate rate and print stats in one pass */
-		uint32_t rate = (uint32_t)(t->count / CONFIG_ESP_PKT_STATS_INTERVAL_SEC);
+		uint32_t rate = (uint32_t)(t->count / ESP_PKT_STATS_REPORT_INTERVAL);
 		s->avg_time = t->total_time / t->count;
 
 		ESP_LOGI(TAG, "[%s] Stats - Count: %" PRIu32 ", Min: %" PRIu32 ", Max: %" PRIu32 ", Avg: %" PRIu32 " us, Rate: %" PRIu32 "/s",

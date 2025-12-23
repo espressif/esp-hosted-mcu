@@ -67,11 +67,9 @@ int esp_hosted_power_save_start(esp_hosted_power_save_type_t power_save_type);
  * @brief Starts a timer that will place the host into deep sleep upon expiration.
  *
  * @param time_ms The duration in milliseconds after which the host will enter deep sleep.
- * @param timer_type The type of timer to start. Use H_TIMER_TYPE_ONESHOT for a single event.
- *                    Use H_TIMER_TYPE_PERIODIC for periodic events.
  * @return int Returns 0 on success or a nonzero value on failure.
  */
-int esp_hosted_power_save_timer_start(uint32_t time_ms, int timer_type);
+int esp_hosted_power_save_timer_start(uint32_t time_ms);
 
 /**
  * @brief Stops the host power save timer.

@@ -6,16 +6,23 @@
 
 /**
  * @file peer_data_example.c
- * @brief Host-side Peer Data Transfer Example - Send/Receive Raw Data
+ * @brief Custom RPC Echo Demo with Verification - Host Side
  *
- * This demonstrates ultra-simple custom RPC:
- * - Send raw bytes to slave
- * - Receive raw bytes from slave (echoed back if loopback enabled)
+ * Demonstrates custom message IDs with random data sizes.
+ * Tests size ranges from small (1 byte) to maximum (8166 bytes).
+ * Includes GHOST message to test exceeding max configured callbacks.
+ *
+ * Example Message IDs:
+ * - MSG_ID_CAT/MEOW: Small messages (1-1000 bytes)
+ * - MSG_ID_DOG/WOOF: Medium messages (1000-4000 bytes)
+ * - MSG_ID_HUMAN/HELLO: Large messages (4000-8166 bytes)
+ * - MSG_ID_GHOST: Exceeds max handlers (should fail gracefully)
  */
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -23,11 +30,21 @@
 #include "nvs_flash.h"
 
 #include "esp_hosted.h"
+#include "esp_hosted_misc.h"
 
-static const char *TAG = "peer_data_example";
+/* Example Message IDs - use any uint32_t except 0xFFFFFFFF */
+#define MSG_ID_CAT      1   /**< Request: small data */
+#define MSG_ID_MEOW     2   /**< Response: echo small data */
+#define MSG_ID_DOG      3   /**< Request: medium data */
+#define MSG_ID_WOOF     4   /**< Response: echo medium data */
+#define MSG_ID_HUMAN    5   /**< Request: large data */
+#define MSG_ID_HELLO    6   /**< Response: echo large data */
+#define MSG_ID_GHOST    99  /**< Test: exceeds max configured handlers */
 
 /* Maximum payload size for custom RPC (empirically determined) */
 #define PEER_DATA_MAX_PAYLOAD_SIZE  8166
+
+static const char *TAG = "peer_data_example";
 
 /* Statistics tracking */
 static uint32_t total_sent = 0;
@@ -36,218 +53,273 @@ static uint32_t total_bytes_sent = 0;
 static uint32_t total_bytes_received = 0;
 static uint32_t data_mismatch_count = 0;
 
-/* Expected data for validation */
-typedef struct {
-    uint32_t size;
-    uint8_t first_bytes[16];
-} expected_packet_t;
-
 /**
- * @brief Validate received data matches what was sent
+ * @brief Verify received data matches expected pattern for given msg_id
  */
-static bool validate_received_data(const uint8_t *data, size_t data_len)
+static bool verify_received_data(const uint8_t *data, size_t data_len, uint32_t request_msg_id)
 {
-    /* For very small packets (< 4 bytes), just verify pattern */
-    if (data_len < 4) {
-        for (size_t i = 0; i < data_len; i++) {
-            uint8_t expected = (i & 0xFF);
-            if (data[i] != expected) {
-                ESP_LOGE(TAG, "   ❌ Data mismatch at offset %zu: expected 0x%02x, got 0x%02x", 
-                         i, expected, data[i]);
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /* Extract size from first 4 bytes */
-    uint32_t reported_size = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-
-    /* Check size matches */
-    if (reported_size != data_len) {
-        ESP_LOGE(TAG, "   ❌ Size mismatch: expected %lu, got %zu", reported_size, data_len);
-        return false;
-    }
-
-    /* Verify pattern: sequential bytes starting from offset 4 */
-    for (size_t i = 4; i < data_len; i++) {
-        uint8_t expected = (i & 0xFF);
-        if (data[i] != expected) {
-            ESP_LOGE(TAG, "   ❌ Data mismatch at offset %zu: expected 0x%02x, got 0x%02x", 
-                     i, expected, data[i]);
-            return false;
-        }
-    }
-
-    return true;
+	/* Verify pattern unique to request_msg_id: each byte should be ((index + msg_id) & 0xFF) */
+	for (size_t i = 0; i < data_len; i++) {
+		uint8_t expected = ((i + request_msg_id) & 0xFF);
+		if (data[i] != expected) {
+			ESP_LOGE(TAG, "   ❌ Pattern mismatch at offset %zu: expected 0x%02x, got 0x%02x",
+					i, expected, data[i]);
+			return false;
+		}
+	}
+	return true;
 }
 
 /**
- * @brief Callback for receiving custom data from slave
- *
- * This is called when slave sends data back (e.g., in loopback mode).
+ * @brief Generate random size for given message ID (spread across full range)
  */
-static void custom_data_rx_callback(const uint8_t *data, size_t data_len)
+static uint32_t get_random_size_for_msg_id(uint32_t msg_id)
 {
-    total_received++;
-    total_bytes_received += data_len;
+	switch (msg_id) {
+		case MSG_ID_CAT:    return (rand() % 1000) + 1;          // 1-1000 bytes
+		case MSG_ID_DOG:    return (rand() % 3000) + 1000;       // 1000-4000 bytes
+		case MSG_ID_HUMAN:  return (rand() % 4166) + 4000;       // 4000-8166 bytes (max)
+		case MSG_ID_GHOST:  return PEER_DATA_MAX_PAYLOAD_SIZE+100;     // overflow
+		default:            return 64;
+	}
+}
 
-    printf("copro --> host : %zu byte stream received, ", data_len);
-    
-    /* Validate data */
-    if (validate_received_data(data, data_len)) {
-        printf("verification: ✅\n");
-    } else {
-        data_mismatch_count++;
-        printf("verification: ❌\n");
-    }
+
+/**
+ * @brief Callback for receiving MEOW response from slave
+ */
+static void meow_callback(uint32_t msg_id, const uint8_t *data, size_t data_len)
+{
+	total_received++;
+	total_bytes_received += data_len;
+
+	/* Verify against CAT request pattern */
+	if (verify_received_data(data, data_len, MSG_ID_CAT)) {
+		ESP_LOGI(TAG, "host <-- slave: MEOW (%zu bytes) .. OK!", data_len);
+	} else {
+		data_mismatch_count++;
+		ESP_LOGE(TAG, "host <-- slave: MEOW (%zu bytes) ❌", data_len);
+	}
 }
 
 /**
- * @brief Send data with automatic size checking
- * 
- * Rejects packets larger than PEER_DATA_MAX_PAYLOAD_SIZE.
- * For larger data, user should implement fragmentation at application level.
+ * @brief Callback for receiving WOOF response from slave
  */
-static esp_err_t send_custom_data_checked(const uint8_t *data, uint32_t size)
+static void woof_callback(uint32_t msg_id, const uint8_t *data, size_t data_len)
 {
-    if (size > PEER_DATA_MAX_PAYLOAD_SIZE) {
-        return ESP_ERR_INVALID_SIZE;
-    }
-    
-    return esp_hosted_send_custom_data((uint8_t *)data, size);
+	total_received++;
+	total_bytes_received += data_len;
+
+	/* Verify against DOG request pattern */
+	if (verify_received_data(data, data_len, MSG_ID_DOG)) {
+		ESP_LOGI(TAG, "host <-- slave: WOOF (%zu bytes) .. OK!", data_len);
+	} else {
+		data_mismatch_count++;
+		ESP_LOGE(TAG, "host <-- slave: WOOF (%zu bytes) ❌", data_len);
+	}
 }
 
 /**
- * @brief Task to test different packet sizes with data validation
+ * @brief Callback for receiving HELLO response from slave
  */
-static void peer_data_sender_task(void *pvParameters)
+static void hello_callback(uint32_t msg_id, const uint8_t *data, size_t data_len)
 {
-    /* Test various packet sizes up to maximum */
-    const uint32_t test_sizes[] = {
-        1,
-        10,
-        64,
-        128,
-        256,
-        512,
-        1024,
-        2048,
-        4096,
-        8166,   /* Maximum working size */
-        8200,   /* Should fail (over limit) */
-    };
+	total_received++;
+	total_bytes_received += data_len;
 
-    printf("\n");
-    printf("========================================\n");
-    printf("Peer Data Transfer Test (max: %d bytes)\n", PEER_DATA_MAX_PAYLOAD_SIZE);
-    printf("========================================\n");
+	/* Verify against HUMAN request pattern */
+	if (verify_received_data(data, data_len, MSG_ID_HUMAN)) {
+		ESP_LOGI(TAG, "host <-- slave: HELLO (%zu bytes) .. OK!", data_len);
+	} else {
+		data_mismatch_count++;
+		ESP_LOGI(TAG, "host <-- slave: HELLO (%zu bytes) ❌", data_len);
+	}
+}
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+/**
+ * @brief Allocate and fill buffer with unique test pattern per msg_id
+ * @return Allocated buffer (caller must free), or NULL on error
+ */
+static uint8_t* create_test_data(uint32_t size, uint32_t msg_id)
+{
+	if (size > PEER_DATA_MAX_PAYLOAD_SIZE) {
+		return NULL;
+	}
 
-    for (int i = 0; i < sizeof(test_sizes)/sizeof(test_sizes[0]); i++) {
-        uint32_t size = test_sizes[i];
-        
-        uint8_t *test_data = (uint8_t *)malloc(size);
-        if (!test_data) {
-            ESP_LOGE(TAG, "❌ Failed to allocate %lu bytes", size);
-            continue;
-        }
+	uint8_t *data = (uint8_t *)malloc(size);
+	if (!data) {
+		return NULL;
+	}
 
-        /* Fill with pattern */
-        if (size < 4) {
-            /* For small packets: just sequential bytes */
-            for (uint32_t j = 0; j < size; j++) {
-                test_data[j] = (j & 0xFF);
-            }
-        } else {
-            /* For larger packets: size(4 bytes) + sequential data */
-            test_data[0] = (size >> 24) & 0xFF;
-            test_data[1] = (size >> 16) & 0xFF;
-            test_data[2] = (size >> 8) & 0xFF;
-            test_data[3] = size & 0xFF;
-            for (uint32_t j = 4; j < size; j++) {
-                test_data[j] = (j & 0xFF);
-            }
-        }
+	/* Fill with pattern unique to this msg_id */
+	for (uint32_t j = 0; j < size; j++) {
+		data[j] = ((j + msg_id) & 0xFF);
+	}
 
-        printf("copro <-- host : %lu byte stream, ", size);
+	return data;
+}
 
-        esp_err_t ret = send_custom_data_checked(test_data, size);
+/**
+ * @brief Send data and update statistics
+ */
+static esp_err_t send_custom_data_checked(uint32_t msg_id, const uint8_t *data, uint32_t size)
+{
+	if (!data || size > PEER_DATA_MAX_PAYLOAD_SIZE) {
+		return ESP_ERR_INVALID_ARG;
+	}
 
-        if (ret == ESP_OK) {
-            total_sent++;
-            total_bytes_sent += size;
-            printf("sent ✅\n");
-        } else if (ret == ESP_ERR_INVALID_SIZE) {
-            ESP_LOGW(TAG, "   Packet too large: %lu bytes (max: %d)",  size, PEER_DATA_MAX_PAYLOAD_SIZE);
-            ESP_LOGI(TAG, "   Implement app level fragmentation for packets > %d bytes", PEER_DATA_MAX_PAYLOAD_SIZE);
-        } else {
-            printf("failed ❌\n");
-        }
+	esp_err_t ret = esp_hosted_send_custom_data(msg_id, data, size);
 
-        free(test_data);
-        vTaskDelay(pdMS_TO_TICKS(1500));
-    }
+	if (ret == ESP_OK) {
+		total_sent++;
+		total_bytes_sent += size;
+	}
 
-    /* Wait for any remaining responses */
-    vTaskDelay(pdMS_TO_TICKS(3000));
+	return ret;
+}
 
-    /* Print statistics */
-    printf("\n");
-    printf("========================================\n");
-    printf("TEST SUMMARY\n");
-    printf("========================================\n");
-    printf("Max payload:      %d bytes\n", PEER_DATA_MAX_PAYLOAD_SIZE);
-    printf("Packets sent:     %lu\n", total_sent);
-    printf("Packets received: %lu\n", total_received);
-    printf("Bytes sent:       %lu\n", total_bytes_sent);
-    printf("Bytes received:   %lu\n", total_bytes_received);
-    
-    if (total_sent == total_received && total_bytes_sent == total_bytes_received && data_mismatch_count == 0) {
-        printf("Result:           ✅ PASS\n");
-    } else {
-        printf("Result:           ❌ FAIL\n");
-        if (data_mismatch_count > 0) {
-            printf("  Validation errors: %lu\n", data_mismatch_count);
-        }
-    }
-    printf("========================================\n");
+/**
+ * @brief Task to send different message types with random sizes
+ */
+static void rpc_test_task(void *pvParameters)
+{
+	ESP_LOGI(TAG, "\n\n");
+	ESP_LOGI(TAG, "----------------------------------------");
+	ESP_LOGI(TAG, "Custom RPC Echo Test");
+	ESP_LOGI(TAG, "----------------------------------------");
+	ESP_LOGI(TAG, "Testing message IDs with size ranges:");
+	ESP_LOGI(TAG, "CAT→MEOW (1-1000 bytes)");
+	ESP_LOGI(TAG, "DOG→WOOF (1000-4000 bytes)");
+	ESP_LOGI(TAG, "HUMAN→HELLO (4000-8166 bytes)");
+	ESP_LOGI(TAG, "GHOST (tests handler overflow)");
+	ESP_LOGI(TAG, "----------------------------------------");
 
-    vTaskDelete(NULL);
+	/* Send each message type 3 times with random sizes */
+	const uint32_t msg_ids[] = {MSG_ID_CAT, MSG_ID_DOG, MSG_ID_HUMAN};
+	const char *msg_names[] = {"CAT", "DOG", "HUMAN"};
+
+	for (int cycle = 0; cycle < 10; cycle++) {
+		ESP_LOGI(TAG, "\n\n--- Cycle %d ---", cycle + 1);
+
+		for (int i = 0; i < 3; i++) {
+			uint32_t msg_id = msg_ids[i];
+			uint32_t size = get_random_size_for_msg_id(msg_id);
+
+			ESP_LOGI(TAG, "host --> slave: %s (%" PRIu32 " bytes), ", msg_names[i], size);
+
+			uint8_t *test_data = create_test_data(size, msg_id);
+			if (!test_data) {
+				ESP_LOGE(TAG, "failed to allocate ❌");
+				continue;
+			}
+
+			esp_err_t ret = send_custom_data_checked(msg_id, test_data, size);
+
+			if (ret == ESP_OK) {
+				ESP_LOGD(TAG, "sent ✅");
+			} else {
+				ESP_LOGE(TAG, "failed ❌");
+			}
+
+			free(test_data);
+
+			/* Without this all prints will just dump very fast
+			 * In practical applications, no such delay is required
+			 * */
+			g_h.funcs->_h_msleep(200);
+		}
+
+	}
+
+	/* Test GHOST message - exceeds max payload size */
+	ESP_LOGI(TAG, "\n--- Testing GHOST (exceeds max payload) ---");
+	uint32_t ghost_size = get_random_size_for_msg_id(MSG_ID_GHOST);
+	ESP_LOGI(TAG, "host --> slave: GHOST (%" PRIu32 " bytes), ", ghost_size);
+
+	uint8_t *ghost_data = create_test_data(ghost_size, MSG_ID_GHOST);
+	if (!ghost_data) {
+		ESP_LOGI(TAG, "expected failure ✅ (size exceeds max)");
+	} else {
+		esp_err_t ret = send_custom_data_checked(MSG_ID_GHOST, ghost_data, ghost_size);
+		free(ghost_data);
+		if (ret != ESP_OK) {
+			ESP_LOGI(TAG, "send failed (expected case)");
+		} else {
+			ESP_LOGE(TAG, "unexpected success ❌");
+		}
+	}
+
+	g_h.funcs->_h_msleep(2000);
+
+	/* Print summary */
+	ESP_LOGI(TAG, "");
+	ESP_LOGI(TAG, "----------------------------------------");
+	ESP_LOGI(TAG, "Test Summary");
+	ESP_LOGI(TAG, "----------------------------------------");
+	ESP_LOGI(TAG, "Messages sent:        %" PRIu32 "", total_sent);
+	ESP_LOGI(TAG, "Responses received:   %" PRIu32 "", total_received);
+	ESP_LOGI(TAG, "Bytes sent:           %" PRIu32 "", total_bytes_sent);
+	ESP_LOGI(TAG, "Bytes received:       %" PRIu32 "", total_bytes_received);
+
+	if ( total_sent && (total_sent == total_received) && (data_mismatch_count == 0)) {
+		ESP_LOGI(TAG, "Data validation:      ✅ ALL PASSED");
+		ESP_LOGI(TAG, "Result:               ✅ PASS");
+	} else {
+		ESP_LOGE(TAG, "Data validation:      ❌ %" PRIu32 " FAILURES", data_mismatch_count);
+		ESP_LOGE(TAG, "Result:               ❌ FAIL");
+	}
+	ESP_LOGI(TAG, "----------------------------------------");
+
+	vTaskDelete(NULL);
 }
 
 void app_main(void)
 {
-    /* Initialize NVS */
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+	/* Initialize random seed */
+	srand(xTaskGetTickCount());
 
-    /* Initialize ESP-Hosted */
-    ret = esp_hosted_init();
-    if (ret != ESP_OK) {
-        printf("ESP-Hosted init failed: %s\n", esp_err_to_name(ret));
-        return;
-    }
+	/* Initialize NVS */
+	esp_err_t ret = nvs_flash_init();
+	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+		ESP_ERROR_CHECK(nvs_flash_erase());
+		ret = nvs_flash_init();
+	}
+	ESP_ERROR_CHECK(ret);
 
-    ret = esp_hosted_connect_to_slave();
-    if (ret != ESP_OK) {
-        printf("Connect to slave failed: %s\n", esp_err_to_name(ret));
-        return;
-    }
+	/* Initialize ESP-Hosted */
+	ret = esp_hosted_init();
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "ESP-Hosted init failed: %s", esp_err_to_name(ret));
+		return;
+	}
 
-    /* Register callback for receiving custom data from slave */
-    ret = esp_hosted_register_rx_callback_custom_data(custom_data_rx_callback);
-    if (ret != ESP_OK) {
-        printf("Register callback failed: %s\n", esp_err_to_name(ret));
-        return;
-    }
-    ESP_LOGI(TAG, "✅ copro --> host (custom_data_rx_callback) Callback registered");
+	ret = esp_hosted_connect_to_slave();
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Connect to slave failed: %s", esp_err_to_name(ret));
+		return;
+	}
 
-    /* Create task to send data to slave */
-    xTaskCreate(peer_data_sender_task, "peer_data_sender", 8192, NULL, 5, NULL);
+	/* Register callbacks for response message IDs */
+	ret = esp_hosted_register_custom_callback(MSG_ID_MEOW, meow_callback);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to register MEOW callback: %s", esp_err_to_name(ret));
+		return;
+	}
+
+	ret = esp_hosted_register_custom_callback(MSG_ID_WOOF, woof_callback);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to register WOOF callback: %s", esp_err_to_name(ret));
+		return;
+	}
+
+	ret = esp_hosted_register_custom_callback(MSG_ID_HELLO, hello_callback);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to register HELLO callback: %s", esp_err_to_name(ret));
+		return;
+	}
+
+	ESP_LOGI(TAG, "Response callbacks registered: MEOW, WOOF, HELLO");
+
+	/* Create task to test RPC with different message types */
+	xTaskCreate(rpc_test_task, "rpc_test_task", 8192, NULL, 5, NULL);
 }

@@ -15,7 +15,7 @@
 
 #define PROJECT_VERSION_MAJOR_1 2
 #define PROJECT_VERSION_MINOR_1 8
-#define PROJECT_VERSION_PATCH_1 1
+#define PROJECT_VERSION_PATCH_1 3
 
 /**
  * Macro to convert version number into an integer
