@@ -192,7 +192,7 @@ static void rpc_test_task(void *pvParameters)
 	ESP_LOGI(TAG, "DOG→WOOF (1000-4000 bytes)");
 	ESP_LOGI(TAG, "HUMAN→HELLO (4000-8166 bytes)");
 	ESP_LOGI(TAG, "GHOST (tests handler overflow)");
-	ESP_LOGI(TAG, "========================================");
+	ESP_LOGI(TAG, "----------------------------------------");
 
 	/* Send each message type 3 times with random sizes */
 	const uint32_t msg_ids[] = {MSG_ID_CAT, MSG_ID_DOG, MSG_ID_HUMAN};
@@ -253,9 +253,9 @@ static void rpc_test_task(void *pvParameters)
 
 	/* Print summary */
 	ESP_LOGI(TAG, "");
-	ESP_LOGI(TAG, "========================================");
-	ESP_LOGI(TAG, "TEST SUMMARY");
-	ESP_LOGI(TAG, "========================================");
+	ESP_LOGI(TAG, "----------------------------------------");
+	ESP_LOGI(TAG, "Test Summary");
+	ESP_LOGI(TAG, "----------------------------------------");
 	ESP_LOGI(TAG, "Messages sent:        %" PRIu32 "", total_sent);
 	ESP_LOGI(TAG, "Responses received:   %" PRIu32 "", total_received);
 	ESP_LOGI(TAG, "Bytes sent:           %" PRIu32 "", total_bytes_sent);
@@ -268,7 +268,7 @@ static void rpc_test_task(void *pvParameters)
 		ESP_LOGE(TAG, "Data validation:      ❌ %" PRIu32 " FAILURES", data_mismatch_count);
 		ESP_LOGE(TAG, "Result:               ❌ FAIL");
 	}
-	ESP_LOGI(TAG, "========================================");
+	ESP_LOGI(TAG, "----------------------------------------");
 
 	vTaskDelete(NULL);
 }

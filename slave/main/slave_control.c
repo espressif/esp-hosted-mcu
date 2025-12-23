@@ -152,6 +152,8 @@ static struct {
 	}
 };
 
+static SemaphoreHandle_t custom_callbacks_mutex = NULL;
+
 #endif
 
 static void send_wifi_event_data_to_host(int event, void *event_data, int event_size)
@@ -3466,13 +3468,22 @@ static esp_err_t handle_custom_rpc_request(uint32_t msg_id, uint8_t *req_data, u
 		return ESP_ERR_INVALID_ARG;
 	}
 
-	/* Search for registered callback */
-	for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
-		if (custom_msg_callbacks[i].msg_id == msg_id && custom_msg_callbacks[i].callback) {
-			/* Call registered handler */
-			custom_msg_callbacks[i].callback(msg_id, req_data, req_len);
-			return ESP_OK;
+	/* Find callback under mutex protection */
+	void (*cb)(uint32_t, const uint8_t *, size_t) = NULL;
+	if (custom_callbacks_mutex && xSemaphoreTake(custom_callbacks_mutex, portMAX_DELAY) == pdTRUE) {
+		for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
+			if (custom_msg_callbacks[i].msg_id == msg_id && custom_msg_callbacks[i].callback) {
+				cb = custom_msg_callbacks[i].callback;
+				break;
+			}
 		}
+		xSemaphoreGive(custom_callbacks_mutex);
+	}
+
+	/* Invoke callback outside mutex to avoid deadlock */
+	if (cb) {
+		cb(msg_id, req_data, req_len);
+		return ESP_OK;
 	}
 
 	/* No handler registered for this message ID */
@@ -3529,6 +3540,20 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 		return ESP_ERR_INVALID_ARG;
 	}
 
+	/* Initialize mutex on first use */
+	if (!custom_callbacks_mutex) {
+		custom_callbacks_mutex = xSemaphoreCreateMutex();
+		if (!custom_callbacks_mutex) {
+			ESP_LOGE(TAG, "Failed to create mutex");
+			return ESP_ERR_NO_MEM;
+		}
+	}
+
+	if (xSemaphoreTake(custom_callbacks_mutex, portMAX_DELAY) != pdTRUE) {
+		ESP_LOGE(TAG, "Failed to lock mutex");
+		return ESP_FAIL;
+	}
+
 	/* Search for existing registration */
 	for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
 		if (custom_msg_callbacks[i].msg_id == msg_id) {
@@ -3543,6 +3568,7 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 				custom_msg_callbacks[i].callback = callback;
 				ESP_LOGI(TAG, "Updated callback for message ID %u", msg_id);
 			}
+			xSemaphoreGive(custom_callbacks_mutex);
 			return ESP_OK;
 		}
 	}
@@ -3551,6 +3577,7 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 	if (callback == NULL) {
 		/* Cannot deregister what doesn't exist */
 		ESP_LOGW(TAG, "Cannot deregister message ID %u - not registered", msg_id);
+		xSemaphoreGive(custom_callbacks_mutex);
 		return ESP_ERR_NOT_FOUND;
 	}
 
@@ -3560,11 +3587,13 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 			custom_msg_callbacks[i].msg_id = msg_id;
 			custom_msg_callbacks[i].callback = callback;
 			ESP_LOGI(TAG, "Registered callback for message ID %u", msg_id);
+			xSemaphoreGive(custom_callbacks_mutex);
 			return ESP_OK;
 		}
 	}
 
 	ESP_LOGW(TAG, "No space for callback (max %d)", CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS);
+	xSemaphoreGive(custom_callbacks_mutex);
 	return ESP_ERR_NO_MEM;
 }
 

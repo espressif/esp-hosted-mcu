@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.8.3
+
+Add up mutex protection for callback array for Peer Data Transfer
+
 ## 2.8.2
 
 ### Ammend Peer Data Transfer example with custom msg id

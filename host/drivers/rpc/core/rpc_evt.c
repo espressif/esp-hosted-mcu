@@ -10,6 +10,7 @@
 #include "esp_hosted_transport.h"
 #include "port_esp_hosted_host_log.h"
 #include "port_esp_hosted_host_config.h"
+#include "port_esp_hosted_host_os.h"
 #include "esp_hosted_bitmasks.h"
 #include "esp_hosted_os_abstraction.h"
 
@@ -28,6 +29,8 @@ static struct {
 	}
 };
 
+static void* custom_callbacks_mutex = NULL;
+
 
 /* Register callback for specific message ID */
 int rpc_evt_register_custom_callback(uint32_t msg_id,
@@ -39,6 +42,17 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 		return FAILURE;
 	}
 
+	/* Initialize mutex on first use */
+	if (!custom_callbacks_mutex) {
+		custom_callbacks_mutex = g_h.funcs->_h_create_mutex();
+		if (!custom_callbacks_mutex) {
+			ESP_LOGE(TAG, "Failed to create mutex");
+			return FAILURE;
+		}
+	}
+
+	g_h.funcs->_h_lock_mutex(custom_callbacks_mutex, HOSTED_BLOCK_MAX);
+
 	/* First, check if this msg_id is already registered */
 	for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
 		if (custom_callbacks[i].msg_id == msg_id) {
@@ -48,11 +62,13 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 				custom_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
 				custom_callbacks[i].callback = NULL;
 				ESP_LOGD(TAG, "Deregistered callback for msg_id %u", msg_id);
+				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			} else {
 				/* Update existing callback */
 				custom_callbacks[i].callback = callback;
 				ESP_LOGD(TAG, "Updated callback for msg_id %u", msg_id);
+				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			}
 		}
@@ -62,6 +78,7 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 	if (callback == NULL) {
 		/* Cannot deregister what doesn't exist */
 		ESP_LOGD(TAG, "Cannot deregister msg_id %u - not registered", msg_id);
+		g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 		return FAILURE;
 	}
 
@@ -71,11 +88,13 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 			custom_callbacks[i].msg_id = msg_id;
 			custom_callbacks[i].callback = callback;
 			ESP_LOGD(TAG, "Registered callback for msg_id %u", msg_id);
+			g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 			return SUCCESS;
 		}
 	}
 
 	ESP_LOGW(TAG, "No space for callback (max %d)", MAX_CUSTOM_CALLBACKS);
+	g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 	return FAILURE;
 }
 #endif
@@ -412,15 +431,25 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		size_t payload_len = p_c->data.len;
 
 		bool callback_found = false;
-		for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
-			if (custom_callbacks[i].msg_id == msg_id && custom_callbacks[i].callback) {
-				custom_callbacks[i].callback(msg_id, payload, payload_len);
-				callback_found = true;
-				break;
+		void (*cb)(uint32_t, const uint8_t *, size_t) = NULL;
+
+		/* Find callback under mutex protection */
+		if (custom_callbacks_mutex) {
+			g_h.funcs->_h_lock_mutex(custom_callbacks_mutex, HOSTED_BLOCK_MAX);
+			for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
+				if (custom_callbacks[i].msg_id == msg_id && custom_callbacks[i].callback) {
+					cb = custom_callbacks[i].callback;
+					callback_found = true;
+					break;
+				}
 			}
+			g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 		}
 
-		if (!callback_found) {
+		/* Invoke callback outside mutex to avoid deadlock */
+		if (callback_found && cb) {
+			cb(msg_id, payload, payload_len);
+		} else {
 			ESP_LOGI(TAG, "No callback registered for message ID %u, ignore", msg_id);
 		}
 		break;
