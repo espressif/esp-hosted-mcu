@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.8.2
+
+### Ammend Peer Data Transfer example with custom msg id
+
+Ammend [Peer Data Transfer Example](https://components.espressif.com/components/espressif/esp_hosted/examples/host_peer_data_transfer):
+
+Features:
+- User can register callback-based dispatch for their own msg ids, both at host and slave
+- Configurable handler slots via Kconfig (default: 3)
+
+API:
+- esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size_t data_len)
+- esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
+    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+
+Example (examples/host_peer_data_transfer):
+- Uses animal sound theme (CAT→MEOW, DOG→WOOF, HUMAN→HELLO)
+- Host sends CAT_MSG_ID, with byte stream. Slave sends back same stream with MEOW_MGD_ID and so on.
+
+
+Configuration:
+- Host: CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS (Kconfig)
+- Slave: CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS (Kconfig.projbuild)
+- Ported as H_MAX_CUSTOM_MSG_HANDLERS on host side
+
+### Allow to disable app_main() from slave
+
+**Kconfig : `CONFIG_ESP_HOSTED_COPROCESSOR_APP_MAIN`** at coprocessor menuconfig
+- **Default**: Enabled (for slave example from registry)
+- **Purpose**: Controls whether ESP-Hosted provides its own `app_main()`
+- **When to disable**:
+  - Using ESP-Hosted slave code base as a component in your application
+
 ## 2.8.1
 
 ### Example: [Peer Data Transfer Example](https://components.espressif.com/components/espressif/esp_hosted/examples/host_peer_data_transfer)

@@ -1286,6 +1286,16 @@ menu "Example Configuration"
 		Enable peer data transfer to send/receive raw bytes between host and coprocessor.
 		This is enabled by default. Disable only if you don't need this feature.
 
+	config ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS
+		int "Maximum number of custom message handlers"
+		depends on ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+		range 1 32
+		default 3
+		help
+			Maximum number of concurrent custom message handlers that can be registered.
+			Each handler consumes ~12 bytes of RAM. Reduce this value to save memory
+			if you don't need many concurrent message types.
+
 
 	config ESP_HOSTED_EXTRA_EXAMPLES
 		bool "Additional higher layer examples to run"
@@ -1296,14 +1306,14 @@ menu "Example Configuration"
 	menu "Select Examples to run"
 		depends on ESP_HOSTED_EXTRA_EXAMPLES
 
-		config EXAMPLE_PEER_DATA_TRANSFER_ECHO
-			bool "Echo back received data (for testing)"
-			depends on ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
-			default n
-			help
-			Enable echo mode for peer data transfer example.
-			When enabled, any data received from host will be echoed back.
-			This is used by the host example to verify bidirectional communication.
+	config EXAMPLE_PEER_DATA_TRANSFER
+		bool "Peer Data Transfer Example"
+		depends on ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+		default n
+		help
+		Enable peer data transfer example.
+		Registers handlers for custom message IDs and echoes received data back to host.
+		Used by the host peer_data_transfer example to demonstrate bidirectional communication.
 
 		config ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT
 			depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED

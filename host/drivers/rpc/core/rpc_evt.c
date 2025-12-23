@@ -15,15 +15,70 @@
 
 DEFINE_LOG_TAG(rpc_evt);
 
-/* Custom RPC - user callback for data from coprocessor */
-static void (*g_custom_data_cb)(const uint8_t *data, size_t data_len) = NULL;
+#ifdef H_PEER_DATA_TRANSFER
+#define MAX_CUSTOM_CALLBACKS H_MAX_CUSTOM_MSG_HANDLERS
+/* Callback slots (empty slot has callback = NULL, msg_id = -1 is invalid sentinel) */
+static struct {
+	uint32_t msg_id;
+	void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len);
+} custom_callbacks[MAX_CUSTOM_CALLBACKS] = {
+	[0 ... (MAX_CUSTOM_CALLBACKS - 1)] = {
+		.msg_id = (uint32_t)-1,
+		.callback = NULL
+	}
+};
 
-/* Internal: set custom data callback */
-int rpc_evt_register_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len))
+
+/* Register callback for specific message ID */
+int rpc_evt_register_custom_callback(uint32_t msg_id,
+		void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
 {
-	g_custom_data_cb = callback;
-	return SUCCESS;
+	/* Validate message ID (-1/0xFFFFFFFF is invalid) */
+	if (msg_id == (uint32_t)-1) {
+		ESP_LOGE(TAG, "Invalid message ID 0xFFFFFFFF");
+		return FAILURE;
+	}
+
+	/* First, check if this msg_id is already registered */
+	for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
+		if (custom_callbacks[i].msg_id == msg_id) {
+			/* Found existing registration */
+			if (callback == NULL) {
+				/* Deregister: clean up this entry */
+				custom_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
+				custom_callbacks[i].callback = NULL;
+				ESP_LOGD(TAG, "Deregistered callback for msg_id %u", msg_id);
+				return SUCCESS;
+			} else {
+				/* Update existing callback */
+				custom_callbacks[i].callback = callback;
+				ESP_LOGD(TAG, "Updated callback for msg_id %u", msg_id);
+				return SUCCESS;
+			}
+		}
+	}
+
+	/* msg_id not found - need to register new */
+	if (callback == NULL) {
+		/* Cannot deregister what doesn't exist */
+		ESP_LOGD(TAG, "Cannot deregister msg_id %u - not registered", msg_id);
+		return FAILURE;
+	}
+
+	/* Find empty slot for new registration */
+	for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
+		if (custom_callbacks[i].callback == NULL) {
+			custom_callbacks[i].msg_id = msg_id;
+			custom_callbacks[i].callback = callback;
+			ESP_LOGD(TAG, "Registered callback for msg_id %u", msg_id);
+			return SUCCESS;
+		}
+	}
+
+	ESP_LOGW(TAG, "No space for callback (max %d)", MAX_CUSTOM_CALLBACKS);
+	return FAILURE;
 }
+#endif
 
 /* For new RPC event (from ESP to host), add up switch case for your message
  * In general, it is better to subscribe all events or notifications
@@ -349,11 +404,24 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		RPC_FAIL_ON_NULL(event_custom_rpc);
 		app_ntfy->resp_event_status = p_c->resp;
 
-		/* Directly call user's callback with the raw data */
-		if (g_custom_data_cb && p_c->data.data && p_c->data.len > 0) {
-			g_custom_data_cb(p_c->data.data, p_c->data.len);
-		} else if (!g_custom_data_cb) {
-			ESP_LOGW(TAG, "Custom data received but no callback registered");
+		/* Get message ID from protobuf field (not from data payload) */
+		uint32_t msg_id = p_c->custom_event_id;
+
+		/* Route to callback with pure user data */
+		const uint8_t *payload = p_c->data.data;
+		size_t payload_len = p_c->data.len;
+
+		bool callback_found = false;
+		for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
+			if (custom_callbacks[i].msg_id == msg_id && custom_callbacks[i].callback) {
+				custom_callbacks[i].callback(msg_id, payload, payload_len);
+				callback_found = true;
+				break;
+			}
+		}
+
+		if (!callback_found) {
+			ESP_LOGI(TAG, "No callback registered for message ID %u, ignore", msg_id);
 		}
 		break;
 #endif

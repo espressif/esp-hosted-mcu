@@ -547,6 +547,10 @@ enum {
 /* --------------------- Custom RPC ----------------------------------------- */
 #ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
   #define H_PEER_DATA_TRANSFER 1
+
+  #ifdef CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS
+    #define H_MAX_CUSTOM_MSG_HANDLERS CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS
+  #endif
 #else
   #define H_PEER_DATA_TRANSFER 0
 #endif

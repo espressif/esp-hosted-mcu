@@ -38,7 +38,7 @@ The API names are identical on both the coprocessor and host sides.
 
 ## Coprocessor Setup
 
-### 1. Enable Echo Mode in Menuconfig
+### 1. Enable Example in Menuconfig
 
 Navigate to your coprocessor project directory and open menuconfig:
 
@@ -47,12 +47,12 @@ cd <project_path>/slave
 idf.py menuconfig
 ```
 
-Enable echo mode for this example:
+Enable the peer data transfer example:
 ```
-Example Configuration → Additional higher layer examples to run → Select Examples to run → [*] Echo back received data (for testing)
+Example Configuration → Additional higher layer examples to run → Select Examples to run → [*] Peer Data Transfer Example
 ```
 
-**Note:** Peer data transfer is enabled by default. The echo mode is only needed for this test example to loop data back to the host. Once enabled, `slave/main/example_peer_data_transfer.c` will handle the echo response.
+**Note:** Peer data transfer feature is enabled by default in ESP-Hosted. This example demonstrates how to use it by registering handlers and echoing data back to the host.
 
 ### 2. Flash the Coprocessor
 

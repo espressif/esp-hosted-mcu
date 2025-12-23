@@ -657,9 +657,10 @@ ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req)
 
 #ifdef H_PEER_DATA_TRANSFER
 
-int rpc_slaveif_register_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len))
+int rpc_slaveif_register_custom_callback(uint32_t msg_id,
+		void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
 {
-	return rpc_evt_register_callback_custom_data(callback);
+	return rpc_evt_register_custom_callback(msg_id, callback);
 }
 
 ctrl_cmd_t * rpc_slaveif_custom_rpc(ctrl_cmd_t *req)

@@ -451,7 +451,7 @@ static void host_reset_task(void* pvParameters)
 		/* send capabilities to host */
 		ESP_LOGI(TAG,"host reconfig event");
 		generate_startup_event(capa, ext_capa);
-		//send_event_to_host(RPC_ID__Event_ESPInit);
+		send_event_to_host(RPC_ID__Event_ESPInit);
 	}
 }
 
@@ -1244,7 +1244,7 @@ void app_main(void)
 #endif
 #endif
 
-#ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+#ifdef CONFIG_EXAMPLE_PEER_DATA_TRANSFER
 	example_peer_data_transfer_init();
 #endif
 }

@@ -14,6 +14,7 @@
 #include "transport_drv.h"
 #include "rpc_slave_if.h"
 #include "port_esp_hosted_host_log.h"
+#include "port_esp_hosted_host_config.h"
 
 #ifndef BIT
 #define BIT(n) (1UL << (n))
@@ -137,6 +138,9 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy);
 
 int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp);
 
-int rpc_evt_register_callback_custom_data(void (*callback)(const uint8_t *data, size_t data_len));
+#if H_PEER_DATA_TRANSFER
+int rpc_evt_register_custom_callback(uint32_t msg_id,
+		void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+#endif
 
 #endif /* __RPC_CORE_H */
