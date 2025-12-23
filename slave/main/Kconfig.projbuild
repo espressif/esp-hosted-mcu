@@ -903,6 +903,15 @@ menu "Example Configuration"
 		help
 			Enable/disable sleeps while OTA operations
 
+	config ESP_HOSTED_WIFI_TX_RETRY_ENABLED
+		bool "Enable WiFi TX retry on failure"
+		default y
+		help
+			Enable retry mechanism for WiFi internal TX operations on STA interface.
+			When enabled, the system will retry failed TX operations up to 5 times
+			with a 1ms delay between retries. Disable this to call TX only once
+			without retry, which may be useful for debugging or specific use cases.
+
 	config ESP_WIFI_DPP_SUPPORT
 		bool "Enable Wi-Fi Easy Connect (DPP)"
 		default n

@@ -642,7 +642,11 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	uint8_t *payload = NULL;
 	uint16_t payload_len = 0;
 	int ret = 0;
+#ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
 	int retry_wifi_tx = MAX_WIFI_STA_TX_RETRY;
+#endif
+
+	(void)ret;
 
 	header = (struct esp_payload_header *) buf_handle->payload;
 	payload = buf_handle->payload + le16toh(header->offset);
@@ -651,7 +655,9 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	ESP_HEXLOGD("bus_RX", buf_handle->payload, buf_handle->payload_len, 32);
 
 	if (buf_handle->if_type == ESP_STA_IF && station_connected) {
+
 		/* Forward data to wlan driver */
+#ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
 		do {
 			ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
 			if (ret) {
@@ -660,6 +666,9 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 
 			retry_wifi_tx--;
 		} while (ret && retry_wifi_tx);
+#else
+		ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
+#endif
 
 		ESP_HEXLOGV("STA_Put", payload, payload_len, 32);
 #if ESP_PKT_STATS
