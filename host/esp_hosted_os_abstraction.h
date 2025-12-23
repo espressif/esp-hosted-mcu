@@ -5,6 +5,10 @@
 #ifndef __ESP_HOSTED_OS_ABSTRACTION_H__
 #define __ESP_HOSTED_OS_ABSTRACTION_H__
 
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+
 typedef struct {
           /* Memory */
 /* 1 */   void*  (*_h_memcpy)(void* dest, const void* src, uint32_t size);
