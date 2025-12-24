@@ -1630,6 +1630,14 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 		config ESP_HOSTED_DFLT_TASK_STACK
 			int "Hosted default task size"
 			default 3072
+
+		config ESP_HOSTED_DFLT_TASK_FROM_SPIRAM
+			bool "Hosted task stack from SPIRAM"
+			default n
+			help
+				When enabled, Hosted tasks would be allocated
+				from SPIRAM, instead of default internal RAM.
+
 	endmenu
 
 	config ESP_HOSTED_ENABLE_ITWT

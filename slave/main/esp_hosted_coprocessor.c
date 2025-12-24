@@ -1138,7 +1138,16 @@ esp_err_t esp_hosted_coprocessor_init(void)
 #if CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
 	ESP_ERROR_CHECK(esp_netif_init());
 #endif
-	ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+	esp_err_t ret = esp_event_loop_create_default();
+	if (ret != ESP_OK) {
+		if (ret == ESP_ERR_INVALID_STATE) {
+			ESP_LOGW(TAG, "Default event loop already created");
+		} else {
+			ESP_LOGE(TAG, "Failed to create default event loop: %s", esp_err_to_name(ret));
+			return ret;
+		}
+	}
 
 #if defined(CONFIG_ESP_GPIO_SLAVE_RESET) && (CONFIG_ESP_GPIO_SLAVE_RESET != -1)
 	register_reset_pin(CONFIG_ESP_GPIO_SLAVE_RESET);

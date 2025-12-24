@@ -887,7 +887,7 @@ menu "Example Configuration"
 
 	config ESP_HOSTED_DEFAULT_TASK_PRIORITY
 		int "ESP-Hosted task priority"
-		default 22
+		default 21
 		help
 			Default task priority of ESP-Hosted tasks
 

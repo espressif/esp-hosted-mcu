@@ -627,7 +627,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 	} case RPC_ID__Resp_CustomRpc: {
 		RPC_FAIL_ON_NULL(resp_custom_rpc);
 		RPC_ERR_IN_RESP(resp_custom_rpc);
-		ESP_LOGD(TAG, "Custom RPC response received: %" PRIu32 " bytes", rpc_msg->resp_custom_rpc->data.len);
+		ESP_LOGD(TAG, "Custom RPC response received: %zu bytes", rpc_msg->resp_custom_rpc->data.len);
 		app_resp->u.custom_rpc.custom_msg_id = rpc_msg->resp_custom_rpc->custom_msg_id;
 		if (rpc_msg->resp_custom_rpc->data.data && rpc_msg->resp_custom_rpc->data.len > 0) {
 			/* Allocate memory for response data */

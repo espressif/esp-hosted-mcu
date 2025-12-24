@@ -160,7 +160,31 @@ void *hosted_thread_create(const char *tname, uint32_t tprio, uint32_t tstack_si
 		return NULL;
 	}
 
+#if H_DFLT_TASK_FROM_SPIRAM
+	StaticTask_t *task_buffer = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
+	if (!task_buffer) {
+		ESP_LOGE(TAG, "Failed to allocate task buffer");
+		HOSTED_FREE(thread_handle);
+		return NULL;
+	}
+	StackType_t *thread_stack = heap_caps_malloc(tstack_size, MALLOC_CAP_SPIRAM);
+	if (!thread_stack) {
+		ESP_LOGE(TAG, "Failed to allocate thread stack");
+		heap_caps_free(task_buffer);
+		HOSTED_FREE(thread_handle);
+		return NULL;
+	}
+
+	task_created = pdTRUE;
+	*thread_handle = xTaskCreateStatic((void (*)(void *))start_routine, tname, tstack_size, sr_arg, tprio, thread_stack, task_buffer);
+	if (!*thread_handle) {
+		heap_caps_free(thread_stack);
+		heap_caps_free(task_buffer);
+		task_created = pdFALSE;
+	}
+#else
 	task_created = xTaskCreate((void (*)(void *))start_routine, tname, tstack_size, sr_arg, tprio, thread_handle);
+#endif
 	if (!(*thread_handle)) {
 		ESP_LOGE(TAG, "Failed to create thread: %s\n", tname);
 		HOSTED_FREE(thread_handle);
