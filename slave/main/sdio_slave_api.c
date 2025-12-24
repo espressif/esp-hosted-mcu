@@ -431,7 +431,7 @@ static interface_handle_t * sdio_init(void)
 	// task to clean up after doing sdio tx
 	assert(xTaskCreate(sdio_tx_done_task, "sdio_tx_done_task" ,
 			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
+			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY+1, NULL) == pdTRUE);
 #endif
 
 	return &if_handle_g;
