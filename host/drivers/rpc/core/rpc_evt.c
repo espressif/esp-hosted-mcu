@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <inttypes.h>
 #include "rpc_core.h"
 #include "rpc_utils.h"
 #include "rpc_slave_if.h"
@@ -61,13 +62,13 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 				/* Deregister: clean up this entry */
 				custom_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
 				custom_callbacks[i].callback = NULL;
-				ESP_LOGD(TAG, "Deregistered callback for msg_id %u", msg_id);
+				ESP_LOGD(TAG, "Deregistered callback for msg_id %" PRIu32, msg_id);
 				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			} else {
 				/* Update existing callback */
 				custom_callbacks[i].callback = callback;
-				ESP_LOGD(TAG, "Updated callback for msg_id %u", msg_id);
+				ESP_LOGD(TAG, "Updated callback for msg_id %" PRIu32, msg_id);
 				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			}
@@ -77,7 +78,7 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 	/* msg_id not found - need to register new */
 	if (callback == NULL) {
 		/* Cannot deregister what doesn't exist */
-		ESP_LOGD(TAG, "Cannot deregister msg_id %u - not registered", msg_id);
+		ESP_LOGD(TAG, "Cannot deregister msg_id %" PRIu32 " - not registered", msg_id);
 		g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 		return FAILURE;
 	}
@@ -87,7 +88,7 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 		if (custom_callbacks[i].callback == NULL) {
 			custom_callbacks[i].msg_id = msg_id;
 			custom_callbacks[i].callback = callback;
-			ESP_LOGD(TAG, "Registered callback for msg_id %u", msg_id);
+			ESP_LOGD(TAG, "Registered callback for msg_id %" PRIu32, msg_id);
 			g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 			return SUCCESS;
 		}
@@ -450,7 +451,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		if (callback_found && cb) {
 			cb(msg_id, payload, payload_len);
 		} else {
-			ESP_LOGI(TAG, "No callback registered for message ID %u, ignore", msg_id);
+			ESP_LOGI(TAG, "No callback registered for message ID %" PRIu32 ", ignore", msg_id);
 		}
 		break;
 #endif

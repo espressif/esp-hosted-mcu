@@ -1,5 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD */
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "sdkconfig.h"
 #include <stdlib.h>
