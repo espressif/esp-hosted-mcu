@@ -30,8 +30,7 @@
 #define SDIO_NUM_RX_BUFFERS              CONFIG_ESP_SDIO_RX_Q_SIZE
 static uint8_t sdio_slave_rx_buffer[SDIO_NUM_RX_BUFFERS][SDIO_RX_BUFFER_SIZE];
 
-/* TODO: Need to cross check once in priority queue properly handled */
-#define SDIO_MEMPOOL_NUM_BLOCKS         40
+#define SDIO_MEMPOOL_NUM_BLOCKS         SDIO_DRIVER_TX_QUEUE_SIZE+2
 static struct hosted_mempool * buf_mp_tx_g;
 
 interface_context_t context;
