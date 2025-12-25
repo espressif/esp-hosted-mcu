@@ -3487,7 +3487,7 @@ static esp_err_t handle_custom_rpc_request(uint32_t msg_id, uint8_t *req_data, u
 	}
 
 	/* No handler registered for this message ID */
-	ESP_LOGW(TAG, "No custom handler registered for message ID %u", msg_id);
+	ESP_LOGW(TAG, "No custom handler registered for message ID %" PRIu32, msg_id);
 	return ESP_ERR_NOT_FOUND;
 }
 
@@ -3562,11 +3562,11 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 				/* Deregister: clean up entry */
 				custom_msg_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
 				custom_msg_callbacks[i].callback = NULL;
-				ESP_LOGI(TAG, "Deregistered callback for message ID %u", msg_id);
+				ESP_LOGI(TAG, "Deregistered callback for message ID %" PRIu32, msg_id);
 			} else {
 				/* Update existing callback */
 				custom_msg_callbacks[i].callback = callback;
-				ESP_LOGI(TAG, "Updated callback for message ID %u", msg_id);
+				ESP_LOGI(TAG, "Updated callback for message ID %" PRIu32, msg_id);
 			}
 			xSemaphoreGive(custom_callbacks_mutex);
 			return ESP_OK;
@@ -3576,7 +3576,7 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 	/* msg_id not found */
 	if (callback == NULL) {
 		/* Cannot deregister what doesn't exist */
-		ESP_LOGW(TAG, "Cannot deregister message ID %u - not registered", msg_id);
+		ESP_LOGW(TAG, "Cannot deregister message ID %" PRIu32 " - not registered", msg_id);
 		xSemaphoreGive(custom_callbacks_mutex);
 		return ESP_ERR_NOT_FOUND;
 	}
@@ -3586,7 +3586,7 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 		if (custom_msg_callbacks[i].callback == NULL) {
 			custom_msg_callbacks[i].msg_id = msg_id;
 			custom_msg_callbacks[i].callback = callback;
-			ESP_LOGI(TAG, "Registered callback for message ID %u", msg_id);
+			ESP_LOGI(TAG, "Registered callback for message ID %" PRIu32, msg_id);
 			xSemaphoreGive(custom_callbacks_mutex);
 			return ESP_OK;
 		}
