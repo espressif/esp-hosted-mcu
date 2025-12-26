@@ -14,6 +14,7 @@
 #include "port_esp_hosted_host_os.h"
 #include "esp_hosted_power_save.h"
 #include "esp_hosted_transport_config.h"
+#include "esp_hosted_misc.h"
 
 static const char TAG[] = "H_power_save";
 
@@ -23,7 +24,6 @@ static uint8_t power_save_drv_init_done;
 
 /* Add state tracking */
 static volatile bool reset_in_progress = false;
-
 #if H_HOST_PS_ALLOWED && H_HOST_WAKEUP_GPIO != -1
 /* ISR handler for wakeup GPIO */
 static void IRAM_ATTR wakeup_gpio_isr_handler(void* arg)
@@ -51,6 +51,22 @@ static void IRAM_ATTR wakeup_gpio_isr_handler(void* arg)
 }
 #endif
 
+#if H_HOST_PS_ALLOWED
+  #if H_HOST_WAKEUP_GPIO
+static int register_slave_reboot_callback(void *gpio_port, uint32_t gpio_num, int level)
+{
+	int ret = g_h.funcs->_h_config_gpio_as_interrupt(gpio_port, gpio_num, level, wakeup_gpio_isr_handler, NULL);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to add GPIO ISR handler, err %d", ret);
+		return -1;
+	} else {
+		ESP_LOGI(TAG, "Initialized host_wakeup/slave_reset GPIO %" PRIu32 , gpio_num);
+	}
+	return 0;
+}
+  #endif
+#endif
+
 /* Initialize power save driver and configure GPIO for slave reset detection */
 int esp_hosted_power_save_init(void)
 {
@@ -62,7 +78,6 @@ int esp_hosted_power_save_init(void)
 
 #if H_HOST_PS_ALLOWED
   #if H_HOST_WAKEUP_GPIO
-	int ret = 0;
 
 	uint32_t gpio_num = H_HOST_WAKEUP_GPIO;
 	void *gpio_port = H_HOST_WAKEUP_GPIO_PORT;
@@ -74,24 +89,21 @@ int esp_hosted_power_save_init(void)
 	power_save_on = 0;
 	reset_in_progress = false;
 
-	// configure wakeup as GPIO input
+	/* Configure wakeup GPIO as input for deep sleep wakeup */
 	g_h.funcs->_h_config_gpio(gpio_port, gpio_num, H_GPIO_MODE_DEF_INPUT);
 
 	int initial_level = g_h.funcs->_h_read_gpio(gpio_port, gpio_num);
-	ESP_LOGI(TAG, "Initial GPIO level: %d", initial_level);
+	ESP_LOGI(TAG, "Power save wakeup GPIO initial level: %d", initial_level);
 
 	g_h.funcs->_h_write_gpio(gpio_port, gpio_num, !level);
+	g_h.funcs->_h_msleep(200); /* to stabilize the level */
+
+	ESP_LOGI(TAG, "Initialized power save wakeup GPIO %" PRIu32, gpio_num);
 
 	/* Only proceed with ISR setup if conditions are right */
 	if (!power_save_on && initial_level == 0) {
-		ret = g_h.funcs->_h_config_gpio_as_interrupt(gpio_port, gpio_num, level, wakeup_gpio_isr_handler, NULL);
-		if (ret != ESP_OK) {
-			ESP_LOGE(TAG, "Failed to add GPIO ISR handler, err %d", ret);
-			return -1;
-		}
+		register_slave_reboot_callback(gpio_port, gpio_num, level);
 	}
-
-	ESP_LOGI(TAG, "Initialized wakeup/reset GPIO %" PRIu32 " for slave reset detection", gpio_num);
   #else
 	ESP_LOGI(TAG, "power save driver not enabled at host/slave");
 	return -1;

@@ -28,6 +28,7 @@
 
 #ifdef H_ESP_HOSTED_CLI_ENABLED
   int esp_hosted_cli_start(void);
+  void esp_hosted_cli_stop(void);
 #endif
 
 #endif /* _ESP_HOSTED_CLI_H_ */

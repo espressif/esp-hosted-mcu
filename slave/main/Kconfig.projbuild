@@ -1139,8 +1139,9 @@ menu "Example Configuration"
 				default 2 if IDF_TARGET_ESP32C6 && !ESP_SPI_HD_HOST_INTERFACE
 				default 9 if IDF_TARGET_ESP32C6 && ESP_SPI_HD_HOST_INTERFACE
 				default 1 if IDF_TARGET_ESP32C3
-				default 25 if IDF_TARGET_ESP32C5
+				default 25 if IDF_TARGET_ESP32C5 && !ESP_HOST_DEV_BOARD_P4_C5_CORE
 				default 6 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
+				default 3 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 				default -1
 
 			choice ESP_HOSTED_HOST_WAKEUP_GPIO_LEVEL
@@ -1167,12 +1168,22 @@ menu "Example Configuration"
 			bool "Unload low level BUS driver during host deep sleep"
 			default n
 
+		comment "Slave Light Sleep (hosted) Integration:"
+		comment "  ✓ Light sleep available - see Examples menu for auto mode"
+			depends on ESP_HOSTED_LIGHT_SLEEP_ENABLE
+		comment "  ✗ Light sleep not enabled - see Light Sleep Power Management menu"
+			depends on !ESP_HOSTED_LIGHT_SLEEP_ENABLE
+
 		config PRINT_HOST_WAKEUP_PACKET_FULL_PKT
 			bool "Print the full wakeup packet"
 			default n
 
 	endmenu
 
+	# ═══════════════════════════════════════════════════════════
+	# Include Light Sleep Configuration (separate module)
+	# ═══════════════════════════════════════════════════════════
+	rsource "Kconfig.light_sleep"
 
 	config ESP_HOSTED_CLI_ENABLED
 		bool "Enable CLI Shell"
@@ -1314,6 +1325,19 @@ menu "Example Configuration"
 		Enable peer data transfer example.
 		Registers handlers for custom message IDs and echoes received data back to host.
 		Used by the host peer_data_transfer example to demonstrate bidirectional communication.
+
+	config ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP
+		bool "Automatic Light Sleep Example"
+		depends on ESP_HOSTED_HOST_POWER_SAVE_ENABLED
+		default y if ESP_HOSTED_LIGHT_SLEEP_ENABLE
+		help
+			Automatic light sleep triggered by host power save events.
+
+			Integrates host_power_save + slave_light_sleep components.
+			Slave sleeps when host sleeps, wakes when host wakes.
+
+			Disable to implement custom power management logic.
+			See example_light_sleep.c for integration pattern.
 
 		config ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT
 			depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED

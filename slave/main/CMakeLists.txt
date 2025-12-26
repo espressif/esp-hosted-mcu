@@ -15,6 +15,7 @@ set(COMPONENT_SRCS
 	"stats.c"
 	"mempool_ll.c"
 	"host_power_save.c"
+	"slave_light_sleep.c"
 	"nw_split_router.c"
 )
 
@@ -50,6 +51,10 @@ if(CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER)
 	list(APPEND COMPONENT_SRCS example_peer_data_transfer.c)
 endif()
 
+if(CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP)
+	list(APPEND COMPONENT_SRCS example_light_sleep.c)
+endif()
+
 if(CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT)
 	list(APPEND COMPONENT_SRCS example_mqtt_client.c)
 endif()
@@ -61,7 +66,6 @@ endif()
 # cli
 list(APPEND COMPONENT_ADD_INCLUDEDIRS "${common_dir}/utils")
 list(APPEND COMPONENT_SRCS "${common_dir}/utils/esp_hosted_cli.c")
-
 
 register_component()
 
