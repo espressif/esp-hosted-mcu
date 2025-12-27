@@ -708,6 +708,11 @@ void *hosted_timer_start(const char *name, int duration_ms, int type,
 	return timer_handle;
 }
 
+uint64_t hosted_get_time_ms(void)
+{
+	return esp_timer_get_time() / 1000;  // Convert microseconds to milliseconds
+}
+
 
 /* GPIO */
 
@@ -924,6 +929,7 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_destroy_semaphore        =  hosted_destroy_semaphore       ,
 	._h_timer_stop               =  hosted_timer_stop              ,
 	._h_timer_start              =  hosted_timer_start             ,
+	._h_get_time_ms              =  hosted_get_time_ms             ,
 #ifdef H_USE_MEMPOOL
 	._h_create_lock_mempool      =  hosted_create_lock_mempool     ,
 	._h_lock_mempool             =  hosted_lock_mempool            ,

@@ -261,7 +261,7 @@ menu "Example Configuration"
 					int "Slave GPIO pin to reset itself"
 					default -1
 					help
-						Host uses this pin to reset the slave ESP. To re-use ESP 'RST' or 'EN' GPIO, set value to -1
+						Host uses this pin to reset the slave ESP. To reuse ESP 'RST' or 'EN' GPIO, set value to -1
 			endmenu
 
 			config ESP_SPI_DEASSERT_HS_ON_CS
@@ -317,7 +317,7 @@ menu "Example Configuration"
 				int "Slave GPIO pin to reset itself"
 				default -1
 				help
-					Host uses this pin to reset the slave ESP. To re-use ESP 'RST' or 'EN' GPIO, set value to -1
+					Host uses this pin to reset the slave ESP. To reuse ESP 'RST' or 'EN' GPIO, set value to -1
 
 			choice
 				prompt "SDIO Bus Speed"
@@ -572,7 +572,7 @@ menu "Example Configuration"
 					int "Slave GPIO pin to reset itself"
 					default -1
 					help
-						Host uses this pin to reset the slave ESP. To re-use ESP 'RST' or 'EN' GPIO, set value to -1
+						Host uses this pin to reset the slave ESP. To reuse ESP 'RST' or 'EN' GPIO, set value to -1
 
 			endmenu
 
@@ -685,7 +685,7 @@ menu "Example Configuration"
 				int "Slave GPIO pin to reset itself"
 				default -1
 				help
-					Host uses this pin to reset the slave ESP. To re-use ESP 'RST' or 'EN' GPIO, set value to -1
+					Host uses this pin to reset the slave ESP. To reuse ESP 'RST' or 'EN' GPIO, set value to -1
 
 			config ESP_UART_TX_Q_SIZE
 				int "Tx Queue Size"
@@ -1194,7 +1194,7 @@ menu "Example Configuration"
 
 	config ESP_HOSTED_CLI_NEW_INSTANCE
 		depends on ESP_HOSTED_CLI_ENABLED
-		bool "Create new instance & do not re-use existing session if any"
+		bool "Create new instance & do not reuse existing session if any"
 		default y
 
 	config ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG
@@ -1252,8 +1252,8 @@ menu "Example Configuration"
 			default ESP_WIFI_AUTH_WPA2_PSK
 			help
 				The weakest authmode to accept in the scan mode.
-				This value defaults to ESP_WIFI_AUTH_WPA2_PSK incase password is present and ESP_WIFI_AUTH_OPEN is used.
-				Please select ESP_WIFI_AUTH_WEP/ESP_WIFI_AUTH_WPA_PSK incase AP is operating in WEP/WPA mode.
+				This value defaults to ESP_WIFI_AUTH_WPA2_PSK in case password is present and ESP_WIFI_AUTH_OPEN is used.
+				Please select ESP_WIFI_AUTH_WEP/ESP_WIFI_AUTH_WPA_PSK in case AP is operating in WEP/WPA mode.
 
 			config ESP_WIFI_AUTH_OPEN
 				bool "OPEN"
@@ -1317,32 +1317,35 @@ menu "Example Configuration"
 	menu "Select Examples to run"
 		depends on ESP_HOSTED_EXTRA_EXAMPLES
 
-	config EXAMPLE_PEER_DATA_TRANSFER
-		bool "Peer Data Transfer Example"
-		depends on ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
-		default n
-		help
-		Enable peer data transfer example.
-		Registers handlers for custom message IDs and echoes received data back to host.
-		Used by the host peer_data_transfer example to demonstrate bidirectional communication.
+		# 'slave to host' OR 'host to slave' data transfer example
+		config EXAMPLE_PEER_DATA_TRANSFER
+			bool "Peer Data Transfer Example"
+			depends on ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
+			default n
+			help
+			Enable peer data transfer example.
+			Registers handlers for custom message IDs and echoes received data back to host.
+			Used by the host peer_data_transfer example to demonstrate bidirectional communication.
 
-	config ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP
-		bool "Automatic Light Sleep Example"
-		depends on ESP_HOSTED_HOST_POWER_SAVE_ENABLED
-		default y if ESP_HOSTED_LIGHT_SLEEP_ENABLE
-		help
-			Automatic light sleep triggered by host power save events.
+		# 'slave light sleep' activation upon 'host deep sleep'
+		config ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP
+			bool "Automatic Light Sleep Example"
+			depends on ESP_HOSTED_HOST_POWER_SAVE_ENABLED
+			default n if ESP_HOSTED_LIGHT_SLEEP_ENABLE
+			help
+				Automatic light sleep triggered by host power save events.
 
-			Integrates host_power_save + slave_light_sleep components.
-			Slave sleeps when host sleeps, wakes when host wakes.
+				Integrates host_power_save + slave_light_sleep components.
+				Slave sleeps when host sleeps, wakes when host wakes.
 
-			Disable to implement custom power management logic.
-			See example_light_sleep.c for integration pattern.
+				Disable to implement custom power management logic.
+				See example_light_sleep.c for integration pattern.
 
+		# 'mqtt' example on network split
 		config ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT
 			depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED
 			bool "MQTT client example"
-			default y
+			default n
 
 		menu "MQTT client config"
 			depends on ESP_HOSTED_COPROCESSOR_EXAMPLE_MQTT
@@ -1369,10 +1372,11 @@ menu "Example Configuration"
 
 		endmenu
 
+		# http client example for network split
 		config ESP_HOSTED_COPROCESSOR_EXAMPLE_HTTP_CLIENT
 			depends on ESP_HOSTED_NETWORK_SPLIT_ENABLED
 			bool "HTTP client example"
-			default y
+			default n
 
 		menu "HTTP client config"
 			depends on ESP_HOSTED_COPROCESSOR_EXAMPLE_HTTP_CLIENT

@@ -5,7 +5,6 @@ menu "Light Sleep Power Management"
 		depends on !PM_ENABLE
 	comment "  ✗ Enable: Component config → FreeRTOS → Kernel → Tickless Idle"
 		depends on !FREERTOS_USE_TICKLESS_IDLE
-	comment " "
 	comment "BLE + Light Sleep:"
 	comment "  ⚠️  BT enabled but MAC BB power down disabled!"
 		depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD
@@ -33,13 +32,38 @@ menu "Light Sleep Power Management"
 
 		config ESP_HOSTED_LIGHT_SLEEP_MIN_FREQ_MHZ
 			int "Minimum CPU frequency (MHz)"
-			default 10
-			range 10 240
+			default 10 if IDF_TARGET_ESP32
+			default 10 if IDF_TARGET_ESP32S2
+			default 10 if IDF_TARGET_ESP32S3
+			default 10 if IDF_TARGET_ESP32C2
+			default 10 if IDF_TARGET_ESP32C3
+			default 12 if IDF_TARGET_ESP32C5
+			default 10 if IDF_TARGET_ESP32C6
+			default 10 if IDF_TARGET_ESP32H2
+			range 10 240 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
+			range 10 80 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+			range 12 96 if IDF_TARGET_ESP32C5
 			help
 				CPU frequency when idle. Lower = more power saving.
-				10 MHz: ~3-5 mA, 40 MHz: ~5-8 mA, 80 MHz: ~10-15 mA
 
-		comment " "
+				Power consumption estimates (typical):
+				  10 MHz: ~3-5 mA
+				  40 MHz: ~5-8 mA
+				  80 MHz: ~10-15 mA
+
+				Supported frequency values and ranges by chipset:
+				  ESP32:    10-240 MHz (10, 20, 40, 80, 120, 160, 240)
+				  ESP32-S2: 10-240 MHz (10, 20, 40, 80, 120, 160, 240)
+				  ESP32-S3: 10-240 MHz (10, 20, 40, 80, 120, 160, 240)
+				  ESP32-C2: 10-80 MHz (10, 20, 40, 80)
+				  ESP32-C3: 10-240 MHz (10, 20, 40, 80, 160)
+				  ESP32-C5: 12-96 MHz (12, 24, 48, 96)
+				  ESP32-C6: 10-240 MHz (10, 20, 40, 80, 120, 160)
+				  ESP32-H2: 10-80 MHz (10, 20, 40, 80)
+
+				For minimal power consumption, use the lowest supported frequency
+				for your target chipset.
+
 		comment "Peripheral Powerdown (Max Power Saving):"
 		comment "  ✗ Enable: Host power save → Unload BUS driver during host sleep"
 			depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP

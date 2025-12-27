@@ -63,17 +63,20 @@ static void host_power_save_off_prepare_cb(void)
 		//ESP_EARLY_LOGW(TAG, "Failed to stop light sleep: %s", esp_err_to_name(ret));
 	}
 
-	/* Restart CLI if it was stopped due to peripheral powerdown */
-#if defined(CONFIG_PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP) && defined(CONFIG_ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN)
-	//ESP_EARLY_LOGI(TAG, "Restarting CLI (UART powered back up)");
-	esp_hosted_cli_start();
-#endif
 #endif
 }
 
 static void host_power_save_off_ready_cb(void)
 {
 	ESP_EARLY_LOGI(TAG, "==> Host power save off - device fully ready");
+
+	/* Restart CLI if it was stopped due to peripheral powerdown */
+	/* This happens here (after ready) to ensure UART is fully powered up */
+#if defined(CONFIG_PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP) && defined(CONFIG_ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN)
+	ESP_EARLY_LOGI(TAG, "Restarting CLI (UART now fully powered up)");
+	esp_hosted_cli_start();
+#endif
+
 	/* User can add custom post-wake initialization here:
 	 * - Restore application state
 	 * - Resume tasks

@@ -674,7 +674,7 @@ static int is_valid_sdio_rx_packet(uint8_t *rxbuff_a, uint16_t *len_a, uint16_t 
 
 	if (is_wakeup_pkt && len<1500) {
 		ESP_LOGI(TAG, "Host wakeup triggered, len: %u ", len);
-		ESP_HEXLOGW("Wakeup_pkt", rxbuff_a+offset, len, H_MIN(len,128));
+		ESP_HEXLOGD("Wakeup_pkt", rxbuff_a+offset, len, H_MIN(len,128));
 	}
 
 	if ((!len) ||
@@ -1019,7 +1019,7 @@ static void sdio_read_task(void const* pvParameters)
 			ESP_LOGE(TAG, "failed to read registers");
 
 			SDIO_DRV_UNLOCK();
-			ESP_LOGI(TAG, "Host is reseting itself, to avoid any sdio race condition");
+			ESP_LOGI(TAG, "Host is resetting itself, to avoid any sdio race condition");
 			g_h.funcs->_h_restart_host();
 			continue;
 		}
@@ -1034,7 +1034,7 @@ static void sdio_read_task(void const* pvParameters)
 			ESP_LOGE(TAG, "failed to read interrupt register");
 
 			SDIO_DRV_UNLOCK();
-			ESP_LOGI(TAG, "Host is reseting itself, to avoid any sdio race condition");
+			ESP_LOGI(TAG, "Host is resetting itself, to avoid any sdio race condition");
 			g_h.funcs->_h_restart_host();
 			continue;
 		}
@@ -1212,7 +1212,7 @@ static void sdio_process_rx_task(void const* pvParameters)
 			event = (struct esp_priv_event *) (buf_handle->payload);
 			ESP_LOGI(TAG, "Event type: 0x%x", event->event_type);
 			if (event->event_type != ESP_PRIV_EVENT_INIT) {
-				/* User can re-use this type of transaction */
+				/* User can reuse this type of transaction */
 				ESP_LOGW(TAG, "Not an ESP_PRIV_EVENT_INIT event: 0x%x", event->event_type);
 			}
 			ESP_LOGI(TAG, "Write thread started");
@@ -1246,6 +1246,10 @@ void *bus_init_internal(void)
 
 	int tx_queue_size = DEFAULT_TO_SLAVE_QUEUE_SIZE;
 	int rx_queue_size = DEFAULT_FROM_SLAVE_QUEUE_SIZE;
+
+	// reset sdio tx and rx counters
+	sdio_tx_buf_count = 0;
+	sdio_rx_byte_count = 0;
 
 	struct esp_hosted_sdio_config *psdio_config;
 
@@ -1482,7 +1486,22 @@ int ensure_slave_bus_ready(void *bus_handle)
 	if (esp_hosted_woke_from_power_save()) {
 		ESP_LOGI(TAG, "Host woke up from power save");
 
+		/* Reset double buffer state after wakeup to prevent race conditions */
+		/* The sdio_data_to_rx_buf_task might still be processing old data from before sleep */
+		/* Wait a bit to ensure any pending processing completes */
 		g_h.funcs->_h_msleep(500);
+		/* Reset double buffer state - this ensures clean state after wakeup */
+		double_buf.read_index = -1;
+		double_buf.write_index = 0;
+		double_buf.read_data_len = 0;
+		/* Clear any pending semaphore signals */
+		if (sem_double_buf_xfer_data) {
+			/* Drain semaphore to ensure clean state */
+			while (g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, 0) == ESP_OK) {
+				/* Drain all pending signals */
+			}
+		}
+
 		set_transport_state(TRANSPORT_RX_ACTIVE);
 
 		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
@@ -1493,7 +1512,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 			stop_host_power_save();
 		}
 	} else {
-		/* Always reset slave on host bootup */
+		/* Always reset slave on host boot up */
 		ESP_LOGW(TAG, "Reset slave using GPIO[%u]", reset_pin.pin);
 		transport_gpio_reset(bus_handle, reset_pin);
 

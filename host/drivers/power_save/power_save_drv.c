@@ -24,10 +24,18 @@ static uint8_t power_save_drv_init_done;
 
 /* Add state tracking */
 static volatile bool reset_in_progress = false;
+static volatile uint32_t last_gpio_event_time = 0;
+static volatile uint32_t last_wakeup_time = 0;
 #if H_HOST_PS_ALLOWED && H_HOST_WAKEUP_GPIO != -1
 /* ISR handler for wakeup GPIO */
 static void IRAM_ATTR wakeup_gpio_isr_handler(void* arg)
 {
+	uint32_t current_time = g_h.funcs->_h_get_time_ms();  // ms
+
+	/* Ignore ISR triggers immediately after wake-up to prevent glitches */
+	if (current_time - last_wakeup_time < 500) {  // 500ms grace period after wake-up
+		return;
+	}
 
 	if (!power_save_on && !reset_in_progress) {
 
@@ -36,7 +44,7 @@ static void IRAM_ATTR wakeup_gpio_isr_handler(void* arg)
 		/* Double check GPIO level and state before reset */
 		if (current_level == H_HOST_WAKEUP_GPIO_LEVEL) {
 			ESP_EARLY_LOGW(TAG, "Slave reset detected via wakeup GPIO, level: %d", current_level);
-			ESP_EARLY_LOGE(TAG, "------------------ Reseting host -----------------");
+			ESP_EARLY_LOGE(TAG, "------------------ Resetting host -----------------");
 
 			/* Set flag to prevent re-entry */
 			reset_in_progress = true;
@@ -312,6 +320,7 @@ int stop_host_power_save(void)
 	}
 
 	power_save_on = 0;
+	last_wakeup_time = g_h.funcs->_h_get_time_ms();  // Record wake-up time
 #endif
 
 	return 0;

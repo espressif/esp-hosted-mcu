@@ -111,7 +111,8 @@ static uint32_t hb_num;
 /* FreeRTOS event group to signal when we are connected*/
 static esp_event_handler_instance_t instance_any_id = NULL;
 #ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
-static esp_event_handler_instance_t instance_ip;
+static esp_event_handler_instance_t instance_ip_got = NULL;
+static esp_event_handler_instance_t instance_ip_lost = NULL;
 extern volatile uint8_t station_got_ip;
 static rpc_dhcp_dns_status_t s2h_dhcp_dns = {0};
 
@@ -743,7 +744,7 @@ static esp_err_t configure_heartbeat(bool enable, int hb_duration)
 	int duration = hb_duration ;
 
 	if (!enable) {
-		ESP_LOGI(TAG, "Stop Heatbeat");
+		ESP_LOGI(TAG, "Stop Heartbeat");
 		stop_heartbeat();
 
 	} else {
@@ -1150,18 +1151,25 @@ esp_err_t esp_hosted_register_wifi_event_handlers(void)
 #ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
 	int ret2, ret3;
 
-	esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &instance_any_id);
+	if (instance_ip_got) {
+		esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_ip_got);
+		instance_ip_got = NULL;
+	}
 	ret2 = esp_event_handler_instance_register(IP_EVENT,
 				IP_EVENT_STA_GOT_IP,
 				&event_handler_ip,
 				NULL,
-				&instance_ip);
-	esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_LOST_IP, &instance_any_id);
+				&instance_ip_got);
+
+	if (instance_ip_lost) {
+		esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_LOST_IP, instance_ip_lost);
+		instance_ip_lost = NULL;
+	}
 	ret3 = esp_event_handler_instance_register(IP_EVENT,
 				IP_EVENT_STA_LOST_IP,
 				&event_handler_ip,
 				NULL,
-				&instance_ip);
+				&instance_ip_lost);
 
 	if (ret2 || ret3) {
 		ESP_LOGW(TAG, "Failed to register IP events");
