@@ -403,20 +403,27 @@ static int esp_hosted_cli_register_cmds(void)
 
 
 #ifdef CONFIG_ESP_HOSTED_CLI_NEW_INSTANCE
+
+static esp_console_repl_t *repl = NULL;
+
+static void esp_hosted_cli_deregister_cmds(void)
+{
+	/* esp_console_deinit() will clear all commands, so no explicit deregistration needed */
+	/* This function exists for consistency and future use if needed */
+}
+
 int esp_hosted_cli_start(void)
 {
-	static int cli_started;
-	if (cli_started) {
+	if (repl) {
 		return 0;
 	}
-
-	esp_console_repl_t *repl = NULL;
 	esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
   #ifdef CONFIG_ESP_HOSTED_COPROCESSOR
 	repl_config.prompt = "coprocessor> ";
   #elif defined(H_ESP_HOSTED_HOST)
 	repl_config.prompt = "host> ";
   #endif
+
 	esp_console_register_help_command();
 	esp_hosted_cli_register_cmds();
 
@@ -435,13 +442,28 @@ int esp_hosted_cli_start(void)
     #error Unsupported console type
   #endif
 	ESP_ERROR_CHECK(esp_console_start_repl(repl));
-	cli_started = 1;
 	return 0;
 }
+
+void esp_hosted_cli_stop(void)
+{
+	if (repl) {
+		esp_console_stop_repl(repl);
+		esp_hosted_cli_deregister_cmds();
+		esp_console_deinit();
+		repl = NULL;
+	}
+}
+
 #else
 int esp_hosted_cli_start(void)
 {
 	return esp_hosted_cli_register_cmds();
+}
+
+void esp_hosted_cli_stop(void)
+{
+	/* Old CLI implementation - no stop needed */
 }
 #endif
 

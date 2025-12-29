@@ -56,6 +56,7 @@ typedef struct {
           /* Timer */
 /* 32 */  int    (*_h_timer_stop)(void *timer_handle);
 /* 33 */  void*  (*_h_timer_start)(const char *name, int duration_ms, int type, void (*timeout_handler)(void *), void *arg);
+/* 34 */  uint64_t (*_h_get_time_ms)(void);  /* Get current time in milliseconds */
 
           /* Mempool */
 #ifdef H_USE_MEMPOOL

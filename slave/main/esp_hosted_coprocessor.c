@@ -44,7 +44,12 @@
 #include "esp_hosted_coprocessor_fw_ver.h"
 #include "esp_hosted_cli.h"
 #include "host_power_save.h"
+#ifdef CONFIG_EXAMPLE_PEER_DATA_TRANSFER
 #include "example_peer_data_transfer.h"
+#endif
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP
+#include "example_light_sleep.h"
+#endif
 
 #if CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
     #include "nw_split_router.h"
@@ -826,7 +831,6 @@ static void power_save_alert_task(void *pvParameters)
     host_power_save_alert(event);
 	/* The task deletes itself after running. */
 	if (event == ESP_POWER_SAVE_OFF) {
-		sleep(2);
 		if (host_reset_sem) {
 			xSemaphoreGive(host_reset_sem);
 		}
@@ -1094,13 +1098,6 @@ static int connect_sta(void)
 }
 #endif
 
-static void host_wakeup_callback(void)
-{
-#if H_HOST_PS_ALLOWED
-	/* Interrupt context */
-#endif
-}
-
 esp_err_t esp_hosted_coprocessor_init(void)
 {
 	static bool esp_hosted_rcp_init_done = false;
@@ -1222,7 +1219,6 @@ esp_err_t esp_hosted_coprocessor_init(void)
 #endif
 
 	wakeup_host_mandate(100);
-	host_power_save_init(host_wakeup_callback);
 
 	assert(xTaskCreate(host_reset_task, "host_reset_task" ,
 			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL ,
@@ -1255,6 +1251,10 @@ void app_main(void)
 
 #ifdef CONFIG_EXAMPLE_PEER_DATA_TRANSFER
 	example_peer_data_transfer_init();
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_EXAMPLE_LIGHT_SLEEP
+	example_light_sleep_init();
 #endif
 }
 #endif

@@ -29,6 +29,7 @@
 #define SDIO_RX_BUFFER_SIZE              MAX_TRANSPORT_BUF_SIZE
 #define SDIO_NUM_RX_BUFFERS              CONFIG_ESP_SDIO_RX_Q_SIZE
 static uint8_t sdio_slave_rx_buffer[SDIO_NUM_RX_BUFFERS][SDIO_RX_BUFFER_SIZE];
+static sdio_slave_buf_handle_t sdio_rx_buf_handles[SDIO_NUM_RX_BUFFERS];
 
 #define SDIO_MEMPOOL_NUM_BLOCKS         SDIO_DRIVER_TX_QUEUE_SIZE+2
 static struct hosted_mempool * buf_mp_tx_g;
@@ -42,6 +43,8 @@ static uint8_t hosted_constructs_created = 0;
 static SemaphoreHandle_t sdio_rx_sem;
 static QueueHandle_t sdio_rx_queue[MAX_PRIORITY_QUEUES];
 static SemaphoreHandle_t sdio_send_queue_sem = NULL; // to count number of Tx bufs in IDF SDIO driver
+static TaskHandle_t sdio_rx_task_handle = NULL;
+static TaskHandle_t sdio_tx_done_task_handle = NULL;
 #endif
 
 #define SDIO_SLAVE_TO_HOST_INT_BIT7     7
@@ -179,31 +182,9 @@ int interface_remove_driver()
 
 IRAM_ATTR static void event_cb(uint8_t val)
 {
-	if (val == ESP_RESET) {
-		/* Force power save off state when host resets */
-		host_power_save_alert(ESP_POWER_SAVE_OFF);
-		sdio_reset(&if_handle_g);
-		return;
-	}
-
-	if (val == ESP_OPEN_DATA_PATH) {
-		/* Also force power save off on data path open */
-		host_power_save_alert(ESP_POWER_SAVE_OFF);
-		sdio_reset(&if_handle_g);
-	}
-
-	if (val == ESP_POWER_SAVE_OFF) {
-		//sdio_reset(&if_handle_g);
-		host_power_save_alert(ESP_POWER_SAVE_OFF);
-		sdio_reset(&if_handle_g);
-	}
 
 	if (context.event_handler) {
 		context.event_handler(val);
-	}
-
-	if (val == ESP_POWER_SAVE_ON) {
-		sdio_reset(&if_handle_g);
 	}
 }
 
@@ -329,7 +310,6 @@ static interface_handle_t * sdio_init(void)
 	}
 
 	esp_err_t ret = ESP_OK;
-	sdio_slave_buf_handle_t handle = {0};
 	sdio_slave_config_t config = {
 #if CONFIG_ESP_SDIO_STREAMING_MODE
 		.sending_mode       = SDIO_SLAVE_SEND_STREAM,
@@ -385,12 +365,11 @@ static interface_handle_t * sdio_init(void)
 		return NULL;
 	}
 
-
 	for (int i = 0; i < SDIO_NUM_RX_BUFFERS; i++) {
-		handle = sdio_slave_recv_register_buf(sdio_slave_rx_buffer[i]);
-		assert(handle != NULL);
+		sdio_rx_buf_handles[i] = sdio_slave_recv_register_buf(sdio_slave_rx_buffer[i]);
+		assert(sdio_rx_buf_handles[i] != NULL);
 
-		ret = sdio_slave_recv_load_buf(handle);
+		ret = sdio_slave_recv_load_buf(sdio_rx_buf_handles[i]);
 		if (ret != ESP_OK) {
 			sdio_slave_deinit();
 			return NULL;
@@ -424,14 +403,19 @@ static interface_handle_t * sdio_init(void)
 	if_handle_g.state = ACTIVE;
 
 #if !SIMPLIFIED_SDIO_SLAVE
-	assert(xTaskCreate(sdio_rx_task, "sdio_rx_task" ,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
+	/* Create tasks only if they don't exist (preserve across init/deinit cycles) */
+	if (sdio_rx_task_handle == NULL) {
+		assert(xTaskCreate(sdio_rx_task, "sdio_rx_task" ,
+				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
+				CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, &sdio_rx_task_handle) == pdTRUE);
+	}
 
-	// task to clean up after doing sdio tx
-	assert(xTaskCreate(sdio_tx_done_task, "sdio_tx_done_task" ,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY+1, NULL) == pdTRUE);
+	/* task to clean up after doing sdio tx */
+	if (sdio_tx_done_task_handle == NULL) {
+		assert(xTaskCreate(sdio_tx_done_task, "sdio_tx_done_task" ,
+				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
+				CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY+1, &sdio_tx_done_task_handle) == pdTRUE);
+	}
 #endif
 
 	return &if_handle_g;
@@ -831,6 +815,32 @@ static void sdio_deinit_task(void *pvParameters)
 
 	ESP_LOGI(TAG, "Deinitializing SDIO interface");
 
+#if !SIMPLIFIED_SDIO_SLAVE
+	/* Delete tasks before deinitializing SDIO to prevent memory leak */
+	if (sdio_rx_task_handle) {
+		vTaskDelete(sdio_rx_task_handle);
+		sdio_rx_task_handle = NULL;
+	}
+	if (sdio_tx_done_task_handle) {
+		vTaskDelete(sdio_tx_done_task_handle);
+		sdio_tx_done_task_handle = NULL;
+	}
+	/* Give tasks time to exit */
+	vTaskDelay(pdMS_TO_TICKS(50));
+#endif
+
+	/* Unregister all RX buffers BEFORE stopping SDIO (stop may invalidate handles) */
+	for (int i = 0; i < SDIO_NUM_RX_BUFFERS; i++) {
+		if (sdio_rx_buf_handles[i]) {
+			ret = sdio_slave_recv_unregister_buf(sdio_rx_buf_handles[i]);
+			/* ESP_ERR_INVALID_ARG means buffer already unregistered/invalid - ignore */
+			if (ret != ESP_OK && ret != ESP_ERR_INVALID_ARG) {
+				ESP_LOGW(TAG, "Failed to unregister RX buffer %d: 0x%x", i, ret);
+			}
+			sdio_rx_buf_handles[i] = NULL;
+		}
+	}
+
 	/* First stop SDIO to prevent new operations */
 	sdio_slave_stop();
 
@@ -854,8 +864,9 @@ static void sdio_deinit_task(void *pvParameters)
 	/* Reset the SDIO slave peripheral */
 	sdio_slave_reset();
 
-	/* Now try to clean up buffers with timeout */
+	/* Now try to clean up TX buffers with timeout */
 	int retry = 3;
+	int tx_bufs_cleaned = 0;
 	while (retry--) {
 		sdio_slave_buf_handle_t buf_handle = NULL;
 		ret = sdio_slave_send_get_finished(&buf_handle, 10); // 10ms timeout
@@ -876,8 +887,10 @@ static void sdio_deinit_task(void *pvParameters)
 		if (buf_handle) {
 			ret = sdio_slave_recv_unregister_buf(buf_handle);
 			ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
+			tx_bufs_cleaned++;
 		}
 	}
+	//ESP_LOGI(TAG, "Cleaned up %d TX buffers", tx_bufs_cleaned);
 
 	/* Final deinit */
 	sdio_slave_deinit();

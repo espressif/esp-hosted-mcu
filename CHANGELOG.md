@@ -1,14 +1,23 @@
 # Changelog
 
+## 2.8.4
+
+## Feature: Slave Auto Light sleep
+- Auto Invoked when host triggers deep sleep
+- Example implementation in example_light_sleep.c
+
+## Known issue
+There is memory leak when sdio driver unload is selected - working on the fix
+
 ## 2.8.3
 
 Add up mutex protection for callback array for Peer Data Transfer
 
 ## 2.8.2
 
-### Ammend Peer Data Transfer example with custom msg id
+### Amend Peer Data Transfer example with custom msg id
 
-Ammend [Peer Data Transfer Example](https://components.espressif.com/components/espressif/esp_hosted/examples/host_peer_data_transfer):
+Amend [Peer Data Transfer Example](https://components.espressif.com/components/espressif/esp_hosted/examples/host_peer_data_transfer):
 
 Features:
 - User can register callback-based dispatch for their own msg ids, both at host and slave
@@ -368,7 +377,7 @@ Minor fixes in Slave OTA example
 
 - Fixed SPI Full Duplex startup sequence
 - Fixed incorrect Handshake GPIO assignment for C5 on Module
-- Added valid CPU freqencies in ITWT Example for H2
+- Added valid CPU frequencies in ITWT Example for H2
 
 ## 2.2.3
 

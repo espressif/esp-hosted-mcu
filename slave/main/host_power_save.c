@@ -20,18 +20,16 @@ static char *TAG = "host_ps";
 
 #if H_HOST_PS_ALLOWED
 
+  static host_power_save_config_t hps_config = HOST_POWER_SAVE_DEFAULT_CONFIG_DISABLED();
   uint8_t power_save_on;
 
   #if H_HOST_PS_DEEP_SLEEP_ALLOWED
 	SemaphoreHandle_t wakeup_sem;
 
-	#define GPIO_HOST_WAKEUP (H_HOST_WAKE_UP_GPIO)
-
-	/* Assuming wakup gpio neg 'level' interrupt */
-	#define set_host_wakeup_gpio() gpio_set_level(GPIO_HOST_WAKEUP, 1)
-	#define reset_host_wakeup_gpio() gpio_set_level(GPIO_HOST_WAKEUP, 0)
+	/* Wakeup GPIO control macros */
+	#define set_host_wakeup_gpio() gpio_set_level(hps_config.host_wakeup_gpio, hps_config.host_wakeup_level)
+	#define reset_host_wakeup_gpio() gpio_set_level(hps_config.host_wakeup_gpio, !hps_config.host_wakeup_level)
   #endif
-  static void (*host_wakeup_cb)(void);
 #endif
 
 extern interface_context_t *if_context;
@@ -122,30 +120,67 @@ end:
 	return wakup_needed;
 }
 
-int host_power_save_init(void (*fn_host_wakeup_cb)(void))
+int host_power_save_init(host_power_save_config_t *config)
 {
 #if H_HOST_PS_ALLOWED
+	if (config) {
+		memcpy(&hps_config, config, sizeof(host_power_save_config_t));
+	} else {
+		hps_config = (host_power_save_config_t){
+			.enable = 1,
+			.host_wakeup_gpio = H_HOST_WAKE_UP_GPIO,
+			.host_wakeup_level = H_HOST_WAKEUP_GPIO_LEVEL,
+			.callbacks = {0}
+		};
+	}
+
+	if (!hps_config.enable) {
+		ESP_LOGI(TAG, "Host power save disabled via config");
+		return 0;
+	}
 
 #if H_HOST_PS_DEEP_SLEEP_ALLOWED
-	assert(GPIO_HOST_WAKEUP != -1);
+	/* Configure GPIO from config or use Kconfig default */
+	assert(hps_config.host_wakeup_gpio != -1);
+
 	/* Configuration for the OOB line */
 	gpio_config_t io_conf={
 		.intr_type=GPIO_INTR_DISABLE,
 		.mode=GPIO_MODE_OUTPUT,
-		.pin_bit_mask=(1ULL<<GPIO_HOST_WAKEUP)
+		.pin_bit_mask=(1ULL<<hps_config.host_wakeup_gpio)
 	};
 
-	ESP_LOGI(TAG, "Host wakeup: IO%u, level:%u", GPIO_HOST_WAKEUP, gpio_get_level(GPIO_HOST_WAKEUP));
+	ESP_LOGI(TAG, "Host wakeup: IO%u, level:%u (configured)",
+			hps_config.host_wakeup_gpio, gpio_get_level(hps_config.host_wakeup_gpio));
 	gpio_config(&io_conf);
 	reset_host_wakeup_gpio();
-	gpio_pulldown_en(GPIO_HOST_WAKEUP);
-	ESP_LOGI(TAG, "Host wakeup: IO%u, level:%u", GPIO_HOST_WAKEUP, gpio_get_level(GPIO_HOST_WAKEUP));
 
-	assert(wakeup_sem = xSemaphoreCreateBinary());
-	xSemaphoreGive(wakeup_sem);
+	/* Configure pull based on wakeup level */
+	if (hps_config.host_wakeup_level) {
+		gpio_pulldown_en(hps_config.host_wakeup_gpio);
+	} else {
+		gpio_pullup_en(hps_config.host_wakeup_gpio);
+	}
+
+	ESP_LOGI(TAG, "Host wakeup: IO%u, level:%u (active %s)",
+			hps_config.host_wakeup_gpio, gpio_get_level(hps_config.host_wakeup_gpio),
+			hps_config.host_wakeup_level ? "HIGH" : "LOW");
+
+	if (!wakeup_sem) {
+		assert(wakeup_sem = xSemaphoreCreateBinary());
+		xSemaphoreGive(wakeup_sem);
+	}
 #endif
 
-	host_wakeup_cb = fn_host_wakeup_cb;
+	/* Store callbacks from config */
+	if (hps_config.callbacks.host_power_save_on_prepare_cb ||
+		hps_config.callbacks.host_power_save_on_ready_cb ||
+		hps_config.callbacks.host_power_save_off_prepare_cb ||
+		hps_config.callbacks.host_power_save_off_ready_cb) {
+		ESP_LOGI(TAG, "Host power save callbacks registered");
+	} else {
+		ESP_LOGI(TAG, "Host power save init without callbacks (manual control)");
+	}
 #endif
 	return 0;
 }
@@ -161,9 +196,37 @@ int host_power_save_deinit(void)
 		wakeup_sem = NULL;
 	}
 #endif
-	host_wakeup_cb = NULL;
+	/* Clear callbacks */
+	memset(&hps_config.callbacks, 0, sizeof(hps_config.callbacks));
 #endif
 	return 0;
+}
+
+int host_power_save_set_callbacks(host_power_save_callbacks_t *new_callbacks)
+{
+#if H_HOST_PS_ALLOWED
+	if (!new_callbacks) {
+		ESP_LOGE(TAG, "NULL callbacks provided");
+		return -1;
+	}
+
+	/* Warn if replacing existing callbacks */
+	if (hps_config.callbacks.host_power_save_on_prepare_cb ||
+		hps_config.callbacks.host_power_save_on_ready_cb ||
+		hps_config.callbacks.host_power_save_off_prepare_cb ||
+		hps_config.callbacks.host_power_save_off_ready_cb) {
+		ESP_LOGW(TAG, "Replacing existing host power save callbacks");
+	}
+
+	/* Replace callbacks */
+	memcpy(&hps_config.callbacks, new_callbacks, sizeof(hps_config.callbacks));
+	ESP_LOGI(TAG, "Host power save callbacks updated");
+
+	return 0;
+#else
+	ESP_LOGE(TAG, "Host power save not enabled");
+	return -1;
+#endif
 }
 
 #define GET_CURR_TIME_IN_MS() esp_timer_get_time()/100
@@ -173,7 +236,7 @@ int host_power_save_deinit(void)
 static void clean_wakeup_gpio_timer_cb(void* arg)
 {
 	reset_host_wakeup_gpio();
-	ESP_EARLY_LOGI(TAG, "Cleared wakeup gpio, IO%u", GPIO_HOST_WAKEUP);
+	ESP_EARLY_LOGI(TAG, "Cleared wakeup gpio, IO%u", hps_config.host_wakeup_gpio);
 }
 #endif
 
@@ -208,7 +271,7 @@ static int trigger_host_wakeup(uint32_t timeout_ms)
 			esp_timer_delete(timer);
 			break;
 		}
-		vTaskDelay(100);
+		vTaskDelay(10);
 
 		if (wakeup_sem) {
 			/* wait for host resume */
@@ -261,6 +324,11 @@ int wakeup_host(uint32_t timeout_ms)
 		return 1;
 	}
 
+	if (!hps_config.enable) {
+		ESP_LOGW(TAG, "%s: host_power_save_init never called, ignore");
+		return 1;
+	}
+
 	if (!if_handle || !if_context) {
 		ESP_LOGE(TAG, "Failed to wakeup, if_handle or if_context is NULL");
 		return 0;
@@ -279,7 +347,7 @@ int wakeup_host(uint32_t timeout_ms)
 		}
 	}
 
-	if (power_save_on) {
+	if (is_host_power_saving()) {
 		wakeup_success = trigger_host_wakeup(timeout_ms);
 		ESP_LOGI(TAG, "host %s woke up", is_host_power_saving() ? "not" : "");
 	}
@@ -297,12 +365,29 @@ int host_power_save_alert(uint32_t ps_evt)
 	/* Running in interrupt context - Keep it short and simple */
 	BaseType_t do_yeild = pdFALSE;
 
+	if (!hps_config.enable) {
+		ESP_EARLY_LOGW(TAG, "%s: host_power_save_init never called, ignore");
+		return 0;
+	}
+
 	if (ESP_POWER_SAVE_ON == ps_evt) {
 		ESP_EARLY_LOGI(TAG, "Host Sleep");
+
+		/* USER CALLBACK: Prepare to enter power save */
+		if (hps_config.callbacks.host_power_save_on_prepare_cb) {
+			hps_config.callbacks.host_power_save_on_prepare_cb();
+		}
+
   #if H_HOST_PS_DEEP_SLEEP_ALLOWED
 		if (wakeup_sem) {
 			/* Host sleeping */
-			xSemaphoreTakeFromISR(wakeup_sem, &do_yeild);
+			/* Check if we're in ISR context */
+			if (xPortInIsrContext()) {
+				xSemaphoreTakeFromISR(wakeup_sem, &do_yeild);
+			} else {
+				/* Task context - use regular take with no timeout (should succeed immediately) */
+				xSemaphoreTake(wakeup_sem, 0);
+			}
 		}
   #endif
 		power_save_on = 1;
@@ -320,23 +405,46 @@ int host_power_save_alert(uint32_t ps_evt)
 				/* if_handle->state would be changed to DEINIT */
 			}
 		}
+
+		/* USER CALLBACK: Power save active, device ready */
+		if (hps_config.callbacks.host_power_save_on_ready_cb) {
+			hps_config.callbacks.host_power_save_on_ready_cb();
+		}
+
 	} else if ((ESP_POWER_SAVE_OFF == ps_evt) || (ESP_OPEN_DATA_PATH == ps_evt)) {
 		ESP_EARLY_LOGI(TAG, "Host Awake, transport state: %u", if_handle->state);
 
-		power_save_on = 0;
-		if (host_wakeup_cb) {
-			host_wakeup_cb();
+		/* USER CALLBACK: Prepare to exit power save */
+		if (hps_config.callbacks.host_power_save_off_prepare_cb) {
+			hps_config.callbacks.host_power_save_off_prepare_cb();
 		}
+
+		power_save_on = 0;
+
   #if H_HOST_PS_DEEP_SLEEP_ALLOWED
 		if (wakeup_sem) {
-			xSemaphoreGiveFromISR(wakeup_sem, &do_yeild);
+			ESP_EARLY_LOGI(TAG, "Giving wakeup semaphore");
+			/* Check if we're in ISR context */
+			if (xPortInIsrContext()) {
+				xSemaphoreGiveFromISR(wakeup_sem, &do_yeild);
+			} else {
+				/* Task context - use regular give */
+				xSemaphoreGive(wakeup_sem);
+			}
 		}
   #endif
+
+		/* USER CALLBACK: Power save off, device ready */
+		if (hps_config.callbacks.host_power_save_off_ready_cb) {
+			hps_config.callbacks.host_power_save_off_ready_cb();
+		}
+
 	} else {
 		ESP_EARLY_LOGI(TAG, "Ignore event[%u]", ps_evt);
 	}
 
-	if (do_yeild == pdTRUE) {
+	/* Only yield from ISR if we're actually in ISR context */
+	if (do_yeild == pdTRUE && xPortInIsrContext()) {
 		portYIELD_FROM_ISR();
 	}
 #endif

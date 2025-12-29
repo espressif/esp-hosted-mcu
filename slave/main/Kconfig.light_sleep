@@ -1,0 +1,100 @@
+menu "Light Sleep Power Management"
+
+	comment "Prerequisites:"
+	comment "  ✗ Enable: Component config → Power Management"
+		depends on !PM_ENABLE
+	comment "  ✗ Enable: Component config → FreeRTOS → Kernel → Tickless Idle"
+		depends on !FREERTOS_USE_TICKLESS_IDLE
+	comment "BLE + Light Sleep:"
+	comment "  ⚠️  BT enabled but MAC BB power down disabled!"
+		depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD
+	comment "      Enable: PHY → Power Management → MAC BB power down"
+		depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD
+	comment "      (CONFIG_ESP_PHY_MAC_BB_PD)"
+		depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD
+
+	config ESP_HOSTED_LIGHT_SLEEP_ENABLE
+		bool "Enable light sleep power management"
+		depends on PM_ENABLE && FREERTOS_USE_TICKLESS_IDLE
+		depends on !BT_ENABLED || ESP_PHY_MAC_BB_PD
+		default n
+		help
+			Enable light sleep APIs for slave device.
+
+			APIs: slave_light_sleep_init/start/stop()
+			Power: ~1-10 mA (vs ~50-100 mA active), Wake: ~1-5 ms
+
+			BLE users: Requires MAC BB power down
+			(PHY → Power Management → MAC BB power down)
+
+	menu "Light Sleep Parameters"
+		depends on ESP_HOSTED_LIGHT_SLEEP_ENABLE
+
+		config ESP_HOSTED_LIGHT_SLEEP_MIN_FREQ_MHZ
+			int "Minimum CPU frequency (MHz)"
+			default 10 if IDF_TARGET_ESP32
+			default 10 if IDF_TARGET_ESP32S2
+			default 10 if IDF_TARGET_ESP32S3
+			default 10 if IDF_TARGET_ESP32C2
+			default 10 if IDF_TARGET_ESP32C3
+			default 12 if IDF_TARGET_ESP32C5
+			default 10 if IDF_TARGET_ESP32C6
+			default 10 if IDF_TARGET_ESP32H2
+			range 10 240 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
+			range 10 80 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+			range 12 96 if IDF_TARGET_ESP32C5
+			help
+				CPU frequency when idle. Lower = more power saving.
+
+				Power consumption estimates (typical):
+				  10 MHz: ~3-5 mA
+				  40 MHz: ~5-8 mA
+				  80 MHz: ~10-15 mA
+
+				Supported frequency values and ranges by chipset:
+				  ESP32:    10-240 MHz (10, 20, 40, 80, 120, 160, 240)
+				  ESP32-S2: 10-240 MHz (10, 20, 40, 80, 120, 160, 240)
+				  ESP32-S3: 10-240 MHz (10, 20, 40, 80, 120, 160, 240)
+				  ESP32-C2: 10-80 MHz (10, 20, 40, 80)
+				  ESP32-C3: 10-240 MHz (10, 20, 40, 80, 160)
+				  ESP32-C5: 12-96 MHz (12, 24, 48, 96)
+				  ESP32-C6: 10-240 MHz (10, 20, 40, 80, 120, 160)
+				  ESP32-H2: 10-80 MHz (10, 20, 40, 80)
+
+				For minimal power consumption, use the lowest supported frequency
+				for your target chipset.
+
+		comment "Peripheral Powerdown (Max Power Saving):"
+		comment "  ✗ Enable: Host power save → Unload BUS driver during host sleep"
+			depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP
+		comment "  ✗ Enable: Component config → Power Management → Power down Digital Peripheral"
+			depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+
+		config ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN
+			bool "Power down peripherals (disables UART console)"
+			depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+			default n
+			help
+				Max power saving (~1-3 mA). UART console disabled during sleep.
+				Requires: Bus driver unload + ESP-IDF PM peripheral powerdown
+				Use for production/battery apps only.
+
+#		config ESP_HOSTED_LIGHT_SLEEP_GPIO_WAKEUP
+#			bool "Enable GPIO wakeup"
+#			default y
+#			help
+#				Allow GPIO interrupts to wake from light sleep.
+#				Includes host wakeup GPIO. Fast wake (~1-5 ms).
+
+#		config ESP_HOSTED_LIGHT_SLEEP_MAX_DURATION_MS
+#			int "Max sleep duration (ms, 0=unlimited)"
+#			default 0
+#			range 0 60000
+#			help
+#				Max time in light sleep before forced wake.
+#				0=unlimited (recommended), 100-500=WiFi beacon monitor.
+
+	endmenu
+
+endmenu
+
