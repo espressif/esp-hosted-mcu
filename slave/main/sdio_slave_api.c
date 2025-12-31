@@ -758,17 +758,21 @@ static int sdio_read(interface_handle_t *if_handle, interface_buffer_handle_t *b
 }
 #endif /* !SIMPLIFIED_SDIO_SLAVE */
 
-static void sdio_reset_task(void *pvParameters)
+static esp_err_t sdio_reset(interface_handle_t *handle)
 {
-	interface_handle_t *handle = (interface_handle_t *)pvParameters;
 	esp_err_t ret = ESP_OK;
+
+	if (handle->state >= DEACTIVE) {
+		handle->state = DEACTIVE;
+		return ESP_OK;
+	}
 
 	sdio_slave_stop();
 
 	ret = sdio_slave_reset();
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to reset SDIO slave: %d", ret);
-		goto exit;
+		return ret;
 	}
 
 	/* ESP-Hosted uses bit6 and bit 7 internal use, rest bits free */
@@ -785,42 +789,33 @@ static void sdio_reset_task(void *pvParameters)
 	ret = sdio_slave_start();
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to start SDIO slave: %d", ret);
-		goto exit;
+		return ret;
 	}
 
-exit:
 	handle->state = ACTIVE;
-	vTaskDelete(NULL);
-}
-
-static esp_err_t sdio_reset(interface_handle_t *handle)
-{
-	if (handle->state >= DEACTIVE) {
-		handle->state = DEACTIVE;
-		return ESP_OK;
-	}
-
-	/* Create a task to handle SDIO reset */
-	xTaskCreate(sdio_reset_task, "sdio_reset",
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, handle,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL);
-
 	return ESP_OK;
 }
 
 #if H_PS_UNLOAD_BUS_WHILE_PS
-static void sdio_deinit_task(void *pvParameters)
+static void sdio_deinit(interface_handle_t *handle)
 {
 	esp_err_t ret = ESP_OK;
+
+	if (if_handle_g.state == DEINIT) {
+		ESP_LOGW(TAG, "SDIO already deinitialized");
+		return;
+	}
 
 	ESP_LOGI(TAG, "Deinitializing SDIO interface");
 
 #if !SIMPLIFIED_SDIO_SLAVE
-	/* Delete tasks before deinitializing SDIO to prevent memory leak */
+	ESP_LOGI(TAG, "Waiting for sdio_rx_task to exit");
 	if (sdio_rx_task_handle) {
 		vTaskDelete(sdio_rx_task_handle);
 		sdio_rx_task_handle = NULL;
 	}
+	ESP_LOGI(TAG, "sdio_rx_task: Exiting");
+	ESP_LOGI(TAG, "Waiting for sdio_tx_done_task to exit");
 	if (sdio_tx_done_task_handle) {
 		vTaskDelete(sdio_tx_done_task_handle);
 		sdio_tx_done_task_handle = NULL;
@@ -866,10 +861,9 @@ static void sdio_deinit_task(void *pvParameters)
 
 	/* Now try to clean up TX buffers with timeout */
 	int retry = 3;
-	int tx_bufs_cleaned = 0;
 	while (retry--) {
 		sdio_slave_buf_handle_t buf_handle = NULL;
-		ret = sdio_slave_send_get_finished(&buf_handle, 10); // 10ms timeout
+		ret = sdio_slave_send_get_finished((void**)&buf_handle, 10); // 10ms timeout
 		if (ret == ESP_ERR_TIMEOUT) {
 			ESP_LOGW(TAG, "Buffer cleanup timed out, retrying...");
 			continue;
@@ -885,34 +879,17 @@ static void sdio_deinit_task(void *pvParameters)
 #endif
 
 		if (buf_handle) {
-			ret = sdio_slave_recv_unregister_buf(buf_handle);
-			ESP_ERROR_CHECK_WITHOUT_ABORT(ret);
-			tx_bufs_cleaned++;
+			sdio_buffer_tx_free(buf_handle);
 		}
 	}
-	//ESP_LOGI(TAG, "Cleaned up %d TX buffers", tx_bufs_cleaned);
 
-	/* Final deinit */
 	sdio_slave_deinit();
 	if_handle_g.state = DEINIT;
 
 	ESP_LOGI(TAG, "SDIO interface deinitialized");
-	vTaskDelete(NULL);
 }
-#endif
-
+#else
 static void sdio_deinit(interface_handle_t *handle)
 {
-#if H_PS_UNLOAD_BUS_WHILE_PS
-	if (if_handle_g.state == DEINIT) {
-		ESP_LOGW(TAG, "SDIO already deinitialized");
-		return;
-	}
-	if_handle_g.state = DEINIT;
-
-	/* Create a task to handle SDIO deinitialization */
-	xTaskCreate(sdio_deinit_task, "sdio_deinit",
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, handle,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL);
-#endif
 }
+#endif

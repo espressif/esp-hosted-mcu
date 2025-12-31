@@ -228,7 +228,7 @@ esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb)
 	ESP_HEXLOGV("AP_Get", buffer, len, 32);
 
 #if 0
-	/* Only enable this is you want to avoid multi and bradcast
+	/* Only enable this is you want to avoid multi and broadcast
 	 * traffic to be reduced from stations to softap
 	 */
 	uint8_t * ap_buf = buffer;
@@ -873,12 +873,8 @@ int event_handler(uint8_t val)
 			break;
 
 		case ESP_POWER_SAVE_OFF:
-			//if (if_handle && if_handle->state >= DEACTIVE) {
-				datapath = 1;
-				if_handle->state = ACTIVE;
-			/*} else {
-				ESP_EARLY_LOGI(TAG, "Failed to set state to ACTIVE");
-			}*/
+			datapath = 1;
+			if_handle->state = ACTIVE;
 			xTaskCreate(power_save_alert_task, "ps_alert_task", 3072, (void *)ESP_POWER_SAVE_OFF, tskIDLE_PRIORITY + 5, NULL);
 			break;
 	}
@@ -1167,14 +1163,14 @@ esp_err_t esp_hosted_coprocessor_init(void)
 	/* Endpoint for control command responses */
 	if (protocomm_add_endpoint(pc_pserial, RPC_EP_NAME_RSP,
 				data_transfer_handler, NULL) != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to add enpoint");
+		ESP_LOGE(TAG, "Failed to add endpoint");
 		return ESP_FAIL;
 	}
 
 	/* Endpoint for control notifications for events subscribed by user */
 	if (protocomm_add_endpoint(pc_pserial, RPC_EP_NAME_EVT,
 				rpc_evt_handler, NULL) != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to add enpoint");
+		ESP_LOGE(TAG, "Failed to add endpoint");
 		return ESP_FAIL;
 	}
 

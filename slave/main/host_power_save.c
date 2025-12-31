@@ -90,7 +90,7 @@ int is_host_wakeup_needed(interface_buffer_handle_t *buf_handle)
 		case ESP_STA_IF:
 
 			  /* User can parse the incoming Wi-Fi frame here, for any selective wake up, or drop.
-			   * if network split configured, you can also ammend function,
+			   * if network split configured, you can also amend function,
 			   * nw_split_filter_and_route_packet() to process at slave or selective forward to host,
 			   * by inspecting frame/packet
 			   **/
@@ -258,30 +258,35 @@ static int trigger_host_wakeup(uint32_t timeout_ms)
 		set_host_wakeup_gpio();
 
 		/* Create ESP Timer instead of FreeRTOS timer */
-		ret = esp_timer_create(&timer_args, &timer);
-		if (ret != ESP_OK) {
-			ESP_LOGE(TAG, "Failed to create timer for host wakeup");
-			break;
+		if (!timer) {
+			ret = esp_timer_create(&timer_args, &timer);
+			if (ret != ESP_OK) {
+				ESP_LOGE(TAG, "Failed to create timer for host wakeup");
+				break;
+			}
 		}
+		assert(timer);
 
 		/* Start one-shot timer (10ms) */
 		ret = esp_timer_start_once(timer, 10000); /* 10ms in microseconds */
 		if (ret != ESP_OK) {
 			ESP_LOGE(TAG, "Failed to start timer for host wakeup");
 			esp_timer_delete(timer);
+			timer = NULL;
 			break;
 		}
-		vTaskDelay(10);
+		vTaskDelay(100);
 
 		if (wakeup_sem) {
 			/* wait for host resume */
 			ret = xSemaphoreTake(wakeup_sem, pdMS_TO_TICKS(100));
-			ESP_LOGI(TAG, "Wakeup semaphore taken");
 			if (ret == pdPASS) {
-				ESP_LOGI(TAG, "Wakeup semaphore given");
+				ESP_LOGI(TAG, "Wakeup semaphore acquired - host responded");
 				xSemaphoreGive(wakeup_sem);
 				wakeup_success = 1;
 				break;
+			} else {
+				ESP_LOGD(TAG, "Wakeup semaphore wait timeout, retrying...");
 			}
 		}
 
@@ -298,6 +303,7 @@ static int trigger_host_wakeup(uint32_t timeout_ms)
 	if (timer) {
 		esp_timer_stop(timer);
 		esp_timer_delete(timer);
+		timer = NULL;
 	}
 
 	return wakeup_success;
@@ -451,3 +457,11 @@ int host_power_save_alert(uint32_t ps_evt)
 	return 0;
 }
 
+int is_host_power_saving(void)
+{
+#if H_HOST_PS_ALLOWED
+	return power_save_on;
+#else
+	return 0;
+#endif
+}
