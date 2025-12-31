@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <esp_log.h>
+#include <esp_err.h>
 #include <esp_heap_caps.h>
 
 #ifdef CONFIG_HEAP_TRACING
@@ -328,6 +329,7 @@ static esp_console_cmd_t diag_cmds[] = {
 };
 
 #ifdef CONFIG_ESP_HOSTED_COPROCESSOR
+#if !defined(H_HOST_PS_ALLOWED)
 
   #if CONFIG_ESP_WIFI_ENABLE_WIFI_TX_STATS || CONFIG_ESP_WIFI_ENABLE_WIFI_RX_STATS
     #include "esp_wifi_he.h"
@@ -373,26 +375,46 @@ static void hosted_iperf_hook_show_wifi_stats(iperf_traffic_type_t type, iperf_s
 
 }
 #endif
+#endif
+
+#if 0
+/* auto deregistered as part of esp_console_stop_repl(repl); */
+static esp_err_t esp_hosted_cli_deregister_cmds(void)
+{
+	int ret = 0;
+
+	int cmds_num = sizeof(diag_cmds) / sizeof(esp_console_cmd_t);
+	int i;
+
+	for (i = 0; i < cmds_num; i++) {
+		ESP_LOGI(TAG, "Deregistering command: %s", diag_cmds[i].command);
+		ret = esp_console_cmd_deregister(diag_cmds[i].command);
+		if (ret != ESP_OK && ret != ESP_ERR_INVALID_ARG) {
+			ESP_LOGW(TAG, "Failed to deregister command %s: %s",
+					diag_cmds[i].command, esp_err_to_name(ret));
+		}
+	}
+
+	return ret;
+}
+#endif
 
 static int esp_hosted_cli_register_cmds(void)
 {
 	int cmds_num = sizeof(diag_cmds) / sizeof(esp_console_cmd_t);
 	int i;
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
-	/* esp_console_cmd_deregister was added in ESP-IDF v5.4+ */
-	const char* remove_cmd = "deep_sleep";
-	ESP_LOGI(TAG, "Remove any existing deep_sleep cmd in cli");
-	esp_console_cmd_deregister(remove_cmd);
-#endif
-
 	for (i = 0; i < cmds_num; i++) {
 		ESP_LOGI(TAG, "Registering command: %s", diag_cmds[i].command);
 		esp_console_cmd_register(&diag_cmds[i]);
 	}
 
-#ifdef CONFIG_ESP_HOSTED_COPROCESSOR
+#if !defined(H_HOST_PS_ALLOWED)
 
+	/* NOTE: As we do not have corresponding deregister cmds
+	 * we will not register these for host wake ups, as doing so,
+	 * memory leak would happen for these commands
+	 */
 	app_register_all_wifi_commands();
 	app_register_iperf_commands();
 	ping_cmd_register_ping();
@@ -406,17 +428,9 @@ static int esp_hosted_cli_register_cmds(void)
 
 static esp_console_repl_t *repl = NULL;
 
-static void esp_hosted_cli_deregister_cmds(void)
-{
-	/* esp_console_deinit() will clear all commands, so no explicit deregistration needed */
-	/* This function exists for consistency and future use if needed */
-}
 
 int esp_hosted_cli_start(void)
 {
-	if (repl) {
-		return 0;
-	}
 	esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
   #ifdef CONFIG_ESP_HOSTED_COPROCESSOR
 	repl_config.prompt = "coprocessor> ";
@@ -424,23 +438,26 @@ int esp_hosted_cli_start(void)
 	repl_config.prompt = "host> ";
   #endif
 
-	esp_console_register_help_command();
 	esp_hosted_cli_register_cmds();
 
-  #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
-	esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
+	if (!repl) {
 
-  #elif defined(CONFIG_ESP_CONSOLE_USB_CDC)
-	esp_console_dev_usb_cdc_config_t hw_config = ESP_CONSOLE_DEV_CDC_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK(esp_console_new_repl_usb_cdc(&hw_config, &repl_config, &repl));
+#if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
+		esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+		ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
 
-  #elif defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
-	esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
-  #else
-    #error Unsupported console type
-  #endif
+#elif defined(CONFIG_ESP_CONSOLE_USB_CDC)
+		esp_console_dev_usb_cdc_config_t hw_config = ESP_CONSOLE_DEV_CDC_CONFIG_DEFAULT();
+		ESP_ERROR_CHECK(esp_console_new_repl_usb_cdc(&hw_config, &repl_config, &repl));
+
+#elif defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
+		esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
+		ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
+#else
+  #error Unsupported console type
+#endif
+	}
+
 	ESP_ERROR_CHECK(esp_console_start_repl(repl));
 	return 0;
 }
@@ -448,10 +465,11 @@ int esp_hosted_cli_start(void)
 void esp_hosted_cli_stop(void)
 {
 	if (repl) {
+
 		esp_console_stop_repl(repl);
-		esp_hosted_cli_deregister_cmds();
-		esp_console_deinit();
 		repl = NULL;
+
+		print_heap_stats();
 	}
 }
 

@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.8.5
+
+### Features: Light Sleep Integration & Documentation
+
+* **Light Sleep Documentation**: Added comprehensive [Light Sleep Integration Guide](https://www.google.com/search?q=https://github.com/espressif/esp-hosted-mcu/blob/main/docs/slave_light_sleep.md) detailing the handshake between host power states and slave light sleep.
+* **Smart Wakeup Demo**: Added a new demo showcasing the slave waking the host MCU using specific network triggers (UDP packets).
+* Example: `examples/host_network_split__power_save/host_wakeup_demo_using_udp_packet`
+
+
+
+### Bug Fixes & Stability
+
+* **Memory Leak Fixes**:
+* Resolved memory leaks in the SDIO driver during unload/deinit by ensuring proper buffer cleanup and `sdio_slave_send_get_finished` usage.
+* Fixed memory leaks in `esp_hosted_cli` by adding proper deregistration APIs for Hosted-specific commands.
+* Cleanly handled timer memory removal in the Host Power Save component.
+
+
+* **Concurrency & Race Conditions**:
+* Added semaphore protection (mutex) in `host_power_save.c` to prevent race conditions when multiple threads attempt to wake the host simultaneously.
+
+
+* **Timing & Reset Improvements**:
+* Adjusted task delays in the host wakeup sequence to prevent the host from receiving incorrect or premature reset signals during the wake-up transition.
+
+
+
+---
+
+
 ## 2.8.4
 
 ## Feature: Slave Auto Light sleep

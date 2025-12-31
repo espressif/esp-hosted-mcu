@@ -123,147 +123,22 @@ Component config
 2. Send dummy TCP/UDP packet to the device IP in host ports (49152–61439)  → host wakes automatically
 3. Send dummy TCP/UDP packet to the device IP in slave ports (61440-65535) → slave handles without waking host
 
-##### Sample program to test Network based `Smart Wake-up Test`
+#### Network-Based Wakeup
 
-<summary>C program to send UDP packet:</br></br>send_udp_pkt.c</summary>
-<details>
-
-```c
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD
-
-/* This is just sample program to send sample udp packet */
-
-/*
-====================================================================
-                 send_udp_pkt.c
-====================================================================
-*/
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <errno.h>
-
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <IP> <PORT>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    const char *ip = argv[1];
-    int port = atoi(argv[2]);
-    const char *msg = "Hello, UDP!";
-
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
-        perror("socket");
-        return EXIT_FAILURE;
-    }
-
-    // Non-blocking mode
-    int flags = fcntl(sock, F_GETFL, 0);
-    fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(port),
-    };
-    inet_pton(AF_INET, ip, &addr.sin_addr);
-
-    ssize_t sent = sendto(sock, msg, strlen(msg), 0,
-                         (struct sockaddr *)&addr, sizeof(addr));
-
-    if (sent < 0) {
-        if (errno == EWOULDBLOCK || errno == EAGAIN) {
-            fprintf(stderr, "sendto would block, try again later\n");
-        } else {
-            perror("sendto");
-        }
-    } else {
-        printf("Sent %zd bytes to %s:%d\n", sent, ip, port);
-    }
-
-    close(sock);
-    return EXIT_SUCCESS;
-}
-```
-</details>
-
-
-<summary>Shell script to trigger wake-up: </br></br>send_udp_pkt.sh</summary>
-<details>
+To trigger host wakeup via network, send a UDP or TCP packet to any host-reserved port (49152–61439). A demo utility script is provided for testing:
 
 ```bash
-#!/bin/bash
+# Navigate to the utility directory
+cd host_wakeup_demo_using_udp_packet
 
-# Simple script to build and run send_udp_pkt.c
+# Send UDP packet to host port (default port 123) - will wake up host
+./host_wakeup_demo_using_udp_packet.sh <device_ip_address>
 
-#====================================================================
-#                 send_udp_pkt.sh
-#====================================================================
-# Check if IP address is provided
-if [ $# -eq 0 ]; then
-    echo "❌ Error: IP address is required!"
-    echo "Usage: $0 <ip_address> [port]"
-    echo "Example: $0 192.168.1.100 60000"
-    exit 1
-fi
+# Send UDP packet to specific host port - will wake up host
+./host_wakeup_demo_using_udp_packet.sh <device_ip_address> 123
 
-IP_ADDRESS="$1"
-DEFAULT_PORT="60000"
-
-# Check if port is provided as second argument
-if [ $# -ge 2 ]; then
-    PORT="$2"
-else
-    PORT="$DEFAULT_PORT"
-    echo "No port specified, using default port: $DEFAULT_PORT"
-fi
-
-echo "===== Network Split Host Wakeup with UDP Packet Tool ====="
-echo "Target: $IP_ADDRESS:$PORT"
-echo "Building and running network wakeup utility..."
-
-# Compile the program
-gcc -o send_udp_pkt send_udp_pkt.c -pthread
-
-# Check if compilation succeeded
-if [ $? -ne 0 ]; then
-    echo "❌ Compilation failed!"
-    exit 1
-fi
-
-echo "✅ Build successful!"
-echo "Starting network wakeup utility..."
-echo "-------------------------------------------"
-
-# Run the program with IP address and port
-./send_udp_pkt $IP_ADDRESS $PORT
-
-# Capture result
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    echo "-------------------------------------------"
-    echo "✅ Network wakeup packet sent successfully to $IP_ADDRESS:$PORT!"
-else
-    echo "-------------------------------------------"
-    echo "❌ Network wakeup failed with code: $RESULT"
-fi
-
-exit $RESULT
-```
-</details>
-
-Create both files in some temporary directory and run:
-```bash
-bash send_udp_pkt.sh <device_ip_address> 62000 # Send packet to slave port             --> ❌ No host wake up
-
-bash send_udp_pkt.sh <device_ip_address> 123   # Send packet to host reserved udp port ==> ✅ host wake up
+# Send UDP packet to slave port - will NOT wake up host
+./host_wakeup_demo_using_udp_packet.sh <device_ip_address> 62000
 ```
 
 > [!TIP]
@@ -320,10 +195,23 @@ Configure the specific GPIO pins for the chosen transport bus and Host wake up G
 - Monitor logs to see packet routing decisions
 - Verify Network Split is enabled on slave
 
+## Light Sleep Integration
+
+For enhanced power savings, you can configure the slave device to enter **Light Sleep** when the host enters power save mode. This significantly reduces slave power consumption while maintaining fast wake-up times.
+
+See the **[Light Sleep Integration Guide](README_light_sleep.md)** for detailed configuration instructions, dependency requirements, and troubleshooting.
+
+**Quick Summary:**
+- Light sleep significantly reduces slave power consumption compared to active mode
+- Requires Power Management, FreeRTOS Tickless Idle, and optional peripheral powerdown
+- Integrates automatically with host power save callbacks
+- UART console may be unavailable during sleep if peripheral powerdown is enabled
+
 ## References
 
 - [Network Split Documentation](../../docs/feature_network_split.md)
 - [Host Power Save Documentation](../../docs/feature_host_power_save.md)
+- [Light Sleep Integration Guide](README_light_sleep.md)
 - [ESP32-P4-Function-EV-Board Guide](../../docs/esp32_p4_function_ev_board.md)
 - [Slave Example Guide](../../slave/README.md)
 - [Main ESP-Hosted Documentation](../../README.md)

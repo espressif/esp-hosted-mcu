@@ -36,12 +36,11 @@ typedef struct {
 
 #if defined(CONFIG_ESP_HOSTED_HOST_POWER_SAVE_ENABLED)
   #define H_HOST_PS_ALLOWED 1
-  extern uint8_t power_save_on;
 #else
   #define H_HOST_PS_ALLOWED 0
 #endif
 
-#define H_HOST_WAKE_UP_GPIO -1 /* default, overriden later */
+#define H_HOST_WAKE_UP_GPIO -1 /* default, overridden later */
 
 #if H_HOST_PS_ALLOWED && defined(CONFIG_ESP_HOSTED_HOST_DEEP_SLEEP_ALLOWED)
   #define H_HOST_PS_DEEP_SLEEP_ALLOWED 1
@@ -91,14 +90,13 @@ int is_host_wakeup_needed(interface_buffer_handle_t *buf_handle);
 int wakeup_host_mandate(uint32_t timeout_ms);
 int wakeup_host(uint32_t timeout_ms);
 int host_power_save_alert(uint32_t ps_evt);
-static inline int is_host_power_saving(void)
-{
-#if H_HOST_PS_ALLOWED
-	return power_save_on;
-#else
-	return 0;
-#endif
-}
+
+/**
+ * @brief Check if host is currently in power saving mode
+ * @return 1 if host is power saving, 0 otherwise
+ * @note Thread-safe and ISR-safe
+ */
+int is_host_power_saving(void);
 
 
 #endif
