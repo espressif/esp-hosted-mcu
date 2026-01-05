@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1735,12 +1735,6 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->he_reserved = WIFI_STA_CONFIG_2_GET_RESERVED_VAL(p_c_sta->he_bitmask);
 #endif
 #endif
-
-		/* Avoid using fast scan, which leads to faster SSID selection,
-		 * but faces data throughput issues when same SSID broadcasted by weaker AP
-		 */
-		p_a_sta->scan_method = WIFI_ALL_CHANNEL_SCAN;
-		p_a_sta->sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
 
 		RPC_REQ_COPY_STR(p_a_sta->sae_h2e_identifier, p_c_sta->sae_h2e_identifier, SAE_H2E_IDENTIFIER_LEN);
 		RPC_RET_FAIL_IF(esp_hosted_set_sta_config(req_payload->iface, &cfg));
