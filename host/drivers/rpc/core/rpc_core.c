@@ -62,7 +62,7 @@ typedef struct {
  * 1. If application wants to use synchrounous, i.e. Wait till the response received
  *    after current rpc request is sent or timeout occurs,
  *    application will pass this callback in request as NULL.
- * 2. If application wants to use `asynchrounous`, i.e. Just send the request and
+ * 2. If application wants to use `asynchronous`, i.e. Just send the request and
  *    unblock for next processing, application will assign function pointer in
  *    rpc request, which will be registered here.
  *    When the response comes, the this registered callback function will be called
@@ -897,7 +897,7 @@ ctrl_cmd_t * rpc_wait_and_parse_sync_resp(ctrl_cmd_t *app_req)
 //static void rpc_async_timeout_handler(void const *arg)
 static void rpc_async_timeout_handler(void *arg)
 {
-	/* Please Nore: Be careful while porting this to MCU.
+	/* Please Note: Be careful while porting this to MCU.
 	 * rpc_async_timeout_handler should only be invoked after the timer has expired.
 	 * timer should not expire incorrect duration (Check os_wrapper layer for
 	 * correct seconds to milliseconds or ticks etc depending upon the platform

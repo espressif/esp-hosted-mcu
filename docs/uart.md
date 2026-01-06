@@ -221,7 +221,7 @@ Host are required to support two-line UART and the required baud rate in their h
 | Supported Host Targets  | Any ESP chipset | Any Non-ESP chipset |
 | ----------------------- | --------------- | ------------------- |
 
-Non ESP chipset may need to port the porting layer. It is strongly recommanded to evaluate the solution using ESP chipset as host before porting to any non-esp chipset.
+Non ESP chipset may need to port the porting layer. It is strongly recommended to evaluate the solution using ESP chipset as host before porting to any non-esp chipset.
 
 ### 7.1 Select Example to Run in Hosted Mode
 

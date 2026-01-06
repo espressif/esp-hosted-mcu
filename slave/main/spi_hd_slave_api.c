@@ -920,7 +920,7 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	ret = spi_slave_hd_queue_trans(SPI_HOST, SPI_SLAVE_CHAN_TX,
 				tx_trans, portMAX_DELAY);
 	if (ret != ESP_OK) {
-		ESP_LOGE(TAG , "statup: spi hd slave transmit error, ret : 0x%"PRIx16, ret);
+		ESP_LOGE(TAG , "startup: spi hd slave transmit error, ret : 0x%"PRIx16, ret);
 		spi_hd_buffer_tx_free(buf_handle.payload);
 		spi_hd_trans_tx_free(tx_trans);
 	}

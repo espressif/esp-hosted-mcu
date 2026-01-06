@@ -129,7 +129,7 @@ This ISR is called when the handshake or data_ready line goes high.
 static void FAST_RAM_ATTR gpio_hs_isr_handler(void* arg)
 {
 #if 0
-	//Sometimes due to interference or ringing or something, we get two irqs after eachother. This is solved by
+	//Sometimes due to interference or ringing or something, we get two irqs after each other. This is solved by
 	//looking at the time between interrupts and refusing any interrupt too close to another one.
 	static uint32_t lasthandshaketime_us;
 	uint32_t currtime_us = esp_timer_get_time();
@@ -440,7 +440,7 @@ static int check_and_execute_spi_transaction(void)
 
 			if (!txbuff) {
 				/* Even though, there is nothing to send,
-				 * valid reseted txbuff is needed for SPI driver
+				 * valid reset txbuff is needed for SPI driver
 				 */
 				txbuff = spi_buffer_alloc(MEMSET_REQUIRED);
 				assert(txbuff);
@@ -681,7 +681,7 @@ static void spi_process_rx_task(void const* pvParameters)
 
 			event = (struct esp_priv_event *) (buf_handle->payload);
 			if (event->event_type != ESP_PRIV_EVENT_INIT) {
-				/* User can re-use this type of transaction */
+				/* User can reuse this type of transaction */
 			}
 		} else if (buf_handle->if_type == ESP_HCI_IF) {
 			hci_rx_handler(buf_handle->payload, buf_handle->payload_len);
@@ -884,7 +884,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 	if (esp_hosted_woke_from_power_save()) {
 		stop_host_power_save();
 	} else {
-		ESP_LOGI(TAG, "Reseting slave");
+		ESP_LOGI(TAG, "Resetting slave");
 		transport_gpio_reset(bus_handle, reset_pin);
 	}
 

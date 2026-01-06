@@ -280,7 +280,7 @@ static void h_uart_process_rx_task(void const* pvParameters)
 
 			event = (struct esp_priv_event *) (buf_handle->payload);
 			if (event->event_type != ESP_PRIV_EVENT_INIT) {
-				/* User can re-use this type of transaction */
+				/* User can reuse this type of transaction */
 			}
 		} else if (buf_handle->if_type == ESP_HCI_IF) {
 			hci_rx_handler(buf_handle->payload, buf_handle->payload_len);

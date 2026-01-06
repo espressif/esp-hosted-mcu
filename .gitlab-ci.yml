@@ -13,3 +13,4 @@ include:
   - '.gitlab/ci/rules.yml'
   - '.gitlab/ci/regression_pipeline_jobs.yml'
   - '.gitlab/ci/sanity_pipeline_jobs.yml'
+  - '.gitlab/ci/pre_commit.yml'

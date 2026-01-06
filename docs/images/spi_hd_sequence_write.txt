@@ -15,7 +15,7 @@ note over Host: loop reading RX_BUF_LEN until\nbuffers available
 
 Host -> Slave: Send WRDMA
 
-Host -> Slave: Tranfer Data
+Host -> Slave: Transfer Data
 
 Host -> Slave: Send WR_DONE\n(at end of transfer)
 

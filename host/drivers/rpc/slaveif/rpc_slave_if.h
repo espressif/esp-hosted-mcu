@@ -654,7 +654,7 @@ ctrl_cmd_t * rpc_slaveif_wifi_set_mode(ctrl_cmd_t *req);
 /* Sets maximum WiFi transmitting power at ESP32 */
 ctrl_cmd_t * rpc_slaveif_wifi_set_max_tx_power(ctrl_cmd_t *req);
 
-/* Gets maximum WiFi transmiting power at ESP32 */
+/* Gets maximum WiFi transmitting power at ESP32 */
 ctrl_cmd_t * rpc_slaveif_wifi_get_max_tx_power(ctrl_cmd_t *req);
 
 /* Configure heartbeat event. Be default heartbeat is not enabled.

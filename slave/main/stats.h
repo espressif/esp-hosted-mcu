@@ -93,7 +93,7 @@ typedef struct {
  * to change TEST_RAW_TP__BUF_SIZE as:
  *
  * UDP : Max unfragmented packet size: 1472.
- * H_ESP_PAYLOAD_HEADER_OFFSET is not included into the calulations.
+ * H_ESP_PAYLOAD_HEADER_OFFSET is not included into the calculations.
  *
  * TCP: Assess MSS and decide similar to above
  */

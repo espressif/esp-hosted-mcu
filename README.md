@@ -101,7 +101,7 @@ ESP-Hosted-MCU Solution is dependent on `ESP-IDF`, `esp_wifi_remote` and `protob
 
 ###### ESP-IDF
   - [`ESP-IDF`](https://github.com/espressif/esp-idf) is the development framework for Espressif SoCs supported on Windows, Linux and macOS
-  - ESP-Hosted-MCU solution is based on ESP-IDF as base software. ESP chipsets as host and slave always tried to design such a way that ESP-IDF components are re-used.
+  - ESP-Hosted-MCU solution is based on ESP-IDF as base software. ESP chipsets as host and slave always tried to design such a way that ESP-IDF components are reused.
   - Although, We totally understand, host MCUs in case of non-ESP chipset may not desire to be dependent on ESP-IDF. The port layer is written to avoid suc dependencies. Some crucial ESP-IDF components could also be just copy-pasted to fast-track the non-ESP host development.
 
 ###### Wi-Fi Remote
@@ -110,22 +110,22 @@ ESP-Hosted-MCU Solution is dependent on `ESP-IDF`, `esp_wifi_remote` and `protob
 
 ###### Protobuf
   - [`protobuf-c`](https://github.com/protobuf-c/protobuf-c) is data serialization framework provided by Google. RPC messages communicated in host and slave are protobuf encoded.
-  - It helps to avoid manual serialization or endien-ness conversion.
+  - It helps to avoid manual serialization or endian-ness conversion.
   - Provides Flexibility for users to port the ESP-Hosted-MCU RPC framework in any protobuf supported programming language
   - Code is checked-out as submodule at `common/protobuf-c`
 
 ##### 5.2.1 How Dependencies Work Together (short explanation)
 - RPC Request - Response
   - Wi-Fi Remote is an API layer or interface that provides the standard ESP-IDF Wi-Fi calls to the application (`esp_wifi_init()`, etc.)
-  - Wi-Fi Remote forwards the Wi-Fi calls to ESP-Hosted, as ESP-Hosted 'implements' tha APIs provided by Wi-Fi Remote interface.
+  - Wi-Fi Remote forwards the Wi-Fi calls to ESP-Hosted, as ESP-Hosted 'implements' the APIs provided by Wi-Fi Remote interface.
   - ESP-Hosted host MCU creates RPC requests which are protobuf encoded and sends over the transport (SPI/SDIO etc) to the slave.
   - Slave de-serialize the protobuf RPC request and response send back to host over transport, again with protobuf serialised.
-  - Responses received at transport returned to Wi-Fi Remote, which returns the reponses to the calling app at host
+  - Responses received at transport returned to Wi-Fi Remote, which returns the responses to the calling app at host
   - To the app, it is as if it made a standard ESP-IDF Wi-Fi API call.
 - RPC Event
   - Asynchronous Wi-Fi events when subscribed, are sent by slave to host.
   - These events terminate in standard ESP-IDF event loop on the host
-- Please note, Only RPC i.e. control packets are serialised. Data Packets are never serialised as they do not need endien conversion.
+- Please note, Only RPC i.e. control packets are serialised. Data Packets are never serialised as they do not need endian conversion.
 
 ## 6 Decide the communication bus in between host and slave
 
@@ -143,16 +143,16 @@ Legends:
 - `BT` : Bluetooth
 - `+2` in column `Num of GPIOs`
   - There are two GPIOs additional applicable for all the transports
-  - (1) Co-Processor reset: Host needs one additional pin to connect to `RST`/`EN` pin of co-processor, to reset on bootup
+  - (1) Co-Processor reset: Host needs one additional pin to connect to `RST`/`EN` pin of co-processor, to reset on boot-up
   - (2) Ground: Grounds of both chipsets need to be connected.
   - If you use jumper cable connections, connect as many grounds as possible in between two boards for better noise cancellation.
 - `Any_Slave`
-  - Co-processor suppored: ESP32, ESP32-C2, ESP32-C3, ESP32-C5, ESP32-C6, ESP32-S2, ESP32-S3
+  - Co-processor supported: ESP32, ESP32-C2, ESP32-C3, ESP32-C5, ESP32-C6, ESP32-S2, ESP32-S3
   - Classic ESP32 supports 'Classic BT', 'BLE 4.2' & 'BTDM'
-  - Rest all chipsets support BLE only. BLE version supported is 5.0+. Exact bluetooth versions could be refered from [ESP Product Selector Page](https://products.espressif.com/#/product-selector)
+  - Rest all chipsets support BLE only. BLE version supported is 5.0+. Exact bluetooth versions could be referred from [ESP Product Selector Page](https://products.espressif.com/#/product-selector)
 - `Dedicated platforms`
   - Bluetooth uses dedicated platform, UART and Wi-Fi uses any other base transport
-  - In other platforms, Bluetooth and Wi-Fi re-use same platform and hence use less GPIOs and less complicated
+  - In other platforms, Bluetooth and Wi-Fi reuse same platform and hence use less GPIOs and less complicated
   - This transport combination allows Bluetooth to use dedicated uart transportt with additional 2 or 4 depending on hardware flow control.
 - (S) : Shield box reading
 - (O) : Over the air reading
@@ -161,7 +161,7 @@ Legends:
 
 > [!NOTE]
 >
-> For the shield box readings maked with (S), full network set up explained in [Shield Box Test Setup](shield-box-test-setup.md)
+> For the shield box readings marked with (S), full network set up explained in [Shield Box Test Setup](shield-box-test-setup.md)
 
 **Host can be any ESP chipset or any non-ESP MCU.**
 
@@ -184,7 +184,7 @@ Legends:
 
 With jumper cables, 'Standard SPI' and 'Dual SPI' solutions are easiest to evaluate, without much of hardware dependencies. SDIO 1-Bit can be tested with jumper cables, but it needs some additional hardware config, such as installation of external pull-up registers.
 
-In case case of dedicated platforms, Blutooth uses standard HCI over UART. In rest of cases, Bluetooth and Wi-Fi uses same transport and hence less GPIOs and less complicated. In shared mode, bluetooth runs as Hosted HCI (multiplexed mode)
+In case case of dedicated platforms, Bluetooth uses standard HCI over UART. In rest of cases, Bluetooth and Wi-Fi uses same transport and hence less GPIOs and less complicated. In shared mode, bluetooth runs as Hosted HCI (multiplexed mode)
 
 ## 7 ESP-Hosted-MCU Header
 

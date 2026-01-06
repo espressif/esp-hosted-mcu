@@ -304,12 +304,12 @@ For step-by-step instructions, see the [Host Performs Slave OTA Example](../exam
 | Supported Host Targets  | Any ESP chipset | Any Non-ESP chipset |
 | ----------------------- | --------------- | ------------------- |
 
-Any host having SDIO master can be used as host. Please make sure the hardware configurations, like external pull-ups are installed correctly. Tthe voltage at SDIO pins is expected to be 3v3 volts.
+Any host having SDIO master can be used as host. Please make sure the hardware configurations, like external pull-ups are installed correctly. The voltage at SDIO pins is expected to be 3v3 volts.
 - ESP chipsets as SDIO master
   - ESP as host could be one of ESP32, ESP32-S3, ESP32-P4.
   - For ESP32 as host, may need additional **eFuse burning** for voltage correction on one of data pin. ESP32-S3 and ESP32-P4 does **not** need this.
 - Non ESP SDIO Master
-  - Any other host having SDIO master can be used as host. Please make sure the hardware configurations, like ([external Pull-up Resistors](#42-pull-up-resistors)) are installed correctly. Tthe voltage at SDIO pins is expected to be 3v3 volts.
+  - Any other host having SDIO master can be used as host. Please make sure the hardware configurations, like ([external Pull-up Resistors](#42-pull-up-resistors)) are installed correctly. The voltage at SDIO pins is expected to be 3v3 volts.
 - Pull-ups required for CMD, DAT0, DAT1, DAT2, DAT3 lines (for both 1-Bit and 4-Bit SDIO)
 - eFuse burning may be required for classic ESP32.
 - Pull-Up and eFuse burning is detailed in [(3) Hardware Considerations](#3-hardware-considerations)
@@ -605,7 +605,7 @@ Reducing the number of Rx buffers on the co-processor can affect the Tx throughp
 
 ### 9.4 Switching to Packet Mode
 
-For mimimal memory usage with a lower throughput, you can switch to Packet Mode. To do this:
+For minimal memory usage with a lower throughput, you can switch to Packet Mode. To do this:
 
 - on the co-processor: run `idf.py menuconfig`
 

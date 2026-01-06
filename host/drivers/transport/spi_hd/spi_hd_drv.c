@@ -677,7 +677,7 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 
 			event = (struct esp_priv_event *) (buf_handle->payload);
 			if (event->event_type != ESP_PRIV_EVENT_INIT) {
-				/* User can re-use this type of transaction */
+				/* User can reuse this type of transaction */
 			}
 		} else if (buf_handle->if_type == ESP_HCI_IF) {
 			hci_rx_handler(buf_handle->payload, buf_handle->payload_len);
@@ -899,7 +899,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 
 	if (!esp_hosted_woke_from_power_save()) {
 		/* Reset the slave */
-		ESP_LOGI(TAG, "Reseting slave on SPI HD bus with pin %d", reset_pin.pin);
+		ESP_LOGI(TAG, "Resetting slave on SPI HD bus with pin %d", reset_pin.pin);
 		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
 		g_h.funcs->_h_msleep(10);

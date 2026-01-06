@@ -468,7 +468,7 @@ menu "ESP-Hosted config"
 				default 100
 
 			config ESP_HOSTED_SPI_GPIO_RESET_SLAVE
-				int "GPIO pin for Reseting slave ESP"
+				int "GPIO pin for Resetting slave ESP"
 				default 54 if ESP_HOSTED_P4_C5_CORE_BOARD || ESP_HOSTED_P4_C6_CORE_BOARD
 				default 12 if IDF_TARGET_ESP32P4
 				default 10 if IDF_TARGET_ESP32H2
@@ -920,7 +920,7 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 			endif
 
 			config ESP_HOSTED_SDIO_GPIO_RESET_SLAVE
-				int "GPIO pin for Reseting slave ESP"
+				int "GPIO pin for Resetting slave ESP"
 				default 54 if IDF_TARGET_ESP32P4
 				default 42 if IDF_TARGET_ESP32S3
 				default 5 if IDF_TARGET_ESP32
@@ -1280,7 +1280,7 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 				default 100
 
 			config ESP_HOSTED_SPI_HD_GPIO_RESET_SLAVE
-				int "GPIO pin for Reseting slave ESP"
+				int "GPIO pin for Resetting slave ESP"
 				default 54 if ESP_HOSTED_P4_C5_CORE_BOARD || ESP_HOSTED_P4_C6_CORE_BOARD
 				default 12 if IDF_TARGET_ESP32P4
 				default 5 if IDF_TARGET_ESP32S3
@@ -1478,7 +1478,7 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			default 2 if ESP_HOSTED_UART_PRIV_STOP_BITS_2
 
 		config ESP_HOSTED_UART_GPIO_RESET_SLAVE
-			int "GPIO pin for Reseting slave ESP"
+			int "GPIO pin for Resetting slave ESP"
 			default 54 if ESP_HOSTED_P4_C5_CORE_BOARD || ESP_HOSTED_P4_C6_CORE_BOARD
 			default 54 if IDF_TARGET_ESP32P4
 			default 42 if IDF_TARGET_ESP32S3
@@ -1513,7 +1513,7 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 				Select Select when to reset the slave
 
 			config ESP_HOSTED_SLAVE_RESET_ON_EVERY_HOST_BOOTUP
-				bool "Reset slave on every host bootup"
+				bool "Reset slave on every host boot-up"
 				help
 					Reset the slave device every time the host boots up. This ensures a clean
 					transport state and prevents any inconsistent states, but causes
@@ -1697,7 +1697,7 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 
 	config ESP_HOSTED_CLI_NEW_INSTANCE
 		depends on ESP_HOSTED_CLI_ENABLED
-		bool "Create new instance & do not re-use existing session if any"
+		bool "Create new instance & do not reuse existing session if any"
 		default n
 		help
 			Starts a new CLI instance when enabled & registers esp hosted as well.

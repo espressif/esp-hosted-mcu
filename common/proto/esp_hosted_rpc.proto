@@ -564,15 +564,15 @@ message wifi_ap_record {
 message wifi_scan_threshold {
 	int32          rssi = 1;                    /**< The minimum rssi to accept in the fast scan mode */
 	int32          authmode = 2;                /**< The weakest authmode to accept in the fast scan mode
-Note: Incase this value is not set and password is set as per WPA2 standards(password len >= 8),
+Note: In case this value is not set and password is set as per WPA2 standards(password len >= 8),
 it will be defaulted to WPA2 and device won't connect to deprecated WEP/WPA networks.
 Please set authmode threshold as WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK to connect to WEP/WPA networks */
 	uint32         rssi_5g_adjustment = 3;      /**< The RSSI value of the 5G AP is within the rssi_5g_adjustment range compared to the 2G AP, the 5G AP will be given priority for connection. */
 }
 
 message wifi_pmf_config {
-	bool           capable = 1;                 /**< Deprecated variable. Device will always connect in PMF mode if other device also advertizes PMF capability. */
-	bool           required = 2;                /**< Advertizes that Protected Management Frame is required. Device will not associate to non-PMF capable devices. */
+	bool           capable = 1;                 /**< Deprecated variable. Device will always connect in PMF mode if other device also advertises PMF capability. */
+	bool           required = 2;                /**< Advertises that Protected Management Frame is required. Device will not associate to non-PMF capable devices. */
 }
 
 message wifi_bss_max_idle_config {
@@ -617,7 +617,7 @@ Units: AP beacon intervals. Defaults to 3 if set to 0. */
 	int32               sort_method = 8;        /**< sort the connect AP in the list by rssi or security mode */
 	wifi_scan_threshold threshold = 9;          /**< When sort_method is set, only APs which have an auth mode that is more secure
 												  than the selected auth mode and a signal stronger than the minimum RSSI will be used. */
-	wifi_pmf_config     pmf_cfg = 10;           /**< Configuration for Protected Management Frame. Will be advertized in RSN Capabilities in RSN IE. */
+	wifi_pmf_config     pmf_cfg = 10;           /**< Configuration for Protected Management Frame. Will be advertised in RSN Capabilities in RSN IE. */
 	//uint32_t rm_enabled:1;                    /**< Whether Radio Measurements are enabled for the connection */
 	//uint32_t btm_enabled:1;                   /**< Whether BSS Transition Management is enabled for the connection */
 	//uint32_t mbo_enabled:1;                   /**< Whether MBO is enabled for the connection */
@@ -629,7 +629,7 @@ Units: AP beacon intervals. Defaults to 3 if set to 0. */
 	int32               sae_pwe_h2e = 12;       /**< Whether SAE hash to element is enabled */
 	uint32              failure_retry_cnt = 13; /**< Number of connection retries station will do before moving to next AP.
 												  scan_method should be set as WIFI_ALL_CHANNEL_SCAN to use this config.
-												  Note: Enabling this may cause connection time to increase incase best AP doesn't behave properly. */
+												  Note: Enabling this may cause connection time to increase in case best AP doesn't behave properly. */
 	//uint32_t he_dcm_set:1;                                        /**< Whether DCM max.constellation for transmission and reception is set. */
 	//uint32_t he_dcm_max_constellation_tx:2;                       /**< Indicate the max.constellation for DCM in TB PPDU the STA supported. 0: not supported. 1: BPSK, 2: QPSK, 3: 16-QAM. The default value is 3. */
 	//uint32_t he_dcm_max_constellation_rx:2;                       /**< Indicate the max.constellation for DCM in both Data field and HE-SIG-B field the STA supported. 0: not supported. 1: BPSK, 2: QPSK, 3: 16-QAM. The default value is 3. */

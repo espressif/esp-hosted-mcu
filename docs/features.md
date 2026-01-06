@@ -1,4 +1,4 @@
-# Features Implmented in ESP-Hosted-MCU
+# Features Implemented in ESP-Hosted-MCU
 
 This page documents the features implemented by ESP-Hosted-MCU.
 
@@ -24,6 +24,6 @@ This page documents the features implemented by ESP-Hosted-MCU.
 
 1. **ESP-Hosted / UART HCI** support for ESP-Nimble and ESP-Bluedroid. See [Bluetooth Design](bluetooth_design.md) for more information
 
-## Miscelaneous
+## Miscellaneous
 
 1. (Optional) [**Host Power Save**](feature_host_power_save.md) to allow Host to go to sleep and be waken by co-processor

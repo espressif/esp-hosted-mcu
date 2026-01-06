@@ -131,7 +131,7 @@ void app_main(void)
         ESP_LOGW(TAG, "failed to get fw version");
     }
 
-    // changes to the MAC must be done before the BT Controller is initalised
+    // changes to the MAC must be done before the BT Controller is initialised
     bt_mac_actions();
 
     // init bt controller

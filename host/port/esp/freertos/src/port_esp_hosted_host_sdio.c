@@ -205,7 +205,7 @@ static esp_err_t hosted_sdio_card_fn_init(sdmmc_card_t *card)
 	ESP_ERROR_CHECK(sdmmc_io_read_byte(card, SDIO_FUNC_0, SD_IO_CCCR_BUS_WIDTH, &bus_width));
 	ESP_LOGD(TAG, "BUS_WIDTH: 0x%02x", bus_width);
 
-	// skip enable of continous SPI interrupts
+	// skip enable of continuous SPI interrupts
 
 	// set FN0 block size to 512
 	bs = 512;
@@ -552,7 +552,7 @@ int hosted_sdio_write_block(void *ctx, uint32_t reg, uint8_t *data, uint16_t siz
 	return res;
 }
 
-/* Blocking fn call. Returns when SDIO slave device generates a SDIO interupt */
+/* Blocking fn call. Returns when SDIO slave device generates a SDIO interrupt */
 int hosted_sdio_wait_slave_intr(void *ctx, uint32_t ticks_to_wait)
 {
 	SDIO_FAIL_IF_NULL(ctx);
