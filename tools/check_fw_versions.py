@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 
-# check the host and co-processor version numbers aginst the value in
+# check the host and co-processor version numbers against the value in
 # idf_component.yml
 # exit with 0 if ok
 # exit with 1 if fail

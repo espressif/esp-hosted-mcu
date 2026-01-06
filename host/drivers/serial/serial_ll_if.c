@@ -107,7 +107,7 @@ static serial_ll_handle_t * get_serial_ll_handle(const uint8_t iface_num)
 /**
   * @brief Close serial interface
   * @param  serial_ll_hdl - handle
-  * @retval rbuffer - ready buffer read on serial inerface
+  * @retval rbuffer - ready buffer read on serial interface
   */
 static int serial_ll_close(serial_ll_handle_t * serial_ll_hdl)
 {
@@ -136,7 +136,7 @@ static int serial_ll_close(serial_ll_handle_t * serial_ll_hdl)
   * @brief  Serial interface read non blocking
   * @param  serial_ll_hdl - handle
   *         rlen - output param, number of bytes read
-  * @retval rbuffer - ready buffer read on serial inerface
+  * @retval rbuffer - ready buffer read on serial interface
   */
 static uint8_t * serial_ll_read(const serial_ll_handle_t * serial_ll_hdl,
 							 uint16_t * rlen)
@@ -161,7 +161,7 @@ static uint8_t * serial_ll_read(const serial_ll_handle_t * serial_ll_hdl,
 	 * To make it non blocking:
 	 *   As an another design option, serial_rx_callback can also be
 	 *   thought of incoming data indication, i.e. asynchronous rx
-	 *   indication, which can be used by higher layer in seperate
+	 *   indication, which can be used by higher layer in separate
 	 *   dedicated rx task to receive and process rx data.
 	 *
 	 * In our example, first approach of blocking read is used.
@@ -357,7 +357,7 @@ int serial_ll_rx_handler(interface_buffer_handle_t * buf_handle)
 
 serial_buff_cleanup:
 
-	ESP_LOGE(TAG, "Err occured, discard current buffer");
+	ESP_LOGE(TAG, "Err occurred, discard current buffer");
 	H_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle, buf_handle->priv_buffer_handle);
 
 	r.len = 0;

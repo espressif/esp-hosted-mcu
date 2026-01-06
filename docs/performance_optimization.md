@@ -269,7 +269,7 @@ CONFIG_ESP_HOSTED_SPI_CLK_FREQ=40
 2. **Incremental Optimization**: Increase transport clock step by step
 3. **Hardware Validation**: Move to PCB for final validation
 4. **Performance Tuning**: Optimize buffers and configurations
-5. **Disable features**: Any unsued components from ESP-IDF or
+5. **Disable features**: Any unused components from ESP-IDF or
 
 ESP-Hosted-MCU features could be disabled for more memory
 availability.

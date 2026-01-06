@@ -46,7 +46,7 @@ DEFINE_LOG_TAG(rpc_req);
     InIt_FuN(MsG_StRuCt);                                                     \
 }
 
-/* RPC request is simple remote function invokation at slave from host
+/* RPC request is simple remote function invocation at slave from host
  *
  * For new RPC request, add up switch case for your message
  * If the RPC function to be invoked does not carry any arguments, just add

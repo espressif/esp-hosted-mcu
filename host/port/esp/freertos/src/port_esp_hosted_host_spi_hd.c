@@ -360,7 +360,7 @@ void * hosted_spi_hd_init(void)
 	ctx = calloc(1, sizeof(spi_hd_ctx_t));
 	assert(ctx);
 
-	// initalize bus
+	// initialize bus
 	if (spi_bus_initialize(MASTER_HOST, &buscfg, DMA_CHAN)) {
 		ESP_LOGE(TAG, "spi_bus_initialize FAILED");
 		goto err_bus_initialize;

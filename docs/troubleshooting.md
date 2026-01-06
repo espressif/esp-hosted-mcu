@@ -41,10 +41,10 @@ While building for host ESP chipset, follow above (1) and flash, monitor. Once h
 
 While aiming the high performance and even while assessing the solution correctness, It is crucial to understand the bottlenecks in the system.
 'Raw throughput testing' is simple transport level testing, which would showcase the maximum throughput that the transport is able to achieve, right now in current set-up.
-In this test, dummy data is sent from one transport end to other continously, without involving Wi-Fi, Bluetooth or any other code legs. This test can be performed in following ways:
-- Host to slave (Half duplex) : dummy data to be sent from host to slave continously
-- Slave to Host (Half duplex) : dummy data to be sent from slave to host continously
-- Full duplex bi-directional : dummy data to be sent from both the directions simulataneously
+In this test, dummy data is sent from one transport end to other continuously, without involving Wi-Fi, Bluetooth or any other code legs. This test can be performed in following ways:
+- Host to slave (Half duplex) : dummy data to be sent from host to slave continuously
+- Slave to Host (Half duplex) : dummy data to be sent from slave to host continuously
+- Full duplex bi-directional : dummy data to be sent from both the directions simultaneously
 
 This can verify hardware signal integrity and address porting issues. It also helps to assess the achievable throughput of the Hosted solution. It can be further optionally used for transport throughput fine-tuning.
 
@@ -125,7 +125,7 @@ the Host cannot communicate with the slave.
 - Verify that the physical GPIO signals is the same as those assigned to the system using `Menuconfig` on both the Host and Slave
 - If you selected SDIO as the interface and your host is a classic ESP32, there may be conflict with the GPIO used to bootstrap the ESP32 and used in SDIO. See "Conflicts Between Bootstrap and SDIO on DAT2" in
   [References](#7-references) for more information
-- for SDIO, verify that pull-ups and other signalling requirments (short, shielded connections) are also met. See the [SDIO interface](sdio.md) page for more information on SDIO requirements
+- for SDIO, verify that pull-ups and other signalling requirements (short, shielded connections) are also met. See the [SDIO interface](sdio.md) page for more information on SDIO requirements
 - If your transport allows on jumper cables, cross-check max length of jumper cables allowed
 
 ## 6 Getting `Drop Packet` Errors
@@ -140,7 +140,7 @@ Your SPI interface is facing signal integrity errors.
 
 - try reducing the SPI `CLK` frequency (using `Menuconfig`). If the
   problem goes away, it indicates that there is an issue with the
-  physcial SPI signals
+  physical SPI signals
 - use an oscilloscope to check the physical signals on the SPI
   interface for noise, ringing, etc. that may affect the signals
 

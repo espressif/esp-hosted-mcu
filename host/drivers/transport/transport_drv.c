@@ -54,7 +54,7 @@ static void *init_timeout_timer = NULL;
 
 static void init_timeout_cb(void *arg)
 {
-	ESP_LOGE(TAG, "Init event not received within timeout, Reseting myself");
+	ESP_LOGE(TAG, "Init event not received within timeout, Resetting myself");
 	g_h.funcs->_h_restart_host();
 }
 #endif
@@ -343,7 +343,7 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 
 	default:
 		//*tx = transport_drv_tx;
-		ESP_LOGW(TAG, "Not yet suppported ESP_Hosted interface for if_type[%u]", if_type);
+		ESP_LOGW(TAG, "Not yet supported ESP_Hosted interface for if_type[%u]", if_type);
 		return NULL;
 	}
 

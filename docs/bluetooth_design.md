@@ -117,7 +117,7 @@ types](../README.md#72-interface-types) support by ESP-Hosted message
 headers.
 
 - Hosted HCI is standard HCI with extra headers or metadata added
-- Hosted HCI embeds the ESP-Hosted header and re-uses the underlying
+- Hosted HCI embeds the ESP-Hosted header and reuses the underlying
   ESP-Hosted transport, such as SPI/SDIO
 - this option is easier to set up. Once the existing ESP-Hosted
   Transport (SPI or SDIO, for example) has been set up, Bluetooth
@@ -145,11 +145,11 @@ Use this option if you want:
 The Bluetooth Controller on the co-processor is disabled by
 default. This allows the BT Mac Address to be set, which must be done
 before the controller is enabled. The BT Controller should be enabled
-before initialzing the BT Host Stack.
+before initializing the BT Host Stack.
 
 To get and set the BT Controller MAC address:
 
-1. Call `esp_hosted_connect_to_slave()` to intialise the transport
+1. Call `esp_hosted_connect_to_slave()` to initialise the transport
 2. (Optional) Call `esp_hosted_iface_mac_addr_len_get` to get the length of the BT MAC address
 3. (Optional) Call `esp_hosted_iface_mac_addr_get` to get the current BT MAC address
 4. Call `esp_hosted_iface_mac_addr_set` to set the current BT MAC address
@@ -163,7 +163,7 @@ After setting the BT Controller MAC address, you can now enable the BT Controlle
 
 To enable the BT Controller:
 
-1. Call `esp_hosted_connect_to_slave()` to intialise the transport. (Skip this if already called while seting the BT MAC Address above.)
+1. Call `esp_hosted_connect_to_slave()` to initialise the transport. (Skip this if already called while setting the BT MAC Address above.)
 2. (Optional) Call `esp_hosted_iface_mac_addr_get()` and
    `esp_hosted_iface_mac_addr_set()` to get and set the BT Mac Address
 3. Call `esp_hosted_bt_controller_init()` to initialise the BT Controller

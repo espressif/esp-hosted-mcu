@@ -428,7 +428,7 @@ enum {
 #endif
 
 #if H_SLAVE_RESET_ON_EVERY_HOST_BOOTUP && H_SLAVE_RESET_ONLY_IF_NECESSARY
-  #error "Invalid combination. Reset on every bootup and reset only if necessary cannot be enabled at the same time"
+  #error "Invalid combination. Reset on every boot-up and reset only if necessary cannot be enabled at the same time"
 #endif
 
 #if H_SLAVE_RESET_ON_EVERY_HOST_BOOTUP && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE

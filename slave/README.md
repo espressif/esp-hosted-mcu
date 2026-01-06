@@ -110,7 +110,7 @@ Example Configuration
 
 
 > [!TIP]
-> You can optinally **customize** the transport layer (SDIO, SPI Full-Duplex, SPI Half-Duplex, or UART), their GPIOs in use and other optional features within this menu.
+> You can optionally **customize** the transport layer (SDIO, SPI Full-Duplex, SPI Half-Duplex, or UART), their GPIOs in use and other optional features within this menu.
 
 ### 5. Build and Flash
 

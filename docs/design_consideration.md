@@ -6,7 +6,7 @@
 - [1.1. Using ESP chip as Hosted Master](#11-using-esp-chip-as-hosted-master)
 - [2. General Hardware Considerations](#2-general-hardware-considerations)
   - [2.1. GPIOs used for interface](#21-gpios-used-for-interface)
-  - [2.2. Using SPI insted of SDIO](#22-using-spi-insted-of-sdio)
+  - [2.2. Quick PoC with Jumper Cables](22-evaluate-with-jumpers-first)
   - [2.3. Whenever possible, Use `IO_MUX` GPIOs.](#23-whenever-possible-use-io_mux-gpios)
   - [2.4. Signal Length and Noise Reduction](#24-signal-length-and-noise-reduction)
 - [3. General Debugging Guidelines](#3-general-debugging-guidelines)
@@ -100,13 +100,13 @@ Hosted Slave and Master. For prototyping, jumper cables can be used,
 but may only work at a lower `CLK` frequency.
 
 In general, keep the cable and PCB traces short and of the same
-length, to minimise propogation delay and clock skew:
+length, to minimise propagation delay and clock skew:
 
 - for SPI, keep them to 10 cm or less
 - for SDIO, keep them to 5 cm or less
 
-Isolate the interface signals, expecially the `CLK` signal, from other
-signals. For PCBs, surround the signal swith a ground plane, and keep
+Isolate the interface signals, especially the `CLK` signal, from other
+signals. For PCBs, surround the signal switch a ground plane, and keep
 the `CLK` signal clean by not routing it close to other high frequency
 signals.
 
@@ -146,7 +146,7 @@ intermittent conditions while testing Hosted.
 In the future, Hosted may also offer newer transport options or more features, like controlling
 power modes on the Host and Slave. These may require additional GPIOs
 for control, so it would be good to keep some additional GPIOs
-available and accesable for future use.
+available and accessible for future use.
 
 ### 3.3 Verifying Hosted Interface with Raw Throughput
 

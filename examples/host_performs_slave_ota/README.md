@@ -143,7 +143,7 @@ Choose the method that best fits your deployment:
 |--------|----------|
 | Slave OTA using LittleFS  | Local deployment. One of Host partition formatted as LittleFS and pushed the slave fw as file |
 | Slave OTA using Host Partition | Local deployment. Slave Fw flashed in one of Host partition directly |
-| Slave OTA Using HTTPS | Needs internet access. Can re-use HTTPS server in the deployment |
+| Slave OTA Using HTTPS | Needs internet access. Can reuse HTTPS server in the deployment |
 
 `Ease of Use`: LittleFS > HTTPS > Partition
 
@@ -508,5 +508,5 @@ You can connect above ESP32-C6 (slave) GPIOs directly on ESP32-P4 (Host) GPIOs a
 **Steps**:
 
 1. Connect host UART to slave flashing pins
-2. Put host in bootloader mode (same as explined above)
+2. Put host in bootloader mode (same as explained above)
 3. Use esp-serial-flasher library to flash over UART

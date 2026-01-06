@@ -415,7 +415,7 @@ Before flashing the co-processor and host, ensure that you have made the correct
 - ESP32-S2/C2/C3/C5/C6/C61
   - Pins for SPI Half Duplex Host need to be figured out yet.
 - ESP32-P4
-  - For ESP32-P4-Function-EV-Board, the SDIO onboard pins are re-used for SPI Half Duplex Host.
+  - For ESP32-P4-Function-EV-Board, the SDIO onboard pins are reused for SPI Half Duplex Host.
   - For Non ESP32-P4-Function-EV-Board, pins for SPI Half Duplex Host need to be figured out yet.
 
 ### Co-processor connections
@@ -578,8 +578,8 @@ Host are required to support 2 data line SPI (dual SPI) or 4 line SPI (quad SPI 
 | Supported Host Targets  | Any ESP chipset | Any Non-ESP chipset |
 | ----------------------- | --------------- | ------------------- |
 
-Non ESP chipset may need to port the porting layer. It is strongly recommanded to evaluate the solution using ESP chipset as host before porting to any non-esp chipset.
-For Quad SPI, PCB is only supported. Dual SPI could be evaluted using jumper cables.
+Non ESP chipset may need to port the porting layer. It is strongly recommended to evaluate the solution using ESP chipset as host before porting to any non-esp chipset.
+For Quad SPI, PCB is only supported. Dual SPI could be evaluated using jumper cables.
 
 Non-ESP Hosts, while porting, need to ensure that the Half duplex protocol and framing is exactly same as that of co-processor.
 

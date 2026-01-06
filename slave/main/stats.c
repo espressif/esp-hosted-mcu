@@ -345,7 +345,7 @@ static void start_timer_to_display_stats(int periodic_time_sec)
 #if TEST_RAW_TP
 void process_test_capabilities(uint8_t capabilities)
 {
-	ESP_LOGD(TAG, "capabilites: %d", capabilities);
+	ESP_LOGD(TAG, "capabilities: %d", capabilities);
 	if ((capabilities & ESP_TEST_RAW_TP__ESP_TO_HOST) ||
 			(capabilities & ESP_TEST_RAW_TP__BIDIRECTIONAL)) {
 		assert(xTaskCreate(raw_tp_tx_task , "raw_tp_tx_task",

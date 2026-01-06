@@ -18,7 +18,7 @@
 
 DEFINE_LOG_TAG(rpc_rsp);
 
-/* RPC response is result of remote function invokation at slave from host
+/* RPC response is result of remote function invocation at slave from host
  * The response will contain the return values of the RPC procedure
  * Return values typically will be simple integer return value of rpc call
  * for simple procedures. For function call with return value as a parameter,

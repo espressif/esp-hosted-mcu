@@ -2274,7 +2274,7 @@ static void rpc_supp_thread(void const *arg)
 			ESP_LOGE(TAG, "Error getting item from rpc_supp_cb_thread_q");
 			continue;
 		}
-		// triggger the callback with the data;
+		// trigger the callback with the data;
 		if (dpp_evt_cb) {
 			if (item.dpp_event == ESP_SUPP_DPP_FAIL) {
 				// user cb expected to cast provided data back to a int
@@ -2287,7 +2287,7 @@ static void rpc_supp_thread(void const *arg)
 				ESP_LOGW(TAG, "unknown supplicant DPP event: dropping");
 			}
 		} else {
-			ESP_LOGW(TAG, "no registed supplicant dpp cb: dropping dpp event");
+			ESP_LOGW(TAG, "no registered supplicant dpp cb: dropping dpp event");
 		}
 		// free allocated memory
 		if (item.dpp_data) {
