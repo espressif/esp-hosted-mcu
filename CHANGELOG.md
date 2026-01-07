@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.9.0
+
+### Bug Fixes
+
+- Fix slave OTA failures on back-to-back updates by removing the hard dependency on `CONFIG_ESPTOOLPY_FLASHMODE_QIO`.
+- Previously, mandating QIO flash mode caused consecutive OTA operations to fail; this is now resolved by removing the forced flash mode setting.
+
+
 ## 2.8.5
 
 ### Features: Light Sleep Integration & Documentation
