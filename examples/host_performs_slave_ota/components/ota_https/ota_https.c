@@ -1,7 +1,28 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * ESP-Hosted HTTPS OTA Component
+ * =============================
+ *
+ * Downloads ESP32 slave firmware from HTTPS URL and performs OTA update.
+ *
+ * FEATURES:
+ * - Secure HTTPS firmware download
+ * - Firmware validation (magic number, image header)
+ * - Version checking against current slave firmware
+ * - WiFi connection management
+ * - Certificate validation (optional)
+ *
+ * APIs USED:
+ * - esp_hosted_get_coprocessor_fwversion() - Get slave firmware version
+ * - esp_hosted_slave_ota_begin()  - Initialize OTA session
+ * - esp_hosted_slave_ota_write()  - Transfer firmware chunks
+ * - esp_hosted_slave_ota_end()    - Finalize OTA session
+ * - esp_hosted_slave_ota_activate() - (if current slave FW > v2.5.X only) - ** Called from main.c **
  */
 
 #include <stdio.h>

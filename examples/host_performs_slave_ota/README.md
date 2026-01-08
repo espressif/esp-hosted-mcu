@@ -32,6 +32,53 @@ To limit possibilities, **two main approaches** could be understood.
 
 ---
 
+## Slave OTA Process Flow
+
+```mermaid
+---
+title: ESP-Hosted Co-processor (Slave) OTA Process
+---
+sequenceDiagram
+    participant Source as Firmware Source
+    participant Host as Host MCU
+    participant Slave as Slave ESP32
+
+    Note over Host,Slave: Pre-OTA<br/> Version compatibility check (optional)<br/> <Host version != Current Slave version>
+
+    Host->>Host: 1. Read firmware header from FW image
+    Host->>Host: 2. Validate FW image<br/>(magic number, header)
+    Host->>Host: 3. Compare <FW image version != Current slave version>
+
+    alt Slave needs update
+        Host->>Slave: 4. Send OTA_BEGIN command
+        Slave->>Slave: Prepare OTA partition
+
+        loop Transfer firmware in chunks
+            Source->>Host: 5. Read firmware chunk
+            Host->>Slave: 6. Send OTA_WRITE (chunk)
+            Slave->>Slave: Write to flash partition
+        end
+
+        Host->>Slave: 7. Send OTA_END command
+        Slave->>Slave: 8. Verify firmware integrity<br/>(CRC, signature)
+
+        Host->>Host: 9. Check slave FW version<br/>for activate support
+
+        alt Slave FW >= v2.6.0
+            Host->>Slave: 10. Send OTA_ACTIVATE command
+            Slave->>Slave: Mark new firmware as active
+            Note over Slave: ✅ Slave OTA Done
+        else Older slave FW
+            Note over Host: ✅ Slave OTA Done (activate API not required)
+        end
+
+        Note over Host: Restart Host, to avoid sync issues
+
+    else Slave already up-to-date
+        Note over Host: ✅ Slave OTA not required<br/>(firmware versions match/compatible)
+    end
+```
+
 ## ESP-Hosted Slave OTA APIs
 
 The ESP-Hosted slave OTA functionality is built around **4 core APIs** that handle the complete OTA process. These APIs are transport-agnostic and can work with any firmware source (LittleFS, Partition, HTTPS, SPIFFS, etc.).
