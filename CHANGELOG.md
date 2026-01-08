@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.9.1
+
+### Fixed
+- Correct esptool command usage (`write_flash` instead of invalid `write-flash`)
+- Update Wi-Fi bandwidth enums for newer ESP-IDF compatibility
+
+### Improved
+- Better validation and user-readable error messages for slave OTA
+- Detect empty or uninitialized LittleFS and partition OTA sources
+- Clear guidance when invalid or missing slave firmware binaries are detected
+
 ## 2.9.0
 
 ### Bug Fixes

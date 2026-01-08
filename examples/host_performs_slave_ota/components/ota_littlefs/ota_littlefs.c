@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -52,7 +52,9 @@ static esp_err_t parse_image_header_from_file(const char* file_path, size_t* fir
 
 	/* Validate magic number */
 	if (image_header.magic != ESP_IMAGE_HEADER_MAGIC) {
-		ESP_LOGE(TAG, "Invalid image magic: 0x%" PRIx8, image_header.magic);
+		ESP_LOGE(TAG, "Invalid image magic: 0x%" PRIx8 " (expected: 0x%" PRIx8 ")", image_header.magic, ESP_IMAGE_HEADER_MAGIC);
+		ESP_LOGE(TAG, "This indicates the file is not a valid ESP32 firmware image!");
+		ESP_LOGE(TAG, "Please ensure you have flashed the correct firmware binary to the LittleFS partition.");
 		fclose(file);
 		return ESP_ERR_INVALID_ARG;
 	}
@@ -175,7 +177,12 @@ static esp_err_t find_latest_firmware(char* firmware_path, size_t max_len)
 	ESP_LOGI(TAG, "Final latest_file: '%s', length: %d", latest_file, strlen(latest_file));
 
 	if (strlen(latest_file) == 0) {
-		ESP_LOGE(TAG, "No .bin files found in /littlefs directory. Please refer doc to know how partition is created with slave firmware at correct path.");
+		ESP_LOGE(TAG, "No valid .bin firmware files found in /littlefs directory!");
+		ESP_LOGE(TAG, "Please ensure:");
+		ESP_LOGE(TAG, "  - The firmware binary has a .bin extension");
+		ESP_LOGE(TAG, "  - The binary is flashed to the 'storage' partition");
+		ESP_LOGE(TAG, "  - The binary is a valid ESP32 firmware image");
+		ESP_LOGE(TAG, "Refer to documentation for partition table setup and flashing instructions.");
 		free(latest_file);
 		free(full_path);
 		return ESP_FAIL;
@@ -195,6 +202,46 @@ static esp_err_t find_latest_firmware(char* firmware_path, size_t max_len)
 	free(latest_file);
 	free(full_path);
 
+	return ESP_OK;
+}
+
+/* Function to check if LittleFS partition has any files */
+static esp_err_t check_littlefs_files(void)
+{
+	DIR *dir;
+	struct dirent *entry;
+	int file_count = 0;
+
+	dir = opendir("/littlefs");
+	if (dir == NULL) {
+		ESP_LOGE(TAG, "Failed to open /littlefs directory");
+		return ESP_FAIL;
+	}
+
+	ESP_LOGI(TAG, "Checking contents of /littlefs partition:");
+
+	while ((entry = readdir(dir)) != NULL) {
+		/* Skip . and .. directories */
+		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+			continue;
+		}
+
+		file_count++;
+		ESP_LOGI(TAG, "  Found: %s", entry->d_name);
+	}
+	closedir(dir);
+
+	if (file_count == 0) {
+		ESP_LOGW(TAG, "LittleFS partition is empty! No firmware files found.");
+		ESP_LOGW(TAG, "Please ensure you have:");
+		ESP_LOGW(TAG, "  1. Created a 'storage' partition in your partition table");
+		ESP_LOGW(TAG, "  2. Flashed a firmware binary to the LittleFS partition");
+		ESP_LOGW(TAG, "  3. Or used 'idf.py flash' with the firmware binary");
+		ESP_LOGW(TAG, "Refer to the documentation for detailed setup instructions.");
+		return ESP_ERR_NOT_FOUND;
+	}
+
+	ESP_LOGI(TAG, "Found %d file(s) in LittleFS partition", file_count);
 	return ESP_OK;
 }
 
@@ -233,6 +280,22 @@ esp_err_t ota_littlefs_perform(bool delete_after_use)
 	}
 
 	ESP_LOGI(TAG, "LittleFS filesystem registered successfully");
+
+	/* Check if LittleFS partition has any files */
+	ret = check_littlefs_files();
+	if (ret == ESP_ERR_NOT_FOUND) {
+		ESP_LOGW(TAG, "OTA cannot proceed - no firmware files found in LittleFS partition");
+		esp_vfs_littlefs_unregister("storage");
+		free(firmware_path);
+		free(chunk);
+		return ESP_HOSTED_SLAVE_OTA_FAILED;
+	} else if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to check LittleFS partition contents");
+		esp_vfs_littlefs_unregister("storage");
+		free(firmware_path);
+		free(chunk);
+		return ESP_HOSTED_SLAVE_OTA_FAILED;
+	}
 
 	/* Get filesystem info */
 	size_t total = 0, used = 0;

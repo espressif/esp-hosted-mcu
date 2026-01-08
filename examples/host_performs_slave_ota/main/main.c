@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -113,17 +113,17 @@ void app_main(void)
 
     /* Perform OTA based on Kconfig selection */
 #if CONFIG_OTA_METHOD_HTTPS
-    ESP_LOGI(TAG, "Using HTTP OTA method");
+    ESP_LOGW(TAG, "OTA Method: HTTP (URL: %s)", CONFIG_OTA_SERVER_URL);
     ret = ota_https_perform(CONFIG_OTA_SERVER_URL);
 #elif CONFIG_OTA_METHOD_LITTLEFS
 	uint8_t delete_post_flash = 0;
-    ESP_LOGI(TAG, "Using LittleFS OTA method");
+    ESP_LOGW(TAG, "OTA Method: LittleFS");
   #ifdef CONFIG_OTA_DELETE_FILE_AFTER_FLASH
 	delete_post_flash = 1;
   #endif
     ret = ota_littlefs_perform(delete_post_flash);
 #elif CONFIG_OTA_METHOD_PARTITION
-    ESP_LOGI(TAG, "Using Partition OTA method");
+    ESP_LOGW(TAG, "OTA Method: Partition (label: %s)", CONFIG_OTA_PARTITION_LABEL);
     ret = ota_partition_perform(CONFIG_OTA_PARTITION_LABEL);
 #else
     ESP_LOGE(TAG, "No OTA method selected!");
