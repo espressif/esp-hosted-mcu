@@ -4,6 +4,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/*
+ * ESP-Hosted Partition OTA Component
+ * =================================
+ *
+ * Reads ESP32 slave firmware from dedicated flash partition and performs OTA update.
+ *
+ * FEATURES:
+ * - Firmware validation (magic number, image header)
+ * - Version checking against current slave firmware
+ * - Direct partition reading with chunked transfer
+ * - Robust error handling for partition access issues
+ *
+ * APIs USED:
+ * - esp_hosted_get_coprocessor_fwversion() - Get slave firmware version
+ * - esp_hosted_slave_ota_begin()  - Initialize OTA session
+ * - esp_hosted_slave_ota_write()  - Transfer firmware chunks
+ * - esp_hosted_slave_ota_end()    - Finalize OTA session
+ * - esp_hosted_slave_ota_activate() - (if current slave FW > v2.5.X only) - ** Called from main.c **
+
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>

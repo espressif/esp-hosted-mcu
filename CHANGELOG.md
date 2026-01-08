@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.9.2
+
+### Fixed
+- Slave OTA Example
+  - Add version-aware OTA activation
+  - Conditionally call esp_slave_ota_activate() only for slave FW >= v2.6.0
+
+- Improved Slave OTA Documentation
+  - Comprehensive code comments explaining OTA APIs and version checks
+  - Mermaid sequence diagram showing complete OTA verification flow
+
 ## 2.9.1
 
 ### Fixed
