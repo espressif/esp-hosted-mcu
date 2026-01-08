@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -22,6 +22,64 @@ static const char* TAG = "ota_partition";
 #define CHUNK_SIZE 1500
 #endif
 
+/* Function to check if partition contains valid firmware data */
+static esp_err_t check_partition_has_firmware(const esp_partition_t* partition)
+{
+	uint8_t buffer[256];
+	esp_err_t ret;
+	size_t total_checked = 0;
+	size_t check_size = sizeof(buffer);
+
+	ESP_LOGI(TAG, "Checking if partition '%s' contains firmware data...", partition->label);
+
+	/* Check first 1KB of partition for any non-0xFF data */
+	while (total_checked < 1024 && total_checked < partition->size) {
+		check_size = (1024 - total_checked > sizeof(buffer)) ? sizeof(buffer) : (1024 - total_checked);
+
+		ret = esp_partition_read(partition, total_checked, buffer, check_size);
+		if (ret != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to read partition data for validation: %s", esp_err_to_name(ret));
+			return ret;
+		}
+
+		/* Check if all bytes are 0xFF (empty partition) */
+		bool all_ff = true;
+		for (size_t i = 0; i < check_size; i++) {
+			if (buffer[i] != 0xFF) {
+				all_ff = false;
+				break;
+			}
+		}
+
+		if (!all_ff) {
+			ESP_LOGI(TAG, "Found non-empty data in partition at offset %u", (unsigned int)total_checked);
+			return ESP_OK; /* Found some data */
+		}
+
+		total_checked += check_size;
+	}
+
+	if (total_checked >= 1024) {
+		ESP_LOGW(TAG, "Partition appears to be empty or uninitialized (first 1KB is all 0xFF)!");
+		ESP_LOGW(TAG, "");
+		ESP_LOGW(TAG, "---- OPTION 1 ----");
+		ESP_LOGW(TAG, "Keep Slave FW <here> and `idf.py fullclean` & `idf.py flash` again");
+		ESP_LOGW(TAG, "  - host_performs_slave_ota/");
+		ESP_LOGW(TAG, "     └── components/");
+		ESP_LOGW(TAG, "          └── ota_partition/            # Slave OTA using Host Partition method");
+		ESP_LOGW(TAG, "                └── slave_fw_bin/       # Put slave .bin files here");
+		ESP_LOGW(TAG, "");
+		ESP_LOGW(TAG, "       OR");
+		ESP_LOGW(TAG, "");
+		ESP_LOGW(TAG, "---- OPTION 2 ----");
+		ESP_LOGW(TAG, "  1. Create a '%s' partition in your host partition table", partition->label);
+		ESP_LOGW(TAG, "  2. Flashed desired slave firmware binary to this partition using 'idf.py partition-table-flash && idf.py app-flash' or similar");
+		return ESP_ERR_NOT_FOUND;
+	}
+
+	return ESP_OK;
+}
+
 /* Function to parse ESP32 image header and get firmware info */
 static esp_err_t parse_image_header(const esp_partition_t* partition, size_t* firmware_size, char* app_version_str, size_t version_str_len)
 {
@@ -41,7 +99,10 @@ static esp_err_t parse_image_header(const esp_partition_t* partition, size_t* fi
 
 	/* Validate magic number */
 	if (image_header.magic != ESP_IMAGE_HEADER_MAGIC) {
-		ESP_LOGE(TAG, "Invalid image magic: 0x%" PRIx8, image_header.magic);
+		ESP_LOGE(TAG, "Invalid image magic: 0x%" PRIx8 " (expected: 0x%" PRIx8 ")", image_header.magic, ESP_IMAGE_HEADER_MAGIC);
+		ESP_LOGE(TAG, "This indicates the partition does not contain a valid ESP32 firmware image!");
+		ESP_LOGE(TAG, "Please ensure you have flashed firmware to the '%s' partition.", partition->label);
+		ESP_LOGE(TAG, "Use 'idf.py partition-table-flash && idf.py flash' or similar command.");
 		return ESP_ERR_INVALID_ARG;
 	}
 
@@ -138,6 +199,16 @@ esp_err_t ota_partition_perform(const char* partition_label)
 	}
 
 	ESP_LOGI(TAG, "Found partition: %s, size: %" PRIu32 " bytes", partition->label, partition->size);
+
+	/* Check if partition contains any firmware data */
+	ret = check_partition_has_firmware(partition);
+	if (ret == ESP_ERR_NOT_FOUND) {
+		ESP_LOGW(TAG, "OTA cannot proceed - partition appears to be empty or uninitialized");
+		return ESP_HOSTED_SLAVE_OTA_FAILED;
+	} else if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to check partition contents: %s", esp_err_to_name(ret));
+		return ESP_HOSTED_SLAVE_OTA_FAILED;
+	}
 
 	/* Parse image header to get firmware size and version */
 	ret = parse_image_header(partition, &firmware_size, new_app_version, sizeof(new_app_version));

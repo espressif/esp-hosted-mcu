@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -290,8 +290,8 @@ static void wifi_itwt(void)
 #endif
 #if CONFIG_SOC_WIFI_SUPPORT_5G || CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G
     wifi_bandwidths_t bw = {
-        .ghz_2g = WIFI_BW_HT20,
-        .ghz_5g = WIFI_BW_HT20,
+        .ghz_2g = WIFI_BW20,
+        .ghz_5g = WIFI_BW20,
     };
     esp_wifi_set_bandwidths(WIFI_IF_STA, &bw);
 
@@ -301,7 +301,7 @@ static void wifi_itwt(void)
     };
     esp_wifi_set_protocols(WIFI_IF_STA, &protocol);
 #else
-    esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT20);
+    esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW20);
     esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N | WIFI_PROTOCOL_11AX);
 #endif
     esp_wifi_set_ps(WIFI_PS_MIN_MODEM);

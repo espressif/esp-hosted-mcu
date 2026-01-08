@@ -40,7 +40,7 @@ endif()
 execute_process(
     COMMAND ${PYTHON} -m esptool
         -b 2000000
-        write-flash
+        write_flash
         --force
         ${SLAVE_FW_OFFSET} "${SELECTED_FIRMWARE_PATH}"
     RESULT_VARIABLE FLASH_RESULT
