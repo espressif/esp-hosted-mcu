@@ -148,7 +148,7 @@ static uint8_t get_capabilities(void)
 	cap |= ESP_CHECKSUM_ENABLED;
 #endif
 
-#ifdef CONFIG_BT_ENABLED
+#if defined(CONFIG_SOC_BT_SUPPORTED) && defined(CONFIG_BT_ENABLED)
 	cap |= get_bluetooth_capabilities();
 #endif
 	ESP_LOGI(TAG, "capabilities: 0x%x", cap);
@@ -182,7 +182,7 @@ static uint32_t get_capabilities_ext(void)
 	ext_cap |= ESP_WLAN_UART_SUPPORT;
 #endif
 
-#ifdef CONFIG_BT_ENABLED
+#if defined(CONFIG_SOC_BT_SUPPORTED) && defined(CONFIG_BT_ENABLED)
 	ext_cap |= get_bluetooth_ext_capabilities();
 #endif
 	ESP_LOGI(TAG, "extended capabilities: 0x%"PRIx32, ext_cap);

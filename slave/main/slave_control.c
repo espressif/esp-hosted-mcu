@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1736,12 +1736,6 @@ static esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 #endif
 
-		/* Avoid using fast scan, which leads to faster SSID selection,
-		 * but faces data throughput issues when same SSID broadcasted by weaker AP
-		 */
-		p_a_sta->scan_method = WIFI_ALL_CHANNEL_SCAN;
-		p_a_sta->sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
-
 		RPC_REQ_COPY_STR(p_a_sta->sae_h2e_identifier, p_c_sta->sae_h2e_identifier, SAE_H2E_IDENTIFIER_LEN);
 		RPC_RET_FAIL_IF(esp_hosted_set_sta_config(req_payload->iface, &cfg));
 	} else if (req_payload->iface == WIFI_IF_AP) {
@@ -3389,6 +3383,8 @@ static esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
 	resp_payload->command = req_payload->command;
 	resp_payload->option  = req_payload->option;
 
+	// redo once additional features are supported
+#ifdef CONFIG_SOC_BT_SUPPORTED // only valid if SOC supports bluetooth
 	if (req_payload->feature == RPC_FEATURE__Feature_Bluetooth) {
 		// decode the requested Bluetooth control
 		switch (req_payload->command) {
@@ -3419,6 +3415,10 @@ static esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
 		ESP_LOGE(TAG, "error: invalid Feature Control");
 		resp_payload->resp = ESP_ERR_INVALID_ARG;
 	}
+#else
+	ESP_LOGE(TAG, "error: invalid Feature Control");
+	resp_payload->resp = ESP_ERR_INVALID_ARG;
+#endif
 	return ESP_OK;
 }
 

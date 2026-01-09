@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.9.3
+
+## Bug Fix
+
+- removed setting `scan_method` and `sort_method` in co-processor when station is connecting. Use the values sent by the Host in the Wi-Fi config.
+
+- fixed support for ESP32-S2 as a co-processor
+
 ## 2.9.2
 
 ### Fixed
@@ -28,7 +36,6 @@
 
 - Fix slave OTA failures on back-to-back updates by removing the hard dependency on `CONFIG_ESPTOOLPY_FLASHMODE_QIO`.
 - Previously, mandating QIO flash mode caused consecutive OTA operations to fail; this is now resolved by removing the forced flash mode setting.
-
 
 ## 2.8.5
 
