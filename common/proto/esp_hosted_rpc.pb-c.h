@@ -227,7 +227,7 @@ typedef struct RpcEventStaDisconnected RpcEventStaDisconnected;
 typedef struct RpcGpioConfig RpcGpioConfig;
 typedef struct RpcReqGpioConfig RpcReqGpioConfig;
 typedef struct RpcRespGpioConfig RpcRespGpioConfig;
-typedef struct RpcReqGpioReset RpcReqGpioReset;
+typedef struct RpcReqGpioResetPin RpcReqGpioResetPin;
 typedef struct RpcRespGpioResetPin RpcRespGpioResetPin;
 typedef struct RpcReqGpioSetLevel RpcReqGpioSetLevel;
 typedef struct RpcRespGpioSetLevel RpcRespGpioSetLevel;
@@ -1531,7 +1531,7 @@ struct  WifiScanThreshold
   int32_t rssi;
   /*
    **< The weakest authmode to accept in the fast scan mode
-   *Note: Incase this value is not set and password is set as per WPA2 standards(password len >= 8),
+   *Note: In case this value is not set and password is set as per WPA2 standards(password len >= 8),
    *it will be defaulted to WPA2 and device won't connect to deprecated WEP/WPA networks.
    *Please set authmode threshold as WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK to connect to WEP/WPA networks 
    */
@@ -1550,11 +1550,11 @@ struct  WifiPmfConfig
 {
   ProtobufCMessage base;
   /*
-   **< Deprecated variable. Device will always connect in PMF mode if other device also advertizes PMF capability. 
+   **< Deprecated variable. Device will always connect in PMF mode if other device also advertises PMF capability. 
    */
   protobuf_c_boolean capable;
   /*
-   **< Advertizes that Protected Management Frame is required. Device will not associate to non-PMF capable devices. 
+   **< Advertises that Protected Management Frame is required. Device will not associate to non-PMF capable devices. 
    */
   protobuf_c_boolean required;
 };
@@ -1707,7 +1707,7 @@ struct  WifiStaConfig
    */
   WifiScanThreshold *threshold;
   /*
-   **< Configuration for Protected Management Frame. Will be advertized in RSN Capabilities in RSN IE. 
+   **< Configuration for Protected Management Frame. Will be advertised in RSN Capabilities in RSN IE. 
    */
   WifiPmfConfig *pmf_cfg;
   /*
@@ -1727,7 +1727,7 @@ struct  WifiStaConfig
   /*
    **< Number of connection retries station will do before moving to next AP.
    *scan_method should be set as WIFI_ALL_CHANNEL_SCAN to use this config.
-   *Note: Enabling this may cause connection time to increase incase best AP doesn't behave properly. 
+   *Note: Enabling this may cause connection time to increase in case best AP doesn't behave properly. 
    */
   uint32_t failure_retry_cnt;
   /*
@@ -4394,13 +4394,13 @@ struct  RpcRespGpioConfig
     , 0 }
 
 
-struct  RpcReqGpioReset
+struct  RpcReqGpioResetPin
 {
   ProtobufCMessage base;
   int32_t gpio_num;
 };
-#define RPC__REQ__GPIO_RESET__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&rpc__req__gpio_reset__descriptor) \
+#define RPC__REQ__GPIO_RESET_PIN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__gpio_reset_pin__descriptor) \
     , 0 }
 
 
@@ -5322,7 +5322,7 @@ typedef enum {
   RPC__PAYLOAD_REQ_FEATURE_CONTROL = 387,
   RPC__PAYLOAD_REQ_CUSTOM_RPC = 388,
   RPC__PAYLOAD_REQ_GPIO_CONFIG = 389,
-  RPC__PAYLOAD_REQ_GPIO_RESET = 390,
+  RPC__PAYLOAD_REQ_GPIO_RESET_PIN = 390,
   RPC__PAYLOAD_REQ_GPIO_SET_LEVEL = 391,
   RPC__PAYLOAD_REQ_GPIO_GET_LEVEL = 392,
   RPC__PAYLOAD_REQ_GPIO_SET_DIRECTION = 393,
@@ -5586,7 +5586,7 @@ struct  Rpc
     RpcReqFeatureControl *req_feature_control;
     RpcReqCustomRpc *req_custom_rpc;
     RpcReqGpioConfig *req_gpio_config;
-    RpcReqGpioReset *req_gpio_reset;
+    RpcReqGpioResetPin *req_gpio_reset_pin;
     RpcReqGpioSetLevel *req_gpio_set_level;
     RpcReqGpioGetLevel *req_gpio_get_level;
     RpcReqGpioSetDirection *req_gpio_set_direction;
@@ -9767,24 +9767,24 @@ RpcRespGpioConfig *
 void   rpc__resp__gpio_config__free_unpacked
                      (RpcRespGpioConfig *message,
                       ProtobufCAllocator *allocator);
-/* RpcReqGpioReset methods */
-void   rpc__req__gpio_reset__init
-                     (RpcReqGpioReset         *message);
-size_t rpc__req__gpio_reset__get_packed_size
-                     (const RpcReqGpioReset   *message);
-size_t rpc__req__gpio_reset__pack
-                     (const RpcReqGpioReset   *message,
+/* RpcReqGpioResetPin methods */
+void   rpc__req__gpio_reset_pin__init
+                     (RpcReqGpioResetPin         *message);
+size_t rpc__req__gpio_reset_pin__get_packed_size
+                     (const RpcReqGpioResetPin   *message);
+size_t rpc__req__gpio_reset_pin__pack
+                     (const RpcReqGpioResetPin   *message,
                       uint8_t             *out);
-size_t rpc__req__gpio_reset__pack_to_buffer
-                     (const RpcReqGpioReset   *message,
+size_t rpc__req__gpio_reset_pin__pack_to_buffer
+                     (const RpcReqGpioResetPin   *message,
                       ProtobufCBuffer     *buffer);
-RpcReqGpioReset *
-       rpc__req__gpio_reset__unpack
+RpcReqGpioResetPin *
+       rpc__req__gpio_reset_pin__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
-void   rpc__req__gpio_reset__free_unpacked
-                     (RpcReqGpioReset *message,
+void   rpc__req__gpio_reset_pin__free_unpacked
+                     (RpcReqGpioResetPin *message,
                       ProtobufCAllocator *allocator);
 /* RpcRespGpioResetPin methods */
 void   rpc__resp__gpio_reset_pin__init
@@ -11830,8 +11830,8 @@ typedef void (*RpcReqGpioConfig_Closure)
 typedef void (*RpcRespGpioConfig_Closure)
                  (const RpcRespGpioConfig *message,
                   void *closure_data);
-typedef void (*RpcReqGpioReset_Closure)
-                 (const RpcReqGpioReset *message,
+typedef void (*RpcReqGpioResetPin_Closure)
+                 (const RpcReqGpioResetPin *message,
                   void *closure_data);
 typedef void (*RpcRespGpioResetPin_Closure)
                  (const RpcRespGpioResetPin *message,
@@ -12284,7 +12284,7 @@ extern const ProtobufCMessageDescriptor rpc__event__sta_disconnected__descriptor
 extern const ProtobufCMessageDescriptor rpc__gpio_config__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__gpio_config__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_config__descriptor;
-extern const ProtobufCMessageDescriptor rpc__req__gpio_reset__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__gpio_reset_pin__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_reset_pin__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__gpio_set_level__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_set_level__descriptor;

@@ -30,7 +30,7 @@ In the host's `menuconfig`, enable the following option:
 ```
 Component config --->
     ESP-Hosted --->
-        [*] Enable GPIO control on co-processor
+        [*] Enable GPIO Expander feature on host
 ```
 This corresponds to the `CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER=y` option.
 
@@ -38,9 +38,8 @@ This corresponds to the `CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER=y` option.
 
 In the slave's `menuconfig`, enable the following option:
 ```
-Component config --->
-    ESP-Hosted --->
-        [*] Enable GPIO Expander feature on host
+(Top) → Example Configuration
+        [*] Enable GPIO Expander support (host can control slave GPIOs)
 ```
 This corresponds to the `CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER=y` option.
 

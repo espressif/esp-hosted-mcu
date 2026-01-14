@@ -533,8 +533,8 @@ message wifi_scan_config {
 	wifi_scan_time scan_time = 6;               /**< scan time per channel */
 	uint32         home_chan_dwell_time = 7;    /**< time spent at home channel between scanning consecutive channels.*/
 	wifi_scan_channel_bitmap channel_bitmap = 8; /**< Channel bitmap for setting specific channels to be scanned.
-                                                      Please note that the 'channel' parameter above needs to be set to 0 to allow scanning by bitmap.
-                                                      Also, note that only allowed channels configured by wifi_country_t can be scanned. */
+												   Please note that the 'channel' parameter above needs to be set to 0 to allow scanning by bitmap.
+												   Also, note that only allowed channels configured by wifi_country_t can be scanned. */
 }
 
 message wifi_he_ap_info {
@@ -568,13 +568,13 @@ message wifi_ap_record {
 	wifi_country   country = 11;                /**< country information of AP */
 	wifi_he_ap_info he_ap = 12;
 	uint32         bandwidth = 13;              /**< For AP 20 MHz this value is set to 1. For AP 40 MHz this value is set to 2.
-                                                     For AP 80 MHz this value is set to 3. For AP 160MHz this value is set to 4.
-                                                     For AP 80+80MHz this value is set to 5*/
+												  For AP 80 MHz this value is set to 3. For AP 160MHz this value is set to 4.
+												  For AP 80+80MHz this value is set to 5*/
 	uint32         vht_ch_freq1 = 14;           /**< This fields are used only AP bandwidth is 80 and 160 MHz, to transmit the center channel
-                                                     frequency of the BSS. For AP bandwidth is 80 + 80 MHz, it is the center channel frequency
-                                                     of the lower frequency segment.*/
+												  frequency of the BSS. For AP bandwidth is 80 + 80 MHz, it is the center channel frequency
+												  of the lower frequency segment.*/
 	uint32         vht_ch_freq2 = 15;           /**< This fields are used only AP bandwidth is 80 + 80 MHz, and is used to transmit the center
-                                                     channel frequency of the second segment. */
+												  channel frequency of the second segment. */
 }
 
 message wifi_scan_threshold {
@@ -1667,77 +1667,77 @@ message Rpc_Event_StaDisconnected {
 }
 
 enum Rpc_GpioMode {
-    GPIO_MODE_DISABLE = 0;
-    GPIO_MODE_INPUT = 1;
-    GPIO_MODE_OUTPUT = 2;
-    GPIO_MODE_INPUT_OUTPUT = 3;
+	GPIO_MODE_DISABLE = 0;
+	GPIO_MODE_INPUT = 1;
+	GPIO_MODE_OUTPUT = 2;
+	GPIO_MODE_INPUT_OUTPUT = 3;
 }
 
 enum Rpc_GpioPullMode {
-    GPIO_PULL_NONE = 0;
-    GPIO_PULL_UP = 1;
-    GPIO_PULL_DOWN = 2;
+	GPIO_PULL_NONE = 0;
+	GPIO_PULL_UP = 1;
+	GPIO_PULL_DOWN = 2;
 }
 
 message Rpc_GpioConfig {
-    uint64 pin_bit_mask = 1;
-    Rpc_GpioMode mode = 2;
-    bool pull_up_en = 3;
-    bool pull_down_en = 4;
-    int32 intr_type = 5;
+	uint64 pin_bit_mask = 1;
+	Rpc_GpioMode mode = 2;
+	bool pull_up_en = 3;
+	bool pull_down_en = 4;
+	int32 intr_type = 5;
 }
 
 message Rpc_Req_GpioConfig {
-    Rpc_GpioConfig config = 1;
+	Rpc_GpioConfig config = 1;
 }
 message Rpc_Resp_GpioConfig {
-    int32 resp = 1;
+	int32 resp = 1;
 }
 
-message Rpc_Req_GpioReset {
-    int32 gpio_num = 1;
+message Rpc_Req_GpioResetPin {
+	int32 gpio_num = 1;
 }
 message Rpc_Resp_GpioResetPin {
-    int32 resp = 1;
+	int32 resp = 1;
 }
 
 message Rpc_Req_GpioSetLevel {
-    int32 gpio_num = 1;
-    uint32 level = 2; // 0 or 1
+	int32 gpio_num = 1;
+	uint32 level = 2; // 0 or 1
 }
 message Rpc_Resp_GpioSetLevel {
-    int32 resp = 1;
+	int32 resp = 1;
 }
 
 message Rpc_Req_GpioGetLevel {
-    int32 gpio_num = 1;
+	int32 gpio_num = 1;
 }
 message Rpc_Resp_GpioGetLevel {
-    int32 resp = 1;
-    uint32 level = 2;
+	int32 resp = 1;
+	uint32 level = 2;
 }
 
 message Rpc_Req_GpioSetDirection {
-    int32 gpio_num = 1;
-    Rpc_GpioMode mode = 2;
+	int32 gpio_num = 1;
+	Rpc_GpioMode mode = 2;
 }
 message Rpc_Resp_GpioSetDirection {
-    int32 resp = 1;
+	int32 resp = 1;
 }
 
 message Rpc_Req_GpioInputEnable {
-    int32 gpio_num = 1;
+	int32 gpio_num = 1;
 }
 message Rpc_Resp_GpioInputEnable {
-    int32 resp = 1;
+	int32 resp = 1;
 }
 
 message Rpc_Req_GpioSetPullMode {
-    int32 gpio_num = 1;
-    Rpc_GpioPullMode pull = 2;
+	int32 gpio_num = 1;
+	Rpc_GpioPullMode pull = 2;
 }
 message Rpc_Resp_GpioSetPullMode {
-    int32 resp = 1;
+	int32 resp = 1;
 }
 
 message Rpc_Event_DhcpDnsStatus {
@@ -2168,7 +2168,7 @@ message Rpc {
 		Rpc_Req_CustomRpc                   req_custom_rpc                    = 388;
 
 		Rpc_Req_GpioConfig                  req_gpio_config                   = 389;
-		Rpc_Req_GpioReset                   req_gpio_reset                    = 390;
+		Rpc_Req_GpioResetPin                req_gpio_reset_pin                = 390;
 		Rpc_Req_GpioSetLevel                req_gpio_set_level                = 391;
 		Rpc_Req_GpioGetLevel                req_gpio_get_level                = 392;
 		Rpc_Req_GpioSetDirection            req_gpio_set_direction            = 393;

@@ -178,16 +178,6 @@ esp_err_t rpc_supp_dpp_start_listen(void);
 esp_err_t rpc_supp_dpp_stop_listen(void);
 #endif
 
-#if H_GPIO_EXPANDER_SUPPORT
-esp_err_t rpc_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConfig);
-esp_err_t rpc_gpio_reset_pin(uint32_t gpio_num);
-esp_err_t rpc_gpio_set_level(uint32_t gpio_num, uint32_t level);
-int rpc_gpio_get_level(uint32_t gpio_num, int *level);
-esp_err_t rpc_gpio_set_direction(uint32_t gpio_num, uint32_t mode);
-esp_err_t rpc_gpio_input_enable(uint32_t gpio_num);
-esp_err_t rpc_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull);
-#endif
-
 #ifdef __cplusplus
 }
 #endif

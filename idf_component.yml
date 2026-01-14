@@ -1,22 +1,8 @@
-version: "2.9.7"
+version: "2.10.0"
 description: ESP-Hosted-MCU provide drivers to act any ESP chipset as Wi-Fi or Bluetooth co-processor.
 url: https://github.com/espressif/esp-hosted-mcu
 examples:
   - path: ./slave
-  - path: examples/host_bluedroid_ble_compatibility_test
-  - path: examples/host_bluedroid_bt_hid_mouse_device
-  - path: examples/host_bluedroid_host_only
-  - path: examples/host_bt_controller_mac_addr
-  - path: examples/host_network_split__power_save
-  - path: examples/host_nimble_bleprph_host_only_uart_hci
-  - path: examples/host_nimble_bleprph_host_only_vhci
-  - path: examples/host_peer_data_transfer
-  - path: examples/host_performs_slave_ota
-  - path: examples/host_sdcard_with_hosted
-  - path: examples/host_transport_config
-  - path: examples/host_wifi_easy_connect_dpp_enrollee
-  - path: examples/host_wifi_itwt
-  - path: examples/host_gpio_expander
 dependencies:
   idf:
     version: ">=5.3"

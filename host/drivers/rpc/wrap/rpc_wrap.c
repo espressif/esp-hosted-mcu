@@ -728,7 +728,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 #endif
 
 	case RPC_ID__Resp_GetCoprocessorFwVersion:
-	{
+									 {
 		/* Intended fallthrough */
 		break;
 	} default: {
@@ -2483,102 +2483,102 @@ esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec)
 }
 
 #if H_GPIO_EXPANDER_SUPPORT
-esp_err_t rpc_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConfig)
+esp_err_t esp_hosted_cp_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConfig)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  if (!pGPIOConfig)
-    return FAILURE;
+	if (!pGPIOConfig)
+		return FAILURE;
 
-  req->u.gpio_config.pin_bit_mask = pGPIOConfig->pin_bit_mask;
-  req->u.gpio_config.mode = pGPIOConfig->mode;
-  req->u.gpio_config.pull_up_en = pGPIOConfig->pull_up_en;
-  req->u.gpio_config.pull_down_en = pGPIOConfig->pull_down_en;
-  req->u.gpio_config.intr_type = pGPIOConfig->intr_type;
+	req->u.gpio_config.pin_bit_mask = pGPIOConfig->pin_bit_mask;
+	req->u.gpio_config.mode = pGPIOConfig->mode;
+	req->u.gpio_config.pull_up_en = pGPIOConfig->pull_up_en;
+	req->u.gpio_config.pull_down_en = pGPIOConfig->pull_down_en;
+	req->u.gpio_config.intr_type = pGPIOConfig->intr_type;
 
-  resp = rpc_slaveif_gpio_config(req);
+	resp = rpc_slaveif_gpio_config(req);
 
-  return rpc_rsp_callback(resp);
+	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_reset(uint32_t gpio_num)
+esp_err_t esp_hosted_cp_gpio_reset_pin(uint32_t gpio_num)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_num = gpio_num;
-  resp = rpc_slaveif_gpio_reset_pin(req);
+	req->u.gpio_num = gpio_num;
+	resp = rpc_slaveif_gpio_reset_pin(req);
 
-  return rpc_rsp_callback(resp);
+	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_set_level(uint32_t gpio_num, uint32_t level)
+esp_err_t esp_hosted_cp_gpio_set_level(uint32_t gpio_num, uint32_t level)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_set_level.gpio_num = gpio_num;
-  req->u.gpio_set_level.level = level;
+	req->u.gpio_set_level.gpio_num = gpio_num;
+	req->u.gpio_set_level.level = level;
 
-  resp = rpc_slaveif_gpio_set_level(req);
-  return rpc_rsp_callback(resp);
+	resp = rpc_slaveif_gpio_set_level(req);
+	return rpc_rsp_callback(resp);
 }
 
-int rpc_gpio_get_level(uint32_t gpio_num, int *level)
+esp_err_t esp_hosted_cp_gpio_get_level(uint32_t gpio_num, int *level)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_num = gpio_num;
-  resp = rpc_slaveif_gpio_get_level(req);
+	req->u.gpio_num = gpio_num;
+	resp = rpc_slaveif_gpio_get_level(req);
 
-  if (resp && resp->resp_event_status == SUCCESS) {
-        *level = resp->u.gpio_get_level;
-    }
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*level = resp->u.gpio_get_level;
+	}
 
-  return rpc_rsp_callback(resp);
+	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_set_direction(uint32_t gpio_num, uint32_t mode)
+esp_err_t esp_hosted_cp_gpio_set_direction(uint32_t gpio_num, uint32_t mode)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_set_direction.gpio_num = gpio_num;
-  req->u.gpio_set_direction.mode = mode;
+	req->u.gpio_set_direction.gpio_num = gpio_num;
+	req->u.gpio_set_direction.mode = mode;
 
-  resp = rpc_slaveif_gpio_set_direction(req);
-  return rpc_rsp_callback(resp);
+	resp = rpc_slaveif_gpio_set_direction(req);
+	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_input_enable(uint32_t gpio_num)
+esp_err_t esp_hosted_cp_gpio_input_enable(uint32_t gpio_num)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_num = gpio_num;
-  resp = rpc_slaveif_gpio_input_enable(req);
-  return rpc_rsp_callback(resp);
+	req->u.gpio_num = gpio_num;
+	resp = rpc_slaveif_gpio_input_enable(req);
+	return rpc_rsp_callback(resp);
 }
 
-esp_err_t rpc_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode)
+esp_err_t esp_hosted_cp_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode)
 {
-  /* implemented synchronous */
-  ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-  ctrl_cmd_t *resp = NULL;
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
-  req->u.gpio_set_pull_mode.gpio_num = gpio_num;
-  req->u.gpio_set_pull_mode.pull_mode = pull_mode;
+	req->u.gpio_set_pull_mode.gpio_num = gpio_num;
+	req->u.gpio_set_pull_mode.pull_mode = pull_mode;
 
-  resp = rpc_slaveif_gpio_set_pull_mode(req);
-  return rpc_rsp_callback(resp);
+	resp = rpc_slaveif_gpio_set_pull_mode(req);
+	return rpc_rsp_callback(resp);
 }
 #endif
 

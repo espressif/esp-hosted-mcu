@@ -1205,12 +1205,12 @@ menu "Example Configuration"
 			Wi-Fi setup is required.
 
 	config ESP_HOSTED_ENABLE_GPIO_EXPANDER
-	    bool "Enable GPIO Expander support (host can control slave GPIOs)"
-	    default n
-	    help
-	      Enable RPC methods that allow the HOST MCU to configure and control
-	      GPIOs on the SLAVE. Leave disabled unless you really need it.
-	      Access to GPIOs used by the transport (SPI/SDIO/SPI-HD/UART) are always blocked.
+		bool "Enable GPIO Expander support (host can control slave GPIOs)"
+		default n
+		help
+			Enable RPC methods that allow the HOST MCU to configure and control
+			GPIOs on the SLAVE. Leave disabled unless you really need it.
+			Access to GPIOs used by the transport (SPI/SDIO/SPI-HD/UART) are always blocked.
 
 	menu "Wi-Fi default config (pre-provisioning)"
 		depends on ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG

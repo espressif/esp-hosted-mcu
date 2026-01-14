@@ -109,18 +109,13 @@ The RPC IDs listed here are for requests and events. Each request will have a co
 |  99 |    266 | OTAActivate                        |            2.6.0 |
 | 100 |    267 | AppGetDesc                         |            2.6.7 |
 | 101 |    388 | CustomRpc                          |            2.8.1 |
-
-## GPIO RPCs
-
-| No. | RPC ID | RPC Command                        | Added in Release |
-|----:|-------:|------------------------------------|-----------------:|
-|   1 |    389 | GpioConfig                         |            2.9.0 |
-|   2 |    390 | GpioResetPin                       |            2.9.0 |
-|   3 |    391 | GpioSetLevel                       |            2.9.0 |
-|   4 |    392 | GpioGetLevel                       |            2.9.0 |
-|   5 |    393 | GpioSetDirection                   |            2.9.0 |
-|   6 |    394 | GpioInputEnable                    |            2.9.0 |
-|   7 |    395 | GpioSetPullMode                    |            2.9.0 |
+| 102 |    389 | GpioConfig                         |            2.10.0 |
+| 103 |    390 | GpioResetPin                       |            2.10.0 |
+| 104 |    391 | GpioSetLevel                       |            2.10.0 |
+| 105 |    392 | GpioGetLevel                       |            2.10.0 |
+| 106 |    393 | GpioSetDirection                   |            2.10.0 |
+| 107 |    394 | GpioInputEnable                    |            2.10.0 |
+| 108 |    395 | GpioSetPullMode                    |            2.10.0 |
 
 ## List of RPC Events
 

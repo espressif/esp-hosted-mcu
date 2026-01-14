@@ -9547,49 +9547,49 @@ void   rpc__resp__gpio_config__free_unpacked
   assert(message->base.descriptor == &rpc__resp__gpio_config__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   rpc__req__gpio_reset__init
-                     (RpcReqGpioReset         *message)
+void   rpc__req__gpio_reset_pin__init
+                     (RpcReqGpioResetPin         *message)
 {
-  static const RpcReqGpioReset init_value = RPC__REQ__GPIO_RESET__INIT;
+  static const RpcReqGpioResetPin init_value = RPC__REQ__GPIO_RESET_PIN__INIT;
   *message = init_value;
 }
-size_t rpc__req__gpio_reset__get_packed_size
-                     (const RpcReqGpioReset *message)
+size_t rpc__req__gpio_reset_pin__get_packed_size
+                     (const RpcReqGpioResetPin *message)
 {
-  assert(message->base.descriptor == &rpc__req__gpio_reset__descriptor);
+  assert(message->base.descriptor == &rpc__req__gpio_reset_pin__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t rpc__req__gpio_reset__pack
-                     (const RpcReqGpioReset *message,
+size_t rpc__req__gpio_reset_pin__pack
+                     (const RpcReqGpioResetPin *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &rpc__req__gpio_reset__descriptor);
+  assert(message->base.descriptor == &rpc__req__gpio_reset_pin__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t rpc__req__gpio_reset__pack_to_buffer
-                     (const RpcReqGpioReset *message,
+size_t rpc__req__gpio_reset_pin__pack_to_buffer
+                     (const RpcReqGpioResetPin *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &rpc__req__gpio_reset__descriptor);
+  assert(message->base.descriptor == &rpc__req__gpio_reset_pin__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-RpcReqGpioReset *
-       rpc__req__gpio_reset__unpack
+RpcReqGpioResetPin *
+       rpc__req__gpio_reset_pin__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (RpcReqGpioReset *)
-     protobuf_c_message_unpack (&rpc__req__gpio_reset__descriptor,
+  return (RpcReqGpioResetPin *)
+     protobuf_c_message_unpack (&rpc__req__gpio_reset_pin__descriptor,
                                 allocator, len, data);
 }
-void   rpc__req__gpio_reset__free_unpacked
-                     (RpcReqGpioReset *message,
+void   rpc__req__gpio_reset_pin__free_unpacked
+                     (RpcReqGpioResetPin *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &rpc__req__gpio_reset__descriptor);
+  assert(message->base.descriptor == &rpc__req__gpio_reset_pin__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   rpc__resp__gpio_reset_pin__init
@@ -24049,7 +24049,7 @@ const ProtobufCMessageDescriptor rpc__resp__gpio_config__descriptor =
   (ProtobufCMessageInit) rpc__resp__gpio_config__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rpc__req__gpio_reset__field_descriptors[1] =
+static const ProtobufCFieldDescriptor rpc__req__gpio_reset_pin__field_descriptors[1] =
 {
   {
     "gpio_num",
@@ -24057,34 +24057,34 @@ static const ProtobufCFieldDescriptor rpc__req__gpio_reset__field_descriptors[1]
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(RpcReqGpioReset, gpio_num),
+    offsetof(RpcReqGpioResetPin, gpio_num),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned rpc__req__gpio_reset__field_indices_by_name[] = {
+static const unsigned rpc__req__gpio_reset_pin__field_indices_by_name[] = {
   0,   /* field[0] = gpio_num */
 };
-static const ProtobufCIntRange rpc__req__gpio_reset__number_ranges[1 + 1] =
+static const ProtobufCIntRange rpc__req__gpio_reset_pin__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 1 }
 };
-const ProtobufCMessageDescriptor rpc__req__gpio_reset__descriptor =
+const ProtobufCMessageDescriptor rpc__req__gpio_reset_pin__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "Rpc_Req_GpioReset",
-  "RpcReqGpioReset",
-  "RpcReqGpioReset",
+  "Rpc_Req_GpioResetPin",
+  "RpcReqGpioResetPin",
+  "RpcReqGpioResetPin",
   "",
-  sizeof(RpcReqGpioReset),
+  sizeof(RpcReqGpioResetPin),
   1,
-  rpc__req__gpio_reset__field_descriptors,
-  rpc__req__gpio_reset__field_indices_by_name,
-  1,  rpc__req__gpio_reset__number_ranges,
-  (ProtobufCMessageInit) rpc__req__gpio_reset__init,
+  rpc__req__gpio_reset_pin__field_descriptors,
+  rpc__req__gpio_reset_pin__field_indices_by_name,
+  1,  rpc__req__gpio_reset_pin__number_ranges,
+  (ProtobufCMessageInit) rpc__req__gpio_reset_pin__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 static const ProtobufCFieldDescriptor rpc__resp__gpio_reset_pin__field_descriptors[1] =
@@ -28555,13 +28555,13 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[239] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "req_gpio_reset",
+    "req_gpio_reset_pin",
     390,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(Rpc, payload_case),
-    offsetof(Rpc, req_gpio_reset),
-    &rpc__req__gpio_reset__descriptor,
+    offsetof(Rpc, req_gpio_reset_pin),
+    &rpc__req__gpio_reset_pin__descriptor,
     NULL,
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -30219,7 +30219,7 @@ static const unsigned rpc__field_indices_by_name[] = {
   104,   /* field[104] = req_gpio_config */
   107,   /* field[107] = req_gpio_get_level */
   109,   /* field[109] = req_gpio_input_enable */
-  105,   /* field[105] = req_gpio_reset */
+  105,   /* field[105] = req_gpio_reset_pin */
   108,   /* field[108] = req_gpio_set_direction */
   106,   /* field[106] = req_gpio_set_level */
   110,   /* field[110] = req_gpio_set_pull_mode */

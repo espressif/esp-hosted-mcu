@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,7 +16,6 @@
 #include "esp_hosted_misc.h"
 #include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_wifi_config.h"
-#include "port_esp_hosted_host_config.h"
 
 #if H_WIFI_ENTERPRISE_SUPPORT
 #include "esp_eap_client.h"
@@ -354,29 +353,29 @@ typedef struct {
 
 #if H_GPIO_EXPANDER_SUPPORT
 typedef struct {
-    uint64_t pin_bit_mask;   /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
-    uint32_t mode;           /*!< GPIO mode: set input/output mode                     */
-    uint32_t pull_up_en;     /*!< GPIO pull-up                                         */
-    uint32_t pull_down_en;   /*!< GPIO pull-down                                       */
-    uint32_t intr_type;      /*!< GPIO interrupt type                                  */
-//#if SOC_GPIO_SUPPORT_PIN_HYS_FILTER
-//    uint32_t hys_ctrl_mode;       /*!< GPIO hysteresis: hysteresis filter on slope input    */
-//#endif
+	uint64_t pin_bit_mask;   /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+	uint32_t mode;           /*!< GPIO mode: set input/output mode                     */
+	uint32_t pull_up_en;     /*!< GPIO pull-up                                         */
+	uint32_t pull_down_en;   /*!< GPIO pull-down                                       */
+	uint32_t intr_type;      /*!< GPIO interrupt type                                  */
+	//#if SOC_GPIO_SUPPORT_PIN_HYS_FILTER
+	//    uint32_t hys_ctrl_mode;       /*!< GPIO hysteresis: hysteresis filter on slope input    */
+	//#endif
 } rpc_gpio_config_t;
 
 typedef struct {
-  uint32_t gpio_num;
-  uint32_t level;
+	uint32_t gpio_num;
+	uint32_t level;
 } rpc_gpio_set_level_t;
 
 typedef struct {
-  uint32_t gpio_num;
-  uint32_t mode;
+	uint32_t gpio_num;
+	uint32_t mode;
 } rpc_gpio_set_direction_t;
 
 typedef struct {
-  uint32_t gpio_num;
-  uint32_t pull_mode;
+	uint32_t gpio_num;
+	uint32_t pull_mode;
 } rpc_gpio_set_pull_mode_t;
 #endif
 
@@ -564,7 +563,7 @@ typedef struct Ctrl_cmd_t {
 
 		rpc_gpio_set_level_t        gpio_set_level;
 
-        int                         gpio_get_level;
+		int                         gpio_get_level;
 
 		rpc_gpio_set_direction_t    gpio_set_direction;
 
@@ -785,7 +784,7 @@ ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_get_coprocessor_app_desc(ctrl_cmd_t *req);
 
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
-ctrl_cmd_t * rpc_slave_feature_command(ctrl_cmd_t *req);;
+ctrl_cmd_t * rpc_slave_feature_command(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_len_get(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_inactive_time(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_inactive_time(ctrl_cmd_t *req);

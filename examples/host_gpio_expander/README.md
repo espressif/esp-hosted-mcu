@@ -4,29 +4,29 @@ This example demonstrates how to use the ESP-Hosted solution to control the GPIO
 
 ## How to Use
 
-### Prerequisites
+### Feature Switch
+Feature can be controlled at Host and Slave using `CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER` option.
+It is by default disabled at slave.
 
-1.  **Hardware:**
-    *   An ESP32-based board to act as the host MCU.
-    *   An ESP32-based board to act as the slave/co-processor.
-    *   The two boards should be connected via one of the supported transport interfaces (SPI, SDIO, or UART).
 
-2.  **Slave Configuration:**
-    *   The firmware flashed on the slave board must have the GPIO RPC feature enabled. In the slave's `menuconfig`, set the following:
+**Slave Configuration:**
+    *   The firmware flashed on the slave board must have the GPIO RPC feature enabled. In the slave's `idf.py menuconfig`, set the following:
         ```
-        Component config --->
-            ESP-Hosted --->
-                [*] Enable GPIO Expander feature on host
+        (Top) →
+            Example Configuration --->
+                [*] Enable GPIO Expander support (host can control slave GPIOs)
         ```
         This corresponds to the `CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER=y` option.
 
+
 ### Build and Flash
 
-1.  **Host:**
-    *   Navigate to this example directory: `cd examples/host_gpio_expander`.
-    *   Set your target board (e.g., `idf.py set-target esp32`).
-    *   Build and flash the project: `idf.py build flash`.
-    *   Monitor the output: `idf.py monitor`.
+1. **Slave**
+    * Slave build & flashed with above config
+
+2.  **Host:**
+    *   Set your target board (e.g., `idf.py set-target esp32p4`).
+    *   Build and flash the project: `idf.py -p <host_port> build flash monitor`.
 
 The host application will:
 1.  Initialize the ESP-Hosted transport.

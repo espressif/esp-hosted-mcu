@@ -3849,162 +3849,168 @@ static esp_err_t req_supp_dpp_stop_listen(Rpc *req, Rpc *resp, void *priv_data)
 #if H_GPIO_EXPANDER_SUPPORT
 static esp_err_t req_gpio_config(Rpc *req, Rpc *resp, void *priv_data)
 {
-  RPC_TEMPLATE(RpcRespGpioConfig, resp_gpio_config,
-               RpcReqGpioConfig, req_gpio_config,
-               rpc__resp__gpio_config__init);
+	RPC_TEMPLATE(RpcRespGpioConfig, resp_gpio_config,
+			RpcReqGpioConfig, req_gpio_config,
+			rpc__resp__gpio_config__init);
 
-  gpio_config_t config;
+	gpio_config_t config = {0};
 
-  config.mode = req_payload->config->mode;
-  config.pull_up_en = req_payload->config->pull_up_en;
-  config.pull_down_en = req_payload->config->pull_down_en;
-  config.intr_type = req_payload->config->intr_type;
-  config.pin_bit_mask = req_payload->config->pin_bit_mask;
+	config.mode = req_payload->config->mode;
+	config.pull_up_en = req_payload->config->pull_up_en;
+	config.pull_down_en = req_payload->config->pull_down_en;
+	config.intr_type = req_payload->config->intr_type;
+	config.pin_bit_mask = req_payload->config->pin_bit_mask;
 
-  for (int pin = 0; pin < GPIO_NUM_MAX; ++pin) {
-      if (config.pin_bit_mask & (1ULL << pin)) {
-          if (!transport_gpio_pin_guard_is_eligible((gpio_num_t)pin)) {
-              ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", pin);;
-              resp_payload->resp = ESP_ERR_INVALID_ARG;
-              return ESP_OK;
-          }
-      }
-  }
+	if (config.intr_type != GPIO_INTR_DISABLE) {
+		ESP_LOGE(TAG, "ISR is not supported from slave yet. please contact through github issues, if needed.");
+		resp_payload->resp = ESP_ERR_NOT_SUPPORTED;
+		return ESP_OK;
+	}
 
-  RPC_RET_FAIL_IF(gpio_config(&config));
+	for (int pin = 0; pin < GPIO_NUM_MAX; ++pin) {
+		if (config.pin_bit_mask & (1ULL << pin)) {
+			if (!transport_gpio_pin_guard_is_eligible((gpio_num_t)pin)) {
+				ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", pin);
+				resp_payload->resp = ESP_ERR_INVALID_ARG;
+				return ESP_OK;
+			}
+		}
+	}
 
-  return ESP_OK;
+	RPC_RET_FAIL_IF(gpio_config(&config));
+
+	return ESP_OK;
 }
 
 static esp_err_t req_gpio_reset(Rpc *req, Rpc *resp, void *priv_data)
 {
-  RPC_TEMPLATE(RpcRespGpioResetPin, resp_gpio_reset,
-               RpcReqGpioReset, req_gpio_reset,
-               rpc__resp__gpio_reset_pin__init);
+	RPC_TEMPLATE(RpcRespGpioResetPin, resp_gpio_reset,
+			RpcReqGpioResetPin, req_gpio_reset_pin,
+			rpc__resp__gpio_reset_pin__init);
 
-  gpio_num_t gpio_num;
-  gpio_num = req_payload->gpio_num;
+	gpio_num_t gpio_num;
+	gpio_num = req_payload->gpio_num;
 
-  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-      resp_payload->resp = ESP_ERR_INVALID_ARG;
-      return ESP_OK;
-  }
+	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		return ESP_OK;
+	}
 
-  RPC_RET_FAIL_IF(gpio_reset_pin(gpio_num));
+	RPC_RET_FAIL_IF(gpio_reset_pin(gpio_num));
 
-  return ESP_OK;
+	return ESP_OK;
 }
 
 static esp_err_t req_gpio_set_level(Rpc *req, Rpc *resp, void *priv_data)
 {
-  RPC_TEMPLATE(RpcRespGpioSetLevel, resp_gpio_set_level,
-               RpcReqGpioSetLevel, req_gpio_set_level,
-               rpc__resp__gpio_set_level__init);
+	RPC_TEMPLATE(RpcRespGpioSetLevel, resp_gpio_set_level,
+			RpcReqGpioSetLevel, req_gpio_set_level,
+			rpc__resp__gpio_set_level__init);
 
-  gpio_num_t gpio_num;
-  gpio_num = req_payload->gpio_num;
+	gpio_num_t gpio_num;
+	gpio_num = req_payload->gpio_num;
 
-  uint32_t level;
-  level = req_payload->level;
+	uint32_t level;
+	level = req_payload->level;
 
-  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-      resp_payload->resp = ESP_ERR_INVALID_ARG;
-      return ESP_OK;
-  }
+	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		return ESP_OK;
+	}
 
-  RPC_RET_FAIL_IF(gpio_set_level(gpio_num, level));
+	RPC_RET_FAIL_IF(gpio_set_level(gpio_num, level));
 
-  return ESP_OK;
+	return ESP_OK;
 }
 
 static esp_err_t req_gpio_get_level(Rpc *req, Rpc *resp, void *priv_data)
 {
-  RPC_TEMPLATE(RpcRespGpioGetLevel, resp_gpio_get_level,
-               RpcReqGpioGetLevel, req_gpio_get_level,
-               rpc__resp__gpio_get_level__init);
+	RPC_TEMPLATE(RpcRespGpioGetLevel, resp_gpio_get_level,
+			RpcReqGpioGetLevel, req_gpio_get_level,
+			rpc__resp__gpio_get_level__init);
 
-  gpio_num_t gpio_num;
-  gpio_num = req_payload->gpio_num;
+	gpio_num_t gpio_num;
+	gpio_num = req_payload->gpio_num;
 
-  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-      resp_payload->resp = ESP_ERR_INVALID_ARG;
-      return ESP_OK;
-  }
+	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		return ESP_OK;
+	}
 
-  int level = gpio_get_level(gpio_num);
+	int level = gpio_get_level(gpio_num);
 
-  resp_payload->level = level;
+	resp_payload->level = level;
 
-  return ESP_OK;
+	return ESP_OK;
 }
 
 static esp_err_t req_gpio_set_direction(Rpc *req, Rpc *resp, void *priv_data)
 {
-  RPC_TEMPLATE(RpcRespGpioSetDirection, resp_gpio_set_direction,
-               RpcReqGpioSetDirection, req_gpio_set_direction,
-               rpc__resp__gpio_set_direction__init);
+	RPC_TEMPLATE(RpcRespGpioSetDirection, resp_gpio_set_direction,
+			RpcReqGpioSetDirection, req_gpio_set_direction,
+			rpc__resp__gpio_set_direction__init);
 
-  gpio_num_t gpio_num;
-  gpio_num = req_payload->gpio_num;
+	gpio_num_t gpio_num;
+	gpio_num = req_payload->gpio_num;
 
-  gpio_mode_t mode;
-  mode = req_payload->mode;
+	gpio_mode_t mode;
+	mode = req_payload->mode;
 
-  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-      resp_payload->resp = ESP_ERR_INVALID_ARG;
-      return ESP_OK;
-  }
+	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		return ESP_OK;
+	}
 
-  RPC_RET_FAIL_IF(gpio_set_direction(gpio_num, mode));
+	RPC_RET_FAIL_IF(gpio_set_direction(gpio_num, mode));
 
-  return ESP_OK;
+	return ESP_OK;
 }
 
 static esp_err_t req_gpio_input_enable(Rpc *req, Rpc *resp, void *priv_data)
 {
-  RPC_TEMPLATE(RpcRespGpioInputEnable, resp_gpio_input_enable,
-               RpcReqGpioInputEnable, req_gpio_input_enable,
-               rpc__resp__gpio_input_enable__init);
+	RPC_TEMPLATE(RpcRespGpioInputEnable, resp_gpio_input_enable,
+			RpcReqGpioInputEnable, req_gpio_input_enable,
+			rpc__resp__gpio_input_enable__init);
 
-  gpio_num_t gpio_num;
-  gpio_num = req_payload->gpio_num;
+	gpio_num_t gpio_num;
+	gpio_num = req_payload->gpio_num;
 
-  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-        ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-        resp_payload->resp = ESP_ERR_INVALID_ARG;
-        return ESP_OK;
-    }
+	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		return ESP_OK;
+	}
 
-  RPC_RET_FAIL_IF(gpio_input_enable(gpio_num));
+	RPC_RET_FAIL_IF(gpio_input_enable(gpio_num));
 
-  return ESP_OK;
+	return ESP_OK;
 }
 
 static esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data)
 {
-  RPC_TEMPLATE(RpcRespGpioSetPullMode, resp_gpio_set_pull_mode,
-               RpcReqGpioSetPullMode, req_gpio_set_pull_mode,
-               rpc__resp__gpio_set_pull_mode__init);
+	RPC_TEMPLATE(RpcRespGpioSetPullMode, resp_gpio_set_pull_mode,
+			RpcReqGpioSetPullMode, req_gpio_set_pull_mode,
+			rpc__resp__gpio_set_pull_mode__init);
 
-  gpio_num_t gpio_num;
-  gpio_num = req_payload->gpio_num;
+	gpio_num_t gpio_num;
+	gpio_num = req_payload->gpio_num;
 
-  gpio_pull_mode_t pull_mode;
-  pull_mode = req_payload->pull;
+	gpio_pull_mode_t pull_mode;
+	pull_mode = req_payload->pull;
 
-  if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-      ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-       resp_payload->resp = ESP_ERR_INVALID_ARG;
-       return ESP_OK;
-   }
+	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
+		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		return ESP_OK;
+	}
 
-  RPC_RET_FAIL_IF(gpio_set_pull_mode(gpio_num, pull_mode));
+	RPC_RET_FAIL_IF(gpio_set_pull_mode(gpio_num, pull_mode));
 
-  return ESP_OK;
+	return ESP_OK;
 }
 #endif
 
@@ -4440,39 +4446,39 @@ static esp_rpc_req_t req_table[] = {
 
 #if H_GPIO_EXPANDER_SUPPORT
 	{
-        .req_num = RPC_ID__Req_GpioConfig,
-        .command_handler = req_gpio_config
-    },
-    {
-         .req_num = RPC_ID__Req_GpioResetPin,
-         .command_handler = req_gpio_reset
-    },
-    {
-         .req_num = RPC_ID__Req_GpioSetLevel,
-         .command_handler = req_gpio_set_level
-    },
-    {
-         .req_num = RPC_ID__Req_GpioGetLevel,
-         .command_handler = req_gpio_get_level
-    },
-    {
-         .req_num = RPC_ID__Req_GpioSetDirection,
-         .command_handler = req_gpio_set_direction
-    },
-    {
-         .req_num = RPC_ID__Req_GpioInputEnable,
-         .command_handler = req_gpio_input_enable
-    },
-    {
-         .req_num = RPC_ID__Req_GpioSetPullMode,
-         .command_handler = req_gpio_set_pull_mode
-    },
+		.req_num = RPC_ID__Req_GpioConfig,
+		.command_handler = req_gpio_config
+	},
+	{
+		.req_num = RPC_ID__Req_GpioResetPin,
+		.command_handler = req_gpio_reset
+	},
+	{
+		.req_num = RPC_ID__Req_GpioSetLevel,
+		.command_handler = req_gpio_set_level
+	},
+	{
+		.req_num = RPC_ID__Req_GpioGetLevel,
+		.command_handler = req_gpio_get_level
+	},
+	{
+		.req_num = RPC_ID__Req_GpioSetDirection,
+		.command_handler = req_gpio_set_direction
+	},
+	{
+		.req_num = RPC_ID__Req_GpioInputEnable,
+		.command_handler = req_gpio_input_enable
+	},
+	{
+		.req_num = RPC_ID__Req_GpioSetPullMode,
+		.command_handler = req_gpio_set_pull_mode
+	},
 #endif
 };
 
 static int lookup_req_handler(int req_id)
 {
-    for (int i = 0; i < sizeof(req_table)/sizeof(esp_rpc_req_t); i++) {
+	for (int i = 0; i < sizeof(req_table)/sizeof(esp_rpc_req_t); i++) {
 		if (req_table[i].req_num == req_id) {
 			return i;
 		}
