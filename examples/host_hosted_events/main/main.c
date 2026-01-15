@@ -73,7 +73,7 @@ static void esp_hosted_event_handler(void* arg, esp_event_base_t event_base,
 		int32_t event_id, void* event_data)
 {
 	if (event_base == ESP_HOSTED_EVENT) {
-		if (event_id == ESP_HOSTED_EVENT_COPROCESSOR_INIT) {
+		if (event_id == ESP_HOSTED_EVENT_CP_INIT) {
 			ESP_LOGI(TAG, "*** got INIT event from co-processor ***");
 			esp_hosted_event_init_t *event = (esp_hosted_event_init_t *)event_data;
 			ESP_LOGI(TAG, "*** Co-processor Reset Reason %"PRIu16" ***", event->reason);
@@ -96,7 +96,7 @@ static void esp_hosted_event_handler(void* arg, esp_event_base_t event_base,
 				xEventGroupSetBits(s_esp_hosted_event_group, ESP_HOSTED_RESET_BIT);
 				ESP_LOGI(TAG, "*** Transport Failure ***");
 			}
-		} else if (event_id == ESP_HOSTED_EVENT_COPROCESSOR_HEARTBEAT) {
+		} else if (event_id == ESP_HOSTED_EVENT_CP_HEARTBEAT) {
 			esp_hosted_event_heartbeat_t *event = (esp_hosted_event_heartbeat_t *)event_data;
 			ESP_LOGI(TAG, "*** Heartbeat %"PRIu32" ***", event->heartbeat);
 			uint32_t curr_heartbeat = event->heartbeat;

@@ -12,8 +12,8 @@ This has been tested with the ESP32-C6 co-processor, flashed with the standard [
 
 It makes use of ESP-Hosted events, with event base of `ESP_HOSTED_EVENT`:
 
-- `ESP_HOSTED_EVENT_COPROCESSOR_INIT`: this event is sent by the co-processor after it has started and ESP-Hosted transport has been setup. Receiving this event for a second time indicates that the co-process has restarted. An `esp_reset_reason_t` value is provided so the host can discover why the co-processor sent the event
-- `ESP_HOSTED_EVENT_COPROCESSOR_HEARTBEAT`: when configured by the host, the co-processor will periodically send a heartbeat event at the required interval (in seconds). If this event is not received after the interval, it indicates the the co-processor may have hanged and is unable to send the event.
+- `ESP_HOSTED_EVENT_CP_INIT`: this event is sent by the co-processor after it has started and ESP-Hosted transport has been setup. Receiving this event for a second time indicates that the co-process has restarted. An `esp_reset_reason_t` value is provided so the host can discover why the co-processor sent the event
+- `ESP_HOSTED_EVENT_CP_HEARTBEAT`: when configured by the host, the co-processor will periodically send a heartbeat event at the required interval (in seconds). If this event is not received after the interval, it indicates the the co-processor may have hanged and is unable to send the event.
 - `ESP_HOSTED_EVENT_TRANSPORT_FAILURE`: indicates a ESP-Hosted transport failure
 
 This example sets up the detection of ESP-Hosted events, then connects to a station. After connecting, if the co-processor reboots (INIT event received) or hangs (timeout getting HEARTBEAT), it will tell NETIF that the connection is lost, then proceed to reinitialise the ESP-Hosted transport.
