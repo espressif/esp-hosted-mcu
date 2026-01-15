@@ -136,4 +136,16 @@ esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size
 esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
     void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
 
+/**
+  * @brief  Configure the co-processor heartbeat
+  *
+  * @param  enable  Enable or disable co-processor heartbeat
+  * @param  duration_sec Duration between heartbeats (in secs)
+  *
+  * @return ESP_OK on success, ESP_ERR_INVALID_ARG if duration is out of range
+  *
+  * @note Minimum heartbeat interval is 1 secs, maximum is 24 hours
+  */
+esp_err_t esp_hosted_configure_heartbeat(bool enable, int duration_sec);
+
 #endif

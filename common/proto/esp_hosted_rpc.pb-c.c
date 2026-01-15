@@ -22799,7 +22799,7 @@ const ProtobufCMessageDescriptor rpc__event__wifi_event_no_args__descriptor =
   (ProtobufCMessageInit) rpc__event__wifi_event_no_args__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rpc__event__espinit__field_descriptors[1] =
+static const ProtobufCFieldDescriptor rpc__event__espinit__field_descriptors[2] =
 {
   {
     "init_data",
@@ -22813,14 +22813,27 @@ static const ProtobufCFieldDescriptor rpc__event__espinit__field_descriptors[1] 
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "cp_reset_reason",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventESPInit, cp_reset_reason),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned rpc__event__espinit__field_indices_by_name[] = {
+  1,   /* field[1] = cp_reset_reason */
   0,   /* field[0] = init_data */
 };
 static const ProtobufCIntRange rpc__event__espinit__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 1 }
+  { 0, 2 }
 };
 const ProtobufCMessageDescriptor rpc__event__espinit__descriptor =
 {
@@ -22830,7 +22843,7 @@ const ProtobufCMessageDescriptor rpc__event__espinit__descriptor =
   "RpcEventESPInit",
   "",
   sizeof(RpcEventESPInit),
-  1,
+  2,
   rpc__event__espinit__field_descriptors,
   rpc__event__espinit__field_indices_by_name,
   1,  rpc__event__espinit__number_ranges,

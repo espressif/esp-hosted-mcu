@@ -113,7 +113,15 @@ uint8_t parse_tlv(uint8_t* data, uint32_t* pro_len)
 
 int transport_pserial_close(void)
 {
-	int ret = serial_drv_close(&serial_handle);
+	int ret = SUCCESS;
+
+	ret = rpc_platform_deinit();
+	if (ret != SUCCESS) {
+		ESP_LOGE(TAG, "Platform deinit failed\n");
+	}
+
+	ret = serial_drv_close(&serial_handle);
+
 	if (ret) {
 		ESP_LOGE(TAG, "Failed to close driver interface\n");
 		return FAILURE;

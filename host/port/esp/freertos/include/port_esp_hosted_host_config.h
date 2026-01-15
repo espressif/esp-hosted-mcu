@@ -374,6 +374,12 @@ enum {
 
 /* --------------------- Common slave reset strategy ------------------- */
 
+#if defined(CONFIG_ESP_HOSTED_TRANSPORT_RESTART_ON_FAILURE)
+  #define H_TRANSPORT_RESTART_ON_FAILURE 1
+#else
+  #define H_TRANSPORT_RESTART_ON_FAILURE 0
+#endif
+
 #if defined(CONFIG_ESP_HOSTED_SLAVE_RESET_ON_EVERY_HOST_BOOTUP)
   /* Always reset the slave when host boots up
    * This ensures a clean transport state and prevents any inconsistent states,

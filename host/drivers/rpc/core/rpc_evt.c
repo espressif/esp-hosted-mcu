@@ -130,6 +130,8 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 
 	case RPC_ID__Event_ESPInit: {
 		ESP_LOGI(TAG, "EVENT: ESP INIT\n");
+		RPC_FAIL_ON_NULL(event_esp_init);
+		app_ntfy->u.e_init.cp_reset_reason = rpc_msg->event_esp_init->cp_reset_reason;
 		break;
 	} case RPC_ID__Event_Heartbeat: {
 		ESP_LOGD(TAG, "EVENT: Heartbeat\n");

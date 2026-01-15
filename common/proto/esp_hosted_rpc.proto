@@ -1612,7 +1612,8 @@ message Rpc_Event_WifiEventNoArgs {
 }
 
 message Rpc_Event_ESPInit {
-	bytes init_data = 1;
+	bytes init_data = 1; // reserved
+	uint32 cp_reset_reason = 2;
 }
 
 message Rpc_Event_Heartbeat {

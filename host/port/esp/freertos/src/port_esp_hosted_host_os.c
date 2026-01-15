@@ -54,6 +54,8 @@ wifi_osi_funcs_t g_wifi_osi_funcs;
 ESP_EVENT_DECLARE_BASE(WIFI_EVENT);
 struct hosted_config_t g_h = HOSTED_CONFIG_INIT_DEFAULT();
 
+ESP_EVENT_DEFINE_BASE(ESP_HOSTED_EVENT);
+
 struct timer_handle_t {
 	esp_timer_handle_t timer_id;
 };
@@ -819,6 +821,13 @@ int hosted_wifi_event_post(int32_t event_id,
 	return esp_event_post(WIFI_EVENT, event_id, event_data, event_data_size, ticks_to_wait);
 }
 
+int hosted_event_post(esp_event_base_t event_base, int32_t event_id,
+		void* event_data, size_t event_data_size, uint32_t ticks_to_wait)
+{
+	ESP_LOGV(TAG, "base %d, event %ld recvd --> event_data:%p event_data_size: %u",event_base,event_id, event_data, event_data_size);
+	return esp_event_post(event_base, event_id, event_data, event_data_size, ticks_to_wait);
+}
+
 void hosted_log_write(int  level,
 					const char *tag,
 					const char *format, ...)
@@ -983,4 +992,5 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 
 	._h_config_host_power_save_hal_impl = hosted_config_host_power_save,
 	._h_start_host_power_save_hal_impl = hosted_start_host_power_save,
+	._h_event_post               =  hosted_event_post              ,
 };

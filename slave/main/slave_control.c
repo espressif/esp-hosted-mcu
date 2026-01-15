@@ -65,8 +65,8 @@
 #define TIMEOUT_IN_HOUR             (60*TIMEOUT_IN_MIN)
 #define RESTART_TIMEOUT             (2*TIMEOUT_IN_SEC)
 
-#define MIN_HEARTBEAT_INTERVAL      (10)
-#define MAX_HEARTBEAT_INTERVAL      (60*60)
+#define MIN_HEARTBEAT_INTERVAL      (1)
+#define MAX_HEARTBEAT_INTERVAL      (24*60*60)
 
 
 
@@ -748,11 +748,10 @@ static esp_err_t configure_heartbeat(bool enable, int hb_duration)
 		stop_heartbeat();
 
 	} else {
-		if (duration < MIN_HEARTBEAT_INTERVAL)
-			duration = MIN_HEARTBEAT_INTERVAL;
-		if (duration > MAX_HEARTBEAT_INTERVAL)
-			duration = MAX_HEARTBEAT_INTERVAL;
-
+		if ((duration < MIN_HEARTBEAT_INTERVAL) ||
+				(duration > MAX_HEARTBEAT_INTERVAL)) {
+			return ESP_ERR_INVALID_ARG;
+		}
 		stop_heartbeat();
 
 		ret = start_heartbeat(duration);
@@ -4424,6 +4423,7 @@ static esp_err_t rpc_evt_ESPInit(Rpc *ntfy)
 	ntfy->payload_case = RPC__PAYLOAD_EVENT_ESP_INIT;
 	ntfy->event_esp_init = ntfy_payload;
 
+	ntfy_payload->cp_reset_reason = esp_reset_reason();
 	return ESP_OK;
 }
 

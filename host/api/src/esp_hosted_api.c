@@ -19,6 +19,7 @@ extern "C" {
 #include "transport_drv.h"
 #include "rpc_wrap.h"
 #include "esp_log.h"
+#include "esp_hosted_event.h"
 
 #if H_DPP_SUPPORT
 #include "esp_dpp.h"
@@ -55,6 +56,9 @@ static void transport_active_cb(void)
 {
 	ESP_LOGI(TAG, "Transport active");
 	esp_hosted_transport_up = 1;
+	g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+			ESP_HOSTED_EVENT_TRANSPORT_UP,
+			NULL, 0, HOSTED_BLOCK_MAX);
 }
 
 #if 0
@@ -77,11 +81,13 @@ esp_err_t esp_hosted_setup(void)
 }
 #endif
 
+static esp_remote_channel_t sta_ch = NULL;
+static esp_remote_channel_t ap_ch = NULL;
+
 static esp_err_t add_esp_wifi_remote_channels(void)
 {
 	ESP_LOGI(TAG, "** %s **", __func__);
 	esp_remote_channel_tx_fn_t tx_cb;
-	esp_remote_channel_t ch;
 
 	/* Add an RPC channel with default config (i.e. secure=true) */
 	struct esp_remote_channel_config config = ESP_HOSTED_CHANNEL_CONFIG_DEFAULT();
@@ -93,15 +99,28 @@ static esp_err_t add_esp_wifi_remote_channels(void)
 	/* Add two other channels for the two WiFi interfaces (STA, softAP) in plain text */
 	config.secure = false;
 	config.if_type = ESP_STA_IF;
-	ch = esp_hosted_add_channel(&config, &tx_cb, esp_wifi_remote_channel_rx);
-	esp_wifi_remote_channel_set(WIFI_IF_STA, ch, tx_cb);
+	sta_ch = esp_hosted_add_channel(&config, &tx_cb, esp_wifi_remote_channel_rx);
+	esp_wifi_remote_channel_set(WIFI_IF_STA, sta_ch, tx_cb);
 
 
 	config.secure = false;
 	config.if_type = ESP_AP_IF;
-	ch = esp_hosted_add_channel(&config, &tx_cb, esp_wifi_remote_channel_rx);
-	esp_wifi_remote_channel_set(WIFI_IF_AP, ch, tx_cb);
+	ap_ch = esp_hosted_add_channel(&config, &tx_cb, esp_wifi_remote_channel_rx);
+	esp_wifi_remote_channel_set(WIFI_IF_AP, ap_ch, tx_cb);
 
+	return ESP_OK;
+}
+
+static esp_err_t remove_esp_wifi_remote_channels(void)
+{
+	if (sta_ch) {
+		esp_hosted_remove_channel(sta_ch);
+		sta_ch = NULL;
+	}
+	if (ap_ch) {
+		esp_hosted_remove_channel(ap_ch);
+		ap_ch = NULL;
+	}
 	return ESP_OK;
 }
 
@@ -140,9 +159,13 @@ int esp_hosted_deinit(void)
 	ESP_LOGI(TAG, "ESP-Hosted deinit\n");
 	rpc_unregister_event_callbacks();
 	ESP_ERROR_CHECK(rpc_deinit());
+	ESP_ERROR_CHECK(remove_esp_wifi_remote_channels());
 	ESP_ERROR_CHECK(teardown_transport());
 	esp_hosted_init_done = 0;
 	esp_hosted_transport_up = 0;
+	g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+			ESP_HOSTED_EVENT_TRANSPORT_DOWN,
+			NULL, 0, HOSTED_BLOCK_MAX);
 	return ESP_OK;
 }
 
@@ -451,17 +474,20 @@ esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid)
 
 esp_err_t esp_wifi_remote_set_inactive_time(wifi_interface_t ifx, uint16_t sec)
 {
+	check_transport_up();
 	return rpc_wifi_set_inactive_time(ifx, sec);
 }
 
 esp_err_t esp_wifi_remote_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
 {
+	check_transport_up();
 	return rpc_wifi_get_inactive_time(ifx, sec);
 }
 
 #if H_WIFI_HE_SUPPORT
 esp_err_t esp_wifi_remote_sta_twt_config(wifi_twt_config_t *config)
 {
+	check_transport_up();
 	return rpc_wifi_sta_twt_config(config);
 }
 
@@ -471,31 +497,37 @@ esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
 esp_err_t esp_wifi_remote_sta_itwt_setup(wifi_twt_setup_config_t *setup_config)
 #endif
 {
+	check_transport_up();
 	return rpc_wifi_sta_itwt_setup(setup_config);
 }
 
 esp_err_t esp_wifi_remote_sta_itwt_teardown(int flow_id)
 {
+	check_transport_up();
 	return rpc_wifi_sta_itwt_teardown(flow_id);
 }
 
 esp_err_t esp_wifi_remote_sta_itwt_suspend(int flow_id, int suspend_time_ms)
 {
+	check_transport_up();
 	return rpc_wifi_sta_itwt_suspend(flow_id, suspend_time_ms);
 }
 
 esp_err_t esp_wifi_remote_sta_itwt_get_flow_id_status(int *flow_id_bitmap)
 {
+	check_transport_up();
 	return rpc_wifi_sta_itwt_get_flow_id_status(flow_id_bitmap);
 }
 
 esp_err_t esp_wifi_remote_sta_itwt_send_probe_req(int timeout_ms)
 {
+	check_transport_up();
 	return rpc_wifi_sta_itwt_send_probe_req(timeout_ms);
 }
 
 esp_err_t esp_wifi_remote_sta_itwt_set_target_wake_time_offset(int offset_us)
 {
+	check_transport_up();
 	return rpc_wifi_sta_itwt_set_target_wake_time_offset(offset_us);
 }
 #endif
@@ -755,21 +787,25 @@ esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods)
 
 esp_err_t esp_hosted_bt_controller_init(void)
 {
+	check_transport_up();
 	return rpc_bt_controller_init();
 }
 
 esp_err_t esp_hosted_bt_controller_deinit(bool mem_release)
 {
+	check_transport_up();
 	return rpc_bt_controller_deinit(mem_release);
 }
 
 esp_err_t esp_hosted_bt_controller_enable(void)
 {
+	check_transport_up();
 	return rpc_bt_controller_enable();
 }
 
 esp_err_t esp_hosted_bt_controller_disable(void)
 {
+	check_transport_up();
 	return rpc_bt_controller_disable();
 }
 
@@ -791,6 +827,7 @@ esp_err_t esp_hosted_iface_mac_addr_set(uint8_t *mac, size_t mac_len, esp_mac_ty
 		return ESP_ERR_INVALID_ARG;
 	}
 
+	check_transport_up();
 	return rpc_iface_mac_addr_set_get(true, mac, mac_len, type);
 }
 
@@ -802,6 +839,7 @@ esp_err_t esp_hosted_iface_mac_addr_get(uint8_t *mac, size_t mac_len, esp_mac_ty
 		return ESP_ERR_INVALID_ARG;
 	}
 
+	check_transport_up();
 	return rpc_iface_mac_addr_set_get(false, mac, mac_len, type);
 }
 
@@ -811,6 +849,7 @@ size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type)
 	// to match size_t esp_mac_addr_len_get(esp_mac_type_t type)
 	size_t len;
 
+	check_transport_up();
 	if (ESP_OK != rpc_iface_mac_addr_len_get(&len, type)) {
 		return 0;
 	} else {
@@ -820,7 +859,14 @@ size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type)
 
 esp_err_t esp_hosted_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc)
 {
+	check_transport_up();
 	return rpc_iface_get_coprocessor_app_desc(app_desc);
+}
+
+esp_err_t esp_hosted_configure_heartbeat(bool enable, int duration_sec)
+{
+	check_transport_up();
+	return rpc_iface_configure_heartbeat(enable, duration_sec);
 }
 
 /* esp_err_t esp_wifi_remote_scan_get_ap_record(wifi_ap_record_t *ap_record)

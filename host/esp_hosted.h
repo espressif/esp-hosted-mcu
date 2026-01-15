@@ -16,6 +16,7 @@ extern "C" {
 #include "esp_hosted_host_fw_ver.h"
 #include "esp_hosted_misc.h"
 #include "esp_hosted_ota.h"
+#include "esp_hosted_event.h"
 
 typedef struct esp_hosted_transport_config esp_hosted_config_t;
 

@@ -94,6 +94,7 @@ esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp
 esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type);
 
 esp_err_t rpc_iface_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc);
+esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec);
 
 esp_err_t rpc_ota_begin(void);
 esp_err_t rpc_ota_write(uint8_t* ota_data, uint32_t ota_data_len);
