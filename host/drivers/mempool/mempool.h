@@ -41,6 +41,8 @@ struct mempool {
 	mempool_t head;
 	void * spinlock;
 	uint32_t block_size;
+	uint32_t alloc_count;  /* Total allocations */
+	uint32_t free_count;   /* Total frees */
 };
 #endif
 

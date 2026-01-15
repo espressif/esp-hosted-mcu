@@ -155,6 +155,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 	switch(app_event->msg_id) {
 
 		case RPC_ID__Event_ESPInit: {
+			ESP_LOGI(TAG, "Coprocessor Boot-up");
 			esp_hosted_event_init_t event = { 0 };
 			event.reason = app_event->u.e_init.cp_reset_reason;
 			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_CP_INIT,

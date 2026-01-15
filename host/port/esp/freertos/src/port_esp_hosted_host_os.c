@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -616,6 +616,12 @@ void hosted_unlock_mempool(void *lock_handle)
 	assert(lock_handle);
 	portEXIT_CRITICAL((spinlock_handle_t *)lock_handle);
 }
+
+void hosted_destroy_lock_mempool(void *lock_handle)
+{
+	assert(lock_handle);
+	HOSTED_FREE(lock_handle);
+}
 #endif
 /* -------- Timers  ---------- */
 int hosted_timer_stop(void *timer_handle)
@@ -943,6 +949,7 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_create_lock_mempool      =  hosted_create_lock_mempool     ,
 	._h_lock_mempool             =  hosted_lock_mempool            ,
 	._h_unlock_mempool           =  hosted_unlock_mempool          ,
+	._h_destroy_lock_mempool     =  hosted_destroy_lock_mempool    ,
 #endif
 	._h_config_gpio              =  hosted_config_gpio             ,
 	._h_config_gpio_as_interrupt =  hosted_setup_gpio_interrupt,
@@ -966,6 +973,7 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_bus_init                 =  hosted_sdio_init               ,
 	._h_bus_deinit               =  hosted_sdio_deinit             ,
 	._h_sdio_card_init           =  hosted_sdio_card_init          ,
+	._h_sdio_card_deinit         =  hosted_sdio_card_deinit        ,
 	._h_sdio_read_reg            =  hosted_sdio_read_reg           ,
 	._h_sdio_write_reg           =  hosted_sdio_write_reg          ,
 	._h_sdio_read_block          =  hosted_sdio_read_block         ,

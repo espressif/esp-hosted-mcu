@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -41,6 +41,8 @@ struct mempool * mempool_create(uint32_t block_size)
 	new->spinlock = g_h.funcs->_h_create_lock_mempool();
 
 	new->block_size = MEMPOOL_ALIGNED(block_size);
+	new->alloc_count = 0;
+	new->free_count = 0;
 	SLIST_INIT(&(new->head));
 
 
@@ -55,19 +57,29 @@ void mempool_destroy(struct mempool* mp)
 {
 #ifdef H_USE_MEMPOOL
 	void * node1 = NULL;
+	int freed_count = 0;
 
 	if (!mp)
 		return;
 
+	ESP_LOGD(MEM_TAG, "Destroy mempool %p: alloc_count=%lu free_count=%lu",
+		mp, (unsigned long)mp->alloc_count, (unsigned long)mp->free_count);
 
-	ESP_LOGV(MEM_TAG, "Destroy mempool %p", mp);
+	if (mp->alloc_count != mp->free_count) {
+		ESP_LOGW(MEM_TAG, "MEMPOOL LEAK: %lu buffers allocated but only %lu freed (leaked: %ld buffers)",
+			(unsigned long)mp->alloc_count, (unsigned long)mp->free_count,
+			(long)(mp->alloc_count - mp->free_count));
+	}
 
 	while ((node1 = SLIST_FIRST(&(mp->head))) != NULL) {
 		SLIST_REMOVE_HEAD(&(mp->head), entries);
 		g_h.funcs->_h_free(node1);
+		freed_count++;
 	}
+	ESP_LOGD(MEM_TAG, "Freed %d buffers from mempool free list", freed_count);
 	SLIST_INIT(&(mp->head));
 
+	g_h.funcs->_h_destroy_lock_mempool(mp->spinlock);
 	g_h.funcs->_h_free(mp);
 #endif
 }
@@ -87,6 +99,7 @@ void * mempool_alloc(struct mempool* mp, int nbytes, int need_memset)
 	if (!SLIST_EMPTY(&(mp->head))) {
 		buf = SLIST_FIRST(&(mp->head));
 		SLIST_REMOVE_HEAD(&(mp->head), entries);
+		mp->alloc_count++;
 
 
 	g_h.funcs->_h_unlock_mempool(mp->spinlock);
@@ -102,6 +115,11 @@ void * mempool_alloc(struct mempool* mp, int nbytes, int need_memset)
 		g_h.funcs->_h_unlock_mempool(mp->spinlock);
 
 		buf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(mp->block_size), MEMPOOL_ALIGNMENT_BYTES);
+		if (buf) {
+			g_h.funcs->_h_lock_mempool(mp->spinlock);
+			mp->alloc_count++;
+			g_h.funcs->_h_unlock_mempool(mp->spinlock);
+		}
 #if H_MEM_STATS
 		h_stats_g.mp_stats.num_fresh_alloc++;
 		ESP_LOGV(MEM_TAG, "%p: num_alloc: %lu", mp, (unsigned long int)(h_stats_g.mp_stats.num_fresh_alloc));
@@ -129,7 +147,7 @@ void mempool_free(struct mempool* mp, void *mem)
 
 	g_h.funcs->_h_lock_mempool(mp->spinlock);
 
-
+	mp->free_count++;
 	SLIST_INSERT_HEAD(&(mp->head), (struct mempool_entry *)mem, entries);
 
 	g_h.funcs->_h_unlock_mempool(mp->spinlock);

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -209,7 +209,6 @@ static void sdio_process_rx_task(void const* pvParameters);
 
 static inline void sdio_mempool_create(void)
 {
-	MEM_DUMP("sdio_mempool_create");
 	buf_mp_g = mempool_create(MAX_SDIO_BUFFER_SIZE);
 #ifdef H_USE_MEMPOOL
 	assert(buf_mp_g);
@@ -218,7 +217,9 @@ static inline void sdio_mempool_create(void)
 
 static inline void sdio_mempool_destroy(void)
 {
+	ESP_LOGD(TAG, "Destroying SDIO mempool");
 	mempool_destroy(buf_mp_g);
+	buf_mp_g = NULL;
 }
 
 static inline void *sdio_buffer_alloc(uint need_memset)
@@ -257,10 +258,32 @@ void bus_deinit_internal(void *bus_handle)
 
 	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
 		if (to_slave_queue[prio_q_idx]) {
+			/* Drain to_slave_queue before destroying to prevent buffer leaks */
+			interface_buffer_handle_t buf_handle;
+			int count = 0;
+			while (g_h.funcs->_h_dequeue_item(to_slave_queue[prio_q_idx], &buf_handle, 0) == 0) {
+				/* Free buffer using the provided free function */
+				if (buf_handle.priv_buffer_handle && buf_handle.free_buf_handle) {
+					buf_handle.free_buf_handle(buf_handle.priv_buffer_handle);
+					count++;
+				}
+			}
+			ESP_LOGD(TAG, "Drained %d buffers from to_slave_queue[%d]", count, prio_q_idx);
 			g_h.funcs->_h_destroy_queue(to_slave_queue[prio_q_idx]);
 			to_slave_queue[prio_q_idx] = NULL;
 		}
 		if (from_slave_queue[prio_q_idx]) {
+			/* Drain from_slave_queue before destroying to prevent buffer leaks */
+			interface_buffer_handle_t buf_handle;
+			int count = 0;
+			while (g_h.funcs->_h_dequeue_item(from_slave_queue[prio_q_idx], &buf_handle, 0) == 0) {
+				/* Free buffer using the provided free function */
+				if (buf_handle.priv_buffer_handle && buf_handle.free_buf_handle) {
+					buf_handle.free_buf_handle(buf_handle.priv_buffer_handle);
+					count++;
+				}
+			}
+			ESP_LOGD(TAG, "Drained %d buffers from from_slave_queue[%d]", count, prio_q_idx);
 			g_h.funcs->_h_destroy_queue(from_slave_queue[prio_q_idx]);
 			from_slave_queue[prio_q_idx] = NULL;
 		}
@@ -279,6 +302,13 @@ void bus_deinit_internal(void *bus_handle)
 		sem_double_buf_xfer_data = NULL;
 	}
 
+#if DO_COMBINED_REG_READ
+    if (reg_buf) {
+        g_h.funcs->_h_free_align(reg_buf);
+        reg_buf = NULL;
+    }
+#endif
+
 #if defined(USE_DRIVER_LOCK)
 	if (sdio_bus_lock) {
 		g_h.funcs->_h_destroy_mutex(sdio_bus_lock);
@@ -288,20 +318,31 @@ void bus_deinit_internal(void *bus_handle)
 
 	// free memory allocated in double buffering structs
 	if (double_buf.buffer[0].buf) {
-		ESP_LOGW(TAG, "free buffer[0] %p", double_buf.buffer[0].buf);
+		ESP_LOGI(TAG, "free buffer[0] %p", double_buf.buffer[0].buf);
 		g_h.funcs->_h_free_align(double_buf.buffer[0].buf);
 		double_buf.buffer[0].buf = NULL;
 		double_buf.buffer[0].buf_size = 0;
 	}
 	if (double_buf.buffer[1].buf) {
-		ESP_LOGW(TAG, "free buffer[1] %p", double_buf.buffer[1].buf);
+		ESP_LOGI(TAG, "free buffer[1] %p", double_buf.buffer[1].buf);
 		g_h.funcs->_h_free_align(double_buf.buffer[1].buf);
 		double_buf.buffer[1].buf = NULL;
 		double_buf.buffer[1].buf_size = 0;
 	}
+	/* Reset double_buf state for clean reinitialization */
+	double_buf.read_index = -1;
+	double_buf.read_data_len = 0;
+	double_buf.write_index = 0;
+
+	/* Reset SDIO counters */
+	sdio_tx_buf_count = 0;
+	sdio_rx_byte_count = 0;
+	sdio_start_write_thread = false;
 
 	sdio_mempool_destroy();
 	if (bus_handle) {
+		/* Free DMA aligned buffer before bus deinit */
+		g_h.funcs->_h_sdio_card_deinit(bus_handle);
 		g_h.funcs->_h_bus_deinit(bus_handle);
 	}
 	sdio_handle = NULL;
@@ -1008,8 +1049,10 @@ static void sdio_read_task(void const* pvParameters)
 
 
 #if DO_COMBINED_REG_READ
-	reg_buf = g_h.funcs->_h_malloc_align(REG_BUF_LEN, HOSTED_MEM_ALIGNMENT_64);
-	assert(reg_buf);
+    if (!reg_buf) {
+	    reg_buf = g_h.funcs->_h_malloc_align(REG_BUF_LEN, HOSTED_MEM_ALIGNMENT_64);
+	    assert(reg_buf);
+    }
 #endif
 
 	// display which SDIO mode we are operating in
@@ -1228,6 +1271,7 @@ static void sdio_process_rx_task(void const* pvParameters)
 #endif
 				ret = chan_arr[buf_handle->if_type]->rx(chan_arr[buf_handle->if_type]->api_chan,
 						copy_payload, copy_payload, buf_handle->payload_len);
+
 				if (unlikely(ret))
 					HOSTED_FREE(copy_payload);
 			}
@@ -1363,13 +1407,7 @@ void *bus_init_internal(void)
 	sdio_write_thread = g_h.funcs->_h_thread_create("sdio_write",
 		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, sdio_write_task, NULL);
 
-#if defined(USE_DRIVER_LOCK)
-	// initialise mutex for bus locking
-	sdio_bus_lock = g_h.funcs->_h_create_mutex();
-	assert(sdio_bus_lock);
-#endif
 	ESP_LOGD(TAG, "sdio bus init done");
-
 	return sdio_handle;
 }
 
@@ -1524,19 +1562,13 @@ int ensure_slave_bus_ready(void *bus_handle)
 		ESP_LOGI(TAG, "Host woke up from power save");
 
 		/* Reset double buffer state after wakeup to prevent race conditions */
-		/* The sdio_data_to_rx_buf_task might still be processing old data from before sleep */
-		/* Wait a bit to ensure any pending processing completes */
 		g_h.funcs->_h_msleep(500);
 		/* Reset double buffer state - this ensures clean state after wakeup */
 		double_buf.read_index = -1;
 		double_buf.write_index = 0;
 		double_buf.read_data_len = 0;
-		/* Clear any pending semaphore signals */
 		if (sem_double_buf_xfer_data) {
-			/* Drain semaphore to ensure clean state */
-			while (g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, 0) == ESP_OK) {
-				/* Drain all pending signals */
-			}
+			while (g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, 0) == ESP_OK);
 		}
 
 		set_transport_state(TRANSPORT_RX_ACTIVE);

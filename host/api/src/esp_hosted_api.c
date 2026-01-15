@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -141,7 +141,7 @@ int esp_hosted_init(void)
 	ESP_LOGI(TAG, "ESP-Hosted starting. Hosted_Tasks: prio:%u, stack: %u RPC_task_stack: %u",
 			DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, RPC_TASK_STACK_SIZE);
 	if (esp_hosted_is_config_valid()) {
-		ESP_LOGW(TAG, "Transport already initialized, skipping initialization");
+		ESP_LOGW(TAG, "ESP-Hosted config valid; reuse existing config");
 	} else {
 		ESP_ERROR_CHECK(esp_hosted_set_default_config());
 	}
@@ -201,7 +201,7 @@ esp_remote_channel_t esp_hosted_add_channel(esp_remote_channel_config_t config,
 		eh_chan->t_chan = t_chan;
 		return eh_chan;
 	} else {
-		g_h.funcs->_h_free(eh_chan);
+		HOSTED_FREE(eh_chan);
 	}
 
 	return NULL;
@@ -211,7 +211,7 @@ esp_err_t esp_hosted_remove_channel(esp_remote_channel_t eh_chan)
 {
 	if (eh_chan && eh_chan->t_chan) {
 		transport_drv_remove_channel(eh_chan->t_chan);
-		g_h.funcs->_h_free(eh_chan);
+		HOSTED_FREE(eh_chan);
 		return ESP_OK;
 	}
 

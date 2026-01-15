@@ -64,6 +64,7 @@ typedef struct {
 /* 34 */  void*   (*_h_create_lock_mempool)(void);
 /* 35 */  void   (*_h_lock_mempool)(void *lock_handle);
 /* 36 */  void   (*_h_unlock_mempool)(void *lock_handle);
+/* 37 */  void   (*_h_destroy_lock_mempool)(void *lock_handle);
 #endif
 
           /* GPIO */

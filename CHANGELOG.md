@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.9.7
+
+### Features
+
+- Add example, [host_shuts_down_slave_to_power_save](https://components.espressif.com/components/espressif/esp_hosted/examples/host_shuts_down_slave_to_power_save)
+  - Use `EN` pin on coprocessor to power off/on
+  - Power down coprocessor when not in use
+  - Power on coprocessor when required
+  - Connect Wi-Fi on coprocessor wake up
+
+### Bug Fixes
+
+- Fix the memory leaks in hosted deinit -> init path
+
 ## 2.9.5 - 2.9.6
 
 Using shorter, more manageable names for esp hosted events
