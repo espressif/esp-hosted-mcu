@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -659,8 +659,17 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 
 				ret = chan_arr[buf_handle->if_type]->rx(chan_arr[buf_handle->if_type]->api_chan,
 						copy_payload, copy_payload, buf_handle->payload_len);
+#ifndef ESP_WIFI_REMOTE_VERSION // not defined in older versions of wifi-remote
 				if (unlikely(ret))
 					HOSTED_FREE(copy_payload);
+#else
+#if ESP_WIFI_REMOTE_VERSION < ESP_WIFI_REMOTE_VERSION_VAL(1,3,1)
+				if (unlikely(ret))
+					HOSTED_FREE(copy_payload);
+#else
+				(void)ret; // to silence 'unused variable' warning
+#endif
+#endif
 			}
 #else
 			if (chan_arr[buf_handle->if_type] && chan_arr[buf_handle->if_type]->rx) {

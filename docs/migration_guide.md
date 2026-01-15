@@ -1,9 +1,21 @@
 This migration guide documents key changes in ESP-Hosted that users must be aware of when migrating from older versions.
 
 #### Index
-1. [2.6.0 - ESP-Hosted Slave OTA](#coloryellow-text2512---esp-hosted-slave-ota)
-2. [2.5.2 - Bluetooth Controller on Co-Processor Disabled by Default](#coloryellow-text252---bluetooth-controller-on-co-processor-disabled-by-default)
+1. [2.11.0 - ESP-Hosted Host Driver](#coloryellow-text2100---esp-hosted-host-driver)
+2. [2.6.0 - ESP-Hosted Slave OTA](#coloryellow-text260---esp-hosted-slave-ota)
+3. [2.5.2 - Bluetooth Controller on Co-Processor Disabled by Default](#coloryellow-text252---bluetooth-controller-on-co-processor-disabled-by-default)
 
+#  $${\color{yellow} \text{2.11.0 - ESP-Hosted Host Driver}}$$
+
+## Migration needed from versions
+
+| Host version | wifi-remote version |
+| ------------ | ------------------- |
+| < 2.11.0     | < 1.3.1             |
+
+1. A double-free memory error can occur in some situations when ESP-Hosted Host receives network data and passes it to the netif `rx()` function (registered by netif via the wifi-remote component) for processing.
+
+2. This error is resolved in ESP-Hosted v2.11.1. It must be used with wifi-remote v1.3.1 or greater to prevent a memory leak condition during netif initialization.
 
 #  $${\color{yellow} \text{2.6.0 - ESP-Hosted Slave OTA}}$$
 
