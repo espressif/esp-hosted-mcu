@@ -824,7 +824,7 @@ int hosted_wifi_event_post(int32_t event_id,
 int hosted_event_post(esp_event_base_t event_base, int32_t event_id,
 		void* event_data, size_t event_data_size, uint32_t ticks_to_wait)
 {
-	ESP_LOGV(TAG, "base %d, event %ld recvd --> event_data:%p event_data_size: %u",event_base,event_id, event_data, event_data_size);
+	ESP_LOGV(TAG, "base %s, event %ld recvd --> event_data:%p event_data_size: %u",event_base,event_id, event_data, event_data_size);
 	return esp_event_post(event_base, event_id, event_data, event_data_size, ticks_to_wait);
 }
 

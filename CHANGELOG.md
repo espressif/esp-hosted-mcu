@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.9.5
+## 2.9.5 - 2.9.6
 
 Using shorter, more manageable names for esp hosted events
 Before adoption, concise the event names from full string COPROCESSOR to just CP in event names

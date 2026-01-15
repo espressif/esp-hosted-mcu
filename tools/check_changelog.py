@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 
 # check that the CHANGELOG.md file contains the changelog for the version
@@ -30,10 +30,11 @@ def get_idf_yml_version_as_string() -> str:
 
 def changelog_has_version(ver_string: str) -> int:
 	# iterate over the changelog file
-	matching_line = "## " + ver_string
+	escaped_ver = ver_string.replace('.', r'\.')
+	pattern = r"^## (.*\s+-\s+)?_VER_".replace("_VER_", escaped_ver)
 	with open(changelog_file, "r") as changelog:
 		for line in changelog:
-			if re.match(matching_line, line):
+			if re.match(pattern, line):
 				return 0
 	return 1
 
