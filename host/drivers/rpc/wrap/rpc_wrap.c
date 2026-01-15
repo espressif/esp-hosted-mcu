@@ -157,13 +157,13 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 		case RPC_ID__Event_ESPInit: {
 			esp_hosted_event_init_t event = { 0 };
 			event.reason = app_event->u.e_init.cp_reset_reason;
-			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_COPROCESSOR_INIT,
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_CP_INIT,
 					&event, sizeof(event), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_Heartbeat: {
 			esp_hosted_event_heartbeat_t event = { 0 };
 			event.heartbeat = app_event->u.e_heartbeat.hb_num;
-			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_COPROCESSOR_HEARTBEAT,
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_CP_HEARTBEAT,
 					&event, sizeof(event), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_AP_StaConnected: {
