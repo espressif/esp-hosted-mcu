@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -666,7 +666,41 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_set_dhcp_dns);
 		RPC_ERR_IN_RESP(resp_set_dhcp_dns);
 		break;
+#if H_MEM_MONITOR
+	} case RPC_ID__Resp_MemMonitor: {
+		RPC_FAIL_ON_NULL(resp_mem_monitor);
+		RPC_ERR_IN_RESP(resp_mem_monitor);
+		RPC_FAIL_ON_NULL(resp_mem_monitor->curr_internal);
+		RPC_FAIL_ON_NULL(resp_mem_monitor->curr_internal->mem_dma);
+		RPC_FAIL_ON_NULL(resp_mem_monitor->curr_internal->mem_8bit);
+		RPC_FAIL_ON_NULL(resp_mem_monitor->curr_external);
+		RPC_FAIL_ON_NULL(resp_mem_monitor->curr_external->mem_dma);
+		RPC_FAIL_ON_NULL(resp_mem_monitor->curr_external->mem_8bit);
 
+		// copy over the response
+		esp_hosted_curr_mem_info_t *p_a = &app_resp->u.curr_mem_info;
+		RpcRespMemMonitor *p_c = rpc_msg->resp_mem_monitor;
+
+		if (p_c->config == RPC__MEM_MONITOR_CONFIG__MEMMONITOR_NO_CHANGE) {
+			p_a->config = ESP_HOSTED_MEMMONITOR_NO_CHANGE;
+		} else if (p_c->config == RPC__MEM_MONITOR_CONFIG__MEMMONITOR_DISABLE) {
+			p_a->config = ESP_HOSTED_MEMMONITOR_DISABLE;
+		} else if (p_c->config == RPC__MEM_MONITOR_CONFIG__MEMMONITOR_ENABLE) {
+			p_a->config = ESP_HOSTED_MEMMONITOR_ENABLE;
+		}
+		p_a->report_always = p_c->report_always;
+		p_a->interval_sec = p_c->interval_sec;
+		p_a->curr_total_heap_size = p_c->curr_total_heap_size;
+		p_a->curr_internal.cap_dma.free_size           = p_c->curr_internal->mem_dma->free_size;
+		p_a->curr_internal.cap_dma.largest_free_block  = p_c->curr_internal->mem_dma->largest_free_block;
+		p_a->curr_internal.cap_8bit.free_size          = p_c->curr_internal->mem_8bit->free_size;
+		p_a->curr_internal.cap_8bit.largest_free_block = p_c->curr_internal->mem_8bit->largest_free_block;
+		p_a->curr_external.cap_dma.free_size           = p_c->curr_external->mem_dma->free_size;
+		p_a->curr_external.cap_dma.largest_free_block  = p_c->curr_external->mem_dma->largest_free_block;
+		p_a->curr_external.cap_8bit.free_size          = p_c->curr_external->mem_8bit->free_size;
+		p_a->curr_external.cap_8bit.largest_free_block = p_c->curr_external->mem_8bit->largest_free_block;
+		break;
+#endif
 #if H_WIFI_ENTERPRISE_SUPPORT
 	} case RPC_ID__Resp_WifiStaEnterpriseEnable: {
 		RPC_FAIL_ON_NULL(resp_wifi_sta_enterprise_enable);

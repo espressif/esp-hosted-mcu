@@ -482,6 +482,14 @@ enum {
   #define H_TEST_RAW_TP_DIR (ESP_TEST_RAW_TP_NONE)
 #endif
 
+/* ---------------------- Enable memory monitor ------------------------------ */
+
+#ifdef CONFIG_ESP_HOSTED_MEM_MONITOR
+  #define H_MEM_MONITOR 1
+#else
+  #define H_MEM_MONITOR 0
+#endif
+
 /* ----------------------- Enable packet stats ------------------------------- */
 
 #ifdef CONFIG_ESP_HOSTED_PKT_STATS

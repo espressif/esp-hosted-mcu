@@ -1,3 +1,7 @@
+include:
+  - project: 'ci/actions/common'
+    file: 'templates/stable/default-workflow.yml'
+
 stages:
   - pre
   - build

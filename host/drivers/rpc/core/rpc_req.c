@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -691,7 +691,31 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		RPC_REQ_COPY_STR(p_c->dhcp_gw, p_a->dhcp_gw, 64);
 		RPC_REQ_COPY_STR(p_c->dns_ip, p_a->dns_ip, 64);
 		break;
+#if H_MEM_MONITOR
+	} case RPC_ID__Req_MemMonitor: {
+		RPC_ALLOC_ASSIGN(RpcReqMemMonitor, req_mem_monitor,
+				rpc__req__mem_monitor__init);
+		RPC_ALLOC_ELEMENT(HeapSizeThreshold, req_payload->internal, heap_size_threshold__init);
+		RPC_ALLOC_ELEMENT(HeapSizeThreshold, req_payload->external, heap_size_threshold__init);
 
+		RpcReqMemMonitor *p_c = req_payload;
+		esp_hosted_config_mem_monitor_t *p_a = &app_req->u.config_mem_monitor;
+
+		if (p_a->config == ESP_HOSTED_MEMMONITOR_NO_CHANGE) {
+			p_c->config = RPC__MEM_MONITOR_CONFIG__MEMMONITOR_NO_CHANGE;
+		} else if (p_a->config == ESP_HOSTED_MEMMONITOR_DISABLE) {
+			p_c->config = RPC__MEM_MONITOR_CONFIG__MEMMONITOR_DISABLE;
+		} else if (p_a->config == ESP_HOSTED_MEMMONITOR_ENABLE) {
+			p_c->config = RPC__MEM_MONITOR_CONFIG__MEMMONITOR_ENABLE;
+		}
+		p_c->report_always = p_a->report_always;
+		p_c->interval_sec = p_a->interval_sec;
+		p_c->internal->threshold_mem_dma = p_a->internal_mem.threshold_mem_dma;
+		p_c->internal->threshold_mem_8bit = p_a->internal_mem.threshold_mem_8bit;
+		p_c->external->threshold_mem_dma = p_a->external_mem.threshold_mem_dma;
+		p_c->external->threshold_mem_8bit = p_a->external_mem.threshold_mem_8bit;
+		break;
+#endif
 #if H_WIFI_ENTERPRISE_SUPPORT
 	} case RPC_ID__Req_EapSetIdentity: {
 		RPC_ALLOC_ASSIGN(RpcReqEapSetIdentity, req_eap_set_identity,

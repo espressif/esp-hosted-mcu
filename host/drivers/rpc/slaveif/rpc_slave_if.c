@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -656,6 +656,13 @@ ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req)
 }
 #endif
 
+#if H_MEM_MONITOR
+ctrl_cmd_t * rpc_slave_iface_set_mem_monitor(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_MemMonitor);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+#endif
 
 #ifdef H_PEER_DATA_TRANSFER
 int rpc_slaveif_register_custom_callback(uint32_t msg_id,

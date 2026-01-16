@@ -869,6 +869,18 @@ esp_err_t esp_hosted_configure_heartbeat(bool enable, int duration_sec)
 	return rpc_iface_configure_heartbeat(enable, duration_sec);
 }
 
+#if H_MEM_MONITOR
+esp_err_t esp_hosted_set_mem_monitor(esp_hosted_config_mem_monitor_t *config, esp_hosted_curr_mem_info_t *curr_mem_info)
+{
+	check_transport_up();
+	if (!config || !curr_mem_info) {
+		ESP_LOGE(TAG, "%s: got NULL pointer(s)", __func__);
+		return ESP_ERR_INVALID_ARG;
+	}
+	return rpc_iface_set_mem_monitor(config, curr_mem_info);
+}
+#endif
+
 /* esp_err_t esp_wifi_remote_scan_get_ap_record(wifi_ap_record_t *ap_record)
 esp_err_t esp_wifi_remote_set_csi(_Bool en)
 esp_err_t esp_wifi_remote_set_csi_rx_cb(wifi_csi_cb_t cb, void *ctx)

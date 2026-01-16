@@ -17,6 +17,8 @@ Quick reference for optimizing ESP-Hosted performance across co-processors and d
 
 	1.5 [ESP32-S2 as Co-Processor](#15-esp32-s2-as-co-processor)
 
+	1.6 [ESP32-C3 as Co-Processor](#16-esp32-c3-as-co-processor)
+
 2. [Transport Optimization](#2-transport-optimization)
 
 	2.1 [SDIO (Highest Performance)](#21-sdio-highest-performance)
@@ -248,6 +250,40 @@ CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=32
 
 CONFIG_LWIP_TCP_SACK_OUT=y
 ```
+
+### 1.6 ESP32-C3 as Co-Processor
+
+```
+### sdkconfig for ESP32-P4 + C3 as co-processor
+# Wi-Fi Performance
+CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=20
+CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=40
+CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM=40
+CONFIG_WIFI_RMT_AMPDU_TX_ENABLED=y
+CONFIG_WIFI_RMT_TX_BA_WIN=32
+CONFIG_WIFI_RMT_AMPDU_RX_ENABLED=y
+CONFIG_WIFI_RMT_RX_BA_WIN=32
+
+# TCP/IP Performance
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=40960
+CONFIG_LWIP_TCP_WND_DEFAULT=40960
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=64
+CONFIG_LWIP_UDP_RECVMBOX_SIZE=64
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
+```
+
+**Throughput using the settings.**
+
+Using SPI-FD Transport, running at 40MHz, connected to a 2.4GHz network over the air
+
+| Type       | Direction     | MBits/s |
+|------------|---------------|--------:|
+| Raw        | P4 to C3      |      26 |
+| Raw        | C3 to P4      |      26 |
+| iPerf, TCP | P4 to Test PC |      19 |
+| iPerf, UDP | P4 to Test PC |      25 |
+| iPerf, TCP | Test PC to P4 |      18 |
+| iPerf, UDP | Test PC to P4 |      20 |
 
 **Throughput using the settings.**
 
