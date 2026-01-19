@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -55,6 +55,7 @@ typedef struct {
 	uint32_t uid;
 	rpc_rsp_cb_t cb;
 	void * timer_hdl;
+	ctrl_cmd_t *app_req;  /* Store request so we can free it on response or timeout */
 } async_rsp_t;
 
 /* rpc response callbacks
@@ -307,6 +308,31 @@ fail_req2:
 
 	HOSTED_FREE(tx_data);
 	RPC_FREE_BUFFS();
+
+	/* app_req lifecycle on failure:
+	 * - Async requests: Check if registered in callback table
+	 *   - If registered: Will be freed on timeout or cleanup
+	 *   - If not registered (early failure): Free here
+	 * - Sync requests: NEVER free here! The calling application is waiting
+	 *   and will free it in rpc_wait_and_parse_sync_resp() after getting
+	 *   the error response we just queued. */
+	if (app_req->rpc_rsp_cb) {
+		/* Async request - check if it was registered */
+		int found = 0;
+		for (int i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
+			if (async_rsp_table[i].uid == app_req->uid) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found) {
+			/* Not registered, free it here */
+			HOSTED_FREE(app_req);
+		}
+		/* If found, it will be freed by timeout or cleanup */
+	}
+	/* Sync requests: Don't free - caller owns it */
+
 	return FAILURE;
 }
 
@@ -532,6 +558,11 @@ static void rpc_tx_thread(void const *arg)
 		if (app_req) {
 			ESP_LOGV(TAG, "Processing RPC TX msg");
 			process_rpc_tx_msg(app_req);
+			/* app_req lifecycle:
+			 * - Async requests: Stored in async_rsp_table, freed when response arrives or timeout
+			 * - Sync requests: Freed by caller in rpc_wait_and_parse_sync_resp() after response
+			 * - Failed requests: Freed in process_rpc_tx_msg() failure path
+			 * So we don't free anything here. */
 		} else {
 			ESP_LOGE(TAG, "RPC Tx Q empty or uninitialised");
 			continue;
@@ -632,6 +663,9 @@ static int clear_async_resp_callback(async_rsp_t *async_rsp_item)
 			async_rsp_item->timer_hdl = NULL;
 		}
 
+		/* Free the request structure that was allocated by RPC_DEFAULT_REQ */
+		HOSTED_FREE(async_rsp_item->app_req);
+
 		async_rsp_item->uid = 0;
 		async_rsp_item->cb = NULL;
 		return SUCCESS;
@@ -726,6 +760,7 @@ static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb, vo
 			async_rsp_table[i].uid = app_req->uid;
 			async_rsp_table[i].cb = resp_cb;
 			async_rsp_table[i].timer_hdl = timer_hdl;
+			async_rsp_table[i].app_req = app_req;  /* Store request for later cleanup */
 			return CALLBACK_SET_SUCCESS;
 		}
 	}
@@ -915,11 +950,20 @@ static void rpc_async_timeout_handler(void *arg)
 
 	ESP_LOGW(TAG, "ASYNC Timeout for req [0x%x]",app_req->msg_id);
 	rpc_rsp_cb_t func = app_req->rpc_rsp_cb;
+	uint32_t req_uid = app_req->uid;
 	ctrl_cmd_t *app_resp = NULL;
 	HOSTED_CALLOC(ctrl_cmd_t, app_resp, sizeof(ctrl_cmd_t), free_buffers);
 	app_resp->msg_id = app_req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base;
 	app_resp->msg_type = RPC_TYPE__Resp;
 	app_resp->resp_event_status = RPC_ERR_REQUEST_TIMEOUT;
+
+	/* Clear the async callback table entry (this frees app_req) */
+	for (int i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
+		if (async_rsp_table[i].uid == req_uid) {
+			clear_async_resp_callback(&async_rsp_table[i]);
+			break;
+		}
+	}
 
 	/* call func pointer to notify failure */
 	func(app_resp);
@@ -986,9 +1030,14 @@ static int cleanup_sync_async_timer_table(void)
 		if (async_rsp_table[i].timer_hdl) {
 			g_h.funcs->_h_timer_stop(async_rsp_table[i].timer_hdl);
 		}
+		/* Free any pending async request structures */
+		if (async_rsp_table[i].app_req) {
+			HOSTED_FREE(async_rsp_table[i].app_req);
+		}
 		async_rsp_table[i].timer_hdl = NULL;
 		async_rsp_table[i].uid = 0;
 		async_rsp_table[i].cb = NULL;
+		async_rsp_table[i].app_req = NULL;
 	}
 
 	for (int i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
@@ -1013,31 +1062,51 @@ int rpc_core_deinit(void)
 
 	set_rpc_lib_state(RPC_LIB_STATE_INACTIVE);
 
+	/* Drain rpc_rx_q before destroying to prevent buffer leaks */
 	if (rpc_rx_q) {
+		esp_queue_elem_t elem;
+		/* Flush all remaining items and free their buffers */
+		while (g_h.funcs->_h_dequeue_item(rpc_rx_q, &elem, 0) == 0) {
+			if (elem.buf) {
+				g_h.funcs->_h_free(elem.buf);
+			}
+		}
 		g_h.funcs->_h_destroy_queue(rpc_rx_q);
+		rpc_rx_q = NULL;
 	}
 
+	/* Drain rpc_tx_q before destroying to prevent buffer leaks */
 	if (rpc_tx_q) {
+		void *buf_ptr;
+		/* Flush all remaining items and free their buffers */
+		while (g_h.funcs->_h_dequeue_item(rpc_tx_q, &buf_ptr, 0) == 0) {
+			if (buf_ptr) {
+				g_h.funcs->_h_free(buf_ptr);
+			}
+		}
 		g_h.funcs->_h_destroy_queue(rpc_tx_q);
+		rpc_tx_q = NULL;
 	}
 
-	if (rpc_tx_sem && g_h.funcs->_h_destroy_semaphore(rpc_tx_sem)) {
-		ret = FAILURE;
-		ESP_LOGE(TAG, "read sem tx deinit failed");
+	if (rpc_tx_sem) {
+		if (g_h.funcs->_h_destroy_semaphore(rpc_tx_sem)) {
+			ret = FAILURE;
+			ESP_LOGE(TAG, "read sem tx deinit failed");
+		}
+		rpc_tx_sem = NULL;
 	}
 
 	cleanup_sync_async_timer_table();
-
-	if (serial_deinit()) {
-		ret = FAILURE;
-		ESP_LOGE(TAG, "Serial de-init failed");
-	}
 
 	if (cancel_rpc_threads()) {
 		ret = FAILURE;
 		ESP_LOGE(TAG, "cancel rpc rx thread failed");
 	}
 
+	if (serial_deinit()) {
+		ret = FAILURE;
+		ESP_LOGE(TAG, "Serial de-init failed");
+	}
 	return ret;
 }
 
@@ -1079,7 +1148,6 @@ int rpc_core_init(void)
 
 	/* state init */
 	set_rpc_lib_state(RPC_LIB_STATE_INIT);
-
 	return ret;
 
 free_bufs:

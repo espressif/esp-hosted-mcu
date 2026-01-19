@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -73,9 +73,9 @@ extern "C" {
 #define FAILURE -1
 
 typedef enum {
-	TRANSPORT_INACTIVE,
-	TRANSPORT_RX_ACTIVE,
-	TRANSPORT_TX_ACTIVE,
+	TRANSPORT_INACTIVE,      /* No transport activity */
+	TRANSPORT_RX_ACTIVE,     /* RX ready, TX not ready */
+	TRANSPORT_TX_ACTIVE,     /* Both TX and RX active */
 } transport_drv_events_e;
 
 /* interface header */

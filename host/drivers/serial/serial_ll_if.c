@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -100,7 +100,7 @@ static serial_ll_handle_t * get_serial_ll_handle(const uint8_t iface_num)
 
 		return interface_handle_g[iface_num];
 	}
-	ESP_LOGE(TAG, "%s Failed to get interface handle", __func__);
+	ESP_LOGD(TAG, "%s Failed to get interface handle", __func__);
 	return NULL;
 }
 
@@ -115,6 +115,15 @@ static int serial_ll_close(serial_ll_handle_t * serial_ll_hdl)
 
 	if (serial_ll_hdl->queue) {
 		ESP_LOGI(TAG, "Clean-up serial queue");
+
+		interface_buffer_handle_t buf_handle;
+		while (g_h.funcs->_h_dequeue_item(serial_ll_hdl->queue, &buf_handle, 0) == 0) {
+			/* Free buffer using the provided free function */
+			if (buf_handle.priv_buffer_handle && buf_handle.free_buf_handle) {
+				buf_handle.free_buf_handle(buf_handle.priv_buffer_handle);
+			}
+		}
+
 		g_h.funcs->_h_destroy_queue(serial_ll_hdl->queue);
 		serial_ll_hdl->queue = NULL;
 	}
@@ -292,8 +301,8 @@ int serial_ll_rx_handler(interface_buffer_handle_t * buf_handle)
 
 	/* Is serial interface up */
 	if ((! serial_ll_hdl) || (serial_ll_hdl->state != ACTIVE)) {
-		ESP_LOGE(TAG, "Serial interface not registered yet");
-		goto serial_buff_cleanup;
+		ESP_LOGD(TAG, "Serial interface not active (possibly shutting down), discarding packet");
+		goto serial_buff_cleanup_silent;
 	}
 
 
@@ -356,8 +365,10 @@ int serial_ll_rx_handler(interface_buffer_handle_t * buf_handle)
 	return 0;
 
 serial_buff_cleanup:
-
 	ESP_LOGE(TAG, "Err occurred, discard current buffer");
+
+serial_buff_cleanup_silent:
+	/* Common cleanup path - used for both errors and expected shutdown */
 	H_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle, buf_handle->priv_buffer_handle);
 
 	r.len = 0;

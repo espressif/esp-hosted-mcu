@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -465,8 +465,10 @@ int esp_hosted_cli_start(void)
 void esp_hosted_cli_stop(void)
 {
 	if (repl) {
-
+		/* Stop the REPL first */
 		esp_console_stop_repl(repl);
+
+		/* Clear the handle */
 		repl = NULL;
 
 		print_heap_stats();

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -296,8 +296,11 @@ int hosted_sdio_deinit(void* ctx)
 
 	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
 
-	if (context->card) {
-		HOSTED_FREE(context->card);
+	HOSTED_FREE(context->card);
+
+	if (sdio_bus_lock) {
+		g_h.funcs->_h_destroy_mutex(sdio_bus_lock);
+		sdio_bus_lock = NULL;
 	}
 
 	sdmmc_host_deinit();
@@ -309,6 +312,12 @@ void * hosted_sdio_init(void)
 {
 	esp_err_t res;
 	bool got_valid_config = false;
+
+	/* Guard against multiple initialization */
+	if (sdio_bus_lock) {
+		ESP_LOGW(TAG, "SDIO already initialized, skipping");
+		return (void *)&context;
+	}
 
 	sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
 
@@ -459,7 +468,15 @@ int hosted_sdio_card_deinit(void *ctx)
 {
 	SDIO_FAIL_IF_NULL(ctx);
 
-	/* Nothing to do in idf sdmmc host driver */
+	sdmmc_context_t *context = (sdmmc_context_t *)ctx;
+
+	/* Free the DMA aligned buffer allocated by sdmmc_allocate_aligned_buf()
+	 * ESP-IDF allocates this in sdmmc_card_init() but doesn't provide cleanup API */
+	if (context->card && context->card->host.dma_aligned_buffer) {
+		free(context->card->host.dma_aligned_buffer);
+		context->card->host.dma_aligned_buffer = NULL;
+	}
+
 	return ESP_OK;
 }
 
