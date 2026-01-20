@@ -849,7 +849,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		break;
 	} case RPC_ID__Req_GpioResetPin: {
 		RPC_ALLOC_ASSIGN(RpcReqGpioResetPin, req_gpio_reset_pin,
-				rpc__req__gpio_reset__init);
+				rpc__req__gpio_reset_pin__init);
 		req_payload->gpio_num = app_req->u.gpio_num;
 		break;
 	} case RPC_ID__Req_GpioSetLevel: {
