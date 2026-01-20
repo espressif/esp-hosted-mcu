@@ -16,6 +16,7 @@ set(COMPONENT_SRCS
 	"host_power_save.c"
 	"slave_light_sleep.c"
 	"nw_split_router.c"
+	"transport_gpio_pin_guard.c"
 )
 
 if(CONFIG_SOC_BT_SUPPORTED)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 
 # check that RPC calls in protobuf and documentation files match
@@ -33,7 +33,7 @@ def get_set_from_document() -> set:
     # |   1 |    257 | GetMacAddress | 0.0.6            |
 	# it will extract GetMacAddress
 	# this pattern works for the list of RCP Requests and Events
-	pattern = re.compile("\|\s*\d+\s*\|\s*\d+\s*\|\s*(\S+)")
+	pattern = re.compile(r"\|\s*\d+\s*\|\s*\d+\s*\|\s*(\S+)")
 
 	for line in file_info:
 		# get the list of rpc calls
@@ -62,13 +62,13 @@ def get_set_from_protobuf() -> set:
     # from this pattern in the protobuf_file
 	# 		Rpc_Req_GetMacAddress               req_get_mac_address               = 257;
     # it will extract GetMacAddress
-	pattern_req = re.compile("\s+(Rpc_Req_)(\S+)\s+req_")
+	pattern_req = re.compile(r"\s+(Rpc_Req_)(\S+)\s+req_")
 
 	# extract events
     # from this pattern in the protobuf_file
     #		Rpc_Event_ESPInit                   event_esp_init                     = 769;
     # it will extract ESPInit
-	pattern_event = re.compile("\s+(Rpc_Event_)(\S+)\s+event_")
+	pattern_event = re.compile(r"\s+(Rpc_Event_)(\S+)\s+event_")
 
 	for line in file_info:
 		# get the list of rpc calls

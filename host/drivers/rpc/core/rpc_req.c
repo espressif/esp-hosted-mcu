@@ -691,6 +691,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		RPC_REQ_COPY_STR(p_c->dhcp_gw, p_a->dhcp_gw, 64);
 		RPC_REQ_COPY_STR(p_c->dns_ip, p_a->dns_ip, 64);
 		break;
+
 #if H_WIFI_ENTERPRISE_SUPPORT
 	} case RPC_ID__Req_EapSetIdentity: {
 		RPC_ALLOC_ASSIGN(RpcReqEapSetIdentity, req_eap_set_identity,
@@ -820,6 +821,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		}
 		break;
 #endif
+
 #ifdef H_PEER_DATA_TRANSFER
 	} case RPC_ID__Req_CustomRpc: {
 		RPC_ALLOC_ASSIGN(RpcReqCustomRpc, req_custom_rpc,
@@ -830,6 +832,58 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			req_payload->data.data = custom_data->data;
 			req_payload->data.len = custom_data->data_len;
 		}
+		break;
+#endif
+
+#if H_GPIO_EXPANDER_SUPPORT
+	} case RPC_ID__Req_GpioConfig: {
+		RPC_ALLOC_ASSIGN(RpcReqGpioConfig, req_gpio_config,
+				rpc__req__gpio_config__init);
+		RPC_ALLOC_ELEMENT(RpcGpioConfig, req_payload->config, rpc__gpio_config__init);
+
+		req_payload->config->pin_bit_mask = app_req->u.gpio_config.pin_bit_mask;
+		req_payload->config->intr_type = app_req->u.gpio_config.intr_type;
+		req_payload->config->mode = app_req->u.gpio_config.mode;
+		req_payload->config->pull_up_en = app_req->u.gpio_config.pull_up_en;
+		req_payload->config->pull_down_en = app_req->u.gpio_config.pull_down_en;
+		break;
+	} case RPC_ID__Req_GpioResetPin: {
+		RPC_ALLOC_ASSIGN(RpcReqGpioResetPin, req_gpio_reset_pin,
+				rpc__req__gpio_reset__init);
+		req_payload->gpio_num = app_req->u.gpio_num;
+		break;
+	} case RPC_ID__Req_GpioSetLevel: {
+		RPC_ALLOC_ASSIGN(RpcReqGpioSetLevel, req_gpio_set_level,
+				rpc__req__gpio_set_level__init);
+
+		req_payload->gpio_num = app_req->u.gpio_set_level.gpio_num;
+		req_payload->level = app_req->u.gpio_set_level.level;
+		break;
+	} case RPC_ID__Req_GpioGetLevel: {
+		RPC_ALLOC_ASSIGN(RpcReqGpioGetLevel, req_gpio_get_level,
+				rpc__req__gpio_get_level__init);
+
+		req_payload->gpio_num = app_req->u.gpio_num;
+		break;
+	} case RPC_ID__Req_GpioSetDirection: {
+		RPC_ALLOC_ASSIGN(RpcReqGpioSetDirection, req_gpio_set_direction,
+				rpc__req__gpio_set_direction__init);
+
+		req_payload->gpio_num = app_req->u.gpio_set_direction.gpio_num;
+		req_payload->mode = app_req->u.gpio_set_direction.mode;
+		break;
+	} case RPC_ID__Req_GpioInputEnable: {
+		RPC_ALLOC_ASSIGN(RpcReqGpioInputEnable, req_gpio_input_enable,
+				rpc__req__gpio_input_enable__init);
+
+		req_payload->gpio_num = app_req->u.gpio_num;
+		break;
+	} case RPC_ID__Req_GpioSetPullMode: {
+		RPC_ALLOC_ASSIGN(RpcReqGpioSetPullMode, req_gpio_set_pull_mode,
+				rpc__req__gpio_set_pull_mode__init);
+
+		req_payload->gpio_num = app_req->u.gpio_set_pull_mode.gpio_num;
+		req_payload->pull = app_req->u.gpio_set_pull_mode.pull_mode;
 		break;
 #endif
 	} default: {

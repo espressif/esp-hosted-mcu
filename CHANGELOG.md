@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.10.0
+
+### Features: GPIO Expander
+
+*   **GPIO Expander**: Added feature to allow the host to control the GPIOs of the slave co-processor over the existing transport link. See [GPIO Expander Guide](./docs/gpio_expander.md).
+*   **GPIO Expander Example**: Added a new example `examples/host_gpio_expander` to demonstrate the usage of the GPIO expander feature.
+
+### APIs Added
+*   `esp_hosted_cp_gpio_config`
+*   `esp_hosted_cp_gpio_reset_pin`
+*   `esp_hosted_cp_gpio_set_level`
+*   `esp_hosted_cp_gpio_get_level`
+*   `esp_hosted_cp_gpio_set_direction`
+*   `esp_hosted_cp_gpio_input_enable`
+*   `esp_hosted_cp_gpio_set_pull_mode`
+
 ## 2.9.7
 
 ### Features

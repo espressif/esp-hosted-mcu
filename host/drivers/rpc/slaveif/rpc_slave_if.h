@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -284,6 +284,7 @@ typedef struct {
 	int32_t wifi_event_id;
 } event_wifi_simple_t;
 
+
 #if H_WIFI_ENTERPRISE_SUPPORT
 typedef struct {
 	const unsigned char *identity;
@@ -348,6 +349,34 @@ typedef struct {
 	size_t data_len;            /* Length of data */
 	void (*free_func)(void *);  /* Optional: function to free data after use */
 } esp_hosted_rpc_data_t;
+#endif
+
+#if H_GPIO_EXPANDER_SUPPORT
+typedef struct {
+	uint64_t pin_bit_mask;   /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+	uint32_t mode;           /*!< GPIO mode: set input/output mode                     */
+	uint32_t pull_up_en;     /*!< GPIO pull-up                                         */
+	uint32_t pull_down_en;   /*!< GPIO pull-down                                       */
+	uint32_t intr_type;      /*!< GPIO interrupt type                                  */
+	//#if SOC_GPIO_SUPPORT_PIN_HYS_FILTER
+	//    uint32_t hys_ctrl_mode;       /*!< GPIO hysteresis: hysteresis filter on slope input    */
+	//#endif
+} rpc_gpio_config_t;
+
+typedef struct {
+	uint32_t gpio_num;
+	uint32_t level;
+} rpc_gpio_set_level_t;
+
+typedef struct {
+	uint32_t gpio_num;
+	uint32_t mode;
+} rpc_gpio_set_direction_t;
+
+typedef struct {
+	uint32_t gpio_num;
+	uint32_t pull_mode;
+} rpc_gpio_set_pull_mode_t;
 #endif
 
 typedef struct Ctrl_cmd_t {
@@ -525,6 +554,20 @@ typedef struct Ctrl_cmd_t {
 		supp_wifi_event_dpp_config_received_t e_dpp_config_received;
 
 		supp_wifi_event_dpp_failed_t   e_dpp_failed;
+#endif
+
+#if H_GPIO_EXPANDER_SUPPORT
+		rpc_gpio_config_t           gpio_config;
+
+		uint32_t                    gpio_num;
+
+		rpc_gpio_set_level_t        gpio_set_level;
+
+		int                         gpio_get_level;
+
+		rpc_gpio_set_direction_t    gpio_set_direction;
+
+		rpc_gpio_set_pull_mode_t    gpio_set_pull_mode;
 #endif
 	}u;
 
@@ -741,7 +784,7 @@ ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_get_coprocessor_app_desc(ctrl_cmd_t *req);
 
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
-ctrl_cmd_t * rpc_slave_feature_command(ctrl_cmd_t *req);;
+ctrl_cmd_t * rpc_slave_feature_command(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_len_get(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_inactive_time(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_inactive_time(ctrl_cmd_t *req);
@@ -752,6 +795,7 @@ ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_suspend(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_get_flow_id_status(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_send_probe_req(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_itwt_set_target_wake_time_offset(ctrl_cmd_t *req);
+
 #if H_WIFI_ENTERPRISE_SUPPORT
 ctrl_cmd_t * rpc_slaveif_wifi_sta_enterprise_enable(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_sta_enterprise_disable(ctrl_cmd_t *req);
@@ -785,10 +829,21 @@ ctrl_cmd_t * rpc_slaveif_supp_dpp_bootstrap_gen(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_supp_dpp_start_listen(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req);
 #endif
+
 #ifdef H_PEER_DATA_TRANSFER
 ctrl_cmd_t * rpc_slaveif_custom_rpc(ctrl_cmd_t *req);
 int rpc_slaveif_register_custom_callback(uint32_t msg_id,
 		void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+#endif
+
+#if H_GPIO_EXPANDER_SUPPORT
+ctrl_cmd_t * rpc_slaveif_gpio_config(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_reset_pin(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_set_level(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_get_level(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_set_direction(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_input_enable(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_set_pull_mode(ctrl_cmd_t *req);
 #endif
 #ifdef __cplusplus
 }

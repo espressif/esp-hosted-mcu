@@ -15,6 +15,7 @@ extern "C" {
 /** Includes **/
 #include "esp_wifi.h"
 #include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_config.h"
 #include "esp_mac.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_misc.h"
@@ -25,7 +26,9 @@ extern "C" {
 #if H_DPP_SUPPORT
 #include "esp_dpp.h"
 #endif
-
+#if H_GPIO_EXPANDER_SUPPORT
+#include "esp_hosted_cp_gpio.h"
+#endif
 /** Exported variables **/
 
 /** Inline functions **/
