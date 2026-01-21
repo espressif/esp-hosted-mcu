@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.11.1
+Minor fixes: const qualifier violations while building
+
 ## 2.11.0
 
 ### Bug Fix
