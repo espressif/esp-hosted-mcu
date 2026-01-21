@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.11.0
+
+### Bug Fix
+
+- remove double freeing of buffer if `chan_arr[buf_handle->if_type]->rx()` fails. Underlying rx function will free the memory
+
+> [!WARNING]
+> This version of ESP-Hosted onwards must be used with wifi-remote component v1.3.1 or greater. See the [Migration Guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/migration_guide.md) for more information.
+
 ## 2.10.0
 
 ### Features: GPIO Expander

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,6 +9,8 @@
 
 #include "sdkconfig.h"
 #include "esp_task.h"
+
+#include "esp_wifi_remote.h"
 
 #ifdef CONFIG_ESP_HOSTED_ENABLED
   #define H_ESP_HOSTED_HOST 1
