@@ -11,7 +11,7 @@
 
 #define MEMPOOL_DEBUG 1
 
-static char * MEM_TAG = "mpool";
+static const char * MEM_TAG = "mpool";
 #if H_MEM_STATS
 #include "esp_log.h"
 #endif
