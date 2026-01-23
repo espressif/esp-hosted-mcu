@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.11.2
+Minor fix: On Timeout/Failure, Print RPC req str instead of RPCId
+
 ## 2.11.1
 Minor fixes: const qualifier violations while building
 
