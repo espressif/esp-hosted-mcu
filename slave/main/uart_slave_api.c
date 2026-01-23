@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -266,8 +266,31 @@ static void uart_rx_task(void* pvParameters)
 			continue;
 		}
 
-		flags = header->flags;
+		len = le16toh(header->len);
+		offset = le16toh(header->offset);
+		if (offset != sizeof(struct esp_payload_header)) {
+			ESP_LOGE(TAG, "invalid offset in header");
+			continue;
+		}
+		total_len = len + sizeof(struct esp_payload_header);
+		if (total_len > BUFFER_SIZE) {
+			ESP_LOGE(TAG, "incoming data too big: %d", total_len);
+			continue;
+		}
 
+		// get the data, if any
+		if (len) {
+			bytes_read = uart_read_bytes(HOSTED_UART, &uart_scratch_buf[offset],
+					len, portMAX_DELAY);
+			ESP_LOGD(TAG, "Read %d bytes (payload)", bytes_read);
+			if (bytes_read < len) {
+				ESP_LOGE(TAG, "Failed to read payload");
+				continue;
+			}
+		}
+
+		// process flags
+		flags = header->flags;
 		if (flags & FLAG_POWER_SAVE_STARTED) {
 			ESP_LOGI(TAG, "Host informed starting to power sleep");
 			if (context.event_handler) {
@@ -278,21 +301,6 @@ static void uart_rx_task(void* pvParameters)
 			if (context.event_handler) {
 				context.event_handler(ESP_POWER_SAVE_OFF);
 			}
-		}
-		len = le16toh(header->len);
-		offset = le16toh(header->offset);
-		total_len = len + sizeof(struct esp_payload_header);
-		if (total_len > BUFFER_SIZE) {
-			ESP_LOGE(TAG, "incoming data too big: %d", total_len);
-			continue;
-		}
-		// get the data
-		bytes_read = uart_read_bytes(HOSTED_UART, &uart_scratch_buf[offset],
-				len, portMAX_DELAY);
-		ESP_LOGD(TAG, "Read %d bytes (payload)", bytes_read);
-		if (bytes_read < len) {
-			ESP_LOGE(TAG, "Failed to read payload");
-			continue;
 		}
 
 #if HOSTED_UART_CHECKSUM

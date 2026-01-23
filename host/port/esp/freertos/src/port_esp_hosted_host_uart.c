@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -75,6 +75,17 @@ int hosted_uart_write(void * ctx, uint8_t *data, uint16_t size)
 	pctx = (uart_ctx_t *)ctx;
 
 	return uart_write_bytes(pctx->uart_port, (const char*)data, size);
+}
+
+int hosted_uart_flush_input(void * ctx)
+{
+	uart_ctx_t * pctx;
+
+	UART_FAIL_IF_NULL_CTX(ctx);
+
+	pctx = (uart_ctx_t *)ctx;
+
+	return uart_flush_input(pctx->uart_port);
 }
 
 void * hosted_uart_init(void)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.11.3
+
+### Bug Fix
+
+- made UART Hosted interface more stable:
+  - flush the input after reset. Rx line may toggle while resetting the co-processor, causing Host UART to store invalid data.
+  - check that offset in received payload header is valid: discard packet for invalid offsets.
+  - check flags in received payload only after the payload is considered valid
+
 ## 2.11.2
 Minor fix: On Timeout/Failure, Print RPC req str instead of RPCId
 
