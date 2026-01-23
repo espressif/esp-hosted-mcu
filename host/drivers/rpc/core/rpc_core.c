@@ -15,6 +15,7 @@
 #include "esp_task.h"
 #include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_log.h"
+#include "esp_hosted_rpc.pb-c.h"
 
 static const char *TAG = "rpc_core";
 
@@ -605,6 +606,14 @@ static int cancel_rpc_threads(void)
 }
 
 
+static const char *rpc_id_name(int id)
+{
+    const ProtobufCEnumValue *v =
+        protobuf_c_enum_descriptor_get_value(&rpc_id__descriptor, id);
+
+    return v ? v->name : "UNKNOWN";
+}
+
 
 /* This function will be only invoked in synchrounous rpc response path,
  * i.e. if rpc response callbcak is not available i.e. NULL
@@ -628,9 +637,9 @@ static ctrl_cmd_t * get_response(int *read_len, ctrl_cmd_t *app_req)
 	ret = wait_for_sync_response(app_req);
 	if (ret) {
 		if ((ret == RET_FAIL_TIMEOUT) || (errno == ETIMEDOUT))
-			ESP_LOGW(TAG, "Timeout waiting for Resp for Req[0x%x]", app_req->msg_id);
+			ESP_LOGW(TAG, "Timeout waiting for Resp for [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
 		else
-			ESP_LOGE(TAG, "ERR [%u] ret[%d] for Req[0x%x]", errno, ret, app_req->msg_id);
+			ESP_LOGE(TAG, "ERR [%u] ret[%d] for [0x%x](%s)", errno, ret, app_req->msg_id, rpc_id_name(app_req->msg_id));
 		return NULL;
 	}
 
@@ -914,7 +923,7 @@ ctrl_cmd_t * rpc_wait_and_parse_sync_resp(ctrl_cmd_t *app_req)
 
 	rx_buf = get_response(&rx_buf_len, app_req);
 	if (!rx_buf || !rx_buf_len) {
-		ESP_LOGE(TAG, "Response not received for [0x%x]", app_req->msg_id);
+		ESP_LOGE(TAG, "Response not received for [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
 		if (rx_buf) {
 			HOSTED_FREE(rx_buf);
 		}
@@ -948,7 +957,7 @@ static void rpc_async_timeout_handler(void *arg)
 	  return;
 	}
 
-	ESP_LOGW(TAG, "ASYNC Timeout for req [0x%x]",app_req->msg_id);
+	ESP_LOGW(TAG, "ASYNC Timeout for req [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
 	rpc_rsp_cb_t func = app_req->rpc_rsp_cb;
 	uint32_t req_uid = app_req->uid;
 	ctrl_cmd_t *app_resp = NULL;
