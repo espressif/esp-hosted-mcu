@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef __ESP_HOSTED_OS_ABSTRACTION_H__
@@ -113,13 +113,14 @@ typedef struct {
           /* Transport - UART */
 /* 60 */ int (*_h_uart_read)(void *ctx, uint8_t *data, uint16_t size);
 /* 61 */ int (*_h_uart_write)(void *ctx, uint8_t *data, uint16_t size);
+/* 62 */ int (*_h_uart_flush_input)(void *ctx);
 #endif
 
-/* 62 */ int (*_h_restart_host)(void);
+/* 63 */ int (*_h_restart_host)(void);
 
-/* 63 */ int (*_h_config_host_power_save_hal_impl)(uint32_t power_save_type, void* gpio_port, uint32_t gpio_num, int level);
-/* 64 */ int (*_h_start_host_power_save_hal_impl)(uint32_t power_save_type);
-/* 65 */ int (*_h_event_post)(esp_event_base_t event_base, int32_t event_id, void* event_data, size_t event_data_size, uint32_t ticks_to_wait);
+/* 64 */ int (*_h_config_host_power_save_hal_impl)(uint32_t power_save_type, void* gpio_port, uint32_t gpio_num, int level);
+/* 65 */ int (*_h_start_host_power_save_hal_impl)(uint32_t power_save_type);
+/* 66 */ int (*_h_event_post)(esp_event_base_t event_base, int32_t event_id, void* event_data, size_t event_data_size, uint32_t ticks_to_wait);
 } hosted_osi_funcs_t;
 
 struct hosted_config_t {

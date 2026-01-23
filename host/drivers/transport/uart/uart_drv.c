@@ -444,18 +444,24 @@ static void h_uart_read_task(void const* pvParameters)
 
 		len = le16toh(header->len);
 		offset = le16toh(header->offset);
+		if (offset != sizeof(struct esp_payload_header)) {
+			ESP_LOGE(TAG, "invalid offset in header");
+			continue;
+		}
 		total_len = len + sizeof(struct esp_payload_header);
 		if (total_len > MAX_UART_BUFFER_SIZE) {
 			ESP_LOGE(TAG, "incoming data too big: %d", total_len);
 			continue;
 		}
 
-		// get the data
-		bytes_read = g_h.funcs->_h_uart_read(uart_handle, &uart_scratch_buf[offset], len);
-		ESP_LOGD(TAG, "Read %d bytes (payload)", bytes_read);
-		if (bytes_read < len) {
-			ESP_LOGE(TAG, "Failed to read payload");
-			continue;
+		// get the data, if any
+		if (len) {
+			bytes_read = g_h.funcs->_h_uart_read(uart_handle, &uart_scratch_buf[offset], len);
+			ESP_LOGD(TAG, "Read %d bytes (payload)", bytes_read);
+			if (bytes_read < len) {
+				ESP_LOGE(TAG, "Failed to read payload");
+				continue;
+			}
 		}
 
 		rxbuff = h_uart_buffer_alloc(MEMSET_REQUIRED);
@@ -674,6 +680,12 @@ int ensure_slave_bus_ready(void *bus_handle)
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
 		g_h.funcs->_h_msleep(10);
 		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+		// flush input
+		if (uart_handle) {
+			g_h.funcs->_h_uart_flush_input(uart_handle);
+		} else {
+			ESP_LOGW(TAG, "uart handle is NULL: cannot flush");
+		}
 		g_h.funcs->_h_msleep(1500);
 	} else {
 		stop_host_power_save();

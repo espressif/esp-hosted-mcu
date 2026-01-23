@@ -995,6 +995,7 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_bus_deinit               =  hosted_uart_deinit             ,
 	._h_uart_read                =  hosted_uart_read               ,
 	._h_uart_write               =  hosted_uart_write              ,
+	._h_uart_flush_input         =  hosted_uart_flush_input        ,
 #endif
 	._h_restart_host             =  hosted_restart_host            ,
 
