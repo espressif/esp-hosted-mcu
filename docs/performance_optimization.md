@@ -97,6 +97,13 @@ Using SDIO Transport, 4-bits, running at 40MHz, connected to a 2.4GHz network ov
 
 ```
 ### sdkconfig for ESP32-P4 + C5 as co-processor
+
+# Let P4 know, C5 is attached as slave
+CONFIG_SLAVE_IDF_TARGET_ESP32C5=y
+
+# Optional PCB selection: Uncomment if you are using Pre designed PCB P4_C5_CORE_BOARD (to use correct GPIOs on that PCB)
+# CONFIG_ESP_HOSTED_P4_C5_CORE_BOARD=y
+
 # Wi-Fi Performance
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=10
 CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=32
@@ -133,6 +140,13 @@ Using SDIO Transport, 4-bits, running at 40MHz, connected to a 5GHz network over
 
 ```
 ### sdkconfig for ESP32-P4 + C61 as co-processor
+
+# Let P4 know, C61 is attached as slave
+CONFIG_SLAVE_IDF_TARGET_ESP32C61=y
+
+# Optional PCB selection: Uncomment if you are using Pre designed PCB P4_C61_CORE_BOARD (to use correct GPIOs on that PCB)
+# CONFIG_ESP_HOSTED_P4_C61_CORE_BOARD=y
+
 # Wi-Fi Performance
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=10
 CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=16
@@ -143,13 +157,17 @@ CONFIG_WIFI_RMT_AMPDU_RX_ENABLED=y
 CONFIG_WIFI_RMT_RX_BA_WIN=16
 
 # TCP/IP Performance
-CONFIG_LWIP_TCP_SND_BUF_DEFAULT=20480
-CONFIG_LWIP_TCP_WND_DEFAULT=20480
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=12930
+CONFIG_LWIP_TCP_WND_DEFAULT=22488
 CONFIG_LWIP_TCP_RECVMBOX_SIZE=48
 CONFIG_LWIP_UDP_RECVMBOX_SIZE=64
 CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=48
+CONFIG_LWIP_IP_REASS_MAX_PBUFS=15
 
 CONFIG_LWIP_TCP_SACK_OUT=y
+
+CONFIG_LWIP_TCPIP_CORE_LOCKING=y
+CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=y
 ```
 
 **Throughput using the settings.**
@@ -168,6 +186,9 @@ Using SPI-FD Transport, running at 40MHz, connected to a 2.4GHz network over the
 ### 1.4 ESP32-C2 as Co-Processor
 
 ```
+# Let P4 know, C2 is attached as slave
+CONFIG_SLAVE_IDF_TARGET_ESP32C2=y
+
 ### sdkconfig for ESP32-P4 + C2 as co-processor
 # Wi-Fi Performance
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=10
@@ -204,7 +225,11 @@ Using SPI-FD Transport, running at 40MHz, connected to a 2.4GHz network over the
 ### 1.5 ESP32-S2 as Co-Processor
 
 ```
-### sdkconfig for ESP32-P4 + C2 as co-processor
+### sdkconfig for ESP32-P4 + S2 as co-processor
+
+# Let P4 know, S2 is attached as slave
+CONFIG_SLAVE_IDF_TARGET_ESP32S2=y
+
 # Wi-Fi Performance
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=8
 CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=24

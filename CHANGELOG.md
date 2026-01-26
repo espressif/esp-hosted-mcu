@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.11.4
+
+### Feature
+
+* ESP32-P4 C61 Core board support - Improvise
+
+### Bug Fix
+
+* TCP iPerf stability with documented performance optimizations
+
+#### Tested
+
+* Host power save and wake-up functionality
+
+  * Wake-up GPIOs:
+
+    * P4 Core Board – C61: IO04
+    * P4 Core Board – P4: IO06
+  * GPIOs disabled by default (`-1`) due to no physical connection; verified via jumper wiring and solder
+* Network split scenarios
+
 ## 2.11.3
 
 ### Bug Fix
