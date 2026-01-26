@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
 *
 * SPDX-License-Identifier: Apache-2.0
 */
@@ -105,16 +105,17 @@ esp_hosted_transport_err_t esp_hosted_sdio_get_config(struct esp_hosted_sdio_con
 
 esp_hosted_transport_err_t esp_hosted_sdio_set_config(struct esp_hosted_sdio_config *config)
 {
+	struct esp_hosted_sdio_config new_config = config ? *config : INIT_DEFAULT_HOST_SDIO_CONFIG();
+
 	if (esp_hosted_transport_config_set) {
+		if (memcmp(&s_transport_config.u.sdio, &new_config, sizeof(new_config)) == 0) {
+			return ESP_TRANSPORT_OK;
+		}
 		ESP_LOGE(TAG, "Transport already initialized (through constructor?), reconfiguring not allowed");
-		return ESP_TRANSPORT_ERR_ALREADY_SET; /* Error: already set */
+		return ESP_TRANSPORT_ERR_ALREADY_SET;
 	}
 
-	if (config == NULL) {
-		s_transport_config.u.sdio = INIT_DEFAULT_HOST_SDIO_CONFIG();
-	} else {
-		s_transport_config.u.sdio = *config;
-	}
+	s_transport_config.u.sdio = new_config;
 	esp_hosted_transport_config_set = true;
 	s_transport_config.transport_in_use = H_TRANSPORT_SDIO;
 	return ESP_TRANSPORT_OK;
@@ -122,18 +123,19 @@ esp_hosted_transport_err_t esp_hosted_sdio_set_config(struct esp_hosted_sdio_con
 
 esp_hosted_transport_err_t esp_hosted_sdio_iomux_set_config(struct esp_hosted_sdio_config *config)
 {
+	struct esp_hosted_sdio_config new_config = config ? *config : INIT_DEFAULT_HOST_SDIO_IOMUX_CONFIG();
+	new_config.iomux_enable = true;
+
 	if (esp_hosted_transport_config_set) {
+		if (memcmp(&s_transport_config.u.sdio, &new_config, sizeof(new_config)) == 0) {
+			return ESP_TRANSPORT_OK;
+		}
 		ESP_LOGE(TAG, "Transport already initialized (through constructor?), reconfiguring not allowed");
-		return ESP_TRANSPORT_ERR_ALREADY_SET; /* Error: already set */
+		return ESP_TRANSPORT_ERR_ALREADY_SET;
 	}
 
-	if (config == NULL) {
-		s_transport_config.u.sdio = INIT_DEFAULT_HOST_SDIO_IOMUX_CONFIG();
-	} else {
-		s_transport_config.u.sdio = *config;
-	}
+	s_transport_config.u.sdio = new_config;
 	esp_hosted_transport_config_set = true;
-	s_transport_config.u.sdio.iomux_enable = true;
 	s_transport_config.transport_in_use = H_TRANSPORT_SDIO;
 	return ESP_TRANSPORT_OK;
 }
@@ -152,16 +154,17 @@ esp_hosted_transport_err_t esp_hosted_spi_hd_get_config(struct esp_hosted_spi_hd
 
 esp_hosted_transport_err_t esp_hosted_spi_hd_set_config(struct esp_hosted_spi_hd_config *config)
 {
+	struct esp_hosted_spi_hd_config new_config = config ? *config : INIT_DEFAULT_HOST_SPI_HD_CONFIG();
+
 	if (esp_hosted_transport_config_set) {
+		if (memcmp(&s_transport_config.u.spi_hd, &new_config, sizeof(new_config)) == 0) {
+			return ESP_TRANSPORT_OK;
+		}
 		ESP_LOGE(TAG, "Transport already initialized (through constructor?), reconfiguring not allowed");
-		return ESP_TRANSPORT_ERR_ALREADY_SET; /* Error: already set */
+		return ESP_TRANSPORT_ERR_ALREADY_SET;
 	}
 
-	if (config == NULL) {
-		s_transport_config.u.spi_hd = INIT_DEFAULT_HOST_SPI_HD_CONFIG();
-	} else {
-		s_transport_config.u.spi_hd = *config;
-	}
+	s_transport_config.u.spi_hd = new_config;
 	esp_hosted_transport_config_set = true;
 	s_transport_config.transport_in_use = H_TRANSPORT_SPI_HD;
 	return ESP_TRANSPORT_OK;
@@ -179,19 +182,20 @@ esp_hosted_transport_err_t esp_hosted_spi_hd_2lines_get_config(struct esp_hosted
 
 esp_hosted_transport_err_t esp_hosted_spi_hd_2lines_set_config(struct esp_hosted_spi_hd_config *config)
 {
+	struct esp_hosted_spi_hd_config new_config = config ? *config : INIT_DEFAULT_HOST_SPI_HD_CONFIG();
+	new_config.num_data_lines = 2;
+
 	if (esp_hosted_transport_config_set) {
+		if (memcmp(&s_transport_config.u.spi_hd, &new_config, sizeof(new_config)) == 0) {
+			return ESP_TRANSPORT_OK;
+		}
 		ESP_LOGE(TAG, "Transport already initialized (through constructor?), reconfiguring not allowed");
-		return ESP_TRANSPORT_ERR_ALREADY_SET; /* Error: already set */
+		return ESP_TRANSPORT_ERR_ALREADY_SET;
 	}
 
-	if (config == NULL) {
-		s_transport_config.u.spi_hd = INIT_DEFAULT_HOST_SPI_HD_CONFIG();
-		s_transport_config.u.spi_hd.num_data_lines = 2;
-	} else {
-		s_transport_config.u.spi_hd = *config;
-	}
-	s_transport_config.transport_in_use = H_TRANSPORT_SPI_HD;
+	s_transport_config.u.spi_hd = new_config;
 	esp_hosted_transport_config_set = true;
+	s_transport_config.transport_in_use = H_TRANSPORT_SPI_HD;
 	return ESP_TRANSPORT_OK;
 }
 #endif
@@ -209,16 +213,17 @@ esp_hosted_transport_err_t esp_hosted_spi_get_config(struct esp_hosted_spi_confi
 
 esp_hosted_transport_err_t esp_hosted_spi_set_config(struct esp_hosted_spi_config *config)
 {
+	struct esp_hosted_spi_config new_config = config ? *config : INIT_DEFAULT_HOST_SPI_CONFIG();
+
 	if (esp_hosted_transport_config_set) {
+		if (memcmp(&s_transport_config.u.spi, &new_config, sizeof(new_config)) == 0) {
+			return ESP_TRANSPORT_OK;
+		}
 		ESP_LOGE(TAG, "Transport already initialized (through constructor?), reconfiguring not allowed");
-		return ESP_TRANSPORT_ERR_ALREADY_SET; /* Error: already set */
+		return ESP_TRANSPORT_ERR_ALREADY_SET;
 	}
 
-	if (config == NULL) {
-		s_transport_config.u.spi = INIT_DEFAULT_HOST_SPI_CONFIG();
-	} else {
-		s_transport_config.u.spi = *config;
-	}
+	s_transport_config.u.spi = new_config;
 	esp_hosted_transport_config_set = true;
 	s_transport_config.transport_in_use = H_TRANSPORT_SPI;
 	return ESP_TRANSPORT_OK;
@@ -238,16 +243,17 @@ esp_hosted_transport_err_t esp_hosted_uart_get_config(struct esp_hosted_uart_con
 
 esp_hosted_transport_err_t esp_hosted_uart_set_config(struct esp_hosted_uart_config *config)
 {
+	struct esp_hosted_uart_config new_config = config ? *config : INIT_DEFAULT_HOST_UART_CONFIG();
+
 	if (esp_hosted_transport_config_set) {
+		if (memcmp(&s_transport_config.u.uart, &new_config, sizeof(new_config)) == 0) {
+			return ESP_TRANSPORT_OK;
+		}
 		ESP_LOGE(TAG, "Transport already initialized (through constructor?), reconfiguring not allowed");
-		return ESP_TRANSPORT_ERR_ALREADY_SET; /* Error: already set */
+		return ESP_TRANSPORT_ERR_ALREADY_SET;
 	}
 
-	if (config == NULL) {
-		s_transport_config.u.uart = INIT_DEFAULT_HOST_UART_CONFIG();
-	} else {
-		s_transport_config.u.uart = *config;
-	}
+	s_transport_config.u.uart = new_config;
 	esp_hosted_transport_config_set = true;
 	s_transport_config.transport_in_use = H_TRANSPORT_UART;
 	return ESP_TRANSPORT_OK;
