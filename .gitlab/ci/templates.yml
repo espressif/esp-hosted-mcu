@@ -63,6 +63,12 @@
         echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
         echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
+    # Append sdkconfig.ci.common if available
+    - |
+      if [ -f sdkconfig.ci.common ]; then
+        cat sdkconfig.ci.common >> sdkconfig.defaults
+        echo "Appended sdkconfig.ci.common to sdkconfig.defaults"
+      fi
     # Build with IDF pedantic flags and IDF build apps script
     - export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
     - export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"

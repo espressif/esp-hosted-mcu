@@ -13,6 +13,9 @@ fi
 IP_ADDRESS="$1"
 DEFAULT_PORT="123"
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Check if port is provided as second argument
 if [ $# -ge 2 ]; then
     PORT="$2"
@@ -26,7 +29,7 @@ echo "Target: $IP_ADDRESS:$PORT"
 echo "Building and running network wakeup utility..."
 
 # Compile the program
-gcc -o host_wakeup_demo_using_udp_packet host_wakeup_demo_using_udp_packet.c -pthread
+gcc -o "$SCRIPT_DIR/host_wakeup_demo_using_udp_packet" "$SCRIPT_DIR/host_wakeup_demo_using_udp_packet.c" -pthread
 
 # Check if compilation succeeded
 if [ $? -ne 0 ]; then
@@ -39,7 +42,7 @@ echo "Starting network wakeup utility..."
 echo "-------------------------------------------"
 
 # Run the program with IP address and port
-./host_wakeup_demo_using_udp_packet $IP_ADDRESS $PORT
+"$SCRIPT_DIR/host_wakeup_demo_using_udp_packet" $IP_ADDRESS $PORT
 
 # Capture result
 RESULT=$?
