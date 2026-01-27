@@ -421,17 +421,17 @@ enum {
 #endif
 
 #if defined(CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT)
-  /* Timeout in seconds before host restarts due to no communication
+  /* Timeout in milliseconds before host restarts due to no communication
    * Maximum time that the host will wait for a response from the slave
    * before triggering an automatic restart.
    */
-  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT
+  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS (CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT * 1000)
 #else
   /* Default timeout value (-1 means disabled) */
-  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT -1
+  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS -1
 #endif
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT == -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS == -1
   #error "Invalid combination. Host Restart No Communication With Slave is enabled but timeout is not configured"
 #endif
 

@@ -50,7 +50,7 @@ static void process_event(uint8_t *evt_buf, uint16_t len);
 static int process_init_event(uint8_t *evt_buf, uint16_t len);
 
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 static void *init_timeout_timer = NULL;
 
 static void init_timeout_cb(void *arg)
@@ -117,7 +117,7 @@ static void transport_drv_init(void)
 
 esp_err_t teardown_transport(void)
 {
-	#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+	#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and cleanup init timeout timer if still active */
 	if (init_timeout_timer) {
 		g_h.funcs->_h_timer_stop(init_timeout_timer);
@@ -153,15 +153,15 @@ esp_err_t transport_drv_reconfigure(void)
 
 	ESP_LOGI(TAG, "Attempt connection with slave: retry[%u]", retry_slave_connection);
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Start init timeout timer if not already started */
 	if (!init_timeout_timer) {
-		init_timeout_timer = g_h.funcs->_h_timer_start("slave_unresponsive_timer", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT, H_TIMER_TYPE_ONESHOT, init_timeout_cb, NULL);
+		init_timeout_timer = g_h.funcs->_h_timer_start("slave_unresponsive_timer", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS, H_TIMER_TYPE_ONESHOT, init_timeout_cb, NULL);
 		if (!init_timeout_timer) {
 			ESP_LOGE(TAG, "Failed to create init timeout timer");
 			return ESP_FAIL;
 		}
-		ESP_LOGI(TAG, "Started host communication init timer of %u seconds", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT);
+		ESP_LOGI(TAG, "Started host communication init timer of %u millisec", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS);
 	}
 #endif
 
@@ -713,7 +713,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	if (!evt_buf)
 		return ESP_FAIL;
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and delete the init timeout timer since we received the init event */
 	if (init_timeout_timer) {
 		g_h.funcs->_h_timer_stop(init_timeout_timer);

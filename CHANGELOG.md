@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.11.5
+
+### Bug Fix
+
+* Renamed `H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT` to `H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS` to clarify units are in milliseconds.
+
 ## 2.11.4
 
 ### Feature
