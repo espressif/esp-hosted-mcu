@@ -1580,13 +1580,12 @@ int ensure_slave_bus_ready(void *bus_handle)
 			while (g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, 0) == ESP_OK);
 		}
 
-		set_transport_state(TRANSPORT_RX_ACTIVE);
-
 		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
 		if (res) {
 			ESP_LOGE(TAG, "card init failed");
 		} else {
 			ESP_LOGI(TAG, "Card init success, TRANSPORT_RX_ACTIVE");
+			set_transport_state(TRANSPORT_RX_ACTIVE);
 			stop_host_power_save();
 		}
 	} else {
