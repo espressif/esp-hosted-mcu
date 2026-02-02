@@ -1132,6 +1132,14 @@ menu "Example Configuration"
 					Host range: 49152-61439
 		endmenu
 
+		config ESP_HOSTED_REUSE_WIFI_STA_DEF_NETIF_INSTANCE
+			bool "Use WIFI_STA_DEF netif for slave"
+			default n
+			help
+				If this option is set, esp-hosted will fetch for existing WIFI_STA_DEF netif for slave.
+				This is useful when the application handles Wi-Fi and creates a default STA interface.
+				esp-hosted will get the handle of this interface instead of creating its own.
+
 	endmenu
 
 	config ESP_HOSTED_HOST_POWER_SAVE_ENABLED

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -305,7 +305,12 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
 		case SLAVE_LWIP_BRIDGE:
 			/* Send to local LWIP */
 			ESP_LOGV(TAG, "slave packet");
-			esp_netif_receive(slave_sta_netif, buffer, len, eb);
+			if (!slave_sta_netif) {
+				ESP_LOGW(TAG, "slave_sta_netif not yet init, drop slave packet");
+				goto DONE;
+			} else {
+				esp_netif_receive(slave_sta_netif, buffer, len, eb);
+			}
     #if ESP_PKT_STATS
 			pkt_stats.sta_slave_lwip_out++;
     #endif
@@ -319,8 +324,15 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
 			memcpy(copy_buff, buffer, len);
 
 			/* slave LWIP */
-			esp_netif_receive(slave_sta_netif, buffer, len, eb);
-			//netif would free eb after processing
+			if (!slave_sta_netif) {
+				ESP_LOGW(TAG, "slave_sta_netif not init, drop slave part of packet");
+				if (eb) {
+					esp_wifi_internal_free_rx_buffer(eb);
+				}
+			} else {
+				esp_netif_receive(slave_sta_netif, buffer, len, eb);
+				//netif would free eb after processing
+			}
 
 			ESP_LOGV(TAG, "slave & host packet");
 
@@ -929,8 +941,16 @@ static void register_reset_pin(uint32_t gpio_num)
 }
 #endif
 #ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
-void create_slave_sta_netif(uint8_t dhcp_at_slave)
+static void create_slave_sta_netif(uint8_t dhcp_at_slave)
 {
+	if (slave_sta_netif) {
+		ESP_LOGD(TAG, "create_slave_sta_netif: slave_sta_netif already exist, return same");
+		return;
+	}
+
+#if CONFIG_ESP_HOSTED_REUSE_WIFI_STA_DEF_NETIF_INSTANCE
+    slave_sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+#else
 	/* Create "almost" default station, but with un-flagged DHCP client */
 	esp_netif_inherent_config_t netif_cfg;
 	memcpy(&netif_cfg, ESP_NETIF_BASE_DEFAULT_WIFI_STA, sizeof(netif_cfg));
@@ -958,6 +978,8 @@ void create_slave_sta_netif(uint8_t dhcp_at_slave)
 	}
 
 	slave_sta_netif = netif_sta;
+#endif
+    assert(slave_sta_netif);
 }
 #endif
 
