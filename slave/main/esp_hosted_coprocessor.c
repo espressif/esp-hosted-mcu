@@ -26,7 +26,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#if defined(CONFIG_BT_ENABLED) && defined(CONFIG_SOC_BT_SUPPORTED)
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 #include "esp_bt.h"
 #endif
 
@@ -35,7 +35,9 @@
 #include <protocomm.h>
 #include "protocomm_pserial.h"
 #include "slave_control.h"
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 #include "slave_bt.h"
+#endif
 #include "stats.h"
 #include "esp_mac.h"
 #include "esp_timer.h"
@@ -148,7 +150,7 @@ static uint8_t get_capabilities(void)
 	cap |= ESP_CHECKSUM_ENABLED;
 #endif
 
-#if defined(CONFIG_SOC_BT_SUPPORTED) && defined(CONFIG_BT_ENABLED)
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 	cap |= get_bluetooth_capabilities();
 #endif
 	ESP_LOGI(TAG, "capabilities: 0x%x", cap);
@@ -182,7 +184,7 @@ static uint32_t get_capabilities_ext(void)
 	ext_cap |= ESP_WLAN_UART_SUPPORT;
 #endif
 
-#if defined(CONFIG_SOC_BT_SUPPORTED) && defined(CONFIG_BT_ENABLED)
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 	ext_cap |= get_bluetooth_ext_capabilities();
 #endif
 	ESP_LOGI(TAG, "extended capabilities: 0x%"PRIx32, ext_cap);
@@ -706,7 +708,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	} else if (buf_handle->if_type == ESP_PRIV_IF) {
 		process_priv_pkt(payload, payload_len);
 	}
-#if defined(CONFIG_BT_ENABLED) && BLUETOOTH_HCI
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED && BLUETOOTH_HCI
 	else if (buf_handle->if_type == ESP_HCI_IF) {
 		process_hci_rx_pkt(payload, payload_len);
 	}

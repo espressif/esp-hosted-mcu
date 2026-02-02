@@ -4,6 +4,18 @@ menu "Example Configuration"
 		bool
 		default y
 
+    config ESP_HOSTED_COPROCESSOR_BT_ENABLED
+        bool "Enable BT sharing via hosted"
+        default y
+		help
+			This removes coprocessor sharing BT capabilities with the Host irrespective of
+			if it supports BT or not
+			For use-case where, BT is only required on co-processor, this option can be used
+
+	if ESP_HOSTED_COPROCESSOR_BT_ENABLED && (!BT_ENABLED || !SOC_BT_SUPPORTED)
+		comment "WARNING: ESP_HOSTED_COPROCESSOR_BT_ENABLED is enabled but BT_ENABLED or SOC_BT_SUPPORTED is disabled. This needs to be enabled for BT sharing to work."
+	endif
+
 	config ESP_HOSTED_COPROCESSOR_APP_MAIN
 		bool "Use ESP-Hosted coprocessor app_main"
 		default y
