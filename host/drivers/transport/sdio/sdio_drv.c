@@ -1031,7 +1031,6 @@ static void sdio_read_task(void const* pvParameters)
 
 #if DO_COMBINED_REG_READ
 	uint32_t *intr_index = NULL;
-	uint32_t *read_len_index = NULL;
 #endif
 
 	assert(sdio_handle);
@@ -1098,8 +1097,6 @@ static void sdio_read_task(void const* pvParameters)
 		}
 
 		intr_index = (uint32_t *)&reg_buf[INT_RAW_INDEX];
-		read_len_index = (uint32_t *)&reg_buf[PACKET_LEN_INDEX];
-
 		interrupts = *intr_index;
 #else
 		// clear slave interrupts
@@ -1145,6 +1142,7 @@ static void sdio_read_task(void const* pvParameters)
 #else
 		/* check the length to be read */
 #if DO_COMBINED_REG_READ
+		uint32_t *read_len_index = (uint32_t *)&reg_buf[PACKET_LEN_INDEX];
 		ret = sdio_get_len_from_slave(&len_from_slave, *read_len_index, ACQUIRE_LOCK);
 #else
 		ret = sdio_get_len_from_slave(&len_from_slave, ACQUIRE_LOCK);
@@ -1580,13 +1578,12 @@ int ensure_slave_bus_ready(void *bus_handle)
 			while (g_h.funcs->_h_get_semaphore(sem_double_buf_xfer_data, 0) == ESP_OK);
 		}
 
-		set_transport_state(TRANSPORT_RX_ACTIVE);
-
 		res = transport_card_init(bus_handle, CARD_INIT_TIMEOUT_MS);
 		if (res) {
 			ESP_LOGE(TAG, "card init failed");
 		} else {
 			ESP_LOGI(TAG, "Card init success, TRANSPORT_RX_ACTIVE");
+			set_transport_state(TRANSPORT_RX_ACTIVE);
 			stop_host_power_save();
 		}
 	} else {

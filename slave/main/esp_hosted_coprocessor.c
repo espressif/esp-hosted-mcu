@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -26,7 +26,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#if defined(CONFIG_BT_ENABLED) && defined(CONFIG_SOC_BT_SUPPORTED)
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 #include "esp_bt.h"
 #endif
 
@@ -35,7 +35,9 @@
 #include <protocomm.h>
 #include "protocomm_pserial.h"
 #include "slave_control.h"
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 #include "slave_bt.h"
+#endif
 #include "stats.h"
 #include "esp_mac.h"
 #include "esp_timer.h"
@@ -148,7 +150,7 @@ static uint8_t get_capabilities(void)
 	cap |= ESP_CHECKSUM_ENABLED;
 #endif
 
-#if defined(CONFIG_SOC_BT_SUPPORTED) && defined(CONFIG_BT_ENABLED)
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 	cap |= get_bluetooth_capabilities();
 #endif
 	ESP_LOGI(TAG, "capabilities: 0x%x", cap);
@@ -182,7 +184,7 @@ static uint32_t get_capabilities_ext(void)
 	ext_cap |= ESP_WLAN_UART_SUPPORT;
 #endif
 
-#if defined(CONFIG_SOC_BT_SUPPORTED) && defined(CONFIG_BT_ENABLED)
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 	ext_cap |= get_bluetooth_ext_capabilities();
 #endif
 	ESP_LOGI(TAG, "extended capabilities: 0x%"PRIx32, ext_cap);
@@ -305,7 +307,12 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
 		case SLAVE_LWIP_BRIDGE:
 			/* Send to local LWIP */
 			ESP_LOGV(TAG, "slave packet");
-			esp_netif_receive(slave_sta_netif, buffer, len, eb);
+			if (!slave_sta_netif) {
+				ESP_LOGW(TAG, "slave_sta_netif not yet init, drop slave packet");
+				goto DONE;
+			} else {
+				esp_netif_receive(slave_sta_netif, buffer, len, eb);
+			}
     #if ESP_PKT_STATS
 			pkt_stats.sta_slave_lwip_out++;
     #endif
@@ -319,8 +326,15 @@ esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb)
 			memcpy(copy_buff, buffer, len);
 
 			/* slave LWIP */
-			esp_netif_receive(slave_sta_netif, buffer, len, eb);
-			//netif would free eb after processing
+			if (!slave_sta_netif) {
+				ESP_LOGW(TAG, "slave_sta_netif not init, drop slave part of packet");
+				if (eb) {
+					esp_wifi_internal_free_rx_buffer(eb);
+				}
+			} else {
+				esp_netif_receive(slave_sta_netif, buffer, len, eb);
+				//netif would free eb after processing
+			}
 
 			ESP_LOGV(TAG, "slave & host packet");
 
@@ -694,7 +708,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	} else if (buf_handle->if_type == ESP_PRIV_IF) {
 		process_priv_pkt(payload, payload_len);
 	}
-#if defined(CONFIG_BT_ENABLED) && BLUETOOTH_HCI
+#if defined(CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED) && BLUETOOTH_HCI
 	else if (buf_handle->if_type == ESP_HCI_IF) {
 		process_hci_rx_pkt(payload, payload_len);
 	}
@@ -929,8 +943,16 @@ static void register_reset_pin(uint32_t gpio_num)
 }
 #endif
 #ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
-void create_slave_sta_netif(uint8_t dhcp_at_slave)
+static void create_slave_sta_netif(uint8_t dhcp_at_slave)
 {
+	if (slave_sta_netif) {
+		ESP_LOGD(TAG, "create_slave_sta_netif: slave_sta_netif already exist, return same");
+		return;
+	}
+
+#ifdef CONFIG_ESP_HOSTED_REUSE_WIFI_STA_DEF_NETIF_INSTANCE
+    slave_sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+#else
 	/* Create "almost" default station, but with un-flagged DHCP client */
 	esp_netif_inherent_config_t netif_cfg;
 	memcpy(&netif_cfg, ESP_NETIF_BASE_DEFAULT_WIFI_STA, sizeof(netif_cfg));
@@ -958,6 +980,8 @@ void create_slave_sta_netif(uint8_t dhcp_at_slave)
 	}
 
 	slave_sta_netif = netif_sta;
+#endif
+    assert(slave_sta_netif);
 }
 #endif
 

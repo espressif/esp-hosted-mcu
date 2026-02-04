@@ -3378,47 +3378,55 @@ static esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
 			RpcReqFeatureControl, req_feature_control,
 			rpc__resp__feature_control__init);
 
-	// copy the incoming request to the outgoing response
+	/* Echo request into response */
 	resp_payload->feature = req_payload->feature;
 	resp_payload->command = req_payload->command;
 	resp_payload->option  = req_payload->option;
 
-	// redo once additional features are supported
-#ifdef CONFIG_SOC_BT_SUPPORTED // only valid if SOC supports bluetooth
-	if (req_payload->feature == RPC_FEATURE__Feature_Bluetooth) {
-		// decode the requested Bluetooth control
+	switch (req_payload->feature) {
+
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
+	case RPC_FEATURE__Feature_Bluetooth:
 		switch (req_payload->command) {
+
 		case RPC_FEATURE_COMMAND__Feature_Command_BT_Init:
 			RPC_RET_FAIL_IF(init_bluetooth());
 			break;
-		case RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit:
-			bool mem_release = false;
-			if (req_payload->option == RPC_FEATURE_OPTION__Feature_Option_BT_Deinit_Release_Memory) {
-				mem_release = true;
-			}
+
+		case RPC_FEATURE_COMMAND__Feature_Command_BT_Deinit: {
+			bool mem_release =
+				(req_payload->option ==
+				 RPC_FEATURE_OPTION__Feature_Option_BT_Deinit_Release_Memory);
 			RPC_RET_FAIL_IF(deinit_bluetooth(mem_release));
 			break;
+		}
+
 		case RPC_FEATURE_COMMAND__Feature_Command_BT_Enable:
 			RPC_RET_FAIL_IF(enable_bluetooth());
 			break;
+
 		case RPC_FEATURE_COMMAND__Feature_Command_BT_Disable:
 			RPC_RET_FAIL_IF(disable_bluetooth());
 			break;
+
 		default:
-			// invalid Bluetooth control feature
 			ESP_LOGE(TAG, "error: invalid Bluetooth Feature Control");
 			resp_payload->resp = ESP_ERR_INVALID_ARG;
 			break;
 		}
-	} else {
-		// invalid feature
+		break;
+#endif /* CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED */
+
+	default:
+		/* Covers:
+		 * - BT feature when BT is disabled
+		 * - Any unsupported / unknown feature
+		 */
 		ESP_LOGE(TAG, "error: invalid Feature Control");
 		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		break;
 	}
-#else
-	ESP_LOGE(TAG, "error: invalid Feature Control");
-	resp_payload->resp = ESP_ERR_INVALID_ARG;
-#endif
+
 	return ESP_OK;
 }
 

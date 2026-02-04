@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,9 +10,9 @@
 #include "esp_hosted_transport_init.h"
 #include "esp_hosted_header.h"
 
-#if TEST_RAW_TP || ESP_PKT_STATS || CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#if TEST_RAW_TP || ESP_PKT_STATS || defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS)
 static const char TAG[] = "stats";
-#endif /* TEST_RAW_TP || ESP_PKT_STATS || CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS || ESP_PKT_NUM_DEBUG */
+#endif /* TEST_RAW_TP || ESP_PKT_STATS || defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS) || ESP_PKT_NUM_DEBUG */
 
 #if ESP_PKT_NUM_DEBUG
 struct dbg_stats_t dbg_stats;
@@ -86,7 +86,7 @@ static void print_timing_stats(struct timing_measure *t, struct timing_stats *s,
 }
 #endif /* ESP_FUNCTION_PROFILING */
 
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#if defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS)
 /* These functions are only for debugging purpose
  * Please do not enable in production environments
  */
@@ -97,14 +97,14 @@ static esp_err_t log_real_time_stats(TickType_t xTicksToWait)
 	uint32_t start_run_time, end_run_time;
 	esp_err_t ret;
 
-	/*Allocate array to store current task states*/
+	/* Allocate array to store current task states */
 	start_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
 	start_array = malloc(sizeof(TaskStatus_t) * start_array_size);
 	if (start_array == NULL) {
 		ret = ESP_ERR_NO_MEM;
 		goto exit;
 	}
-	/*Get current task states*/
+
 	start_array_size = uxTaskGetSystemState(start_array, start_array_size, &start_run_time);
 	if (start_array_size == 0) {
 		ret = ESP_ERR_INVALID_SIZE;
@@ -113,66 +113,76 @@ static esp_err_t log_real_time_stats(TickType_t xTicksToWait)
 
 	vTaskDelay(xTicksToWait);
 
-	/*Allocate array to store tasks states post delay*/
+	/* Allocate array to store tasks states post delay */
 	end_array_size = uxTaskGetNumberOfTasks() + ARRAY_SIZE_OFFSET;
 	end_array = malloc(sizeof(TaskStatus_t) * end_array_size);
 	if (end_array == NULL) {
 		ret = ESP_ERR_NO_MEM;
 		goto exit;
 	}
-	/*Get post delay task states*/
+
 	end_array_size = uxTaskGetSystemState(end_array, end_array_size, &end_run_time);
 	if (end_array_size == 0) {
 		ret = ESP_ERR_INVALID_SIZE;
 		goto exit;
 	}
 
-	/*Calculate total_elapsed_time in units of run time stats clock period.*/
 	uint32_t total_elapsed_time = (end_run_time - start_run_time);
 	if (total_elapsed_time == 0) {
 		ret = ESP_ERR_INVALID_STATE;
 		goto exit;
 	}
 
-	ESP_LOGI(TAG,"| Task | Run Time | Percentage\n");
-	/*Match each task in start_array to those in the end_array*/
+	// Updated Header with Priority and Stack High Water Mark
+	ESP_LOGI(TAG, "%-16s | %-10s | %-4s | %-4s | %-10s", "Task", "Run Time", "CPU%", "Prio", "Stack HWM");
+	ESP_LOGI(TAG, "-----------------------------------------------------------------------");
+
 	for (int i = 0; i < start_array_size; i++) {
 		int k = -1;
 		for (int j = 0; j < end_array_size; j++) {
 			if (start_array[i].xHandle == end_array[j].xHandle) {
 				k = j;
-				/*Mark that task have been matched by overwriting their handles*/
 				start_array[i].xHandle = NULL;
 				end_array[j].xHandle = NULL;
 				break;
 			}
 		}
-		/*Check if matching task found*/
+
 		if (k >= 0) {
 			uint32_t task_elapsed_time = end_array[k].ulRunTimeCounter - start_array[i].ulRunTimeCounter;
 			uint32_t percentage_time = (task_elapsed_time * 100UL) / (total_elapsed_time * portNUM_PROCESSORS);
-			ESP_LOGI(TAG,"| %s | %" PRIu32 " | %" PRIu32 "%%\n", start_array[i].pcTaskName, task_elapsed_time, percentage_time);
+
+			// Log with new metrics: Priority and Stack High Water Mark (HWM)
+			ESP_LOGI(TAG, "%-16s | %-10" PRIu32 " | %3" PRIu32 "%% | %4u | %10u",
+					end_array[k].pcTaskName,
+					task_elapsed_time,
+					percentage_time,
+					(unsigned int)end_array[k].uxCurrentPriority,
+					(unsigned int)end_array[k].usStackHighWaterMark);
 		}
 	}
 
-	/*Print unmatched tasks*/
+	/* Print unmatched tasks */
 	for (int i = 0; i < start_array_size; i++) {
 		if (start_array[i].xHandle != NULL) {
-			ESP_LOGI(TAG,"| %s | Deleted\n", start_array[i].pcTaskName);
+			ESP_LOGI(TAG, "| %-16s | Deleted", start_array[i].pcTaskName);
 		}
 	}
 	for (int i = 0; i < end_array_size; i++) {
 		if (end_array[i].xHandle != NULL) {
-			ESP_LOGI(TAG,"| %s | Created\n", end_array[i].pcTaskName);
+			ESP_LOGI(TAG, "| %-16s | Created", end_array[i].pcTaskName);
 		}
 	}
 	ret = ESP_OK;
 
-exit:    /*Common return path*/
+exit:
+
 	if (start_array)
 		free(start_array);
+
 	if (end_array)
 		free(end_array);
+
 	return ret;
 }
 
@@ -206,7 +216,7 @@ static void log_runtime_stats_task(void* pvParameters)
 		vTaskDelay(STATS_TICKS);
 	}
 }
-#endif /* CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS */
+#endif /* CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS */
 
 #if TEST_RAW_TP
 uint64_t test_raw_tp_rx_len;
@@ -357,11 +367,11 @@ void process_test_capabilities(uint8_t capabilities)
 
 void create_debugging_tasks(void)
 {
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#if defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS)
 	assert(xTaskCreate(log_runtime_stats_task, "log_runtime_stats_task",
 				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
 				/*CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY*/ 1, NULL) == pdTRUE);
-#endif /* CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS */
+#endif /* CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS */
 
 #if TEST_RAW_TP || ESP_PKT_STATS
 	start_timer_to_display_stats(ESP_PKT_STATS_REPORT_INTERVAL);

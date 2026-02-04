@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +11,11 @@
 #include "esp_idf_version.h"
 #include <stdbool.h>
 
-#ifdef CONFIG_BT_ENABLED
+#if defined(CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED) && (!defined(CONFIG_BT_ENABLED) || !defined(CONFIG_SOC_BT_SUPPORTED))
+#error "ESP_HOSTED_COPROCESSOR_BT_ENABLED is enabled but CONFIG_BT_ENABLED or CONFIG_SOC_BT_SUPPORTED is not enabled. Please enable BT support in menuconfig."
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
   #include "driver/periph_ctrl.h"
@@ -150,7 +154,7 @@
   void process_hci_rx_pkt(uint8_t *payload, uint16_t payload_len);
 #endif
 
-#endif /* CONFIG_BT_ENABLED */
+
 esp_err_t init_bluetooth(void);
 esp_err_t enable_bluetooth(void);
 esp_err_t disable_bluetooth(void);
@@ -158,5 +162,6 @@ esp_err_t deinit_bluetooth(bool mem_release);
 
 uint8_t get_bluetooth_capabilities(void);
 uint32_t get_bluetooth_ext_capabilities(void);
+#endif /* CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED */
 
 #endif /* __SLAVE_BT_H__ */

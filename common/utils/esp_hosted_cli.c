@@ -40,6 +40,11 @@
   #include "wifi_cmd.h"
   #include "iperf_cmd.h"
   #include "ping_cmd.h"
+  #include "esp_attr.h"
+
+  #define H_IRAM_ATTR IRAM_ATTR
+#else
+  #define H_IRAM_ATTR
 #endif
 
 static const char *TAG = "esp_cli";
@@ -462,7 +467,7 @@ int esp_hosted_cli_start(void)
 	return 0;
 }
 
-void esp_hosted_cli_stop(void)
+void H_IRAM_ATTR esp_hosted_cli_stop(void)
 {
 	if (repl) {
 		/* Stop the REPL first */

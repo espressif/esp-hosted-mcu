@@ -377,7 +377,9 @@ int esp_hosted_power_save_timer_stop(void)
 	err = g_h.funcs->_h_timer_stop(timer_handle);
 	if (err != 0) {
 		ESP_LOGE(TAG, "Failed to stop timer");
+		return err;
 	}
+	timer_handle = NULL;
 #endif
 	return 0;
 }

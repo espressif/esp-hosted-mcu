@@ -359,7 +359,17 @@ void app_main(void)
 {
     /*
      * Initialize slave-side components...
-     * host_power_save_init() is called internally by the ESP-Hosted component.
+     * host_power_save_init() is to be called by slave application.
+     * For example, https://github.com/espressif/esp-hosted-mcu/blob/31bdfb417fbdba4119d8544277bfbdad4e62e40c/slave/main/example_light_sleep.c#L111
+     *
+     * If you do not wish to use `host_wakeup_callback` callback functions, you can call
+     * ret = host_power_save_init(NULL);
+     * if (ret) {
+     *     ESP_LOGW(TAG, "host_power_save_init failed with ret: %d", ret);
+     * }
+     *
+     * *** It is suggested to use light sleep integration with deep sleep for highest power saving ***
+     * See: https://github.com/espressif/esp-hosted-mcu/blob/31bdfb417fbdba4119d8544277bfbdad4e62e40c/slave/main/Kconfig.projbuild#L1360 for sample slave example config
      */
 
     /* Create a task to wake up the host */
