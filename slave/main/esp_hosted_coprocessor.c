@@ -708,7 +708,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	} else if (buf_handle->if_type == ESP_PRIV_IF) {
 		process_priv_pkt(payload, payload_len);
 	}
-#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED && BLUETOOTH_HCI
+#if defined(CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED) && BLUETOOTH_HCI
 	else if (buf_handle->if_type == ESP_HCI_IF) {
 		process_hci_rx_pkt(payload, payload_len);
 	}
@@ -950,7 +950,7 @@ static void create_slave_sta_netif(uint8_t dhcp_at_slave)
 		return;
 	}
 
-#if CONFIG_ESP_HOSTED_REUSE_WIFI_STA_DEF_NETIF_INSTANCE
+#ifdef CONFIG_ESP_HOSTED_REUSE_WIFI_STA_DEF_NETIF_INSTANCE
     slave_sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
 #else
 	/* Create "almost" default station, but with un-flagged DHCP client */
