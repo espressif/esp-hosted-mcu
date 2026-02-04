@@ -995,6 +995,21 @@ menu "Example Configuration"
 				Maximum number of unique functions that can be profiled simultaneously.
 				Each entry consumes memory, so keep this value reasonable based on
 				available memory.
+
+		config ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS
+			bool "Hosted runtime freertos related task, mem stats"
+			default n
+			help
+				Enable this to log runtime stats periodically.
+				This will create a task that logs the stats.
+
+				NOTE: This feature requires 'Component config->FreeRTOS->Enable collection
+				of run time stats' (FREERTOS_GENERATE_RUN_TIME_STATS) to be enabled.
+
+		if ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS && !FREERTOS_GENERATE_RUN_TIME_STATS
+			comment "WARNING: FREERTOS_GENERATE_RUN_TIME_STATS must be enabled for runtime stats logging to work!"
+		endif
+
 	endmenu
 
 	config ESP_HOSTED_NETWORK_SPLIT_ENABLED

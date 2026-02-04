@@ -10,9 +10,9 @@
 #include "esp_hosted_transport_init.h"
 #include "esp_hosted_header.h"
 
-#if TEST_RAW_TP || ESP_PKT_STATS || CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#if TEST_RAW_TP || ESP_PKT_STATS || defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS)
 static const char TAG[] = "stats";
-#endif /* TEST_RAW_TP || ESP_PKT_STATS || CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS || ESP_PKT_NUM_DEBUG */
+#endif /* TEST_RAW_TP || ESP_PKT_STATS || defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS) || ESP_PKT_NUM_DEBUG */
 
 #if ESP_PKT_NUM_DEBUG
 struct dbg_stats_t dbg_stats;
@@ -86,7 +86,7 @@ static void print_timing_stats(struct timing_measure *t, struct timing_stats *s,
 }
 #endif /* ESP_FUNCTION_PROFILING */
 
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#if defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS)
 /* These functions are only for debugging purpose
  * Please do not enable in production environments
  */
@@ -216,7 +216,7 @@ static void log_runtime_stats_task(void* pvParameters)
 		vTaskDelay(STATS_TICKS);
 	}
 }
-#endif /* CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS */
+#endif /* CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS */
 
 #if TEST_RAW_TP
 uint64_t test_raw_tp_rx_len;
@@ -367,11 +367,11 @@ void process_test_capabilities(uint8_t capabilities)
 
 void create_debugging_tasks(void)
 {
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#if defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS)
 	assert(xTaskCreate(log_runtime_stats_task, "log_runtime_stats_task",
 				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
 				/*CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY*/ 1, NULL) == pdTRUE);
-#endif /* CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS */
+#endif /* CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS */
 
 #if TEST_RAW_TP || ESP_PKT_STATS
 	start_timer_to_display_stats(ESP_PKT_STATS_REPORT_INTERVAL);

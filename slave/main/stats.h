@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -30,7 +30,8 @@
 
 /* Stats CONFIG:
  *
- * 1. CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+ * 1. defined(CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS)
+ *    Needs to enable, CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
  *    These are debug stats to show the CPU utilization by all tasks
  *    This is set through sdkconfig
  *
@@ -50,7 +51,12 @@
   #define ESP_PKT_STATS 1
 #endif
 
-#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#ifdef CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS
+
+#ifndef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+#error "CONFIG_ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS needs CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS to be enabled"
+#endif
+
   /* Stats to show task wise CPU utilization */
   #define STATS_TICKS                  pdMS_TO_TICKS(1000*2)
   #define ARRAY_SIZE_OFFSET            5
