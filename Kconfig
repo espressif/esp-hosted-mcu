@@ -47,13 +47,13 @@ menu "ESP-Hosted config"
 			depends on SLAVE_IDF_TARGET_ESP32C5
 			bool "ESP32-P4-C5 Core Board with on-board C5"
 
-	config ESP_HOSTED_P4_C6_CORE_BOARD
-		depends on SLAVE_IDF_TARGET_ESP32C6
-		bool "ESP32-P4-C6 Core Board with on-board C6"
+		config ESP_HOSTED_P4_C6_CORE_BOARD
+			depends on SLAVE_IDF_TARGET_ESP32C6
+			bool "ESP32-P4-C6 Core Board with on-board C6"
 
-	config ESP_HOSTED_P4_C61_CORE_BOARD
-		depends on SLAVE_IDF_TARGET_ESP32C61
-		bool "ESP32-P4-C61 Core Board with on-board C61"
+		config ESP_HOSTED_P4_C61_CORE_BOARD
+			depends on SLAVE_IDF_TARGET_ESP32C61
+			bool "ESP32-P4-C61 Core Board with on-board C61"
 
 	endchoice
 
@@ -1973,6 +1973,22 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 	menu "Host Power Save Configuration"
 		depends on ESP_HOSTED_HOST_DEEP_SLEEP_ALLOWED
 
+		config ESP_HOSTED_HOST_WAKEUP_GPIO_RANGE_MIN
+			int
+			default 6 if ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD && !ESP_HOSTED_SPI_HD_HOST_INTERFACE
+			default 4 if ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD && ESP_HOSTED_SPI_HD_HOST_INTERFACE
+			default 2 if ESP_HOSTED_P4_C5_CORE_BOARD
+			default -1 if IDF_TARGET_ESP32P4
+			default -1
+
+		config ESP_HOSTED_HOST_WAKEUP_GPIO_RANGE_MAX
+			int
+			default 6 if ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD && !ESP_HOSTED_SPI_HD_HOST_INTERFACE
+			default 4 if ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD && ESP_HOSTED_SPI_HD_HOST_INTERFACE
+			default 2 if ESP_HOSTED_P4_C5_CORE_BOARD
+			default 15 if IDF_TARGET_ESP32P4
+			default 100
+
 		config ESP_HOSTED_HOST_WAKEUP_GPIO
 			int "Host in: Host Wakeup GPIO"
 			default 5 if C2_C5_MODULE_SUB_BOARD
@@ -1984,8 +2000,8 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			default 6 if IDF_TARGET_ESP32P4 && !SLAVE_IDF_TARGET_ESP32C6 && !SLAVE_IDF_TARGET_ESP32C5 && !SLAVE_IDF_TARGET_ESP32C61
 			default 1 if IDF_TARGET_ESP32C3
 			default 2 if ESP_HOSTED_P4_C5_CORE_BOARD
-			default -1
-			range -1 15 if IDF_TARGET_ESP32P4
+			default -1 if (ESP_HOSTED_P4_DEV_BOARD_NONE || ESP_HOSTED_P4_C6_CORE_BOARD || ESP_HOSTED_P4_C61_CORE_BOARD)
+			range ESP_HOSTED_HOST_WAKEUP_GPIO_RANGE_MIN ESP_HOSTED_HOST_WAKEUP_GPIO_RANGE_MAX
 			help
 				GPIO number to use for host wakeup from sleep.
 				Set to -1 to disable GPIO wakeup.
