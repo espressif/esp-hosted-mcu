@@ -42,7 +42,9 @@ uint8_t restart_after_slave_ota = 0;
 #define GET_FWVERSION_TIMEOUT_SEC                         1
 
 /* Forward declarations */
+#if CONFIG_ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START
 static int rpc_wifi_connect_async(void);
+#endif
 static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_control);
 
 static ctrl_cmd_t * RPC_DEFAULT_REQ(void)
@@ -307,7 +309,9 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				/* Trigger connection when station is started */
 				if (!netif_started && !is_wifi_netif_started(WIFI_IF_STA)) {
 					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
+#if CONFIG_ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START
 					rpc_wifi_connect_async();
+#endif
 					netif_started = true;
 				}
 				break;
@@ -1305,6 +1309,7 @@ int rpc_wifi_connect(void)
 	return rpc_rsp_callback(resp);
 }
 
+#if CONFIG_ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START
 static int rpc_wifi_connect_async(void)
 {
 	/* implemented asynchronous */
@@ -1316,6 +1321,7 @@ static int rpc_wifi_connect_async(void)
 
 	return SUCCESS;
 }
+#endif
 
 int rpc_wifi_disconnect(void)
 {
