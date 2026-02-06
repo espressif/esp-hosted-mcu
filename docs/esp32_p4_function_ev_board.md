@@ -7,8 +7,9 @@
 - [2. Set-Up ESP-IDF](#2-set-up-esp-idf)
 - [3. Building Host for the P4](#3-building-host-for-the-p4)
   - [Adding Components](#31-adding-components)
-  - [Configuring Defaults](#32-configuring-defaults)
-  - [Building Firmware](#33-building-firmware)
+  - [Selecting the Co-processor](#32-selecting-the-co-processor)
+  - [Configuring Wi-Fi Defaults](#33-configuring-wi-fi-defaults)
+  - [Building Firmware](#34-building-firmware)
 - [4. Checking ESP-Hosted](#4-checking-esp-hosted)
 - [5. Flashing ESP32-C6](#5-flashing-esp32-c6)
   - [Using ESP-Prog](#51-serial-flashing-using-esp-prog-initial-setup)
@@ -79,15 +80,42 @@ espressif/esp-extconn:
 # -----------------------------------
 ```
 
-> [!IMPORTANT]
-> The co-processor is selected through `esp_wifi_remote`. Make sure to select the correct slave target in:
-> `Component config` → `Wi-Fi Remote` → `choose slave target`
-> 
-> This selection determines the ESP-Hosted transport options and default GPIOs.
+### 3.2. Selecting the Co-processor
 
-### 3.2. Configuring Defaults
+Run:
 
-Edit `sdkconfig.defaults.esp32p4` to include the following configuration:
+```bash
+idf.py menuconfig
+```
+
+Select co-processors with native Wi-Fi (like ESP32-C6) using `Option (1)` below. For other co-processors (like ESP32-H2), use `Option (2)`.
+
+```
+Component config
+├── Wi-Fi Remote
+│   └── Choose slave target                                      ⎫
+│       ├── ( ) esp32                                            │
+│       ├── ( ) esp32s2                                          │     Choose co-processor from:
+│       ├── ( ) esp32c3                                          │
+│       ├── ( ) esp32s3                                          ⎬       Option (1):
+│       ├── ( ) esp32c2                                          │       "Wi-Fi Remote" config
+│       ├── (X) esp32c6                                          │
+│       ├── ( ) esp32c5                                          │
+│       └── ( ) esp32c61                                         ⎭
+│
+└── ESP-Hosted config                                            ⎫
+    └── Choose the Co-processor to use                           │
+        ├── ( ) ESP32-C6 (fetched from Wi-Fi Remote component)   ⎬       Option (2):
+        ├── (X) ESP32-H2                                         │       "ESP-Hosted" config
+        └── ( ) ESP32-H4                                         ⎭
+```
+
+> [!NOTE]
+> ESP32-H4 currently does not support Bluetooth or SPI transport. This will be enabled in the future.
+
+### 3.3. Configuring Wi-Fi Defaults
+
+For the ESP32-C6 as the co-processor, edit `sdkconfig.defaults.esp32p4` to include the following configuration:
 
 ```
 ### sdkconfig for ESP32-P4 + C6 Dev board
@@ -113,7 +141,7 @@ CONFIG_LWIP_TCP_SACK_OUT=y
 
 For optimized parameters when using other co-processors, see the [Performance Optimization Guide](performance_optimization.md).
 
-### 3.3. Building Firmware
+### 3.4. Building Firmware
 
 Build and flash the firmware:
 

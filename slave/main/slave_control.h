@@ -10,6 +10,8 @@
 #include "interface.h"
 #include "sdkconfig.h"
 
+#include "esp_hosted_rpc.h"
+
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
   #define TIMEOUT_IN_SEC          (1000 / portTICK_PERIOD_MS)
 #else
@@ -20,7 +22,8 @@
 #define PASSWORD_LENGTH         64
 #define VENDOR_OUI_BUF          3
 
-
+#define SUCCESS                     0
+#define FAILURE                     -1
 
 #define mem_free(x)                 \
         {                           \
@@ -210,9 +213,6 @@ void send_event_data_to_host(int event_id, void *data, int size);
 #endif
 
 #include "esp_wifi.h"
-
-esp_err_t esp_hosted_set_sta_config(wifi_interface_t iface, wifi_config_t *cfg);
-esp_err_t esp_hosted_register_wifi_event_handlers(void);
 
 #ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
 /* DHCP/DNS status structure */

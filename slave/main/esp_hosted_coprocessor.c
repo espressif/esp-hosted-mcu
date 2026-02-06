@@ -17,22 +17,30 @@
 #ifndef CONFIG_IDF_TARGET_ARCH_RISCV
 #include "xtensa/core-macros.h"
 #endif
-#include "esp_private/wifi.h"
 #include "interface.h"
+
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI
+#include "esp_private/wifi.h"
 #include "esp_wpa.h"
+#include "slave_wifi_std.h"
+#endif // CONFIG_ESP_HOSTED_CP_WIFI
+
 #include "esp_hosted_coprocessor.h"
 #include "driver/gpio.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#ifdef CONFIG_ESP_HOSTED_CP_BT
+#include "esp_bt.h"
+#endif
 
 #include "endian.h"
 
 #include <protocomm.h>
 #include "protocomm_pserial.h"
 #include "slave_control.h"
-#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
+#ifdef CONFIG_ESP_HOSTED_CP_BT
 #include "slave_bt.h"
 #endif
 #include "stats.h"
@@ -134,20 +142,23 @@ static uint8_t get_capabilities(void)
 {
 	uint8_t cap = 0;
 
-	ESP_LOGI(TAG, "Supported features are:");
-#if CONFIG_ESP_SPI_HOST_INTERFACE
-	ESP_LOGI(TAG, "- WLAN over SPI");
-	cap |= ESP_WLAN_SPI_SUPPORT;
-#elif CONFIG_ESP_SDIO_HOST_INTERFACE
-	ESP_LOGI(TAG, "- WLAN over SDIO");
-	cap |= ESP_WLAN_SDIO_SUPPORT;
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI
+	cap |= get_wifi_std_capabilities();
 #endif
+
+	ESP_LOGI(TAG, "Supported features are:");
+	if (cap & ESP_WLAN_SPI_SUPPORT) {
+		ESP_LOGI(TAG, "- WLAN over SPI");
+	}
+	if (cap & ESP_WLAN_SDIO_SUPPORT) {
+		ESP_LOGI(TAG, "- WLAN over SDIO");
+	}
 
 #if CONFIG_ESP_SPI_CHECKSUM || CONFIG_ESP_SDIO_CHECKSUM || CONFIG_ESP_SPI_HD_CHECKSUM || CONFIG_ESP_UART_CHECKSUM
 	cap |= ESP_CHECKSUM_ENABLED;
 #endif
 
-#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
+#ifdef CONFIG_ESP_HOSTED_CP_BT
 	cap |= get_bluetooth_capabilities();
 #endif
 	ESP_LOGI(TAG, "capabilities: 0x%x", cap);
@@ -172,16 +183,22 @@ static uint32_t get_capabilities_ext(void)
 #error "Invalid SPI HD Number of Data Bits configuration"
 #endif
 
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI
 	ESP_LOGI(TAG, "- WLAN over SPI HD");
 	ext_cap |= ESP_WLAN_SUPPORT;
+#endif // CONFIG_ESP_HOSTED_CP_WIFI
 #endif
 
 #if CONFIG_ESP_UART_HOST_INTERFACE
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI
 	ESP_LOGI(TAG, "- WLAN over UART");
 	ext_cap |= ESP_WLAN_UART_SUPPORT;
+#else // CONFIG_ESP_HOSTED_CP_WIFI
+	ESP_LOGI(TAG, "- UART interface");
+#endif // CONFIG_ESP_HOSTED_CP_WIFI
 #endif
 
-#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
+#ifdef CONFIG_ESP_HOSTED_CP_BT
 	ext_cap |= get_bluetooth_ext_capabilities();
 #endif
 	ESP_LOGI(TAG, "extended capabilities: 0x%"PRIx32, ext_cap);
@@ -211,6 +228,7 @@ static inline esp_err_t populate_buff_handle(interface_buffer_handle_t *buf_hand
 	return ESP_OK;
 }
 
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI
 #define populate_wifi_buffer_handle(Buf_hdL, TypE, BuF, LeN) \
 	populate_buff_handle(Buf_hdL, TypE, BuF, LeN, esp_wifi_internal_free_rx_buffer, eb, 0, 0, 0);
 
@@ -381,6 +399,7 @@ DONE:
 	}
 	return ESP_OK;
 }
+#endif // CONFIG_ESP_HOSTED_CP_WIFI
 
 static void process_tx_pkt(interface_buffer_handle_t *buf_handle)
 {
@@ -670,6 +689,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 
 	ESP_HEXLOGD("bus_RX", buf_handle->payload, buf_handle->payload_len, 32);
 
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI
 	if (buf_handle->if_type == ESP_STA_IF && station_connected) {
 
 		/* Forward data to wlan driver */
@@ -697,7 +717,9 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		/* Forward data to wlan driver */
 		esp_wifi_internal_tx(WIFI_IF_AP, payload, payload_len);
 		ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
-	} else if (buf_handle->if_type == ESP_SERIAL_IF) {
+	} else
+#endif // CONFIG_ESP_HOSTED_CP_WIFI
+	if (buf_handle->if_type == ESP_SERIAL_IF) {
 #if ESP_PKT_STATS
 		pkt_stats.serial_rx++;
 #endif
@@ -705,7 +727,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	} else if (buf_handle->if_type == ESP_PRIV_IF) {
 		process_priv_pkt(payload, payload_len);
 	}
-#if defined(CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED) && BLUETOOTH_HCI
+#if defined(CONFIG_ESP_HOSTED_CP_BT) && BLUETOOTH_HCI
 	else if (buf_handle->if_type == ESP_HCI_IF) {
 		process_hci_rx_pkt(payload, payload_len);
 	}

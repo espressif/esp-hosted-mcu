@@ -62,8 +62,8 @@
     # Add slave target configuration if specified
     - |
       if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
-        echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
-        echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+        echo "CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+        echo "Added target CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
     # Append sdkconfig.ci.common if available
     - |
@@ -113,8 +113,8 @@
     # Add slave target configuration if specified
     - |
       if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
-        echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
-        echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+        echo "CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+        echo "Added slave target CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
     # EXAMPLE_CI_FILE: use sdkconfig CI file in example directory
     - |
@@ -181,8 +181,8 @@
     # Add slave target configuration if specified
     - |
       if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
-        echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
-        echo "Added slave target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+        echo "CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+        echo "Added slave target CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
     # HOSTED_CI_FILE: use custom sdkconfig CI file from esp_hosted directory, or
     # EXAMPLE_CI_FILE: use sdkconfig CI file in example directory
