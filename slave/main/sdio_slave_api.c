@@ -13,7 +13,6 @@
 #include "interface.h"
 #include "sdio_slave_api.h"
 #include "driver/sdio_slave.h"
-#include "soc/sdio_slave_periph.h"
 #include "endian.h"
 #include "mempool.h"
 #include "stats.h"

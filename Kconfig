@@ -1663,7 +1663,7 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 
 	config ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START
 		bool "Auto-connect WiFi at host on STA_START event"
-		default n
+		default y
 		help
 			Automatically trigger WiFi connect from host when slave station starts.
 			Generally should be disabled to give application control over connection timing.
