@@ -1661,6 +1661,15 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			can instruct the co-processor to negotiate specific wake and sleep schedules with
 			the access point (AP) for lower power consumption.
 
+	config ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START
+		bool "Auto-connect WiFi at host on STA_START event"
+		default y
+		help
+			Automatically trigger WiFi connect from host when slave station starts.
+			Generally should be disabled to give application control over connection timing.
+			When disabled, application must explicitly call esp_wifi_connect() after
+			receiving WIFI_EVENT_STA_START event.
+
 	config ESP_HOSTED_ENABLE_GPIO_EXPANDER
 		bool "Enable GPIO Expander feature on host"
 		default n

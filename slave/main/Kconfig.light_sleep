@@ -1,90 +1,149 @@
 menu "Light Sleep Power Management"
-    comment "---- ✓ ESP-Hosted Light sleep allowed to configure ----"
-        depends on PM_ENABLE && FREERTOS_USE_TICKLESS_IDLE && (!BT_ENABLED || ESP_PHY_MAC_BB_PD) && (!BT_ENABLED || BTDM_CTRL_MODEM_SLEEP || !IDF_TARGET_ESP32) && (!BT_ENABLED || BT_LE_SLEEP_ENABLE || IDF_TARGET_ESP32)
-    comment "---- ✗ ESP-Hosted Light sleep not allowed - Check prerequisites above ---- "
-        depends on !PM_ENABLE || !FREERTOS_USE_TICKLESS_IDLE || (BT_ENABLED && !ESP_PHY_MAC_BB_PD && SOC_BT_SUPPORTED)
 
-	comment "⚠️  Prerequisite:	✗ Power Management"
-		depends on !PM_ENABLE
-	comment "     CONFIG_PM_ENABLE"
-		depends on !PM_ENABLE
-	comment "     Enable: Component config → Power Management"
-		depends on !PM_ENABLE
-
-	comment "⚠️  Prerequisite:	✗ FreeRTOS Tickless Idle"
-		depends on !FREERTOS_USE_TICKLESS_IDLE
-	comment "     CONFIG_FREERTOS_USE_TICKLESS_IDLE"
-		depends on !FREERTOS_USE_TICKLESS_IDLE
-	comment "     Enable: Component config → FreeRTOS → Kernel → Tickless Idle"
-		depends on !FREERTOS_USE_TICKLESS_IDLE
-
-	comment "⚠️  Prerequisite:	✗ BT Modem Sleep (ESP32)"
-		depends on BT_ENABLED && !BTDM_CTRL_MODEM_SLEEP && SOC_BT_SUPPORTED && IDF_TARGET_ESP32
-	comment "     CONFIG_BTDM_CTRL_MODEM_SLEEP"
-		depends on BT_ENABLED && !BTDM_CTRL_MODEM_SLEEP && SOC_BT_SUPPORTED && IDF_TARGET_ESP32
-	comment "     Enable: Component config → Bluetooth → Modem Sleep"
-		depends on BT_ENABLED && !BTDM_CTRL_MODEM_SLEEP && SOC_BT_SUPPORTED && IDF_TARGET_ESP32
-
-	comment "⚠️  Prerequisite:	✗ BT LE Sleep (C3/C5/C6/C61/S3/H2)"
-		depends on BT_ENABLED && !BT_LE_SLEEP_ENABLE && SOC_BT_SUPPORTED && !IDF_TARGET_ESP32
-	comment "     Enable: CONFIG_BT_LE_SLEEP_ENABLE"
-		depends on BT_ENABLED && !BT_LE_SLEEP_ENABLE && SOC_BT_SUPPORTED && !IDF_TARGET_ESP32
-	comment "     Enable: Component config → Bluetooth → Controller Options → Enable BLE sleep"
-		depends on BT_ENABLED && !BT_LE_SLEEP_ENABLE && SOC_BT_SUPPORTED && !IDF_TARGET_ESP32
-
-	comment "⚠️  Prerequisite:	  MAC BB Power Down (BT enabled)"
-		depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD && SOC_BT_SUPPORTED
-	comment "     CONFIG_ESP_PHY_MAC_BB_PD"
-		depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD && SOC_BT_SUPPORTED
-	comment "     Enable: Component config → PHY → Power Management → MAC BB power down"
-		depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD && SOC_BT_SUPPORTED
-
-
-	comment "ⓘ  Recommendation:  ⓘ Disable Bluetooth if unused"
-		depends on BT_ENABLED && SOC_BT_SUPPORTED
-	comment "     Via menuconfig: Component config → Bluetooth → [ ] Bluetooth"
-		depends on BT_ENABLED && SOC_BT_SUPPORTED
-	comment "     Via API: esp_bt_controller_disable(), esp_bt_controller_deinit(), esp_bt_mem_release()"
-		depends on BT_ENABLED && SOC_BT_SUPPORTED
-
-	comment "ⓘ  Recommendation:  ⓘ WiFi Modem Sleep"
-		depends on SOC_WIFI_SUPPORTED
-	comment "     Enable: Component config → Wi-Fi → WiFi Power Management"
-		depends on SOC_WIFI_SUPPORTED
-	comment "     Or API: esp_wifi_set_ps(WIFI_PS_MIN_MODEM)"
-		depends on SOC_WIFI_SUPPORTED
-
-	comment "ⓘ  Recommendation:  ⓘ WiFi ITWT (Wi-Fi 6) at host & slave"
-		depends on SOC_WIFI_HE_SUPPORT
-	comment "     Check example,  esp-hosted-mcu/examples/host_wifi_itwt"
-		depends on SOC_WIFI_HE_SUPPORT
-
-	config ESP_HOSTED_LIGHT_SLEEP_ENABLE
-		bool "Enable light sleep power management"
-		depends on PM_ENABLE && FREERTOS_USE_TICKLESS_IDLE && (!BT_ENABLED || ESP_PHY_MAC_BB_PD)
-		default n
+	choice ESP_HOSTED_LIGHT_SLEEP_POWER_MODE
+		prompt "Light Sleep Power Management"
+		default ESP_HOSTED_LIGHT_SLEEP_POWER_DISABLED
 		help
-			Enable light sleep APIs for slave device.
+			Configure light sleep power management for the slave device.
 
-			Light sleep is a low-power mode where the CPU is suspended while peripherals
-			like WiFi and Bluetooth can remain operational (if modem sleep is enabled).
-			The device can wake from light sleep via external interrupts or timers.
+			Light sleep suspends the CPU while peripherals like WiFi and Bluetooth
+			can remain operational (if modem sleep is enabled).
 
-			REQUIREMENTS:
-			- Power Management (PM_ENABLE) must be enabled
-			- FreeRTOS Tickless Idle (FREERTOS_USE_TICKLESS_IDLE) must be enabled
-			- If Bluetooth is enabled, MAC/BB power down (ESP_PHY_MAC_BB_PD) must be enabled
+			MODES:
+			• Disabled: No light sleep (default)
+			• Minimum: Auto-setup for development (console active)
+			• Maximum: Auto-setup for production (max power saving)
+			• Manual: Configure everything yourself
 
-			APIS: slave_light_sleep_init/start/stop()
+		config ESP_HOSTED_LIGHT_SLEEP_POWER_DISABLED
+			bool "Disabled"
+			help
+				Light sleep is disabled.
+				Use this if you don't need power management.
 
-			RECOMMENDATIONS FOR MAXIMUM POWER SAVINGS:
-			- Enable WiFi modem sleep if WiFi is used
-			- Enable BT modem sleep on ESP32, or BT LE sleep on other chips
-			- Disable unused wireless subsystems (WiFi/BT)
-			- Use interrupts instead of polling for event detection
+		config ESP_HOSTED_LIGHT_SLEEP_POWER_MIN
+			bool "Minimum Power Saving (development mode)"
+			select PM_ENABLE
+			select FREERTOS_USE_TICKLESS_IDLE
+			select ESP_PHY_MAC_BB_PD if BT_ENABLED
+			select BTDM_CTRL_MODEM_SLEEP if BT_ENABLED && IDF_TARGET_ESP32
+			select BT_LE_SLEEP_ENABLE if BT_ENABLED && !IDF_TARGET_ESP32
+			help
+				✓ One-click setup for development
+
+				AUTO-ENABLES:
+				• Power Management
+				• FreeRTOS Tickless Idle
+				• BT power saving (if BT enabled)
+
+				FEATURES:
+				• UART console active during sleep
+				• Easy debugging
+				• Moderate power saving
+
+		config ESP_HOSTED_LIGHT_SLEEP_POWER_MAX
+			bool "Maximum Power Saving (production mode)"
+			select PM_ENABLE
+			select FREERTOS_USE_TICKLESS_IDLE
+			select ESP_PHY_MAC_BB_PD if BT_ENABLED
+			select BTDM_CTRL_MODEM_SLEEP if BT_ENABLED && IDF_TARGET_ESP32
+			select BT_LE_SLEEP_ENABLE if BT_ENABLED && !IDF_TARGET_ESP32
+			select PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+			select ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN
+			help
+				✓ One-click setup for production
+
+				AUTO-ENABLES:
+				• All Minimum mode settings, plus:
+				• Peripheral power down in light sleep
+
+				FEATURES:
+				• Maximum power efficiency
+				• UART console disabled during sleep
+				• Best for battery applications
+
+				NOTE: Configure additional ESP-Hosted options below for optimal power.
+
+		config ESP_HOSTED_LIGHT_SLEEP_POWER_MANUAL
+			bool "Manual (I'll configure everything myself)"
+			help
+				Advanced mode: Configure each power option individually.
+
+				You must manually enable:
+				• Power Management
+				• FreeRTOS Tickless Idle
+				• BT power features (if using BT)
+	endchoice
+
+	# Helper config for code to check if light sleep is enabled at all
+	config ESP_HOSTED_LIGHT_SLEEP_ENABLE
+		bool
+		default y if ESP_HOSTED_LIGHT_SLEEP_POWER_MIN || ESP_HOSTED_LIGHT_SLEEP_POWER_MAX || ESP_HOSTED_LIGHT_SLEEP_POWER_MANUAL
+		default n
 
 	menu "Light Sleep Parameters"
 		depends on ESP_HOSTED_LIGHT_SLEEP_ENABLE
+
+		# Only show prerequisite warnings in MANUAL mode
+		if ESP_HOSTED_LIGHT_SLEEP_POWER_MANUAL
+			comment "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+			comment "• Manual Mode: Check Prerequisites Below"
+			comment "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+			comment "⚠️	Required:	✗ Power Management"
+				depends on !PM_ENABLE
+			comment "	  Enable: Component config → Power Management"
+				depends on !PM_ENABLE
+
+			comment "⚠️	Required:	✗ FreeRTOS Tickless Idle"
+				depends on !FREERTOS_USE_TICKLESS_IDLE
+			comment "	  Enable: Component config → FreeRTOS → Kernel → Tickless Idle"
+				depends on !FREERTOS_USE_TICKLESS_IDLE
+
+			comment "⚠️	Required:	✗ BT Modem Sleep (ESP32)"
+				depends on BT_ENABLED && !BTDM_CTRL_MODEM_SLEEP && IDF_TARGET_ESP32
+			comment "	  Enable: Component config → Bluetooth → Modem Sleep"
+				depends on BT_ENABLED && !BTDM_CTRL_MODEM_SLEEP && IDF_TARGET_ESP32
+
+			comment "⚠️	Required:	✗ BT LE Sleep (other chips)"
+				depends on BT_ENABLED && !BT_LE_SLEEP_ENABLE && !IDF_TARGET_ESP32
+			comment "	  Enable: Component config → Bluetooth → Controller Options → Enable BLE sleep"
+				depends on BT_ENABLED && !BT_LE_SLEEP_ENABLE && !IDF_TARGET_ESP32
+
+			comment "⚠️	Required:	✗ MAC BB Power Down (if BT enabled)"
+				depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD
+			comment "	  Enable: Component config → PHY → Power Management → MAC BB power down"
+				depends on BT_ENABLED && !ESP_PHY_MAC_BB_PD
+
+			comment "ⓘ	Recommended: Power down Digital Peripheral in light sleep"
+				depends on !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+			comment "	  Enable: Component config → Power Management → Power down Digital Peripheral"
+				depends on !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+
+			comment "✓ All prerequisites configured correctly!"
+				depends on PM_ENABLE && FREERTOS_USE_TICKLESS_IDLE && (!BT_ENABLED || (ESP_PHY_MAC_BB_PD && ((IDF_TARGET_ESP32 && BTDM_CTRL_MODEM_SLEEP) || (!IDF_TARGET_ESP32 && BT_LE_SLEEP_ENABLE))))
+
+			comment "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+		endif
+
+		# Show clean status for MIN/MAX modes
+		if ESP_HOSTED_LIGHT_SLEEP_POWER_MIN
+			comment "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+			comment "✓ Minimum Power Mode Active"
+			comment "  • All prerequisites auto-configured"
+			comment "  • UART console available during sleep"
+			comment "  • Good for development and debugging"
+			comment "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+		endif
+
+		if ESP_HOSTED_LIGHT_SLEEP_POWER_MAX
+			comment "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+			comment "✓ Maximum Power Mode Active"
+			comment "  • All prerequisites auto-configured"
+			comment "  • UART console disabled during sleep"
+			comment "  • Optimized for battery applications"
+			comment "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+		endif
 
 		config ESP_HOSTED_LIGHT_SLEEP_MIN_FREQ_MHZ
 			int "Minimum CPU frequency (MHz)"
@@ -102,56 +161,63 @@ menu "Light Sleep Power Management"
 			help
 				CPU frequency when idle. Lower = more power saving.
 
-				Supported frequency values and ranges by chipset:
-				  ESP32:	10-240 MHz (10, 20, 40, 80, 120, 160, 240)
-				  ESP32-S2: 10-240 MHz (10, 20, 40, 80, 120, 160, 240)
-				  ESP32-S3: 10-240 MHz (10, 20, 40, 80, 120, 160, 240)
-				  ESP32-C2: 10-80 MHz (10, 20, 40, 80)
-				  ESP32-C3: 10-240 MHz (10, 20, 40, 80, 160)
-				  ESP32-C5: 12-96 MHz (12, 24, 48, 96)
-				  ESP32-C6: 10-240 MHz (10, 20, 40, 80, 120, 160)
-				  ESP32-H2: 10-80 MHz (10, 20, 40, 80)
+				Chipset frequency ranges:
+				  ESP32/S2/S3: 10-240 MHz
+				  ESP32-C2/H2: 10-80 MHz
+				  ESP32-C3:    10-160 MHz
+				  ESP32-C5:    12-96 MHz
+				  ESP32-C6:    10-160 MHz
 
-				For minimal power consumption, use the lowest supported frequency
-				for your target chipset.
+		# ESP-Hosted specific power options (only shown in Manual and Max modes)
+		menu "Advanced Light Sleep Config"
+			depends on ESP_HOSTED_LIGHT_SLEEP_POWER_MANUAL
+			visible if ESP_HOSTED_LIGHT_SLEEP_POWER_MANUAL
 
-		comment "⚠️  Moderate Power Saving config detected"
-			depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP || !ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN
-		comment "✓ Maximum Power Saving - All optimizations enabled. Check recommendations to further optimise power"
-			depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN
+			comment "ⓘ	Tip: Also enable 'Unload BUS driver during host sleep'"
+				depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP
+			comment "	  (Example Configuration → Allow host to power save → Unload...)"
+				depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP
 
+			comment "ⓘ  Recommended: Power down Digital Peripheral in light sleep"
+				depends on !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+			comment "     Enable: Component config → Power Management → Power down Digital Peripheral"
+				depends on !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
 
-		comment "ⓘ  Recommendation:	✗ Unload BUS driver during host sleep"
-			depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP
-		comment "     CONFIG_ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP"
-			depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP
-		comment "     Enable: Example Configuration → Allow host to power save → Unload low level BUS driver during host deep sleep"
-			depends on !ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP
+			config ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN
+				bool "Power down peripherals in light sleep (disables UART console)"
+				depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+				default y if ESP_HOSTED_LIGHT_SLEEP_POWER_MAX
+				default n
+				help
+					Disables UART console during sleep for maximum power saving.
 
-		comment "ⓘ  Recommendation:	✗ Power down Digital Peripheral in light sleep"
-			depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
-		comment "     CONFIG_PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP"
-			depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
-		comment "     Enable: Component config → Power Management → Power down Digital Peripheral"
-			depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && !PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
+					REQUIREMENTS:
+					• Bus driver unload during host sleep (ESP-Hosted option)
+					• PM peripheral powerdown (Component config)
 
-		config ESP_HOSTED_LIGHT_SLEEP_PERIPHERAL_POWERDOWN
-			bool "Power down peripherals in light sleep (disables UART console)"
-			depends on ESP_HOSTED_UNLOAD_BUS_DRIVER_DURING_HOST_SLEEP && PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
-			default n
-			help
-				Maximum power saving mode. UART console disabled during sleep.
+					RECOMMENDED FOR:
+					• Production deployments
+					• Battery-powered applications
 
-				REQUIREMENTS:
-				- Bus driver unload during host sleep must be enabled
-				- PM peripheral powerdown must be enabled
+		endmenu
 
-				RECOMMENDED FOR:
-				- Production deployments
-				- Battery-powered applications
-				- Scenarios where UART console access during sleep is not needed
+		# General recommendations (always visible for reference)
+		menu "Additional Recommendations"
+			comment "ⓘ	WiFi: Enable WiFi Modem Sleep"
+				depends on SOC_WIFI_SUPPORTED
+			comment "	  Component config → Wi-Fi → WiFi Power Management"
+				depends on SOC_WIFI_SUPPORTED
 
-				NOTE: Console output will not be available while in light sleep.
+			comment "ⓘ	WiFi 6: Use ITWT for better power saving"
+				depends on SOC_WIFI_HE_SUPPORT
+			comment "	  Example: esp-hosted-mcu/examples/host_wifi_itwt"
+				depends on SOC_WIFI_HE_SUPPORT
+
+			comment "ⓘ	Bluetooth: Disable if not needed"
+				depends on BT_ENABLED
+			comment "	  Component config → Bluetooth → [ ] Bluetooth"
+				depends on BT_ENABLED
+		endmenu
 
 	endmenu
 
