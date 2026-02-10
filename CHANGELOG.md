@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.11.6
+
+* Fix a build break on ESP-IDF master branch
+* Add `ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START` to control whether WiFi station auto-connects on STA start on both host and slave sides. This allows disabling auto-connect to align behavior with standard ESP-IDF examples and avoids unintended connection attempts during initialization.
+* Made FreeRTOS runtime stats logging optional
+* Added option to allow slave to reuse application-created STA netif handle instead of creating its own handle
+* Added option to disable sharing Bluetooth with Host, for cases where BT is only required on the co-processor
+
 ## 2.11.5
 
 ### Bug Fix
