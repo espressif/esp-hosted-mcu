@@ -2122,6 +2122,141 @@ void   esp_app_desc__free_unpacked
   assert(message->base.descriptor == &esp_app_desc__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   heap_size_threshold__init
+                     (HeapSizeThreshold         *message)
+{
+  static const HeapSizeThreshold init_value = HEAP_SIZE_THRESHOLD__INIT;
+  *message = init_value;
+}
+size_t heap_size_threshold__get_packed_size
+                     (const HeapSizeThreshold *message)
+{
+  assert(message->base.descriptor == &heap_size_threshold__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t heap_size_threshold__pack
+                     (const HeapSizeThreshold *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &heap_size_threshold__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t heap_size_threshold__pack_to_buffer
+                     (const HeapSizeThreshold *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &heap_size_threshold__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+HeapSizeThreshold *
+       heap_size_threshold__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (HeapSizeThreshold *)
+     protobuf_c_message_unpack (&heap_size_threshold__descriptor,
+                                allocator, len, data);
+}
+void   heap_size_threshold__free_unpacked
+                     (HeapSizeThreshold *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &heap_size_threshold__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   mem_info__init
+                     (MemInfo         *message)
+{
+  static const MemInfo init_value = MEM_INFO__INIT;
+  *message = init_value;
+}
+size_t mem_info__get_packed_size
+                     (const MemInfo *message)
+{
+  assert(message->base.descriptor == &mem_info__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t mem_info__pack
+                     (const MemInfo *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &mem_info__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t mem_info__pack_to_buffer
+                     (const MemInfo *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &mem_info__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+MemInfo *
+       mem_info__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (MemInfo *)
+     protobuf_c_message_unpack (&mem_info__descriptor,
+                                allocator, len, data);
+}
+void   mem_info__free_unpacked
+                     (MemInfo *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &mem_info__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   heap_info__init
+                     (HeapInfo         *message)
+{
+  static const HeapInfo init_value = HEAP_INFO__INIT;
+  *message = init_value;
+}
+size_t heap_info__get_packed_size
+                     (const HeapInfo *message)
+{
+  assert(message->base.descriptor == &heap_info__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t heap_info__pack
+                     (const HeapInfo *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &heap_info__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t heap_info__pack_to_buffer
+                     (const HeapInfo *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &heap_info__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+HeapInfo *
+       heap_info__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (HeapInfo *)
+     protobuf_c_message_unpack (&heap_info__descriptor,
+                                allocator, len, data);
+}
+void   heap_info__free_unpacked
+                     (HeapInfo *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &heap_info__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   connected_stalist__init
                      (ConnectedSTAList         *message)
 {
@@ -9052,6 +9187,96 @@ void   rpc__resp__feature_control__free_unpacked
   assert(message->base.descriptor == &rpc__resp__feature_control__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   rpc__req__mem_monitor__init
+                     (RpcReqMemMonitor         *message)
+{
+  static const RpcReqMemMonitor init_value = RPC__REQ__MEM_MONITOR__INIT;
+  *message = init_value;
+}
+size_t rpc__req__mem_monitor__get_packed_size
+                     (const RpcReqMemMonitor *message)
+{
+  assert(message->base.descriptor == &rpc__req__mem_monitor__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__req__mem_monitor__pack
+                     (const RpcReqMemMonitor *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__req__mem_monitor__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__req__mem_monitor__pack_to_buffer
+                     (const RpcReqMemMonitor *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__req__mem_monitor__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcReqMemMonitor *
+       rpc__req__mem_monitor__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcReqMemMonitor *)
+     protobuf_c_message_unpack (&rpc__req__mem_monitor__descriptor,
+                                allocator, len, data);
+}
+void   rpc__req__mem_monitor__free_unpacked
+                     (RpcReqMemMonitor *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__req__mem_monitor__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   rpc__resp__mem_monitor__init
+                     (RpcRespMemMonitor         *message)
+{
+  static const RpcRespMemMonitor init_value = RPC__RESP__MEM_MONITOR__INIT;
+  *message = init_value;
+}
+size_t rpc__resp__mem_monitor__get_packed_size
+                     (const RpcRespMemMonitor *message)
+{
+  assert(message->base.descriptor == &rpc__resp__mem_monitor__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__resp__mem_monitor__pack
+                     (const RpcRespMemMonitor *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__resp__mem_monitor__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__resp__mem_monitor__pack_to_buffer
+                     (const RpcRespMemMonitor *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__resp__mem_monitor__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcRespMemMonitor *
+       rpc__resp__mem_monitor__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcRespMemMonitor *)
+     protobuf_c_message_unpack (&rpc__resp__mem_monitor__descriptor,
+                                allocator, len, data);
+}
+void   rpc__resp__mem_monitor__free_unpacked
+                     (RpcRespMemMonitor *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__resp__mem_monitor__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   rpc__event__wifi_event_no_args__init
                      (RpcEventWifiEventNoArgs         *message)
 {
@@ -12875,6 +13100,51 @@ void   rpc__event__custom_rpc__free_unpacked
   if(!message)
     return;
   assert(message->base.descriptor == &rpc__event__custom_rpc__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   rpc__event__mem_monitor__init
+                     (RpcEventMemMonitor         *message)
+{
+  static const RpcEventMemMonitor init_value = RPC__EVENT__MEM_MONITOR__INIT;
+  *message = init_value;
+}
+size_t rpc__event__mem_monitor__get_packed_size
+                     (const RpcEventMemMonitor *message)
+{
+  assert(message->base.descriptor == &rpc__event__mem_monitor__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__event__mem_monitor__pack
+                     (const RpcEventMemMonitor *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__event__mem_monitor__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__event__mem_monitor__pack_to_buffer
+                     (const RpcEventMemMonitor *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__event__mem_monitor__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcEventMemMonitor *
+       rpc__event__mem_monitor__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcEventMemMonitor *)
+     protobuf_c_message_unpack (&rpc__event__mem_monitor__descriptor,
+                                allocator, len, data);
+}
+void   rpc__event__mem_monitor__free_unpacked
+                     (RpcEventMemMonitor *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__event__mem_monitor__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   rpc__init
@@ -17124,6 +17394,159 @@ const ProtobufCMessageDescriptor esp_app_desc__descriptor =
   esp_app_desc__field_indices_by_name,
   1,  esp_app_desc__number_ranges,
   (ProtobufCMessageInit) esp_app_desc__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor heap_size_threshold__field_descriptors[2] =
+{
+  {
+    "threshold_mem_dma",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(HeapSizeThreshold, threshold_mem_dma),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "threshold_mem_8bit",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(HeapSizeThreshold, threshold_mem_8bit),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned heap_size_threshold__field_indices_by_name[] = {
+  1,   /* field[1] = threshold_mem_8bit */
+  0,   /* field[0] = threshold_mem_dma */
+};
+static const ProtobufCIntRange heap_size_threshold__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor heap_size_threshold__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "heap_size_threshold",
+  "HeapSizeThreshold",
+  "HeapSizeThreshold",
+  "",
+  sizeof(HeapSizeThreshold),
+  2,
+  heap_size_threshold__field_descriptors,
+  heap_size_threshold__field_indices_by_name,
+  1,  heap_size_threshold__number_ranges,
+  (ProtobufCMessageInit) heap_size_threshold__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor mem_info__field_descriptors[2] =
+{
+  {
+    "free_size",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(MemInfo, free_size),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "largest_free_block",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(MemInfo, largest_free_block),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned mem_info__field_indices_by_name[] = {
+  0,   /* field[0] = free_size */
+  1,   /* field[1] = largest_free_block */
+};
+static const ProtobufCIntRange mem_info__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor mem_info__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "mem_info",
+  "MemInfo",
+  "MemInfo",
+  "",
+  sizeof(MemInfo),
+  2,
+  mem_info__field_descriptors,
+  mem_info__field_indices_by_name,
+  1,  mem_info__number_ranges,
+  (ProtobufCMessageInit) mem_info__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor heap_info__field_descriptors[2] =
+{
+  {
+    "mem_dma",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(HeapInfo, mem_dma),
+    &mem_info__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "mem_8bit",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(HeapInfo, mem_8bit),
+    &mem_info__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned heap_info__field_indices_by_name[] = {
+  1,   /* field[1] = mem_8bit */
+  0,   /* field[0] = mem_dma */
+};
+static const ProtobufCIntRange heap_info__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor heap_info__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "heap_info",
+  "HeapInfo",
+  "HeapInfo",
+  "",
+  sizeof(HeapInfo),
+  2,
+  heap_info__field_descriptors,
+  heap_info__field_indices_by_name,
+  1,  heap_info__number_ranges,
+  (ProtobufCMessageInit) heap_info__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 static const ProtobufCFieldDescriptor connected_stalist__field_descriptors[2] =
@@ -23423,6 +23846,212 @@ const ProtobufCMessageDescriptor rpc__resp__feature_control__descriptor =
   (ProtobufCMessageInit) rpc__resp__feature_control__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+static const ProtobufCFieldDescriptor rpc__req__mem_monitor__field_descriptors[5] =
+{
+  {
+    "config",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_ENUM,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqMemMonitor, config),
+    &rpc__mem_monitor_config__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "report_always",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqMemMonitor, report_always),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "interval_sec",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqMemMonitor, interval_sec),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "internal",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqMemMonitor, internal),
+    &heap_size_threshold__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "external",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqMemMonitor, external),
+    &heap_size_threshold__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned rpc__req__mem_monitor__field_indices_by_name[] = {
+  0,   /* field[0] = config */
+  4,   /* field[4] = external */
+  3,   /* field[3] = internal */
+  2,   /* field[2] = interval_sec */
+  1,   /* field[1] = report_always */
+};
+static const ProtobufCIntRange rpc__req__mem_monitor__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 5 }
+};
+const ProtobufCMessageDescriptor rpc__req__mem_monitor__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "Rpc_Req_MemMonitor",
+  "RpcReqMemMonitor",
+  "RpcReqMemMonitor",
+  "",
+  sizeof(RpcReqMemMonitor),
+  5,
+  rpc__req__mem_monitor__field_descriptors,
+  rpc__req__mem_monitor__field_indices_by_name,
+  1,  rpc__req__mem_monitor__number_ranges,
+  (ProtobufCMessageInit) rpc__req__mem_monitor__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rpc__resp__mem_monitor__field_descriptors[7] =
+{
+  {
+    "resp",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespMemMonitor, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "config",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_ENUM,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespMemMonitor, config),
+    &rpc__mem_monitor_config__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "report_always",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespMemMonitor, report_always),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "interval_sec",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespMemMonitor, interval_sec),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curr_total_heap_size",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespMemMonitor, curr_total_heap_size),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curr_internal",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespMemMonitor, curr_internal),
+    &heap_info__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curr_external",
+    7,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespMemMonitor, curr_external),
+    &heap_info__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned rpc__resp__mem_monitor__field_indices_by_name[] = {
+  1,   /* field[1] = config */
+  6,   /* field[6] = curr_external */
+  5,   /* field[5] = curr_internal */
+  4,   /* field[4] = curr_total_heap_size */
+  3,   /* field[3] = interval_sec */
+  2,   /* field[2] = report_always */
+  0,   /* field[0] = resp */
+};
+static const ProtobufCIntRange rpc__resp__mem_monitor__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 7 }
+};
+const ProtobufCMessageDescriptor rpc__resp__mem_monitor__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "Rpc_Resp_MemMonitor",
+  "RpcRespMemMonitor",
+  "RpcRespMemMonitor",
+  "",
+  sizeof(RpcRespMemMonitor),
+  7,
+  rpc__resp__mem_monitor__field_descriptors,
+  rpc__resp__mem_monitor__field_indices_by_name,
+  1,  rpc__resp__mem_monitor__number_ranges,
+  (ProtobufCMessageInit) rpc__resp__mem_monitor__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
 static const ProtobufCFieldDescriptor rpc__event__wifi_event_no_args__field_descriptors[2] =
 {
   {
@@ -27292,7 +27921,97 @@ const ProtobufCMessageDescriptor rpc__event__custom_rpc__descriptor =
   (ProtobufCMessageInit) rpc__event__custom_rpc__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rpc__field_descriptors[239] =
+static const ProtobufCFieldDescriptor rpc__event__mem_monitor__field_descriptors[5] =
+{
+  {
+    "resp",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventMemMonitor, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curr_total_free_heap_size",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventMemMonitor, curr_total_free_heap_size),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curr_min_free_heap_size",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventMemMonitor, curr_min_free_heap_size),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curr_internal",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventMemMonitor, curr_internal),
+    &heap_info__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curr_external",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventMemMonitor, curr_external),
+    &heap_info__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned rpc__event__mem_monitor__field_indices_by_name[] = {
+  4,   /* field[4] = curr_external */
+  3,   /* field[3] = curr_internal */
+  2,   /* field[2] = curr_min_free_heap_size */
+  1,   /* field[1] = curr_total_free_heap_size */
+  0,   /* field[0] = resp */
+};
+static const ProtobufCIntRange rpc__event__mem_monitor__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 5 }
+};
+const ProtobufCMessageDescriptor rpc__event__mem_monitor__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "Rpc_Event_MemMonitor",
+  "RpcEventMemMonitor",
+  "RpcEventMemMonitor",
+  "",
+  sizeof(RpcEventMemMonitor),
+  5,
+  rpc__event__mem_monitor__field_descriptors,
+  rpc__event__mem_monitor__field_indices_by_name,
+  1,  rpc__event__mem_monitor__number_ranges,
+  (ProtobufCMessageInit) rpc__event__mem_monitor__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rpc__field_descriptors[242] =
 {
   {
     "msg_type",
@@ -27458,6 +28177,18 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[239] =
     offsetof(Rpc, payload_case),
     offsetof(Rpc, req_app_get_desc),
     &rpc__req__app_get_desc__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "req_mem_monitor",
+    268,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, req_mem_monitor),
+    &rpc__req__mem_monitor__descriptor,
     NULL,
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -28754,6 +29485,18 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[239] =
     offsetof(Rpc, payload_case),
     offsetof(Rpc, resp_app_get_desc),
     &rpc__resp__app_get_desc__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "resp_mem_monitor",
+    524,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, resp_mem_monitor),
+    &rpc__resp__mem_monitor__descriptor,
     NULL,
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -30162,269 +30905,284 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[239] =
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "event_mem_monitor",
+    789,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, event_mem_monitor),
+    &rpc__event__mem_monitor__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned rpc__field_indices_by_name[] = {
-  221,   /* field[221] = event_ap_sta_connected */
-  222,   /* field[222] = event_ap_sta_disconnected */
-  238,   /* field[238] = event_custom_rpc */
-  227,   /* field[227] = event_dhcp_dns */
-  219,   /* field[219] = event_esp_init */
-  220,   /* field[220] = event_heartbeat */
-  225,   /* field[225] = event_sta_connected */
-  226,   /* field[226] = event_sta_disconnected */
-  231,   /* field[231] = event_sta_itwt_probe */
-  228,   /* field[228] = event_sta_itwt_setup */
-  230,   /* field[230] = event_sta_itwt_suspend */
-  229,   /* field[229] = event_sta_itwt_teardown */
-  224,   /* field[224] = event_sta_scan_done */
-  233,   /* field[233] = event_supp_dpp_cfg_recvd */
-  234,   /* field[234] = event_supp_dpp_fail */
-  232,   /* field[232] = event_supp_dpp_uri_ready */
-  236,   /* field[236] = event_wifi_dpp_cfg_recvd */
-  237,   /* field[237] = event_wifi_dpp_fail */
-  235,   /* field[235] = event_wifi_dpp_uri_ready */
-  223,   /* field[223] = event_wifi_event_no_args */
+  223,   /* field[223] = event_ap_sta_connected */
+  224,   /* field[224] = event_ap_sta_disconnected */
+  240,   /* field[240] = event_custom_rpc */
+  229,   /* field[229] = event_dhcp_dns */
+  221,   /* field[221] = event_esp_init */
+  222,   /* field[222] = event_heartbeat */
+  241,   /* field[241] = event_mem_monitor */
+  227,   /* field[227] = event_sta_connected */
+  228,   /* field[228] = event_sta_disconnected */
+  233,   /* field[233] = event_sta_itwt_probe */
+  230,   /* field[230] = event_sta_itwt_setup */
+  232,   /* field[232] = event_sta_itwt_suspend */
+  231,   /* field[231] = event_sta_itwt_teardown */
+  226,   /* field[226] = event_sta_scan_done */
+  235,   /* field[235] = event_supp_dpp_cfg_recvd */
+  236,   /* field[236] = event_supp_dpp_fail */
+  234,   /* field[234] = event_supp_dpp_uri_ready */
+  238,   /* field[238] = event_wifi_dpp_cfg_recvd */
+  239,   /* field[239] = event_wifi_dpp_fail */
+  237,   /* field[237] = event_wifi_dpp_uri_ready */
+  225,   /* field[225] = event_wifi_event_no_args */
   1,   /* field[1] = msg_id */
   0,   /* field[0] = msg_type */
   13,   /* field[13] = req_app_get_desc */
-  21,   /* field[21] = req_config_heartbeat */
-  103,   /* field[103] = req_custom_rpc */
-  87,   /* field[87] = req_eap_clear_ca_cert */
-  89,   /* field[89] = req_eap_clear_certificate_and_key */
-  79,   /* field[79] = req_eap_clear_identity */
-  85,   /* field[85] = req_eap_clear_new_password */
-  83,   /* field[83] = req_eap_clear_password */
-  81,   /* field[81] = req_eap_clear_username */
-  90,   /* field[90] = req_eap_get_disable_time_check */
-  86,   /* field[86] = req_eap_set_ca_cert */
-  88,   /* field[88] = req_eap_set_certificate_and_key */
-  98,   /* field[98] = req_eap_set_disable_time_check */
-  97,   /* field[97] = req_eap_set_domain_name */
-  99,   /* field[99] = req_eap_set_eap_methods */
-  94,   /* field[94] = req_eap_set_fast_params */
-  78,   /* field[78] = req_eap_set_identity */
-  84,   /* field[84] = req_eap_set_new_password */
-  93,   /* field[93] = req_eap_set_pac_file */
-  82,   /* field[82] = req_eap_set_password */
-  92,   /* field[92] = req_eap_set_suiteb_certification */
-  91,   /* field[91] = req_eap_set_ttls_phase2_method */
-  80,   /* field[80] = req_eap_set_username */
-  95,   /* field[95] = req_eap_use_default_cert_bundle */
-  102,   /* field[102] = req_feature_control */
-  65,   /* field[65] = req_get_coprocessor_fwversion */
-  68,   /* field[68] = req_get_dhcp_dns */
+  22,   /* field[22] = req_config_heartbeat */
+  104,   /* field[104] = req_custom_rpc */
+  88,   /* field[88] = req_eap_clear_ca_cert */
+  90,   /* field[90] = req_eap_clear_certificate_and_key */
+  80,   /* field[80] = req_eap_clear_identity */
+  86,   /* field[86] = req_eap_clear_new_password */
+  84,   /* field[84] = req_eap_clear_password */
+  82,   /* field[82] = req_eap_clear_username */
+  91,   /* field[91] = req_eap_get_disable_time_check */
+  87,   /* field[87] = req_eap_set_ca_cert */
+  89,   /* field[89] = req_eap_set_certificate_and_key */
+  99,   /* field[99] = req_eap_set_disable_time_check */
+  98,   /* field[98] = req_eap_set_domain_name */
+  100,   /* field[100] = req_eap_set_eap_methods */
+  95,   /* field[95] = req_eap_set_fast_params */
+  79,   /* field[79] = req_eap_set_identity */
+  85,   /* field[85] = req_eap_set_new_password */
+  94,   /* field[94] = req_eap_set_pac_file */
+  83,   /* field[83] = req_eap_set_password */
+  93,   /* field[93] = req_eap_set_suiteb_certification */
+  92,   /* field[92] = req_eap_set_ttls_phase2_method */
+  81,   /* field[81] = req_eap_set_username */
+  96,   /* field[96] = req_eap_use_default_cert_bundle */
+  103,   /* field[103] = req_feature_control */
+  66,   /* field[66] = req_get_coprocessor_fwversion */
+  69,   /* field[69] = req_get_dhcp_dns */
   3,   /* field[3] = req_get_mac_address */
-  20,   /* field[20] = req_get_wifi_max_tx_power */
+  21,   /* field[21] = req_get_wifi_max_tx_power */
   5,   /* field[5] = req_get_wifi_mode */
-  104,   /* field[104] = req_gpio_config */
-  107,   /* field[107] = req_gpio_get_level */
-  109,   /* field[109] = req_gpio_input_enable */
-  105,   /* field[105] = req_gpio_reset_pin */
-  108,   /* field[108] = req_gpio_set_direction */
-  106,   /* field[106] = req_gpio_set_level */
-  110,   /* field[110] = req_gpio_set_pull_mode */
-  101,   /* field[101] = req_iface_mac_addr_len_get */
-  100,   /* field[100] = req_iface_mac_addr_set_get */
+  105,   /* field[105] = req_gpio_config */
+  108,   /* field[108] = req_gpio_get_level */
+  110,   /* field[110] = req_gpio_input_enable */
+  106,   /* field[106] = req_gpio_reset_pin */
+  109,   /* field[109] = req_gpio_set_direction */
+  107,   /* field[107] = req_gpio_set_level */
+  111,   /* field[111] = req_gpio_set_pull_mode */
+  102,   /* field[102] = req_iface_mac_addr_len_get */
+  101,   /* field[101] = req_iface_mac_addr_set_get */
+  14,   /* field[14] = req_mem_monitor */
   12,   /* field[12] = req_ota_activate */
-  16,   /* field[16] = req_ota_begin */
-  18,   /* field[18] = req_ota_end */
-  17,   /* field[17] = req_ota_write */
-  67,   /* field[67] = req_set_dhcp_dns */
+  17,   /* field[17] = req_ota_begin */
+  19,   /* field[19] = req_ota_end */
+  18,   /* field[18] = req_ota_write */
+  68,   /* field[68] = req_set_dhcp_dns */
   4,   /* field[4] = req_set_mac_address */
-  19,   /* field[19] = req_set_wifi_max_tx_power */
+  20,   /* field[20] = req_set_wifi_max_tx_power */
   6,   /* field[6] = req_set_wifi_mode */
   9,   /* field[9] = req_supp_dpp_bootstrap_gen */
   8,   /* field[8] = req_supp_dpp_deinit */
   7,   /* field[7] = req_supp_dpp_init */
   10,   /* field[10] = req_supp_dpp_start_listen */
   11,   /* field[11] = req_supp_dpp_stop_listen */
-  48,   /* field[48] = req_wifi_ap_get_sta_aid */
-  47,   /* field[47] = req_wifi_ap_get_sta_list */
-  34,   /* field[34] = req_wifi_clear_ap_list */
-  36,   /* field[36] = req_wifi_clear_fast_connect */
-  26,   /* field[26] = req_wifi_connect */
-  37,   /* field[37] = req_wifi_deauth_sta */
-  23,   /* field[23] = req_wifi_deinit */
-  27,   /* field[27] = req_wifi_disconnect */
-  62,   /* field[62] = req_wifi_get_band */
-  64,   /* field[64] = req_wifi_get_bandmode */
-  42,   /* field[42] = req_wifi_get_bandwidth */
-  60,   /* field[60] = req_wifi_get_bandwidths */
-  44,   /* field[44] = req_wifi_get_channel */
-  29,   /* field[29] = req_wifi_get_config */
-  46,   /* field[46] = req_wifi_get_country */
-  53,   /* field[53] = req_wifi_get_country_code */
-  51,   /* field[51] = req_wifi_get_inactive_time */
-  40,   /* field[40] = req_wifi_get_protocol */
-  58,   /* field[58] = req_wifi_get_protocols */
-  15,   /* field[15] = req_wifi_get_ps */
-  22,   /* field[22] = req_wifi_init */
-  35,   /* field[35] = req_wifi_restore */
-  32,   /* field[32] = req_wifi_scan_get_ap_num */
-  66,   /* field[66] = req_wifi_scan_get_ap_record */
-  33,   /* field[33] = req_wifi_scan_get_ap_records */
-  30,   /* field[30] = req_wifi_scan_start */
-  31,   /* field[31] = req_wifi_scan_stop */
-  61,   /* field[61] = req_wifi_set_band */
-  63,   /* field[63] = req_wifi_set_bandmode */
-  41,   /* field[41] = req_wifi_set_bandwidth */
-  59,   /* field[59] = req_wifi_set_bandwidths */
-  43,   /* field[43] = req_wifi_set_channel */
-  28,   /* field[28] = req_wifi_set_config */
-  45,   /* field[45] = req_wifi_set_country */
-  52,   /* field[52] = req_wifi_set_country_code */
-  50,   /* field[50] = req_wifi_set_inactive_time */
-  96,   /* field[96] = req_wifi_set_okc_support */
-  39,   /* field[39] = req_wifi_set_protocol */
-  57,   /* field[57] = req_wifi_set_protocols */
-  14,   /* field[14] = req_wifi_set_ps */
-  49,   /* field[49] = req_wifi_set_storage */
-  77,   /* field[77] = req_wifi_sta_enterprise_disable */
-  76,   /* field[76] = req_wifi_sta_enterprise_enable */
-  54,   /* field[54] = req_wifi_sta_get_aid */
-  38,   /* field[38] = req_wifi_sta_get_ap_info */
-  55,   /* field[55] = req_wifi_sta_get_negotiated_phymode */
-  56,   /* field[56] = req_wifi_sta_get_rssi */
-  73,   /* field[73] = req_wifi_sta_itwt_get_flow_id_status */
-  74,   /* field[74] = req_wifi_sta_itwt_send_probe_req */
-  75,   /* field[75] = req_wifi_sta_itwt_set_target_wake_time_offset */
-  70,   /* field[70] = req_wifi_sta_itwt_setup */
-  72,   /* field[72] = req_wifi_sta_itwt_suspend */
-  71,   /* field[71] = req_wifi_sta_itwt_teardown */
-  69,   /* field[69] = req_wifi_sta_twt_config */
-  24,   /* field[24] = req_wifi_start */
-  25,   /* field[25] = req_wifi_stop */
-  121,   /* field[121] = resp_app_get_desc */
-  129,   /* field[129] = resp_config_heartbeat */
-  211,   /* field[211] = resp_custom_rpc */
-  195,   /* field[195] = resp_eap_clear_ca_cert */
-  197,   /* field[197] = resp_eap_clear_certificate_and_key */
-  187,   /* field[187] = resp_eap_clear_identity */
-  193,   /* field[193] = resp_eap_clear_new_password */
-  191,   /* field[191] = resp_eap_clear_password */
-  189,   /* field[189] = resp_eap_clear_username */
-  198,   /* field[198] = resp_eap_get_disable_time_check */
-  194,   /* field[194] = resp_eap_set_ca_cert */
-  196,   /* field[196] = resp_eap_set_certificate_and_key */
-  206,   /* field[206] = resp_eap_set_disable_time_check */
-  205,   /* field[205] = resp_eap_set_domain_name */
-  207,   /* field[207] = resp_eap_set_eap_methods */
-  202,   /* field[202] = resp_eap_set_fast_params */
-  186,   /* field[186] = resp_eap_set_identity */
-  192,   /* field[192] = resp_eap_set_new_password */
-  201,   /* field[201] = resp_eap_set_pac_file */
-  190,   /* field[190] = resp_eap_set_password */
-  200,   /* field[200] = resp_eap_set_suiteb_certification */
-  199,   /* field[199] = resp_eap_set_ttls_phase2_method */
-  188,   /* field[188] = resp_eap_set_username */
-  203,   /* field[203] = resp_eap_use_default_cert_bundle */
-  210,   /* field[210] = resp_feature_control */
-  173,   /* field[173] = resp_get_coprocessor_fwversion */
-  176,   /* field[176] = resp_get_dhcp_dns */
-  111,   /* field[111] = resp_get_mac_address */
-  128,   /* field[128] = resp_get_wifi_max_tx_power */
-  113,   /* field[113] = resp_get_wifi_mode */
-  212,   /* field[212] = resp_gpio_config */
-  215,   /* field[215] = resp_gpio_get_level */
-  217,   /* field[217] = resp_gpio_input_enable */
-  213,   /* field[213] = resp_gpio_reset */
-  216,   /* field[216] = resp_gpio_set_direction */
-  214,   /* field[214] = resp_gpio_set_level */
-  218,   /* field[218] = resp_gpio_set_pull_mode */
-  209,   /* field[209] = resp_iface_mac_addr_len_get */
-  208,   /* field[208] = resp_iface_mac_addr_set_get */
-  120,   /* field[120] = resp_ota_activate */
-  124,   /* field[124] = resp_ota_begin */
-  126,   /* field[126] = resp_ota_end */
-  125,   /* field[125] = resp_ota_write */
-  175,   /* field[175] = resp_set_dhcp_dns */
-  112,   /* field[112] = resp_set_mac_address */
-  127,   /* field[127] = resp_set_wifi_max_tx_power */
-  114,   /* field[114] = resp_set_wifi_mode */
-  117,   /* field[117] = resp_supp_dpp_bootstrap_gen */
-  116,   /* field[116] = resp_supp_dpp_deinit */
-  115,   /* field[115] = resp_supp_dpp_init */
-  118,   /* field[118] = resp_supp_dpp_start_listen */
-  119,   /* field[119] = resp_supp_dpp_stop_listen */
-  156,   /* field[156] = resp_wifi_ap_get_sta_aid */
-  155,   /* field[155] = resp_wifi_ap_get_sta_list */
-  142,   /* field[142] = resp_wifi_clear_ap_list */
-  144,   /* field[144] = resp_wifi_clear_fast_connect */
-  134,   /* field[134] = resp_wifi_connect */
-  145,   /* field[145] = resp_wifi_deauth_sta */
-  131,   /* field[131] = resp_wifi_deinit */
-  135,   /* field[135] = resp_wifi_disconnect */
-  170,   /* field[170] = resp_wifi_get_band */
-  172,   /* field[172] = resp_wifi_get_bandmode */
-  150,   /* field[150] = resp_wifi_get_bandwidth */
-  168,   /* field[168] = resp_wifi_get_bandwidths */
-  152,   /* field[152] = resp_wifi_get_channel */
-  137,   /* field[137] = resp_wifi_get_config */
-  154,   /* field[154] = resp_wifi_get_country */
-  161,   /* field[161] = resp_wifi_get_country_code */
-  159,   /* field[159] = resp_wifi_get_inactive_time */
-  148,   /* field[148] = resp_wifi_get_protocol */
-  166,   /* field[166] = resp_wifi_get_protocols */
-  123,   /* field[123] = resp_wifi_get_ps */
-  130,   /* field[130] = resp_wifi_init */
-  143,   /* field[143] = resp_wifi_restore */
-  140,   /* field[140] = resp_wifi_scan_get_ap_num */
-  174,   /* field[174] = resp_wifi_scan_get_ap_record */
-  141,   /* field[141] = resp_wifi_scan_get_ap_records */
-  138,   /* field[138] = resp_wifi_scan_start */
-  139,   /* field[139] = resp_wifi_scan_stop */
-  169,   /* field[169] = resp_wifi_set_band */
-  171,   /* field[171] = resp_wifi_set_bandmode */
-  149,   /* field[149] = resp_wifi_set_bandwidth */
-  167,   /* field[167] = resp_wifi_set_bandwidths */
-  151,   /* field[151] = resp_wifi_set_channel */
-  136,   /* field[136] = resp_wifi_set_config */
-  153,   /* field[153] = resp_wifi_set_country */
-  160,   /* field[160] = resp_wifi_set_country_code */
-  158,   /* field[158] = resp_wifi_set_inactive_time */
-  204,   /* field[204] = resp_wifi_set_okc_support */
-  147,   /* field[147] = resp_wifi_set_protocol */
-  165,   /* field[165] = resp_wifi_set_protocols */
-  122,   /* field[122] = resp_wifi_set_ps */
-  157,   /* field[157] = resp_wifi_set_storage */
-  185,   /* field[185] = resp_wifi_sta_enterprise_disable */
-  184,   /* field[184] = resp_wifi_sta_enterprise_enable */
-  162,   /* field[162] = resp_wifi_sta_get_aid */
-  146,   /* field[146] = resp_wifi_sta_get_ap_info */
-  163,   /* field[163] = resp_wifi_sta_get_negotiated_phymode */
-  164,   /* field[164] = resp_wifi_sta_get_rssi */
-  181,   /* field[181] = resp_wifi_sta_itwt_get_flow_id_status */
-  182,   /* field[182] = resp_wifi_sta_itwt_send_probe_req */
-  183,   /* field[183] = resp_wifi_sta_itwt_set_target_wake_time_offset */
-  178,   /* field[178] = resp_wifi_sta_itwt_setup */
-  180,   /* field[180] = resp_wifi_sta_itwt_suspend */
-  179,   /* field[179] = resp_wifi_sta_itwt_teardown */
-  177,   /* field[177] = resp_wifi_sta_twt_config */
-  132,   /* field[132] = resp_wifi_start */
-  133,   /* field[133] = resp_wifi_stop */
+  49,   /* field[49] = req_wifi_ap_get_sta_aid */
+  48,   /* field[48] = req_wifi_ap_get_sta_list */
+  35,   /* field[35] = req_wifi_clear_ap_list */
+  37,   /* field[37] = req_wifi_clear_fast_connect */
+  27,   /* field[27] = req_wifi_connect */
+  38,   /* field[38] = req_wifi_deauth_sta */
+  24,   /* field[24] = req_wifi_deinit */
+  28,   /* field[28] = req_wifi_disconnect */
+  63,   /* field[63] = req_wifi_get_band */
+  65,   /* field[65] = req_wifi_get_bandmode */
+  43,   /* field[43] = req_wifi_get_bandwidth */
+  61,   /* field[61] = req_wifi_get_bandwidths */
+  45,   /* field[45] = req_wifi_get_channel */
+  30,   /* field[30] = req_wifi_get_config */
+  47,   /* field[47] = req_wifi_get_country */
+  54,   /* field[54] = req_wifi_get_country_code */
+  52,   /* field[52] = req_wifi_get_inactive_time */
+  41,   /* field[41] = req_wifi_get_protocol */
+  59,   /* field[59] = req_wifi_get_protocols */
+  16,   /* field[16] = req_wifi_get_ps */
+  23,   /* field[23] = req_wifi_init */
+  36,   /* field[36] = req_wifi_restore */
+  33,   /* field[33] = req_wifi_scan_get_ap_num */
+  67,   /* field[67] = req_wifi_scan_get_ap_record */
+  34,   /* field[34] = req_wifi_scan_get_ap_records */
+  31,   /* field[31] = req_wifi_scan_start */
+  32,   /* field[32] = req_wifi_scan_stop */
+  62,   /* field[62] = req_wifi_set_band */
+  64,   /* field[64] = req_wifi_set_bandmode */
+  42,   /* field[42] = req_wifi_set_bandwidth */
+  60,   /* field[60] = req_wifi_set_bandwidths */
+  44,   /* field[44] = req_wifi_set_channel */
+  29,   /* field[29] = req_wifi_set_config */
+  46,   /* field[46] = req_wifi_set_country */
+  53,   /* field[53] = req_wifi_set_country_code */
+  51,   /* field[51] = req_wifi_set_inactive_time */
+  97,   /* field[97] = req_wifi_set_okc_support */
+  40,   /* field[40] = req_wifi_set_protocol */
+  58,   /* field[58] = req_wifi_set_protocols */
+  15,   /* field[15] = req_wifi_set_ps */
+  50,   /* field[50] = req_wifi_set_storage */
+  78,   /* field[78] = req_wifi_sta_enterprise_disable */
+  77,   /* field[77] = req_wifi_sta_enterprise_enable */
+  55,   /* field[55] = req_wifi_sta_get_aid */
+  39,   /* field[39] = req_wifi_sta_get_ap_info */
+  56,   /* field[56] = req_wifi_sta_get_negotiated_phymode */
+  57,   /* field[57] = req_wifi_sta_get_rssi */
+  74,   /* field[74] = req_wifi_sta_itwt_get_flow_id_status */
+  75,   /* field[75] = req_wifi_sta_itwt_send_probe_req */
+  76,   /* field[76] = req_wifi_sta_itwt_set_target_wake_time_offset */
+  71,   /* field[71] = req_wifi_sta_itwt_setup */
+  73,   /* field[73] = req_wifi_sta_itwt_suspend */
+  72,   /* field[72] = req_wifi_sta_itwt_teardown */
+  70,   /* field[70] = req_wifi_sta_twt_config */
+  25,   /* field[25] = req_wifi_start */
+  26,   /* field[26] = req_wifi_stop */
+  122,   /* field[122] = resp_app_get_desc */
+  131,   /* field[131] = resp_config_heartbeat */
+  213,   /* field[213] = resp_custom_rpc */
+  197,   /* field[197] = resp_eap_clear_ca_cert */
+  199,   /* field[199] = resp_eap_clear_certificate_and_key */
+  189,   /* field[189] = resp_eap_clear_identity */
+  195,   /* field[195] = resp_eap_clear_new_password */
+  193,   /* field[193] = resp_eap_clear_password */
+  191,   /* field[191] = resp_eap_clear_username */
+  200,   /* field[200] = resp_eap_get_disable_time_check */
+  196,   /* field[196] = resp_eap_set_ca_cert */
+  198,   /* field[198] = resp_eap_set_certificate_and_key */
+  208,   /* field[208] = resp_eap_set_disable_time_check */
+  207,   /* field[207] = resp_eap_set_domain_name */
+  209,   /* field[209] = resp_eap_set_eap_methods */
+  204,   /* field[204] = resp_eap_set_fast_params */
+  188,   /* field[188] = resp_eap_set_identity */
+  194,   /* field[194] = resp_eap_set_new_password */
+  203,   /* field[203] = resp_eap_set_pac_file */
+  192,   /* field[192] = resp_eap_set_password */
+  202,   /* field[202] = resp_eap_set_suiteb_certification */
+  201,   /* field[201] = resp_eap_set_ttls_phase2_method */
+  190,   /* field[190] = resp_eap_set_username */
+  205,   /* field[205] = resp_eap_use_default_cert_bundle */
+  212,   /* field[212] = resp_feature_control */
+  175,   /* field[175] = resp_get_coprocessor_fwversion */
+  178,   /* field[178] = resp_get_dhcp_dns */
+  112,   /* field[112] = resp_get_mac_address */
+  130,   /* field[130] = resp_get_wifi_max_tx_power */
+  114,   /* field[114] = resp_get_wifi_mode */
+  214,   /* field[214] = resp_gpio_config */
+  217,   /* field[217] = resp_gpio_get_level */
+  219,   /* field[219] = resp_gpio_input_enable */
+  215,   /* field[215] = resp_gpio_reset */
+  218,   /* field[218] = resp_gpio_set_direction */
+  216,   /* field[216] = resp_gpio_set_level */
+  220,   /* field[220] = resp_gpio_set_pull_mode */
+  211,   /* field[211] = resp_iface_mac_addr_len_get */
+  210,   /* field[210] = resp_iface_mac_addr_set_get */
+  123,   /* field[123] = resp_mem_monitor */
+  121,   /* field[121] = resp_ota_activate */
+  126,   /* field[126] = resp_ota_begin */
+  128,   /* field[128] = resp_ota_end */
+  127,   /* field[127] = resp_ota_write */
+  177,   /* field[177] = resp_set_dhcp_dns */
+  113,   /* field[113] = resp_set_mac_address */
+  129,   /* field[129] = resp_set_wifi_max_tx_power */
+  115,   /* field[115] = resp_set_wifi_mode */
+  118,   /* field[118] = resp_supp_dpp_bootstrap_gen */
+  117,   /* field[117] = resp_supp_dpp_deinit */
+  116,   /* field[116] = resp_supp_dpp_init */
+  119,   /* field[119] = resp_supp_dpp_start_listen */
+  120,   /* field[120] = resp_supp_dpp_stop_listen */
+  158,   /* field[158] = resp_wifi_ap_get_sta_aid */
+  157,   /* field[157] = resp_wifi_ap_get_sta_list */
+  144,   /* field[144] = resp_wifi_clear_ap_list */
+  146,   /* field[146] = resp_wifi_clear_fast_connect */
+  136,   /* field[136] = resp_wifi_connect */
+  147,   /* field[147] = resp_wifi_deauth_sta */
+  133,   /* field[133] = resp_wifi_deinit */
+  137,   /* field[137] = resp_wifi_disconnect */
+  172,   /* field[172] = resp_wifi_get_band */
+  174,   /* field[174] = resp_wifi_get_bandmode */
+  152,   /* field[152] = resp_wifi_get_bandwidth */
+  170,   /* field[170] = resp_wifi_get_bandwidths */
+  154,   /* field[154] = resp_wifi_get_channel */
+  139,   /* field[139] = resp_wifi_get_config */
+  156,   /* field[156] = resp_wifi_get_country */
+  163,   /* field[163] = resp_wifi_get_country_code */
+  161,   /* field[161] = resp_wifi_get_inactive_time */
+  150,   /* field[150] = resp_wifi_get_protocol */
+  168,   /* field[168] = resp_wifi_get_protocols */
+  125,   /* field[125] = resp_wifi_get_ps */
+  132,   /* field[132] = resp_wifi_init */
+  145,   /* field[145] = resp_wifi_restore */
+  142,   /* field[142] = resp_wifi_scan_get_ap_num */
+  176,   /* field[176] = resp_wifi_scan_get_ap_record */
+  143,   /* field[143] = resp_wifi_scan_get_ap_records */
+  140,   /* field[140] = resp_wifi_scan_start */
+  141,   /* field[141] = resp_wifi_scan_stop */
+  171,   /* field[171] = resp_wifi_set_band */
+  173,   /* field[173] = resp_wifi_set_bandmode */
+  151,   /* field[151] = resp_wifi_set_bandwidth */
+  169,   /* field[169] = resp_wifi_set_bandwidths */
+  153,   /* field[153] = resp_wifi_set_channel */
+  138,   /* field[138] = resp_wifi_set_config */
+  155,   /* field[155] = resp_wifi_set_country */
+  162,   /* field[162] = resp_wifi_set_country_code */
+  160,   /* field[160] = resp_wifi_set_inactive_time */
+  206,   /* field[206] = resp_wifi_set_okc_support */
+  149,   /* field[149] = resp_wifi_set_protocol */
+  167,   /* field[167] = resp_wifi_set_protocols */
+  124,   /* field[124] = resp_wifi_set_ps */
+  159,   /* field[159] = resp_wifi_set_storage */
+  187,   /* field[187] = resp_wifi_sta_enterprise_disable */
+  186,   /* field[186] = resp_wifi_sta_enterprise_enable */
+  164,   /* field[164] = resp_wifi_sta_get_aid */
+  148,   /* field[148] = resp_wifi_sta_get_ap_info */
+  165,   /* field[165] = resp_wifi_sta_get_negotiated_phymode */
+  166,   /* field[166] = resp_wifi_sta_get_rssi */
+  183,   /* field[183] = resp_wifi_sta_itwt_get_flow_id_status */
+  184,   /* field[184] = resp_wifi_sta_itwt_send_probe_req */
+  185,   /* field[185] = resp_wifi_sta_itwt_set_target_wake_time_offset */
+  180,   /* field[180] = resp_wifi_sta_itwt_setup */
+  182,   /* field[182] = resp_wifi_sta_itwt_suspend */
+  181,   /* field[181] = resp_wifi_sta_itwt_teardown */
+  179,   /* field[179] = resp_wifi_sta_twt_config */
+  134,   /* field[134] = resp_wifi_start */
+  135,   /* field[135] = resp_wifi_stop */
   2,   /* field[2] = uid */
 };
 static const ProtobufCIntRange rpc__number_ranges[18 + 1] =
 {
   { 1, 0 },
   { 257, 3 },
-  { 270, 14 },
-  { 297, 39 },
-  { 311, 47 },
-  { 325, 50 },
-  { 334, 52 },
-  { 338, 54 },
-  { 341, 56 },
-  { 513, 111 },
-  { 526, 122 },
-  { 553, 147 },
-  { 567, 155 },
-  { 581, 158 },
-  { 590, 160 },
-  { 594, 162 },
-  { 597, 164 },
-  { 769, 219 },
-  { 0, 239 }
+  { 270, 15 },
+  { 297, 40 },
+  { 311, 48 },
+  { 325, 51 },
+  { 334, 53 },
+  { 338, 55 },
+  { 341, 57 },
+  { 513, 112 },
+  { 526, 124 },
+  { 553, 149 },
+  { 567, 157 },
+  { 581, 160 },
+  { 590, 162 },
+  { 594, 164 },
+  { 597, 166 },
+  { 769, 221 },
+  { 0, 242 }
 };
 const ProtobufCMessageDescriptor rpc__descriptor =
 {
@@ -30434,7 +31192,7 @@ const ProtobufCMessageDescriptor rpc__descriptor =
   "Rpc",
   "",
   sizeof(Rpc),
-  239,
+  242,
   rpc__field_descriptors,
   rpc__field_indices_by_name,
   18,  rpc__number_ranges,
@@ -30701,7 +31459,7 @@ const ProtobufCEnumDescriptor rpc_feature_option__descriptor =
   rpc_feature_option__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue rpc_id__enum_values_by_number[297] =
+static const ProtobufCEnumValue rpc_id__enum_values_by_number[300] =
 {
   { "MsgId_Invalid", "RPC_ID__MsgId_Invalid", 0 },
   { "Req_Base", "RPC_ID__Req_Base", 256 },
@@ -30716,6 +31474,7 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[297] =
   { "Req_SuppDppStopListen", "RPC_ID__Req_SuppDppStopListen", 265 },
   { "Req_OTAActivate", "RPC_ID__Req_OTAActivate", 266 },
   { "Req_AppGetDesc", "RPC_ID__Req_AppGetDesc", 267 },
+  { "Req_MemMonitor", "RPC_ID__Req_MemMonitor", 268 },
   { "Req_WifiSetPs", "RPC_ID__Req_WifiSetPs", 270 },
   { "Req_WifiGetPs", "RPC_ID__Req_WifiGetPs", 271 },
   { "Req_OTABegin", "RPC_ID__Req_OTABegin", 272 },
@@ -30853,6 +31612,7 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[297] =
   { "Resp_SuppDppStopListen", "RPC_ID__Resp_SuppDppStopListen", 521 },
   { "Resp_OTAActivate", "RPC_ID__Resp_OTAActivate", 522 },
   { "Resp_AppGetDesc", "RPC_ID__Resp_AppGetDesc", 523 },
+  { "Resp_MemMonitor", "RPC_ID__Resp_MemMonitor", 524 },
   { "Resp_WifiSetPs", "RPC_ID__Resp_WifiSetPs", 526 },
   { "Resp_WifiGetPs", "RPC_ID__Resp_WifiGetPs", 527 },
   { "Resp_OTABegin", "RPC_ID__Resp_OTABegin", 528 },
@@ -30999,81 +31759,84 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[297] =
   { "Event_WifiDppCfgRecvd", "RPC_ID__Event_WifiDppCfgRecvd", 786 },
   { "Event_WifiDppFail", "RPC_ID__Event_WifiDppFail", 787 },
   { "Event_CustomRpc", "RPC_ID__Event_CustomRpc", 788 },
-  { "Event_Max", "RPC_ID__Event_Max", 789 },
+  { "Event_MemMonitor", "RPC_ID__Event_MemMonitor", 789 },
+  { "Event_Max", "RPC_ID__Event_Max", 790 },
 };
 static const ProtobufCIntRange rpc_id__value_ranges[] = {
-{0, 0},{256, 1},{270, 13},{297, 38},{512, 138},{526, 150},{553, 175},{768, 275},{0, 297}
+{0, 0},{256, 1},{270, 14},{297, 39},{512, 139},{526, 152},{553, 177},{768, 277},{0, 300}
 };
-static const ProtobufCEnumValueIndex rpc_id__enum_values_by_name[297] =
+static const ProtobufCEnumValueIndex rpc_id__enum_values_by_name[300] =
 {
-  { "Event_AP_StaConnected", 278 },
-  { "Event_AP_StaDisconnected", 279 },
-  { "Event_Base", 275 },
-  { "Event_CustomRpc", 295 },
-  { "Event_DhcpDnsStatus", 284 },
-  { "Event_ESPInit", 276 },
-  { "Event_Heartbeat", 277 },
-  { "Event_Max", 296 },
-  { "Event_StaConnected", 282 },
-  { "Event_StaDisconnected", 283 },
-  { "Event_StaItwtProbe", 288 },
-  { "Event_StaItwtSetup", 285 },
-  { "Event_StaItwtSuspend", 287 },
-  { "Event_StaItwtTeardown", 286 },
-  { "Event_StaScanDone", 281 },
-  { "Event_SuppDppCfgRecvd", 290 },
-  { "Event_SuppDppFail", 291 },
-  { "Event_SuppDppUriReady", 289 },
-  { "Event_WifiDppCfgRecvd", 293 },
-  { "Event_WifiDppFail", 294 },
-  { "Event_WifiDppUriReady", 292 },
-  { "Event_WifiEventNoArgs", 280 },
+  { "Event_AP_StaConnected", 280 },
+  { "Event_AP_StaDisconnected", 281 },
+  { "Event_Base", 277 },
+  { "Event_CustomRpc", 297 },
+  { "Event_DhcpDnsStatus", 286 },
+  { "Event_ESPInit", 278 },
+  { "Event_Heartbeat", 279 },
+  { "Event_Max", 299 },
+  { "Event_MemMonitor", 298 },
+  { "Event_StaConnected", 284 },
+  { "Event_StaDisconnected", 285 },
+  { "Event_StaItwtProbe", 290 },
+  { "Event_StaItwtSetup", 287 },
+  { "Event_StaItwtSuspend", 289 },
+  { "Event_StaItwtTeardown", 288 },
+  { "Event_StaScanDone", 283 },
+  { "Event_SuppDppCfgRecvd", 292 },
+  { "Event_SuppDppFail", 293 },
+  { "Event_SuppDppUriReady", 291 },
+  { "Event_WifiDppCfgRecvd", 295 },
+  { "Event_WifiDppFail", 296 },
+  { "Event_WifiDppUriReady", 294 },
+  { "Event_WifiEventNoArgs", 282 },
   { "MsgId_Invalid", 0 },
   { "Req_AppGetDesc", 12 },
   { "Req_Base", 1 },
-  { "Req_ConfigHeartbeat", 20 },
-  { "Req_CustomRpc", 129 },
-  { "Req_EapClearCaCert", 113 },
-  { "Req_EapClearCertificateAndKey", 115 },
-  { "Req_EapClearIdentity", 105 },
-  { "Req_EapClearNewPassword", 111 },
-  { "Req_EapClearPassword", 109 },
-  { "Req_EapClearUsername", 107 },
-  { "Req_EapGetDisableTimeCheck", 116 },
-  { "Req_EapSetCaCert", 112 },
-  { "Req_EapSetCertificateAndKey", 114 },
-  { "Req_EapSetDisableTimeCheck", 124 },
-  { "Req_EapSetDomainName", 123 },
-  { "Req_EapSetEapMethods", 125 },
-  { "Req_EapSetFastParams", 120 },
-  { "Req_EapSetIdentity", 104 },
-  { "Req_EapSetNewPassword", 110 },
-  { "Req_EapSetPacFile", 119 },
-  { "Req_EapSetPassword", 108 },
-  { "Req_EapSetSuitebCertification", 118 },
-  { "Req_EapSetTtlsPhase2Method", 117 },
-  { "Req_EapSetUsername", 106 },
-  { "Req_EapUseDefaultCertBundle", 121 },
-  { "Req_FeatureControl", 128 },
-  { "Req_GetCoprocessorFwVersion", 91 },
-  { "Req_GetDhcpDnsStatus", 94 },
+  { "Req_ConfigHeartbeat", 21 },
+  { "Req_CustomRpc", 130 },
+  { "Req_EapClearCaCert", 114 },
+  { "Req_EapClearCertificateAndKey", 116 },
+  { "Req_EapClearIdentity", 106 },
+  { "Req_EapClearNewPassword", 112 },
+  { "Req_EapClearPassword", 110 },
+  { "Req_EapClearUsername", 108 },
+  { "Req_EapGetDisableTimeCheck", 117 },
+  { "Req_EapSetCaCert", 113 },
+  { "Req_EapSetCertificateAndKey", 115 },
+  { "Req_EapSetDisableTimeCheck", 125 },
+  { "Req_EapSetDomainName", 124 },
+  { "Req_EapSetEapMethods", 126 },
+  { "Req_EapSetFastParams", 121 },
+  { "Req_EapSetIdentity", 105 },
+  { "Req_EapSetNewPassword", 111 },
+  { "Req_EapSetPacFile", 120 },
+  { "Req_EapSetPassword", 109 },
+  { "Req_EapSetSuitebCertification", 119 },
+  { "Req_EapSetTtlsPhase2Method", 118 },
+  { "Req_EapSetUsername", 107 },
+  { "Req_EapUseDefaultCertBundle", 122 },
+  { "Req_FeatureControl", 129 },
+  { "Req_GetCoprocessorFwVersion", 92 },
+  { "Req_GetDhcpDnsStatus", 95 },
   { "Req_GetMACAddress", 2 },
   { "Req_GetWifiMode", 4 },
-  { "Req_GpioConfig", 130 },
-  { "Req_GpioGetLevel", 133 },
-  { "Req_GpioInputEnable", 135 },
-  { "Req_GpioResetPin", 131 },
-  { "Req_GpioSetDirection", 134 },
-  { "Req_GpioSetLevel", 132 },
-  { "Req_GpioSetPullMode", 136 },
-  { "Req_IfaceMacAddrLenGet", 127 },
-  { "Req_IfaceMacAddrSetGet", 126 },
-  { "Req_Max", 137 },
+  { "Req_GpioConfig", 131 },
+  { "Req_GpioGetLevel", 134 },
+  { "Req_GpioInputEnable", 136 },
+  { "Req_GpioResetPin", 132 },
+  { "Req_GpioSetDirection", 135 },
+  { "Req_GpioSetLevel", 133 },
+  { "Req_GpioSetPullMode", 137 },
+  { "Req_IfaceMacAddrLenGet", 128 },
+  { "Req_IfaceMacAddrSetGet", 127 },
+  { "Req_Max", 138 },
+  { "Req_MemMonitor", 13 },
   { "Req_OTAActivate", 11 },
-  { "Req_OTABegin", 15 },
-  { "Req_OTAEnd", 17 },
-  { "Req_OTAWrite", 16 },
-  { "Req_SetDhcpDnsStatus", 93 },
+  { "Req_OTABegin", 16 },
+  { "Req_OTAEnd", 18 },
+  { "Req_OTAWrite", 17 },
+  { "Req_SetDhcpDnsStatus", 94 },
   { "Req_SetMacAddress", 3 },
   { "Req_SetWifiMode", 5 },
   { "Req_SuppDppBootstrapGen", 8 },
@@ -31081,228 +31844,229 @@ static const ProtobufCEnumValueIndex rpc_id__enum_values_by_name[297] =
   { "Req_SuppDppInit", 6 },
   { "Req_SuppDppStartListen", 9 },
   { "Req_SuppDppStopListen", 10 },
-  { "Req_Wifi80211Tx", 58 },
-  { "Req_WifiApGetStaAid", 53 },
-  { "Req_WifiApGetStaList", 52 },
-  { "Req_WifiClearApList", 33 },
-  { "Req_WifiClearFastConnect", 35 },
-  { "Req_WifiConfig11bRate", 73 },
-  { "Req_WifiConfig80211TxRate", 77 },
-  { "Req_WifiConnect", 25 },
-  { "Req_WifiConnectionlessModuleSetWakeInterval", 74 },
-  { "Req_WifiDeauthSta", 36 },
-  { "Req_WifiDeinit", 22 },
-  { "Req_WifiDisablePmfConfig", 78 },
-  { "Req_WifiDisconnect", 26 },
-  { "Req_WifiFtmEndSession", 71 },
-  { "Req_WifiFtmInitiateSession", 70 },
-  { "Req_WifiFtmRespSetOffset", 72 },
-  { "Req_WifiGetAnt", 64 },
-  { "Req_WifiGetAntGpio", 62 },
-  { "Req_WifiGetBand", 88 },
-  { "Req_WifiGetBandMode", 90 },
-  { "Req_WifiGetBandwidth", 41 },
-  { "Req_WifiGetBandwidths", 86 },
-  { "Req_WifiGetChannel", 43 },
-  { "Req_WifiGetConfig", 28 },
-  { "Req_WifiGetCountry", 45 },
-  { "Req_WifiGetCountryCode", 76 },
-  { "Req_WifiGetEventMask", 57 },
-  { "Req_WifiGetInactiveTime", 67 },
-  { "Req_WifiGetMaxTxPower", 19 },
-  { "Req_WifiGetPromiscuous", 47 },
-  { "Req_WifiGetPromiscuousCtrlFilter", 51 },
-  { "Req_WifiGetPromiscuousFilter", 49 },
-  { "Req_WifiGetProtocol", 39 },
-  { "Req_WifiGetProtocols", 84 },
-  { "Req_WifiGetPs", 14 },
-  { "Req_WifiGetTsfTime", 65 },
-  { "Req_WifiInit", 21 },
-  { "Req_WifiRestore", 34 },
-  { "Req_WifiScanGetApNum", 31 },
-  { "Req_WifiScanGetApRecord", 92 },
-  { "Req_WifiScanGetApRecords", 32 },
-  { "Req_WifiScanStart", 29 },
-  { "Req_WifiScanStop", 30 },
-  { "Req_WifiSetAnt", 63 },
-  { "Req_WifiSetAntGpio", 61 },
-  { "Req_WifiSetBand", 87 },
-  { "Req_WifiSetBandMode", 89 },
-  { "Req_WifiSetBandwidth", 40 },
-  { "Req_WifiSetBandwidths", 85 },
-  { "Req_WifiSetChannel", 42 },
-  { "Req_WifiSetConfig", 27 },
-  { "Req_WifiSetCountry", 44 },
-  { "Req_WifiSetCountryCode", 75 },
-  { "Req_WifiSetCsi", 60 },
-  { "Req_WifiSetCsiConfig", 59 },
-  { "Req_WifiSetDynamicCs", 81 },
-  { "Req_WifiSetEventMask", 56 },
-  { "Req_WifiSetInactiveTime", 66 },
-  { "Req_WifiSetMaxTxPower", 18 },
-  { "Req_WifiSetOkcSupport", 122 },
-  { "Req_WifiSetPromiscuous", 46 },
-  { "Req_WifiSetPromiscuousCtrlFilter", 50 },
-  { "Req_WifiSetPromiscuousFilter", 48 },
-  { "Req_WifiSetProtocol", 38 },
-  { "Req_WifiSetProtocols", 83 },
-  { "Req_WifiSetPs", 13 },
-  { "Req_WifiSetRssiThreshold", 69 },
-  { "Req_WifiSetStorage", 54 },
-  { "Req_WifiSetVendorIe", 55 },
-  { "Req_WifiStaEnterpriseDisable", 103 },
-  { "Req_WifiStaEnterpriseEnable", 102 },
-  { "Req_WifiStaGetAid", 79 },
-  { "Req_WifiStaGetApInfo", 37 },
-  { "Req_WifiStaGetNegotiatedPhymode", 80 },
-  { "Req_WifiStaGetRssi", 82 },
-  { "Req_WifiStaItwtGetFlowIdStatus", 99 },
-  { "Req_WifiStaItwtSendProbeReq", 100 },
-  { "Req_WifiStaItwtSetTargetWakeTimeOffset", 101 },
-  { "Req_WifiStaItwtSetup", 96 },
-  { "Req_WifiStaItwtSuspend", 98 },
-  { "Req_WifiStaItwtTeardown", 97 },
-  { "Req_WifiStaTwtConfig", 95 },
-  { "Req_WifiStart", 23 },
-  { "Req_WifiStatisDump", 68 },
-  { "Req_WifiStop", 24 },
-  { "Resp_AppGetDesc", 149 },
-  { "Resp_Base", 138 },
-  { "Resp_ConfigHeartbeat", 157 },
-  { "Resp_CustomRpc", 266 },
-  { "Resp_EapClearCaCert", 250 },
-  { "Resp_EapClearCertificateAndKey", 252 },
-  { "Resp_EapClearIdentity", 242 },
-  { "Resp_EapClearNewPassword", 248 },
-  { "Resp_EapClearPassword", 246 },
-  { "Resp_EapClearUsername", 244 },
-  { "Resp_EapGetDisableTimeCheck", 253 },
-  { "Resp_EapSetCaCert", 249 },
-  { "Resp_EapSetCertificateAndKey", 251 },
-  { "Resp_EapSetDisableTimeCheck", 261 },
-  { "Resp_EapSetDomainName", 260 },
-  { "Resp_EapSetEapMethods", 262 },
-  { "Resp_EapSetFastParams", 257 },
-  { "Resp_EapSetIdentity", 241 },
-  { "Resp_EapSetNewPassword", 247 },
-  { "Resp_EapSetPacFile", 256 },
-  { "Resp_EapSetPassword", 245 },
-  { "Resp_EapSetSuitebCertification", 255 },
-  { "Resp_EapSetTtlsPhase2Method", 254 },
-  { "Resp_EapSetUsername", 243 },
-  { "Resp_EapUseDefaultCertBundle", 258 },
-  { "Resp_FeatureControl", 265 },
-  { "Resp_GetCoprocessorFwVersion", 228 },
-  { "Resp_GetDhcpDnsStatus", 231 },
-  { "Resp_GetMACAddress", 139 },
-  { "Resp_GetWifiMode", 141 },
-  { "Resp_GpioConfig", 267 },
-  { "Resp_GpioGetLevel", 270 },
-  { "Resp_GpioInputEnable", 272 },
-  { "Resp_GpioResetPin", 268 },
-  { "Resp_GpioSetDirection", 271 },
-  { "Resp_GpioSetLevel", 269 },
-  { "Resp_GpioSetPullMode", 273 },
-  { "Resp_IfaceMacAddrLenGet", 264 },
-  { "Resp_IfaceMacAddrSetGet", 263 },
-  { "Resp_Max", 274 },
-  { "Resp_OTAActivate", 148 },
-  { "Resp_OTABegin", 152 },
-  { "Resp_OTAEnd", 154 },
-  { "Resp_OTAWrite", 153 },
-  { "Resp_SetDhcpDnsStatus", 230 },
-  { "Resp_SetMacAddress", 140 },
-  { "Resp_SetWifiMode", 142 },
-  { "Resp_SuppDppBootstrapGen", 145 },
-  { "Resp_SuppDppDeinit", 144 },
-  { "Resp_SuppDppInit", 143 },
-  { "Resp_SuppDppStartListen", 146 },
-  { "Resp_SuppDppStopListen", 147 },
-  { "Resp_Wifi80211Tx", 195 },
-  { "Resp_WifiApGetStaAid", 190 },
-  { "Resp_WifiApGetStaList", 189 },
-  { "Resp_WifiClearApList", 170 },
-  { "Resp_WifiClearFastConnect", 172 },
-  { "Resp_WifiConfig11bRate", 210 },
-  { "Resp_WifiConfig80211TxRate", 214 },
-  { "Resp_WifiConnect", 162 },
-  { "Resp_WifiConnectionlessModuleSetWakeInterval", 211 },
-  { "Resp_WifiDeauthSta", 173 },
-  { "Resp_WifiDeinit", 159 },
-  { "Resp_WifiDisablePmfConfig", 215 },
-  { "Resp_WifiDisconnect", 163 },
-  { "Resp_WifiFtmEndSession", 208 },
-  { "Resp_WifiFtmInitiateSession", 207 },
-  { "Resp_WifiFtmRespSetOffset", 209 },
-  { "Resp_WifiGetAnt", 201 },
-  { "Resp_WifiGetAntGpio", 199 },
-  { "Resp_WifiGetBand", 225 },
-  { "Resp_WifiGetBandMode", 227 },
-  { "Resp_WifiGetBandwidth", 178 },
-  { "Resp_WifiGetBandwidths", 223 },
-  { "Resp_WifiGetChannel", 180 },
-  { "Resp_WifiGetConfig", 165 },
-  { "Resp_WifiGetCountry", 182 },
-  { "Resp_WifiGetCountryCode", 213 },
-  { "Resp_WifiGetEventMask", 194 },
-  { "Resp_WifiGetInactiveTime", 204 },
-  { "Resp_WifiGetMaxTxPower", 156 },
-  { "Resp_WifiGetPromiscuous", 184 },
-  { "Resp_WifiGetPromiscuousCtrlFilter", 188 },
-  { "Resp_WifiGetPromiscuousFilter", 186 },
-  { "Resp_WifiGetProtocol", 176 },
-  { "Resp_WifiGetProtocols", 221 },
-  { "Resp_WifiGetPs", 151 },
-  { "Resp_WifiGetTsfTime", 202 },
-  { "Resp_WifiInit", 158 },
-  { "Resp_WifiRestore", 171 },
-  { "Resp_WifiScanGetApNum", 168 },
-  { "Resp_WifiScanGetApRecord", 229 },
-  { "Resp_WifiScanGetApRecords", 169 },
-  { "Resp_WifiScanStart", 166 },
-  { "Resp_WifiScanStop", 167 },
-  { "Resp_WifiSetAnt", 200 },
-  { "Resp_WifiSetAntGpio", 198 },
-  { "Resp_WifiSetBand", 224 },
-  { "Resp_WifiSetBandMode", 226 },
-  { "Resp_WifiSetBandwidth", 177 },
-  { "Resp_WifiSetBandwidths", 222 },
-  { "Resp_WifiSetChannel", 179 },
-  { "Resp_WifiSetConfig", 164 },
-  { "Resp_WifiSetCountry", 181 },
-  { "Resp_WifiSetCountryCode", 212 },
-  { "Resp_WifiSetCsi", 197 },
-  { "Resp_WifiSetCsiConfig", 196 },
-  { "Resp_WifiSetDynamicCs", 218 },
-  { "Resp_WifiSetEventMask", 193 },
-  { "Resp_WifiSetInactiveTime", 203 },
-  { "Resp_WifiSetMaxTxPower", 155 },
-  { "Resp_WifiSetOkcSupport", 259 },
-  { "Resp_WifiSetPromiscuous", 183 },
-  { "Resp_WifiSetPromiscuousCtrlFilter", 187 },
-  { "Resp_WifiSetPromiscuousFilter", 185 },
-  { "Resp_WifiSetProtocol", 175 },
-  { "Resp_WifiSetProtocols", 220 },
-  { "Resp_WifiSetPs", 150 },
-  { "Resp_WifiSetRssiThreshold", 206 },
-  { "Resp_WifiSetStorage", 191 },
-  { "Resp_WifiSetVendorIe", 192 },
-  { "Resp_WifiStaEnterpriseDisable", 240 },
-  { "Resp_WifiStaEnterpriseEnable", 239 },
-  { "Resp_WifiStaGetAid", 216 },
-  { "Resp_WifiStaGetApInfo", 174 },
-  { "Resp_WifiStaGetNegotiatedPhymode", 217 },
-  { "Resp_WifiStaGetRssi", 219 },
-  { "Resp_WifiStaItwtGetFlowIdStatus", 236 },
-  { "Resp_WifiStaItwtSendProbeReq", 237 },
-  { "Resp_WifiStaItwtSetTargetWakeTimeOffset", 238 },
-  { "Resp_WifiStaItwtSetup", 233 },
-  { "Resp_WifiStaItwtSuspend", 235 },
-  { "Resp_WifiStaItwtTeardown", 234 },
-  { "Resp_WifiStaTwtConfig", 232 },
-  { "Resp_WifiStart", 160 },
-  { "Resp_WifiStatisDump", 205 },
-  { "Resp_WifiStop", 161 },
+  { "Req_Wifi80211Tx", 59 },
+  { "Req_WifiApGetStaAid", 54 },
+  { "Req_WifiApGetStaList", 53 },
+  { "Req_WifiClearApList", 34 },
+  { "Req_WifiClearFastConnect", 36 },
+  { "Req_WifiConfig11bRate", 74 },
+  { "Req_WifiConfig80211TxRate", 78 },
+  { "Req_WifiConnect", 26 },
+  { "Req_WifiConnectionlessModuleSetWakeInterval", 75 },
+  { "Req_WifiDeauthSta", 37 },
+  { "Req_WifiDeinit", 23 },
+  { "Req_WifiDisablePmfConfig", 79 },
+  { "Req_WifiDisconnect", 27 },
+  { "Req_WifiFtmEndSession", 72 },
+  { "Req_WifiFtmInitiateSession", 71 },
+  { "Req_WifiFtmRespSetOffset", 73 },
+  { "Req_WifiGetAnt", 65 },
+  { "Req_WifiGetAntGpio", 63 },
+  { "Req_WifiGetBand", 89 },
+  { "Req_WifiGetBandMode", 91 },
+  { "Req_WifiGetBandwidth", 42 },
+  { "Req_WifiGetBandwidths", 87 },
+  { "Req_WifiGetChannel", 44 },
+  { "Req_WifiGetConfig", 29 },
+  { "Req_WifiGetCountry", 46 },
+  { "Req_WifiGetCountryCode", 77 },
+  { "Req_WifiGetEventMask", 58 },
+  { "Req_WifiGetInactiveTime", 68 },
+  { "Req_WifiGetMaxTxPower", 20 },
+  { "Req_WifiGetPromiscuous", 48 },
+  { "Req_WifiGetPromiscuousCtrlFilter", 52 },
+  { "Req_WifiGetPromiscuousFilter", 50 },
+  { "Req_WifiGetProtocol", 40 },
+  { "Req_WifiGetProtocols", 85 },
+  { "Req_WifiGetPs", 15 },
+  { "Req_WifiGetTsfTime", 66 },
+  { "Req_WifiInit", 22 },
+  { "Req_WifiRestore", 35 },
+  { "Req_WifiScanGetApNum", 32 },
+  { "Req_WifiScanGetApRecord", 93 },
+  { "Req_WifiScanGetApRecords", 33 },
+  { "Req_WifiScanStart", 30 },
+  { "Req_WifiScanStop", 31 },
+  { "Req_WifiSetAnt", 64 },
+  { "Req_WifiSetAntGpio", 62 },
+  { "Req_WifiSetBand", 88 },
+  { "Req_WifiSetBandMode", 90 },
+  { "Req_WifiSetBandwidth", 41 },
+  { "Req_WifiSetBandwidths", 86 },
+  { "Req_WifiSetChannel", 43 },
+  { "Req_WifiSetConfig", 28 },
+  { "Req_WifiSetCountry", 45 },
+  { "Req_WifiSetCountryCode", 76 },
+  { "Req_WifiSetCsi", 61 },
+  { "Req_WifiSetCsiConfig", 60 },
+  { "Req_WifiSetDynamicCs", 82 },
+  { "Req_WifiSetEventMask", 57 },
+  { "Req_WifiSetInactiveTime", 67 },
+  { "Req_WifiSetMaxTxPower", 19 },
+  { "Req_WifiSetOkcSupport", 123 },
+  { "Req_WifiSetPromiscuous", 47 },
+  { "Req_WifiSetPromiscuousCtrlFilter", 51 },
+  { "Req_WifiSetPromiscuousFilter", 49 },
+  { "Req_WifiSetProtocol", 39 },
+  { "Req_WifiSetProtocols", 84 },
+  { "Req_WifiSetPs", 14 },
+  { "Req_WifiSetRssiThreshold", 70 },
+  { "Req_WifiSetStorage", 55 },
+  { "Req_WifiSetVendorIe", 56 },
+  { "Req_WifiStaEnterpriseDisable", 104 },
+  { "Req_WifiStaEnterpriseEnable", 103 },
+  { "Req_WifiStaGetAid", 80 },
+  { "Req_WifiStaGetApInfo", 38 },
+  { "Req_WifiStaGetNegotiatedPhymode", 81 },
+  { "Req_WifiStaGetRssi", 83 },
+  { "Req_WifiStaItwtGetFlowIdStatus", 100 },
+  { "Req_WifiStaItwtSendProbeReq", 101 },
+  { "Req_WifiStaItwtSetTargetWakeTimeOffset", 102 },
+  { "Req_WifiStaItwtSetup", 97 },
+  { "Req_WifiStaItwtSuspend", 99 },
+  { "Req_WifiStaItwtTeardown", 98 },
+  { "Req_WifiStaTwtConfig", 96 },
+  { "Req_WifiStart", 24 },
+  { "Req_WifiStatisDump", 69 },
+  { "Req_WifiStop", 25 },
+  { "Resp_AppGetDesc", 150 },
+  { "Resp_Base", 139 },
+  { "Resp_ConfigHeartbeat", 159 },
+  { "Resp_CustomRpc", 268 },
+  { "Resp_EapClearCaCert", 252 },
+  { "Resp_EapClearCertificateAndKey", 254 },
+  { "Resp_EapClearIdentity", 244 },
+  { "Resp_EapClearNewPassword", 250 },
+  { "Resp_EapClearPassword", 248 },
+  { "Resp_EapClearUsername", 246 },
+  { "Resp_EapGetDisableTimeCheck", 255 },
+  { "Resp_EapSetCaCert", 251 },
+  { "Resp_EapSetCertificateAndKey", 253 },
+  { "Resp_EapSetDisableTimeCheck", 263 },
+  { "Resp_EapSetDomainName", 262 },
+  { "Resp_EapSetEapMethods", 264 },
+  { "Resp_EapSetFastParams", 259 },
+  { "Resp_EapSetIdentity", 243 },
+  { "Resp_EapSetNewPassword", 249 },
+  { "Resp_EapSetPacFile", 258 },
+  { "Resp_EapSetPassword", 247 },
+  { "Resp_EapSetSuitebCertification", 257 },
+  { "Resp_EapSetTtlsPhase2Method", 256 },
+  { "Resp_EapSetUsername", 245 },
+  { "Resp_EapUseDefaultCertBundle", 260 },
+  { "Resp_FeatureControl", 267 },
+  { "Resp_GetCoprocessorFwVersion", 230 },
+  { "Resp_GetDhcpDnsStatus", 233 },
+  { "Resp_GetMACAddress", 140 },
+  { "Resp_GetWifiMode", 142 },
+  { "Resp_GpioConfig", 269 },
+  { "Resp_GpioGetLevel", 272 },
+  { "Resp_GpioInputEnable", 274 },
+  { "Resp_GpioResetPin", 270 },
+  { "Resp_GpioSetDirection", 273 },
+  { "Resp_GpioSetLevel", 271 },
+  { "Resp_GpioSetPullMode", 275 },
+  { "Resp_IfaceMacAddrLenGet", 266 },
+  { "Resp_IfaceMacAddrSetGet", 265 },
+  { "Resp_Max", 276 },
+  { "Resp_MemMonitor", 151 },
+  { "Resp_OTAActivate", 149 },
+  { "Resp_OTABegin", 154 },
+  { "Resp_OTAEnd", 156 },
+  { "Resp_OTAWrite", 155 },
+  { "Resp_SetDhcpDnsStatus", 232 },
+  { "Resp_SetMacAddress", 141 },
+  { "Resp_SetWifiMode", 143 },
+  { "Resp_SuppDppBootstrapGen", 146 },
+  { "Resp_SuppDppDeinit", 145 },
+  { "Resp_SuppDppInit", 144 },
+  { "Resp_SuppDppStartListen", 147 },
+  { "Resp_SuppDppStopListen", 148 },
+  { "Resp_Wifi80211Tx", 197 },
+  { "Resp_WifiApGetStaAid", 192 },
+  { "Resp_WifiApGetStaList", 191 },
+  { "Resp_WifiClearApList", 172 },
+  { "Resp_WifiClearFastConnect", 174 },
+  { "Resp_WifiConfig11bRate", 212 },
+  { "Resp_WifiConfig80211TxRate", 216 },
+  { "Resp_WifiConnect", 164 },
+  { "Resp_WifiConnectionlessModuleSetWakeInterval", 213 },
+  { "Resp_WifiDeauthSta", 175 },
+  { "Resp_WifiDeinit", 161 },
+  { "Resp_WifiDisablePmfConfig", 217 },
+  { "Resp_WifiDisconnect", 165 },
+  { "Resp_WifiFtmEndSession", 210 },
+  { "Resp_WifiFtmInitiateSession", 209 },
+  { "Resp_WifiFtmRespSetOffset", 211 },
+  { "Resp_WifiGetAnt", 203 },
+  { "Resp_WifiGetAntGpio", 201 },
+  { "Resp_WifiGetBand", 227 },
+  { "Resp_WifiGetBandMode", 229 },
+  { "Resp_WifiGetBandwidth", 180 },
+  { "Resp_WifiGetBandwidths", 225 },
+  { "Resp_WifiGetChannel", 182 },
+  { "Resp_WifiGetConfig", 167 },
+  { "Resp_WifiGetCountry", 184 },
+  { "Resp_WifiGetCountryCode", 215 },
+  { "Resp_WifiGetEventMask", 196 },
+  { "Resp_WifiGetInactiveTime", 206 },
+  { "Resp_WifiGetMaxTxPower", 158 },
+  { "Resp_WifiGetPromiscuous", 186 },
+  { "Resp_WifiGetPromiscuousCtrlFilter", 190 },
+  { "Resp_WifiGetPromiscuousFilter", 188 },
+  { "Resp_WifiGetProtocol", 178 },
+  { "Resp_WifiGetProtocols", 223 },
+  { "Resp_WifiGetPs", 153 },
+  { "Resp_WifiGetTsfTime", 204 },
+  { "Resp_WifiInit", 160 },
+  { "Resp_WifiRestore", 173 },
+  { "Resp_WifiScanGetApNum", 170 },
+  { "Resp_WifiScanGetApRecord", 231 },
+  { "Resp_WifiScanGetApRecords", 171 },
+  { "Resp_WifiScanStart", 168 },
+  { "Resp_WifiScanStop", 169 },
+  { "Resp_WifiSetAnt", 202 },
+  { "Resp_WifiSetAntGpio", 200 },
+  { "Resp_WifiSetBand", 226 },
+  { "Resp_WifiSetBandMode", 228 },
+  { "Resp_WifiSetBandwidth", 179 },
+  { "Resp_WifiSetBandwidths", 224 },
+  { "Resp_WifiSetChannel", 181 },
+  { "Resp_WifiSetConfig", 166 },
+  { "Resp_WifiSetCountry", 183 },
+  { "Resp_WifiSetCountryCode", 214 },
+  { "Resp_WifiSetCsi", 199 },
+  { "Resp_WifiSetCsiConfig", 198 },
+  { "Resp_WifiSetDynamicCs", 220 },
+  { "Resp_WifiSetEventMask", 195 },
+  { "Resp_WifiSetInactiveTime", 205 },
+  { "Resp_WifiSetMaxTxPower", 157 },
+  { "Resp_WifiSetOkcSupport", 261 },
+  { "Resp_WifiSetPromiscuous", 185 },
+  { "Resp_WifiSetPromiscuousCtrlFilter", 189 },
+  { "Resp_WifiSetPromiscuousFilter", 187 },
+  { "Resp_WifiSetProtocol", 177 },
+  { "Resp_WifiSetProtocols", 222 },
+  { "Resp_WifiSetPs", 152 },
+  { "Resp_WifiSetRssiThreshold", 208 },
+  { "Resp_WifiSetStorage", 193 },
+  { "Resp_WifiSetVendorIe", 194 },
+  { "Resp_WifiStaEnterpriseDisable", 242 },
+  { "Resp_WifiStaEnterpriseEnable", 241 },
+  { "Resp_WifiStaGetAid", 218 },
+  { "Resp_WifiStaGetApInfo", 176 },
+  { "Resp_WifiStaGetNegotiatedPhymode", 219 },
+  { "Resp_WifiStaGetRssi", 221 },
+  { "Resp_WifiStaItwtGetFlowIdStatus", 238 },
+  { "Resp_WifiStaItwtSendProbeReq", 239 },
+  { "Resp_WifiStaItwtSetTargetWakeTimeOffset", 240 },
+  { "Resp_WifiStaItwtSetup", 235 },
+  { "Resp_WifiStaItwtSuspend", 237 },
+  { "Resp_WifiStaItwtTeardown", 236 },
+  { "Resp_WifiStaTwtConfig", 234 },
+  { "Resp_WifiStart", 162 },
+  { "Resp_WifiStatisDump", 207 },
+  { "Resp_WifiStop", 163 },
 };
 const ProtobufCEnumDescriptor rpc_id__descriptor =
 {
@@ -31311,9 +32075,9 @@ const ProtobufCEnumDescriptor rpc_id__descriptor =
   "RpcId",
   "RpcId",
   "",
-  297,
+  300,
   rpc_id__enum_values_by_number,
-  297,
+  300,
   rpc_id__enum_values_by_name,
   8,
   rpc_id__value_ranges,
@@ -31379,5 +32143,35 @@ const ProtobufCEnumDescriptor rpc__gpio_pull_mode__descriptor =
   rpc__gpio_pull_mode__enum_values_by_name,
   1,
   rpc__gpio_pull_mode__value_ranges,
+  NULL,NULL,NULL,NULL   /* reserved[1234] */
+};
+static const ProtobufCEnumValue rpc__mem_monitor_config__enum_values_by_number[3] =
+{
+  { "MEMMONITOR_NO_CHANGE", "RPC__MEM_MONITOR_CONFIG__MEMMONITOR_NO_CHANGE", 0 },
+  { "MEMMONITOR_DISABLE", "RPC__MEM_MONITOR_CONFIG__MEMMONITOR_DISABLE", 1 },
+  { "MEMMONITOR_ENABLE", "RPC__MEM_MONITOR_CONFIG__MEMMONITOR_ENABLE", 2 },
+};
+static const ProtobufCIntRange rpc__mem_monitor_config__value_ranges[] = {
+{0, 0},{0, 3}
+};
+static const ProtobufCEnumValueIndex rpc__mem_monitor_config__enum_values_by_name[3] =
+{
+  { "MEMMONITOR_DISABLE", 1 },
+  { "MEMMONITOR_ENABLE", 2 },
+  { "MEMMONITOR_NO_CHANGE", 0 },
+};
+const ProtobufCEnumDescriptor rpc__mem_monitor_config__descriptor =
+{
+  PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
+  "Rpc_MemMonitorConfig",
+  "Rpc_MemMonitorConfig",
+  "RpcMemMonitorConfig",
+  "",
+  3,
+  rpc__mem_monitor_config__enum_values_by_number,
+  3,
+  rpc__mem_monitor_config__enum_values_by_name,
+  1,
+  rpc__mem_monitor_config__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };

@@ -14,6 +14,7 @@
 #include "esp_mac.h"
 #include "esp_wifi_types.h"
 #include "esp_hosted_misc.h"
+#include "esp_hosted_misc_types.h"
 #include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_wifi_config.h"
 
@@ -449,6 +450,13 @@ typedef struct Ctrl_cmd_t {
 		bool                        bt_mem_release;
 
 		rcp_feature_control_t       feature_control;
+
+#if H_MEM_MONITOR
+		esp_hosted_config_mem_monitor_t config_mem_monitor;
+
+		esp_hosted_curr_mem_info_t  curr_mem_info;
+#endif
+
 #ifdef H_PEER_DATA_TRANSFER
 		esp_hosted_rpc_data_t       custom_rpc;
 #endif
@@ -497,6 +505,8 @@ typedef struct Ctrl_cmd_t {
 		event_heartbeat_t           e_heartbeat;
 
 		event_wifi_simple_t         e_wifi_simple;
+
+		esp_hosted_event_mem_info_t  e_mem_info;
 
 		wifi_event_ap_staconnected_t e_wifi_ap_staconnected;
 
@@ -782,6 +792,10 @@ ctrl_cmd_t * rpc_slaveif_set_slave_dhcp_dns_status(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_feature_control(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_get_coprocessor_app_desc(ctrl_cmd_t *req);
+
+#if H_MEM_MONITOR
+ctrl_cmd_t * rpc_slave_iface_set_mem_monitor(ctrl_cmd_t *req);
+#endif
 
 ctrl_cmd_t * rpc_slaveif_iface_mac_addr_set_get(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slave_feature_command(ctrl_cmd_t *req);

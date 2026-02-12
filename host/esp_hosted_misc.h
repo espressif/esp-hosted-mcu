@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,6 +9,8 @@
 
 #include <stdbool.h>
 #include "esp_mac.h"
+
+#include "esp_hosted_misc_types.h"
 
 #define ESP_HOSTED_APP_DESC_MAGIC_WORD (0xABCD5432)  /*!< The magic word for the esp_hosted_app_desc structure */
 
@@ -147,5 +149,27 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
   * @note Minimum heartbeat interval is 1 secs, maximum is 24 hours
   */
 esp_err_t esp_hosted_configure_heartbeat(bool enable, int duration_sec);
+
+/**
+  * @brief  Configure the co-processor memory monitor
+  *
+  * @param  config         Configures the memory monitor
+  * @param  curr_mem_info  Current heap memory info of co-processor after configuration succeeds
+  *
+  * @return ESP_OK on success, ESP_ERR_INVALID_ARG if an argument is invalid
+  *
+  * @note 1. To do a one-time query:
+  *          - set `enable` to `false` (this will also disable any on-going memory reporting)
+  *       2. To get periodic reports:
+  *          - set `enable` to `true`
+  *          - set `report_always` to `true`
+  *          - set `interval_sec` to the reporting interval (in secs)
+  *       3. To get periodic reports only when heap memory falls below a threshold value
+  *          - set `enable` to `true`
+  *          - set `report_always` to `false`
+  *          - set `interval_sec` to the reporting interval (in secs)
+  *          - set required threshold values in `internal_mem` and/or `external_mem`
+  */
+esp_err_t esp_hosted_set_mem_monitor(esp_hosted_config_mem_monitor_t *config, esp_hosted_curr_mem_info_t *curr_mem_info);
 
 #endif

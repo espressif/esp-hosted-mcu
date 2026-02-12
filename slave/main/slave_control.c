@@ -87,6 +87,29 @@ enum {
 	OTA_ACTIVATED,
 };
 
+#ifdef CONFIG_ESP_HOSTED_MEM_MONITOR
+// structures for mem monitor event
+typedef struct {
+	uint32_t internal_mem_dma;
+	uint32_t internal_mem_8bit;
+	uint32_t external_mem_dma;
+	uint32_t external_mem_8bit;
+} mem_monitor_params_t;
+
+typedef struct {
+	uint32_t total_free_heap_size;
+	uint32_t min_free_heap_size;
+	mem_monitor_params_t free_size;
+	mem_monitor_params_t largest_free_block;
+} mem_monitor_event_t;
+
+// static variables for mem monitor
+static TimerHandle_t mem_monitor_timer_handle = NULL;
+static mem_monitor_params_t mem_monitor_params = { 0 };
+static bool mem_monitor_report_always = false;
+static uint32_t mem_monitor_interval_sec = 0;
+#endif
+
 uint8_t ota_status = OTA_NOT_STARTED;
 
 #if H_WIFI_ENTERPRISE_SUPPORT
@@ -3266,7 +3289,7 @@ static esp_err_t req_eap_set_eap_methods(Rpc *req, Rpc *resp, void *priv_data)
 				RpcReqEapSetEapMethods, req_eap_set_eap_methods,
 				rpc__resp__eap_set_eap_methods__init);
 
-    RPC_RET_FAIL_IF(esp_eap_client_set_eap_methods(req_payload->methods));
+	RPC_RET_FAIL_IF(esp_eap_client_set_eap_methods(req_payload->methods));
 
 	return ESP_OK;
 }
@@ -3437,6 +3460,201 @@ static esp_err_t req_app_get_desc(Rpc *req, Rpc *resp, void *priv_data)
 err:
 	return ESP_OK;
 }
+
+#ifdef CONFIG_ESP_HOSTED_MEM_MONITOR
+void mem_monitor_timer_cb(TimerHandle_t xTimer)
+{
+	bool threshold_exceeded = false;
+
+	mem_monitor_params_t current_mem_params = { 0 };
+
+	// get current params
+	current_mem_params.internal_mem_dma = heap_caps_get_free_size(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+	current_mem_params.internal_mem_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+	current_mem_params.external_mem_dma = heap_caps_get_free_size(MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
+	current_mem_params.external_mem_8bit = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+
+	// are current params lower than threshold
+#if CONFIG_SPIRAM
+	if ((current_mem_params.internal_mem_dma < mem_monitor_params.internal_mem_dma) ||
+			(current_mem_params.internal_mem_8bit < mem_monitor_params.internal_mem_8bit) ||
+			(current_mem_params.external_mem_dma < mem_monitor_params.external_mem_dma) ||
+			(current_mem_params.external_mem_8bit < mem_monitor_params.external_mem_8bit)) {
+		threshold_exceeded = true;
+	}
+#else
+	// external memory not enabled: only compare internal memory
+	if ((current_mem_params.internal_mem_dma < mem_monitor_params.internal_mem_dma) ||
+			(current_mem_params.internal_mem_8bit < mem_monitor_params.internal_mem_8bit)) {
+		threshold_exceeded = true;
+	}
+#endif
+	// send an event if the current threshold was exceeded or report_always is true
+	if (threshold_exceeded || mem_monitor_report_always) {
+		mem_monitor_event_t mem_monitor_event = { 0 };
+		mem_monitor_event.total_free_heap_size = esp_get_free_heap_size();
+		mem_monitor_event.min_free_heap_size = esp_get_minimum_free_heap_size();
+
+		// copy the curr heap free sizes
+		memcpy(&mem_monitor_event.free_size, &current_mem_params, sizeof(current_mem_params));
+
+		// get the largest free block size
+		mem_monitor_event.largest_free_block.internal_mem_dma =
+				heap_caps_get_largest_free_block(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+		mem_monitor_event.largest_free_block.internal_mem_8bit =
+				heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+		mem_monitor_event.largest_free_block.external_mem_dma =
+				heap_caps_get_largest_free_block(MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
+		mem_monitor_event.largest_free_block.external_mem_8bit =
+				heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+
+		send_event_data_to_host(RPC_ID__Event_MemMonitor, &mem_monitor_event, sizeof(mem_monitor_event));
+	}
+}
+
+static esp_err_t mem_monitor_check_params(RpcReqMemMonitor *req_payload)
+{
+	// check for missing allocated params in request
+	if (!req_payload->internal || !req_payload->external) {
+		ESP_LOGW(TAG, "%s: missing internal / external params in request", __func__);
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	// checks when enabling mem monitor
+	if (req_payload->config == RPC__MEM_MONITOR_CONFIG__MEMMONITOR_ENABLE) {
+		// interval cannot be zero
+		if (!req_payload->interval_sec) {
+			return ESP_ERR_INVALID_ARG;
+		}
+
+		// thresholds should be valid if report_always is not set
+		if (!req_payload->report_always) {
+			if (!req_payload->internal->threshold_mem_dma &&
+					!req_payload->internal->threshold_mem_8bit &&
+					!req_payload->external->threshold_mem_dma &&
+					!req_payload->external->threshold_mem_8bit) {
+				return ESP_ERR_INVALID_ARG;
+			}
+		}
+	}
+
+	return ESP_OK;
+}
+
+static esp_err_t mem_monitor_setup(RpcReqMemMonitor *req_payload)
+{
+	if ((req_payload->config == RPC__MEM_MONITOR_CONFIG__MEMMONITOR_ENABLE) ||
+			(req_payload->config == RPC__MEM_MONITOR_CONFIG__MEMMONITOR_DISABLE)) {
+		// destroy current timer if config is disable or (re)enable
+		if (mem_monitor_timer_handle) {
+			if (xTimerIsTimerActive(mem_monitor_timer_handle)) {
+				xTimerStop(mem_monitor_timer_handle, portMAX_DELAY);
+			}
+			xTimerDelete(mem_monitor_timer_handle, portMAX_DELAY);
+			mem_monitor_timer_handle = NULL;
+		}
+	}
+
+	// do we start a new timer
+	if (req_payload->config == RPC__MEM_MONITOR_CONFIG__MEMMONITOR_ENABLE) {
+		// set up params before enabling
+		memset(&mem_monitor_params, 0, sizeof(mem_monitor_params));
+
+		mem_monitor_params.internal_mem_dma = req_payload->internal->threshold_mem_dma;
+		mem_monitor_params.internal_mem_8bit = req_payload->internal->threshold_mem_8bit;
+
+		mem_monitor_params.external_mem_dma = req_payload->external->threshold_mem_dma;
+		mem_monitor_params.external_mem_8bit = req_payload->external->threshold_mem_8bit;
+
+		mem_monitor_report_always = req_payload->report_always;
+		mem_monitor_interval_sec = req_payload->interval_sec;
+
+		// create monitor timer
+		mem_monitor_timer_handle = xTimerCreate("MemMonitorTimer",
+				pdMS_TO_TICKS(mem_monitor_interval_sec * 1000),
+				pdTRUE,
+				0,
+				mem_monitor_timer_cb);
+		if (!mem_monitor_timer_handle) {
+			ESP_LOGE(TAG, "failed to create mem monitor timer");
+			return ESP_FAIL;
+		}
+
+		// start the timer
+		if (!xTimerStart(mem_monitor_timer_handle, portMAX_DELAY)) {
+			ESP_LOGE(TAG, "failed to start mem monitor timer");
+			xTimerDelete(mem_monitor_timer_handle, portMAX_DELAY);
+			mem_monitor_timer_handle = NULL;
+			return ESP_FAIL;
+		}
+	}
+	return ESP_OK;
+}
+
+static void mem_monitor_fill_resp_stats(RpcRespMemMonitor *resp_payload)
+{
+	// fill the response with the memory statistics
+	resp_payload->curr_total_heap_size = esp_get_free_heap_size();
+
+	resp_payload->curr_internal->mem_dma->free_size = heap_caps_get_free_size(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+	resp_payload->curr_internal->mem_dma->largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+	resp_payload->curr_internal->mem_8bit->free_size = heap_caps_get_free_size(MALLOC_CAP_8BIT|MALLOC_CAP_INTERNAL);
+	resp_payload->curr_internal->mem_8bit->largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+
+ 	resp_payload->curr_external->mem_dma->free_size = heap_caps_get_free_size(MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
+	resp_payload->curr_external->mem_dma->largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
+	resp_payload->curr_external->mem_8bit->free_size = heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+	resp_payload->curr_external->mem_8bit->largest_free_block = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM);
+
+	ESP_LOGD(TAG, "Total heap size: %"PRIu32, resp_payload->curr_total_heap_size);
+	ESP_LOGD(TAG, "Internal->DMA->free_size: %"PRIu32, resp_payload->curr_internal->mem_dma->free_size);
+	ESP_LOGD(TAG, "Internal->DMA->largest_free_block: %"PRIu32, resp_payload->curr_internal->mem_dma->largest_free_block);
+	ESP_LOGD(TAG, "Internal->8bit->free_size: %"PRIu32, resp_payload->curr_internal->mem_8bit->free_size);
+	ESP_LOGD(TAG, "Internal->8bit->largest_free_block: %"PRIu32, resp_payload->curr_internal->mem_8bit->largest_free_block);
+	ESP_LOGD(TAG, "External->DMA->free_size: %"PRIu32, resp_payload->curr_external->mem_dma->free_size);
+	ESP_LOGD(TAG, "External->DMA->largest_free_block: %"PRIu32, resp_payload->curr_external->mem_dma->largest_free_block);
+	ESP_LOGD(TAG, "External->8bit->free_size: %"PRIu32, resp_payload->curr_external->mem_8bit->free_size);
+	ESP_LOGD(TAG, "External->8bit->largest_free_block: %"PRIu32, resp_payload->curr_external->mem_8bit->largest_free_block);
+}
+
+static esp_err_t req_mem_monitor(Rpc *req, Rpc *resp, void *priv_data)
+{
+	RPC_TEMPLATE(RpcRespMemMonitor, resp_mem_monitor,
+			RpcReqMemMonitor, req_mem_monitor,
+			rpc__resp__mem_monitor__init);
+
+	esp_err_t res = mem_monitor_check_params(req_payload);
+	if (res != ESP_OK) {
+		resp_payload->resp = res;
+		goto err;
+	}
+
+	res = mem_monitor_setup(req_payload);
+	if (res != ESP_OK) {
+		resp_payload->resp = res;
+		goto err;
+	}
+
+	// prepare the response
+	resp_payload->config = req_payload->config;
+	// return current settings
+	resp_payload->report_always = mem_monitor_report_always;
+	resp_payload->interval_sec = mem_monitor_interval_sec;
+
+	RPC_ALLOC_ELEMENT(HeapInfo, resp_payload->curr_internal, heap_info__init);
+	RPC_ALLOC_ELEMENT(MemInfo, resp_payload->curr_internal->mem_dma, mem_info__init);
+	RPC_ALLOC_ELEMENT(MemInfo, resp_payload->curr_internal->mem_8bit, mem_info__init);
+	RPC_ALLOC_ELEMENT(HeapInfo, resp_payload->curr_external, heap_info__init);
+	RPC_ALLOC_ELEMENT(MemInfo, resp_payload->curr_external->mem_dma, mem_info__init);
+	RPC_ALLOC_ELEMENT(MemInfo, resp_payload->curr_external->mem_8bit, mem_info__init);
+
+	mem_monitor_fill_resp_stats(resp_payload);
+
+ err:
+	return ESP_OK;
+}
+#endif // CONFIG_ESP_HOSTED_MEM_MONITOR
+
 #ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
 /* Internal RPC bridge - delegates to registered handler */
 static esp_err_t handle_custom_rpc_request(uint32_t msg_id, uint8_t *req_data, uint32_t req_len)
@@ -3517,7 +3735,7 @@ esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size
 }
 
 esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
-    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
+	void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
 {
 	/* Validate message ID (-1/0xFFFFFFFF is invalid) */
 	if (msg_id == (uint32_t)-1) {
@@ -4414,6 +4632,12 @@ static esp_rpc_req_t req_table[] = {
 		.req_num = RPC_ID__Req_AppGetDesc,
 		.command_handler = req_app_get_desc
 	},
+#ifdef CONFIG_ESP_HOSTED_MEM_MONITOR
+	{
+		.req_num = RPC_ID__Req_MemMonitor,
+		.command_handler = req_mem_monitor
+	},
+#endif
 #ifdef CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER
 	{
 		.req_num = RPC_ID__Req_CustomRpc,
@@ -4838,7 +5062,7 @@ static esp_err_t rpc_evt_itwt_suspend(Rpc *ntfy,
 	p_c->actual_suspend_time_ms = calloc(num_elements, sizeof(p_a->actual_suspend_time_ms[0]));
 	if (!p_c->actual_suspend_time_ms) {
 		ESP_LOGE(TAG,"resp: malloc failed for ntfy_payload->actual_suspend_time_ms");
-        ntfy_payload->resp = RPC_ERR_MEMORY_FAILURE;                         \
+		ntfy_payload->resp = RPC_ERR_MEMORY_FAILURE;	\
 		goto err;
 	}
 
@@ -5094,6 +5318,41 @@ static esp_err_t rpc_evt_custom_rpc(Rpc *ntfy, const uint8_t *data, ssize_t len)
 }
 #endif
 
+#ifdef CONFIG_ESP_HOSTED_MEM_MONITOR
+static esp_err_t rpc_evt_mem_monitor(Rpc *ntfy, const uint8_t *data, ssize_t len)
+{
+	NTFY_TEMPLATE(RPC_ID__Event_MemMonitor,
+			RpcEventMemMonitor, event_mem_monitor,
+			rpc__event__mem_monitor__init);
+
+	mem_monitor_event_t *ptr = (mem_monitor_event_t *)data;
+
+	NTFY_ALLOC_ELEMENT(HeapInfo, ntfy_payload->curr_internal, heap_info__init);
+	NTFY_ALLOC_ELEMENT(MemInfo, ntfy_payload->curr_internal->mem_dma, mem_info__init);
+	NTFY_ALLOC_ELEMENT(MemInfo, ntfy_payload->curr_internal->mem_8bit, mem_info__init);
+
+	NTFY_ALLOC_ELEMENT(HeapInfo, ntfy_payload->curr_external, heap_info__init);
+	NTFY_ALLOC_ELEMENT(MemInfo, ntfy_payload->curr_external->mem_dma, mem_info__init);
+	NTFY_ALLOC_ELEMENT(MemInfo, ntfy_payload->curr_external->mem_8bit, mem_info__init);
+
+	ntfy_payload->curr_total_free_heap_size = ptr->total_free_heap_size;
+	ntfy_payload->curr_min_free_heap_size = ptr->min_free_heap_size;
+
+	ntfy_payload->curr_internal->mem_dma->free_size = ptr->free_size.internal_mem_dma;
+	ntfy_payload->curr_internal->mem_8bit->free_size = ptr->free_size.internal_mem_8bit;
+	ntfy_payload->curr_internal->mem_dma->largest_free_block = ptr->largest_free_block.internal_mem_dma;
+	ntfy_payload->curr_internal->mem_8bit->largest_free_block = ptr->largest_free_block.internal_mem_8bit;
+
+	ntfy_payload->curr_external->mem_dma->free_size = ptr->free_size.external_mem_dma;
+	ntfy_payload->curr_external->mem_8bit->free_size = ptr->free_size.external_mem_8bit;
+	ntfy_payload->curr_external->mem_dma->largest_free_block = ptr->largest_free_block.external_mem_dma;
+	ntfy_payload->curr_external->mem_8bit->largest_free_block = ptr->largest_free_block.external_mem_8bit;
+	return ESP_OK;
+ err:
+	return ESP_FAIL;
+}
+#endif // CONFIG_ESP_HOSTED_MEM_MONITOR
+
 esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 		ssize_t inlen, uint8_t **outbuf, ssize_t *outlen, void *priv_data)
 {
@@ -5185,6 +5444,11 @@ esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 			ret = rpc_evt_custom_rpc(ntfy, inbuf, inlen);
 			break;
 #endif
+#ifdef CONFIG_ESP_HOSTED_MEM_MONITOR
+		} case RPC_ID__Event_MemMonitor: {
+			ret = rpc_evt_mem_monitor(ntfy, inbuf, inlen);
+			break;
+#endif // CONFIG_ESP_HOSTED_MEM_MONITOR
 		} default: {
 			ESP_LOGE(TAG, "Incorrect/unsupported Ctrl Notification[%u]\n",ntfy->msg_id);
 			goto err;

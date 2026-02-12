@@ -86,13 +86,10 @@ enum RpcId {
 	Req_SuppDppStartListen            = 264; //0x108
 	Req_SuppDppStopListen             = 265; //0x109
 
-	//Req_SetSoftAPVendorSpecificIE     = 266; //0x10a
-	//Req_StartSoftAP                   = 267; //0x10b
-	//Req_GetSoftAPConnectedSTAList     = 268; //0x10c
-	//Req_StopSoftAP                    = 269; //0x10d
 	Req_OTAActivate                   = 266; //0x10a
 
 	Req_AppGetDesc                    = 267; //0x10b
+	Req_MemMonitor                    = 268; //0x10c
 
 	Req_WifiSetPs                     = 270; //0x10e
 	Req_WifiGetPs                     = 271; //0x10f
@@ -278,6 +275,7 @@ enum RpcId {
 	Resp_OTAActivate                  = 522;
 
 	Resp_AppGetDesc                   = 523;
+	Resp_MemMonitor                   = 524;
 
 	Resp_WifiSetPs                    = 526;
 	Resp_WifiGetPs                    = 527;
@@ -465,9 +463,11 @@ enum RpcId {
 	/* Custom RPC event for user-defined packed structures */
 	Event_CustomRpc = 788;
 
+	Event_MemMonitor = 789;
+
 	/* Add new control path command notification before Event_Max
 	 * and update Event_Max */
-	Event_Max = 789;
+	Event_Max = 790;
 }
 
 message wifi_init_config {
@@ -935,6 +935,23 @@ message esp_app_desc {
 	uint32 mmu_page_size = 12;   /*!< MMU page size in log base 2 format */
 	bytes reserv3 = 13;          /*!< reserv3 */
 	bytes reserv2 = 14;          /*!< reserv2 */
+}
+
+// heap size threshold based on memory capability
+message heap_size_threshold {
+	uint32 threshold_mem_dma = 1;
+	uint32 threshold_mem_8bit = 2;
+}
+
+message mem_info {
+	uint32 free_size = 1;          // current heap free size
+	uint32 largest_free_block = 2; // largest free block of memory able to be allocated
+}
+
+// heap info based on capability
+message heap_info {
+	mem_info mem_dma = 1;
+	mem_info mem_8bit = 2;
 }
 
 /* internal supporting structures for Rpc */
@@ -1620,6 +1637,27 @@ message Rpc_Resp_FeatureControl {
 	RpcFeatureOption option = 4;
 };
 
+/* Configures the memory threshold for heap space monitoring for both internal and external ram
+   Set values to 0 to disable
+*/
+message Rpc_Req_MemMonitor {
+	Rpc_MemMonitorConfig config = 1;   // configure monitor
+	bool report_always = 2;            // report the memory used based on the set interval. When disabled, report only when heap memory falls below a set value
+	uint32 interval_sec = 3;           // interval between heap checks, periodic reports (if enabled)
+	heap_size_threshold internal = 4;  // minimum reporting threshold for internal memory
+	heap_size_threshold external = 5;  // minimum reporting threshold for external memory
+}
+
+message Rpc_Resp_MemMonitor {
+	int32 resp = 1;
+	Rpc_MemMonitorConfig config = 2;
+	bool report_always = 3;
+	uint32 interval_sec = 4;
+	uint32 curr_total_heap_size = 5;   // current total free heap size
+	heap_info curr_internal = 6;       // current heap sizes for internal memory
+	heap_info curr_external = 7;       // current heap sizes for external memory
+}
+
 /** Event structure **/
 
 message Rpc_Event_WifiEventNoArgs {
@@ -1677,6 +1715,13 @@ enum Rpc_GpioPullMode {
 	GPIO_PULL_NONE = 0;
 	GPIO_PULL_UP = 1;
 	GPIO_PULL_DOWN = 2;
+}
+
+enum Rpc_MemMonitorConfig {
+	MEMMONITOR_NO_CHANGE = 0; // don't change the monitor configuration
+	                          // - to get current memory values without modifying config
+	MEMMONITOR_DISABLE = 1;   // disable the monitor
+	MEMMONITOR_ENABLE = 2;    // (re)enable the monitor with new configuration
 }
 
 message Rpc_GpioConfig {
@@ -2025,6 +2070,15 @@ message Rpc_Event_CustomRpc {
 	bytes data = 3;            /* Raw packed event data */
 }
 
+/* Sent when heap size is below a set low level marks */
+message Rpc_Event_MemMonitor {
+	int32 resp = 1;
+	uint32 curr_total_free_heap_size = 2;  // current total heap size
+	uint32 curr_min_free_heap_size = 3;    // current minimum heap size
+	heap_info curr_internal = 4;           // current heap levels for internal memory
+	heap_info curr_external = 5;           // current heap levels for external memory
+}
+
 message Rpc {
 	/* msg_type could be req, resp or Event */
 	RpcType msg_type = 1;
@@ -2049,12 +2103,11 @@ message Rpc {
 		Rpc_Req_SuppDppStartListen          req_supp_dpp_start_listen         = 264;
 		Rpc_Req_SuppDppStopListen           req_supp_dpp_stop_listen          = 265;
 
-		//Rpc_Req_StartSoftAP                 req_start_softap                  = 267;
-		//Rpc_Req_SoftAPConnectedSTA          req_softap_connected_stas_list    = 268;
-		//Rpc_Req_GetStatus                   req_stop_softap                   = 269;
 		Rpc_Req_OTAActivate                 req_ota_activate                  = 266;
 
 		Rpc_Req_AppGetDesc                  req_app_get_desc                  = 267;
+
+		Rpc_Req_MemMonitor                  req_mem_monitor                   = 268;
 
 		Rpc_Req_SetPs                       req_wifi_set_ps                   = 270;
 		Rpc_Req_GetPs                       req_wifi_get_ps                   = 271;
@@ -2187,13 +2240,11 @@ message Rpc {
 		Rpc_Resp_SuppDppStartListen         resp_supp_dpp_start_listen         = 520;
 		Rpc_Resp_SuppDppStopListen          resp_supp_dpp_stop_listen          = 521;
 
-		//Rpc_Resp_SetSoftAPVendorSpecificIE  resp_set_softap_vendor_specific_ie = 522;
-		//Rpc_Resp_StartSoftAP                resp_start_softap                  = 523;
-		//Rpc_Resp_SoftAPConnectedSTA         resp_softap_connected_stas_list    = 524;
-		//Rpc_Resp_GetStatus                  resp_stop_softap                   = 525;
 		Rpc_Resp_OTAActivate                resp_ota_activate                  = 522;
 
 		Rpc_Resp_AppGetDesc                 resp_app_get_desc                  = 523;
+
+		Rpc_Resp_MemMonitor                 resp_mem_monitor                   = 524;
 
 		Rpc_Resp_SetPs                      resp_wifi_set_ps                   = 526;
 		Rpc_Resp_GetPs                      resp_wifi_get_ps                   = 527;
@@ -2335,5 +2386,6 @@ message Rpc {
 		Rpc_Event_WifiDppFail               event_wifi_dpp_fail                = 787;
 
 		Rpc_Event_CustomRpc                 event_custom_rpc                   = 788;
+		Rpc_Event_MemMonitor                event_mem_monitor                  = 789;
 	}
 }

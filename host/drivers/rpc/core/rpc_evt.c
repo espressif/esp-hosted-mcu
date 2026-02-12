@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -352,6 +352,31 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		g_h.funcs->_h_memcpy(p_a->dns_ip,  p_c->dns_ip.data,  p_c->dns_ip.len);
 
 		break;
+#if H_MEM_MONITOR
+	} case RPC_ID__Event_MemMonitor: {
+		RPC_FAIL_ON_NULL(event_mem_monitor);
+		RPC_FAIL_ON_NULL(event_mem_monitor->curr_internal);
+		RPC_FAIL_ON_NULL(event_mem_monitor->curr_internal->mem_dma);
+		RPC_FAIL_ON_NULL(event_mem_monitor->curr_internal->mem_8bit);
+		RPC_FAIL_ON_NULL(event_mem_monitor->curr_external);
+		RPC_FAIL_ON_NULL(event_mem_monitor->curr_external->mem_dma);
+		RPC_FAIL_ON_NULL(event_mem_monitor->curr_external->mem_8bit);
+
+		RpcEventMemMonitor *p_c = rpc_msg->event_mem_monitor;
+		esp_hosted_event_mem_info_t *p_a = &app_ntfy->u.e_mem_info;
+
+		p_a->curr_total_free_heap_size = p_c->curr_total_free_heap_size;
+		p_a->curr_min_free_heap_size = p_c->curr_min_free_heap_size;
+		p_a->curr_internal.cap_dma.free_size = p_c->curr_internal->mem_dma->free_size;
+		p_a->curr_internal.cap_dma.largest_free_block = p_c->curr_internal->mem_dma->largest_free_block;
+		p_a->curr_internal.cap_8bit.free_size = p_c->curr_internal->mem_8bit->free_size;
+		p_a->curr_internal.cap_8bit.largest_free_block = p_c->curr_internal->mem_8bit->largest_free_block;
+		p_a->curr_external.cap_dma.free_size = p_c->curr_external->mem_dma->free_size;
+		p_a->curr_external.cap_dma.largest_free_block = p_c->curr_external->mem_dma->largest_free_block;
+		p_a->curr_external.cap_8bit.free_size = p_c->curr_external->mem_8bit->free_size;
+		p_a->curr_external.cap_8bit.largest_free_block = p_c->curr_external->mem_8bit->largest_free_block;
+		break;
+#endif
 #if H_SUPP_DPP_SUPPORT
 	}
 	case RPC_ID__Event_SuppDppUriReady: {

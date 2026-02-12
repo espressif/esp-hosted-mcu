@@ -19,6 +19,7 @@ extern "C" {
 #include "esp_mac.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_misc.h"
+#include "esp_hosted_misc_types.h"
 
 #if H_WIFI_ENTERPRISE_SUPPORT
 #include "esp_eap_client.h"
@@ -98,6 +99,10 @@ esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type);
 
 esp_err_t rpc_iface_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc);
 esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec);
+
+#if H_MEM_MONITOR
+esp_err_t rpc_iface_set_mem_monitor(esp_hosted_config_mem_monitor_t *config, esp_hosted_curr_mem_info_t *curr_mem_info);
+#endif
 
 esp_err_t rpc_ota_begin(void);
 esp_err_t rpc_ota_write(uint8_t* ota_data, uint32_t ota_data_len);

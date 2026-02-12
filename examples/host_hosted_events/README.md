@@ -8,7 +8,7 @@
 
 This host example uses ESP-Hosted events to detect that the co-processor has reset or hanged. It then takes action to reinitialised ESP-Hosted to restore connectivity with the co-processor.
 
-This has been tested with the ESP32-C6 co-processor, flashed with the standard [ESP-Hosted slave example](https://components.espressif.com/components/espressif/esp_hosted/versions/2.8.0/examples/slave) from the ESP Component Registry, or built from the `slave` directory from ESP-Hosted Github.
+This has been tested with the ESP32-C6 co-processor, flashed with the standard [ESP-Hosted slave example](https://components.espressif.com/components/espressif/esp_hosted/examples/slave) from the ESP Component Registry, or built from the `slave` directory from ESP-Hosted Github.
 
 It makes use of ESP-Hosted events, with event base of `ESP_HOSTED_EVENT`:
 

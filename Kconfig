@@ -1652,6 +1652,13 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			Disable to custom handle the transport failure in application.
 			A transport failure will always be sent as an ESP_HOSTED_EVENT_TRANSPORT_FAILURE event, irrespective of the setting.
 
+	config ESP_HOSTED_MEM_MONITOR
+		bool "Enable Memory Monitor Interface"
+		default y
+		help
+			Enable the Memory Monitor Interface. Host can query co-processor to get
+			information on heap size or get an event when heap falls below a set threshold.
+
 	config ESP_HOSTED_ENABLE_ITWT
 		bool "Enable iTWT support"
 		depends on SLAVE_SOC_WIFI_HE_SUPPORT

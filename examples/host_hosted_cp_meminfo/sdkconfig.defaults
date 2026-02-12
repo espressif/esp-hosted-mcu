@@ -1,0 +1,2 @@
+# enable mem monitor configuration
+CONFIG_ESP_HOSTED_MEM_MONITOR=y

@@ -945,6 +945,13 @@ menu "Example Configuration"
 			with a 1ms delay between retries. Disable this to call TX only once
 			without retry, which may be useful for debugging or specific use cases.
 
+	config ESP_HOSTED_MEM_MONITOR
+		bool "Enable Memory Monitor Interface"
+		default y
+		help
+			Enable the Memory Monitor Interface. Host can query the interface to get
+			information on heap size or get an event when heap falls below a set threshold.
+
 	config ESP_WIFI_DPP_SUPPORT
 		bool "Enable Wi-Fi Easy Connect (DPP)"
 		default n
