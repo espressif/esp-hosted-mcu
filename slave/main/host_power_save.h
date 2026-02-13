@@ -11,6 +11,10 @@
 #include "sdkconfig.h"
 #include "interface.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Callback structure for host power save events */
 typedef struct {
 	void (*host_power_save_on_prepare_cb)(void);   /* Prepare to enter power save */
@@ -98,5 +102,9 @@ int host_power_save_alert(uint32_t ps_evt);
  */
 int is_host_power_saving(void);
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
