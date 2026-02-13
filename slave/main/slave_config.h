@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -7,6 +7,14 @@
 #define __SLAVE_CONFIG_H__
 
 #include "esp_idf_version.h"
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0)
+// do additional OTA image checking
+// - SPI FLASH mode of incoming OTA is compatible with current image
+#define H_OTA_CHECK_IMAGE_VALIDITY 1
+#else
+#define H_OTA_CHECK_IMAGE_VALIDITY 0
+#endif
 
 #ifdef CONFIG_ESP_HOSTED_ALLOW_FULL_APP_DESC
 #define H_ALLOW_FULL_APP_DESC 1
