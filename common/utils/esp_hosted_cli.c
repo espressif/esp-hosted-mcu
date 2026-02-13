@@ -271,8 +271,15 @@ static int power_save_cli_handler(int argc, char *argv[])
 #ifdef CONFIG_ESP_HOSTED_COPROCESSOR
 static int wakeup_cli_handler(int argc, char *argv[])
 {
-	ESP_LOGI(TAG, "Asking host to wake-up...");
+	ESP_LOGI(TAG, "wake-up host... (ignored if host is NOT sleeping)");
 	wakeup_host(portMAX_DELAY);
+	return 0;
+}
+
+static int reset_host_cli_handler(int argc, char *argv[])
+{
+	ESP_LOGI(TAG, "Resetting host...");
+	wakeup_host_mandate(portMAX_DELAY);
 	return 0;
 }
 #endif
@@ -328,6 +335,11 @@ static esp_console_cmd_t diag_cmds[] = {
 		.command = "wake-up-host",
 		.help = "Wake-up host from power save",
 		.func = wakeup_cli_handler,
+	},
+	{
+		.command = "reset-host",
+		.help = "Reset host",
+		.func = reset_host_cli_handler,
 	},
 #endif
 #endif

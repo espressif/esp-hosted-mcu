@@ -750,9 +750,9 @@ int hosted_setup_gpio_interrupt(void* gpio_port, uint32_t gpio_num, uint32_t int
 	};
 
 	if (intr_type == H_GPIO_INTR_NEGEDGE) {
-		new_gpio_io_conf.pull_down_en = 1;
-	} else {
 		new_gpio_io_conf.pull_up_en = 1;
+	} else {
+		new_gpio_io_conf.pull_down_en = 1;
 	}
 
 	ESP_LOGI(TAG, "GPIO [%d] configuring as Interrupt", (int) gpio_num);
@@ -847,7 +847,7 @@ void hosted_log_write(int  level,
 
 int hosted_restart_host(void)
 {
-	ESP_LOGI(TAG, "Restarting host");
+	ESP_EARLY_LOGI(TAG, "Restarting host");
 	esp_unregister_shutdown_handler((shutdown_handler_t)esp_wifi_stop);
 	esp_restart();
 	return 0;

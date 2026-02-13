@@ -30,6 +30,37 @@ static char *TAG = "host_ps";
 	#define set_host_wakeup_gpio() gpio_set_level(hps_config.host_wakeup_gpio, hps_config.host_wakeup_level)
 	#define reset_host_wakeup_gpio() gpio_set_level(hps_config.host_wakeup_gpio, !hps_config.host_wakeup_level)
   #endif
+
+static esp_err_t configure_host_wakeup_gpio(uint32_t gpio_num, uint8_t level)
+{
+	esp_err_t ret = ESP_OK;
+	/* Make sure the GPIO is configured */
+	gpio_config_t io_conf = {
+		.intr_type = GPIO_INTR_DISABLE,
+		.mode = GPIO_MODE_OUTPUT,
+		.pin_bit_mask = (1ULL << gpio_num)
+	};
+
+	ret = gpio_config(&io_conf);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to configure host wakeup GPIO: %d", ret);
+		return ret;
+	}
+
+	/* Configure pull based on wakeup level */
+	if (level) {
+		ret = gpio_pulldown_en(gpio_num);
+	} else {
+		ret = gpio_pullup_en(gpio_num);
+	}
+
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to configure pull based on wakeup level: %d", ret);
+		return ret;
+	}
+
+	return ret;
+}
 #endif
 
 extern interface_context_t *if_context;
@@ -122,6 +153,7 @@ end:
 
 int host_power_save_init(host_power_save_config_t *config)
 {
+	esp_err_t ret = ESP_OK;
 #if H_HOST_PS_ALLOWED
 	if (config) {
 		memcpy(&hps_config, config, sizeof(host_power_save_config_t));
@@ -136,31 +168,22 @@ int host_power_save_init(host_power_save_config_t *config)
 
 	if (!hps_config.enable) {
 		ESP_LOGI(TAG, "Host power save disabled via config");
-		return 0;
+		return ret;
 	}
 
 #if H_HOST_PS_DEEP_SLEEP_ALLOWED
 	/* Configure GPIO from config or use Kconfig default */
 	assert(hps_config.host_wakeup_gpio != -1);
 
-	/* Configuration for the OOB line */
-	gpio_config_t io_conf={
-		.intr_type=GPIO_INTR_DISABLE,
-		.mode=GPIO_MODE_OUTPUT,
-		.pin_bit_mask=(1ULL<<hps_config.host_wakeup_gpio)
-	};
-
+	/* Configure the host wakeup GPIO */
+	ret = configure_host_wakeup_gpio(hps_config.host_wakeup_gpio, hps_config.host_wakeup_level);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to configure host wakeup GPIO: %d", ret);
+		return ret;
+	}
 	ESP_LOGI(TAG, "Host wakeup: IO%u, level:%u (configured)",
 			hps_config.host_wakeup_gpio, gpio_get_level(hps_config.host_wakeup_gpio));
-	gpio_config(&io_conf);
 	reset_host_wakeup_gpio();
-
-	/* Configure pull based on wakeup level */
-	if (hps_config.host_wakeup_level) {
-		gpio_pulldown_en(hps_config.host_wakeup_gpio);
-	} else {
-		gpio_pullup_en(hps_config.host_wakeup_gpio);
-	}
 
 	ESP_LOGI(TAG, "Host wakeup: IO%u, level:%u (active %s)",
 			hps_config.host_wakeup_gpio, gpio_get_level(hps_config.host_wakeup_gpio),
@@ -182,7 +205,7 @@ int host_power_save_init(host_power_save_config_t *config)
 		ESP_LOGI(TAG, "Host power save init without callbacks (manual control)");
 	}
 #endif
-	return 0;
+	return ret;
 }
 
 int host_power_save_deinit(void)
@@ -313,7 +336,17 @@ static int trigger_host_wakeup(uint32_t timeout_ms)
 int wakeup_host_mandate(uint32_t timeout_ms)
 {
 #if H_HOST_PS_ALLOWED && H_HOST_PS_DEEP_SLEEP_ALLOWED
+	esp_err_t ret = ESP_OK;
 	ESP_LOGI(TAG, "Mandate host wakeup");
+
+	/* Configure the host wakeup GPIO */
+	ret = configure_host_wakeup_gpio(hps_config.host_wakeup_gpio, hps_config.host_wakeup_level);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to configure host wakeup GPIO: %d", ret);
+		return ret;
+	}
+
+	/* Trigger host wakeup */
 	return trigger_host_wakeup(timeout_ms);
 #else
 	return 1;
@@ -448,11 +481,12 @@ int host_power_save_alert(uint32_t ps_evt)
 	} else {
 		ESP_EARLY_LOGI(TAG, "Ignore event[%u]", ps_evt);
 	}
-
+#if 0
 	/* Only yield from ISR if we're actually in ISR context */
 	if (do_yeild == pdTRUE && xPortInIsrContext()) {
 		portYIELD_FROM_ISR();
 	}
+#endif
 #endif
 	return 0;
 }

@@ -55,6 +55,8 @@ static void IRAM_ATTR wakeup_gpio_isr_handler(void* arg)
 			/* Force power save off and trigger reset */
 			g_h.funcs->_h_restart_host();
 		}
+	} else {
+		ESP_EARLY_LOGW(TAG, "Power save is on or reset in progress");
 	}
 }
 #endif
@@ -109,7 +111,7 @@ int esp_hosted_power_save_init(void)
 	ESP_LOGI(TAG, "Initialized power save wakeup GPIO %" PRIu32, gpio_num);
 
 	/* Only proceed with ISR setup if conditions are right */
-	if (!power_save_on && initial_level == 0) {
+	if (!power_save_on) {
 		register_slave_reboot_callback(gpio_port, gpio_num, level);
 	}
   #else

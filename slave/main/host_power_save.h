@@ -28,7 +28,7 @@ typedef enum {
 /* Configuration structure for host power save initialization */
 typedef struct {
 	uint8_t enable;                                /* Enable/disable host power save */
-  esp_hosted_power_save_type_t host_ps_type;      /* Host power save type : Reserved for future use */
+  	esp_hosted_power_save_type_t host_ps_type;      /* Host power save type : Reserved for future use */
 	int host_wakeup_gpio;                          /* GPIO pin for host wakeup (-1 to use default from Kconfig) */
 	uint8_t host_wakeup_level;                     /* Active level for host wakeup (0 or 1) */
 	host_power_save_callbacks_t callbacks;         /* Callbacks for power save events */
