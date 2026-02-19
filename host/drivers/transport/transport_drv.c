@@ -287,7 +287,14 @@ static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 
 	/*  Prepare transport buffer directly consumable */
 	copy_buff = mempool_alloc(((struct mempool*)chan_arr[ESP_STA_IF]->memp), MAX_TRANSPORT_BUFFER_SIZE, true);
-	assert(copy_buff);
+	if (!copy_buff) {
+		ESP_LOGW(TAG, "STA TX: mempool_alloc failed, dropping pkt (len=%u)", len);
+#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
+		return ESP_ERR_ESP_NETIF_TX_FAILED;
+#else
+		return ESP_ERR_ESP_NETIF_NO_MEM;
+#endif
+	}
 	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
 	return esp_hosted_tx(ESP_STA_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, copy_buff, transport_sta_free_cb, 0);
@@ -315,7 +322,14 @@ static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 
 	/*  Prepare transport buffer directly consumable */
 	copy_buff = mempool_alloc(((struct mempool*)chan_arr[ESP_AP_IF]->memp), MAX_TRANSPORT_BUFFER_SIZE, true);
-	assert(copy_buff);
+	if (!copy_buff) {
+		ESP_LOGW(TAG, "AP TX: mempool_alloc failed, dropping pkt (len=%u)", len);
+#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
+		return ESP_ERR_ESP_NETIF_TX_FAILED;
+#else
+		return ESP_ERR_ESP_NETIF_NO_MEM;
+#endif
+	}
 	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
 	return esp_hosted_tx(ESP_AP_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, copy_buff, transport_ap_free_cb, 0);
