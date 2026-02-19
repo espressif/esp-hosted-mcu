@@ -11,6 +11,8 @@
 #include "esp_log.h"
 #include "esp_app_desc.h"
 #include "esp_private/wifi.h"
+#include "esp_image_format.h"
+#include "esp_partition.h"
 
 #include "slave_control.h"
 #include "esp_hosted_rpc.pb-c.h"
@@ -158,7 +160,18 @@ int g_private_key_passwd_len = 0;
 
 static esp_ota_handle_t handle;
 const esp_partition_t* update_partition = NULL;
-static int ota_msg = 0;
+static bool first_ota_write = false;
+
+#if H_OTA_CHECK_IMAGE_VALIDITY
+#define OTA_IMAGE_HEADER_SIZE (sizeof(esp_image_header_t) + \
+    sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t))
+
+static const esp_app_desc_t *esp_hosted_get_app_desc_from_ota_img(const void *data_buf)
+{
+	return (const esp_app_desc_t *)((const uint8_t *)data_buf +
+			sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t));
+}
+#endif
 
 extern esp_err_t wlan_sta_rx_callback(void *buffer, uint16_t len, void *eb);
 extern esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb);
@@ -461,7 +474,7 @@ static esp_err_t req_ota_begin_handler (Rpc *req,
 	}
 	ota_status = OTA_IN_PROGRESS;
 
-	ota_msg = 1;
+	first_ota_write = true;
 
 	resp_payload->resp = SUCCESS;
 	return ESP_OK;
@@ -489,13 +502,39 @@ static esp_err_t req_ota_write_handler (Rpc *req,
 		return ESP_ERR_NO_MEM;
 	}
 
-	if (ota_msg) {
-		ESP_LOGI(TAG, "Flashing image\n");
-		ota_msg = 0;
-	}
 	rpc__resp__otawrite__init(resp_payload);
 	resp->payload_case = RPC__PAYLOAD_RESP_OTA_WRITE;
 	resp->resp_ota_write = resp_payload;
+
+	// Check image validity before writing if it's the first chunk
+	if (first_ota_write) {
+		ESP_LOGI(TAG, "Flashing image\n");
+		first_ota_write = false;
+
+#if H_OTA_CHECK_IMAGE_VALIDITY
+		// sanity check: first write should contain enough data to query app header
+		if (req->req_ota_write->ota_data.len < OTA_IMAGE_HEADER_SIZE) {
+			ESP_LOGE(TAG, "First OTA write is too small to contain app header");
+			resp_payload->resp = ESP_ERR_INVALID_SIZE;
+			return ESP_OK;
+		}
+
+		// do additional OTA image checking
+		// - SPI FLASH mode of incoming OTA is compatible with current image
+		const esp_image_header_t *img_hdr = (const esp_image_header_t *)req->req_ota_write->ota_data.data;
+		const esp_app_desc_t *app_desc = esp_hosted_get_app_desc_from_ota_img(req->req_ota_write->ota_data.data);
+		esp_err_t validity_ret = esp_ota_check_image_validity(update_partition->type, img_hdr, app_desc);
+		if (validity_ret != ESP_OK) {
+			ESP_LOGE(TAG, "OTA image validity check failed with error: %s", esp_err_to_name(validity_ret));
+			resp_payload->resp = validity_ret;
+			return ESP_OK;
+		}
+#else
+		ESP_LOGW(TAG, "esp_ota_check_image_validity() not available in this IDF version, skipping validation");
+		resp_payload->resp = ESP_OK;
+		return ESP_OK;
+#endif
+	}
 
 	ret = esp_ota_write( handle, (const void *)req->req_ota_write->ota_data.data,
 			req->req_ota_write->ota_data.len);

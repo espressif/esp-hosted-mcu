@@ -1,5 +1,12 @@
 # Changelog
 
+## Current Main Branch
+
+### Features
+
+* Checked incoming image validity during OTA update
+  - done for ESP-IDF v6.1.0 or greater
+
 ## 2.11.7
 
 ### Features
