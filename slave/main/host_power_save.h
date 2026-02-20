@@ -11,6 +11,10 @@
 #include "sdkconfig.h"
 #include "interface.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Callback structure for host power save events */
 typedef struct {
 	void (*host_power_save_on_prepare_cb)(void);   /* Prepare to enter power save */
@@ -28,7 +32,7 @@ typedef enum {
 /* Configuration structure for host power save initialization */
 typedef struct {
 	uint8_t enable;                                /* Enable/disable host power save */
-  esp_hosted_power_save_type_t host_ps_type;      /* Host power save type : Reserved for future use */
+  	esp_hosted_power_save_type_t host_ps_type;      /* Host power save type : Reserved for future use */
 	int host_wakeup_gpio;                          /* GPIO pin for host wakeup (-1 to use default from Kconfig) */
 	uint8_t host_wakeup_level;                     /* Active level for host wakeup (0 or 1) */
 	host_power_save_callbacks_t callbacks;         /* Callbacks for power save events */
@@ -98,5 +102,9 @@ int host_power_save_alert(uint32_t ps_evt);
  */
 int is_host_power_saving(void);
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

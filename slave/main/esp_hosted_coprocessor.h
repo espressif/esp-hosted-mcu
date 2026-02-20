@@ -14,5 +14,14 @@
 #include "esp_hosted_interface.h"
 #include "esp_hosted_transport_init.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 esp_err_t esp_hosted_coprocessor_init(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -93,10 +93,10 @@ esp_err_t slave_light_sleep_start(void)
 	esp_err_t ret = esp_pm_lock_release(pm_lock);
 	if (ret == ESP_OK) {
 		pm_lock_acquired = false;
-		ESP_LOGI(TAG, "Light sleep ENABLED (PM lock released, CPU can scale down)");
-		ESP_LOGI(TAG, "System will enter light sleep when idle");
+		ESP_EARLY_LOGI(TAG, "Light sleep ENABLED (PM lock released, CPU can scale down)");
+		ESP_EARLY_LOGI(TAG, "System will enter light sleep when idle");
 	} else {
-		ESP_LOGE(TAG, "Failed to release PM lock: %s", esp_err_to_name(ret));
+		ESP_EARLY_LOGE(TAG, "Failed to release PM lock: %s", esp_err_to_name(ret));
 	}
 
 	return ret;

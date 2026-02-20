@@ -6,6 +6,11 @@
 
 #ifndef __TRANSPORT_LAYER_INTERFACE_H
 #define __TRANSPORT_LAYER_INTERFACE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "esp_err.h"
 #include "esp_hosted_log.h"
 #include "esp_hosted_transport.h"
@@ -126,4 +131,8 @@ void send_dhcp_dns_info_to_host(uint8_t network_up, uint8_t send_wifi_connected)
 
 extern slave_config_t slv_cfg_g;
 extern slave_state_t  slv_state_g;
+
+#ifdef __cplusplus
+}
+#endif
 #endif
