@@ -257,9 +257,11 @@ enum RpcId {
 	Req_GpioInputEnable               = 394; // 0x18a
 	Req_GpioSetPullMode               = 395; // 0x18B
 
+	Req_ExtCoex                      = 396; // 0x18C
+
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 396; //0x18C
+	Req_Max = 397; //0x18D
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -437,10 +439,11 @@ enum RpcId {
 	Resp_GpioSetDirection                     = 649;
 	Resp_GpioInputEnable                      = 650;
 	Resp_GpioSetPullMode                      = 651;
+	Resp_ExtCoex                              = 652;
 
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 652;
+	Resp_Max = 653;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -1809,6 +1812,30 @@ message Rpc_Resp_GpioSetPullMode {
 	int32 resp = 1;
 }
 
+/* Single RPC for external coex: cmd determines which fields are used */
+enum Rpc_ExtCoexCmd {
+	SetGpioPin = 0;
+	Disable = 1;
+	SetWorkMode = 2;
+	SetGrantDelay = 3;
+	SetValidateHigh = 4;
+}
+
+message Rpc_Req_ExtCoex {
+	uint32 cmd = 1;
+	uint32 set_gpio_wire_type = 2;
+	int32 set_gpio_request_pin = 3;
+	int32 set_gpio_priority_pin = 4;
+	int32 set_gpio_grant_pin = 5;
+	int32 set_gpio_tx_line_pin = 6;
+	uint32 set_work_mode = 7;
+	uint32 set_grant_delay_us = 8;
+	bool set_validate_high = 9;
+}
+message Rpc_Resp_ExtCoex {
+	int32 resp = 1;
+}
+
 message Rpc_Event_DhcpDnsStatus {
 	int32 iface = 1;
 	int32 net_link_up = 2;
@@ -2253,6 +2280,8 @@ message Rpc {
 		Rpc_Req_GpioInputEnable             req_gpio_input_enable             = 394;
 		Rpc_Req_GpioSetPullMode             req_gpio_set_pull_mode            = 395;
 
+		Rpc_Req_ExtCoex                     req_ext_coex                      = 396;
+
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
 		Rpc_Resp_SetMacAddress              resp_set_mac_address               = 514;
@@ -2389,6 +2418,8 @@ message Rpc {
 		Rpc_Resp_GpioSetDirection           resp_gpio_set_direction            = 649;
 		Rpc_Resp_GpioInputEnable            resp_gpio_input_enable             = 650;
 		Rpc_Resp_GpioSetPullMode            resp_gpio_set_pull_mode            = 651;
+
+		Rpc_Resp_ExtCoex                    resp_ext_coex                     = 652;
 
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;

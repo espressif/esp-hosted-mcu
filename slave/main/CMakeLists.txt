@@ -5,7 +5,6 @@ else()
 endif()
 
 set(COMPONENT_SRCS
-	"slave_control.c"
 	"${common_dir}/proto/esp_hosted_rpc.pb-c.c"
 	"${common_dir}/utils/esp_hosted_cli.c"
 	"protocomm_pserial.c"
@@ -16,7 +15,10 @@ set(COMPONENT_SRCS
 	"host_power_save.c"
 	"slave_light_sleep.c"
 	"nw_split_router.c"
-	"transport_gpio_pin_guard.c"
+	"slave_transport_gpio_pin_guard.c"
+	"slave_gpio_expander.c"
+	"slave_ext_coex.c"
+	"slave_control.c"
 )
 
 if(CONFIG_SOC_BT_SUPPORTED)

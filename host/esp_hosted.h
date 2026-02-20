@@ -18,6 +18,7 @@ extern "C" {
 #include "esp_hosted_ota.h"
 #include "esp_hosted_event.h"
 #include "esp_hosted_cp_gpio.h"
+#include "esp_hosted_cp_ext_coex.h"
 
 typedef struct esp_hosted_transport_config esp_hosted_config_t;
 
@@ -38,6 +39,19 @@ int esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_inf
  *
  * 3. Co-Processor OTA API
  *    File : host/api/include/esp_hosted_ota.h
+ *
+ * 4. Hosted Event API
+ *    File : host/api/include/esp_hosted_event.h
+ *
+ * 5. GPIO Expander API
+ *    File : host/api/include/esp_hosted_cp_gpio.h
+ *
+ * 6. External Coexistence API
+ *    File : host/api/include/esp_hosted_cp_ext_coex.h
+ *
+ * 7. Host Power Save API
+ *    File : host/api/include/esp_hosted_power_save.h
+ *
  */
 
 #ifdef __cplusplus

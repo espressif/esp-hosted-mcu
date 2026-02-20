@@ -30,6 +30,9 @@ extern "C" {
 #if H_GPIO_EXPANDER_SUPPORT
 #include "esp_hosted_cp_gpio.h"
 #endif
+#if H_EXT_COEX_SUPPORT
+#include "esp_hosted_cp_ext_coex.h"
+#endif
 /** Exported variables **/
 
 /** Inline functions **/

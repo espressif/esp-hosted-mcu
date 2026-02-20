@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "esp_idf_version.h"
 #include "soc/gpio_reg.h"
 #include "esp_log.h"
 #include "interface.h"

@@ -36,7 +36,8 @@
 #include "esp_hosted_log.h"
 #include "slave_bt.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
-#include "slave_gpio_extender.h"
+#include "slave_gpio_expander.h"
+#include "slave_ext_coex.h"
 
 #define IFACE_MAC_SIZE              8 // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
 
@@ -963,173 +964,6 @@ static esp_err_t req_custom_rpc_handler(Rpc *req, Rpc *resp, void *priv_data)
 }
 #endif /* CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER */
 
-#if H_GPIO_EXPANDER_SUPPORT
-static esp_err_t req_gpio_config(Rpc *req, Rpc *resp, void *priv_data)
-{
-	RPC_TEMPLATE(RpcRespGpioConfig, resp_gpio_config,
-			RpcReqGpioConfig, req_gpio_config,
-			rpc__resp__gpio_config__init);
-
-	gpio_config_t config = {0};
-
-	config.mode = req_payload->config->mode;
-	config.pull_up_en = req_payload->config->pull_up_en;
-	config.pull_down_en = req_payload->config->pull_down_en;
-	config.intr_type = req_payload->config->intr_type;
-	config.pin_bit_mask = req_payload->config->pin_bit_mask;
-
-	if (config.intr_type != GPIO_INTR_DISABLE) {
-		ESP_LOGE(TAG, "ISR is not supported from slave yet. please contact through github issues, if needed.");
-		resp_payload->resp = ESP_ERR_NOT_SUPPORTED;
-		return ESP_OK;
-	}
-
-	for (int pin = 0; pin < GPIO_NUM_MAX; ++pin) {
-		if (config.pin_bit_mask & (1ULL << pin)) {
-			if (!transport_gpio_pin_guard_is_eligible((gpio_num_t)pin)) {
-				ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", pin);
-				resp_payload->resp = ESP_ERR_INVALID_ARG;
-				return ESP_OK;
-			}
-		}
-	}
-
-	RPC_RET_FAIL_IF(gpio_config(&config));
-
-	return ESP_OK;
-}
-
-static esp_err_t req_gpio_reset(Rpc *req, Rpc *resp, void *priv_data)
-{
-	RPC_TEMPLATE(RpcRespGpioResetPin, resp_gpio_reset,
-			RpcReqGpioResetPin, req_gpio_reset_pin,
-			rpc__resp__gpio_reset_pin__init);
-
-	gpio_num_t gpio_num;
-	gpio_num = req_payload->gpio_num;
-
-	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-		resp_payload->resp = ESP_ERR_INVALID_ARG;
-		return ESP_OK;
-	}
-
-	RPC_RET_FAIL_IF(gpio_reset_pin(gpio_num));
-
-	return ESP_OK;
-}
-
-static esp_err_t req_gpio_set_level(Rpc *req, Rpc *resp, void *priv_data)
-{
-	RPC_TEMPLATE(RpcRespGpioSetLevel, resp_gpio_set_level,
-			RpcReqGpioSetLevel, req_gpio_set_level,
-			rpc__resp__gpio_set_level__init);
-
-	gpio_num_t gpio_num;
-	gpio_num = req_payload->gpio_num;
-
-	uint32_t level;
-	level = req_payload->level;
-
-	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-		resp_payload->resp = ESP_ERR_INVALID_ARG;
-		return ESP_OK;
-	}
-
-	RPC_RET_FAIL_IF(gpio_set_level(gpio_num, level));
-
-	return ESP_OK;
-}
-
-static esp_err_t req_gpio_get_level(Rpc *req, Rpc *resp, void *priv_data)
-{
-	RPC_TEMPLATE(RpcRespGpioGetLevel, resp_gpio_get_level,
-			RpcReqGpioGetLevel, req_gpio_get_level,
-			rpc__resp__gpio_get_level__init);
-
-	gpio_num_t gpio_num;
-	gpio_num = req_payload->gpio_num;
-
-	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-		resp_payload->resp = ESP_ERR_INVALID_ARG;
-		return ESP_OK;
-	}
-
-	int level = gpio_get_level(gpio_num);
-
-	resp_payload->level = level;
-
-	return ESP_OK;
-}
-
-static esp_err_t req_gpio_set_direction(Rpc *req, Rpc *resp, void *priv_data)
-{
-	RPC_TEMPLATE(RpcRespGpioSetDirection, resp_gpio_set_direction,
-			RpcReqGpioSetDirection, req_gpio_set_direction,
-			rpc__resp__gpio_set_direction__init);
-
-	gpio_num_t gpio_num;
-	gpio_num = req_payload->gpio_num;
-
-	gpio_mode_t mode;
-	mode = req_payload->mode;
-
-	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-		resp_payload->resp = ESP_ERR_INVALID_ARG;
-		return ESP_OK;
-	}
-
-	RPC_RET_FAIL_IF(gpio_set_direction(gpio_num, mode));
-
-	return ESP_OK;
-}
-
-static esp_err_t req_gpio_input_enable(Rpc *req, Rpc *resp, void *priv_data)
-{
-	RPC_TEMPLATE(RpcRespGpioInputEnable, resp_gpio_input_enable,
-			RpcReqGpioInputEnable, req_gpio_input_enable,
-			rpc__resp__gpio_input_enable__init);
-
-	gpio_num_t gpio_num;
-	gpio_num = req_payload->gpio_num;
-
-	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-		resp_payload->resp = ESP_ERR_INVALID_ARG;
-		return ESP_OK;
-	}
-
-	RPC_RET_FAIL_IF(gpio_input_enable(gpio_num));
-
-	return ESP_OK;
-}
-
-static esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data)
-{
-	RPC_TEMPLATE(RpcRespGpioSetPullMode, resp_gpio_set_pull_mode,
-			RpcReqGpioSetPullMode, req_gpio_set_pull_mode,
-			rpc__resp__gpio_set_pull_mode__init);
-
-	gpio_num_t gpio_num;
-	gpio_num = req_payload->gpio_num;
-
-	gpio_pull_mode_t pull_mode;
-	pull_mode = req_payload->pull;
-
-	if (!transport_gpio_pin_guard_is_eligible(gpio_num)) {
-		ESP_LOGE(TAG, "GPIO pin %d is not allowed to be configured", gpio_num);
-		resp_payload->resp = ESP_ERR_INVALID_ARG;
-		return ESP_OK;
-	}
-
-	RPC_RET_FAIL_IF(gpio_set_pull_mode(gpio_num, pull_mode));
-
-	return ESP_OK;
-}
-#endif
 
 static esp_rpc_req_t req_table[] = {
 	{
@@ -1608,6 +1442,13 @@ static esp_rpc_req_t req_table[] = {
 		.command_handler = req_gpio_set_pull_mode
 	},
 #endif // H_GPIO_EXPANDER_SUPPORT
+
+#if H_EXT_COEX_SUPPORT
+	{
+		.req_num = RPC_ID__Req_ExtCoex,
+		.command_handler = req_ext_coex
+	},
+#endif
 };
 
 static int lookup_req_handler(int req_id)
@@ -1634,23 +1475,25 @@ static esp_err_t esp_rpc_command_dispatcher(
 
 	if ((req->msg_id <= RPC_ID__Req_Base) ||
 		(req->msg_id >= RPC_ID__Req_Max)) {
-		ESP_LOGE(TAG, "Invalid command request lookup");
+		ESP_LOGE(TAG, "RPC Req [0x%x] is out-of-range", req->msg_id);
 		goto err_not_supported;
 	}
 
 	if (req->msg_id != RPC_ID__Req_OTAWrite) {
-		ESP_LOGI(TAG, "Received Req [0x%x]", req->msg_id);
+		ESP_LOGI(TAG, "RPC Req [0x%x] received", req->msg_id);
 	}
 
 	req_index = lookup_req_handler(req->msg_id);
 	if (req_index < 0) {
-		ESP_LOGE(TAG, "Invalid command handler lookup");
+		ESP_LOGW(TAG, "RPC Req [0x%x] is not supported, return failure", req->msg_id);
 		goto err_not_supported;
+	} else {
+		ESP_LOGI(TAG, "RPC Req [0x%x] is supported, index %d", req->msg_id, req_index);
 	}
 
 	ret = req_table[req_index].command_handler(req, resp, priv_data);
 	if (ret) {
-		ESP_LOGE(TAG, "Error executing command handler");
+		ESP_LOGE(TAG, "RPC Req [0x%x] execution failed", req->msg_id);
 		goto err_cmd_error;
 	}
 

@@ -6,6 +6,7 @@
 
 #include "stats.h"
 #include <unistd.h>
+#include "esp_idf_version.h"
 #include "esp_log.h"
 #include "esp_hosted_transport_init.h"
 #include "esp_hosted_header.h"

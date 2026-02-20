@@ -727,3 +727,11 @@ ctrl_cmd_t * rpc_slaveif_gpio_set_pull_mode(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 #endif
+
+#if H_EXT_COEX_SUPPORT
+ctrl_cmd_t * rpc_slaveif_ext_coex(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_ExtCoex);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+#endif

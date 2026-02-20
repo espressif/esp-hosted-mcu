@@ -868,6 +868,12 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_ERR_IN_RESP(resp_gpio_set_pull_mode);
 		break;
 #endif
+#if H_EXT_COEX_SUPPORT
+	} case RPC_ID__Resp_ExtCoex: {
+		RPC_FAIL_ON_NULL(resp_ext_coex);
+		RPC_ERR_IN_RESP(resp_ext_coex);
+		break;
+#endif
 	} default: {
 		ESP_LOGE(TAG, "Unsupported rpc Resp[%u]", rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;

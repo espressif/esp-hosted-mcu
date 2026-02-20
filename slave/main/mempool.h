@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/queue.h>
+#include "esp_idf_version.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/portmacro.h>
 
