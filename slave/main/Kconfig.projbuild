@@ -4,9 +4,10 @@ menu "Example Configuration"
 		bool
 		default y
 
-    config ESP_HOSTED_COPROCESSOR_BT_ENABLED
-        bool "Enable BT sharing via hosted"
-        default y
+	config ESP_HOSTED_COPROCESSOR_BT_ENABLED
+		bool "Enable BT sharing via hosted"
+		default n if IDF_TARGET_ESP32S2
+		default y
 		help
 			This removes coprocessor sharing BT capabilities with the Host irrespective of
 			if it supports BT or not
@@ -188,7 +189,7 @@ menu "Example Configuration"
 
 				config ESP_SPI_HSPI_GPIO_CS
 					depends on SPI_HSPI
-					int "Slave GPIO pin for Host  CS"
+					int "Slave GPIO pin for Host CS"
 					default 18 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
 					default 10 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 18 if ESP_HOST_DEV_BOARD_P4_C6_CORE
@@ -668,7 +669,8 @@ menu "Example Configuration"
 				default 921600
 				range 9600 3500000
 				help
-					Baud Rate to Use. Make sure Hardware supports the rate. Standard rates are 9600, 19200, 38400, 57600, 115200, 460800, 921600
+					Baud Rate to Use. Make sure Hardware supports the rate.
+					Standard rates are 9600, 19200, 38400, 57600, 115200, 460800, 921600
 
 			config ESP_UART_NUM_DATA_BITS
 				int "Number of Data Bits"
@@ -868,7 +870,7 @@ menu "Example Configuration"
 
 	# HCI UART menu for other ESP32 chips
 	menu "HCI UART Settings"
-		depends on BT_LE_HCI_INTERFACE_USE_UART && !IDF_TARGET_ESP32 && !IDF_TARGET_ESP32C3 && !IDF_TARGET_ESP32S3
+		depends on BT_LE_HCI_INTERFACE_USE_UART && !IDF_TARGET_ESP32 && !IDF_TARGET_ESP32C3 && !IDF_TARGET_ESP32S3 && !IDF_TARGET_ESP32S2
 		comment "HCI UART Settings from Bluetooth Component"
 		comment "To change, select Component config ---> Bluetooth ---> Controller Options ---> HCI Config"
 
@@ -1120,7 +1122,7 @@ menu "Example Configuration"
 				help
 					Slave side TCP start port. Host defaults to 49152
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 
 			config LWIP_TCP_LOCAL_PORT_RANGE_END
 				int "Slave TCP end port"
@@ -1128,7 +1130,7 @@ menu "Example Configuration"
 				help
 					Slave side TCP end port. Host defaults to 61439
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 
 			config LWIP_UDP_LOCAL_PORT_RANGE_START
 				int "Slave UDP start port"
@@ -1136,7 +1138,7 @@ menu "Example Configuration"
 				help
 					Slave side UDP start port. Host defaults to 49152
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 
 			config LWIP_UDP_LOCAL_PORT_RANGE_END
 				int "Slave UDP end port"
@@ -1144,7 +1146,7 @@ menu "Example Configuration"
 				help
 					Slave side UDP end port. Host defaults to 61439
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 		endmenu
 
 		menu "Host side (remote) LWIP port range"
@@ -1154,7 +1156,7 @@ menu "Example Configuration"
 				help
 					Host side TCP start port. Slave defaults to 61440
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 
 			config LWIP_TCP_REMOTE_PORT_RANGE_END
 				int "Host TCP end port"
@@ -1162,7 +1164,7 @@ menu "Example Configuration"
 				help
 					Host side TCP end port. Slave defaults to 65535
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 
 			config LWIP_UDP_REMOTE_PORT_RANGE_START
 				int "Host UDP start port"
@@ -1170,7 +1172,7 @@ menu "Example Configuration"
 				help
 					Host side UDP start port. Slave defaults to 61440
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 
 			config LWIP_UDP_REMOTE_PORT_RANGE_END
 				int "Host UDP end port"
@@ -1178,7 +1180,7 @@ menu "Example Configuration"
 				help
 					Host side UDP end port. Slave defaults to 65535
 					Slave range: 61440-65535
-					Host range: 49152-61439
+					Host range:  49152-61439
 		endmenu
 
 		config ESP_HOSTED_REUSE_WIFI_STA_DEF_NETIF_INSTANCE

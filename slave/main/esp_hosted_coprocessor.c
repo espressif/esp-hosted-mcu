@@ -26,9 +26,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
-#include "esp_bt.h"
-#endif
 
 #include "endian.h"
 
