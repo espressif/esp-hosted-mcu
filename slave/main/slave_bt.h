@@ -16,6 +16,7 @@
 #endif
 
 #ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
+#include "esp_bt.h"
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
   #include "driver/periph_ctrl.h"
