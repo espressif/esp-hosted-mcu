@@ -6,6 +6,9 @@
 
 * Checked incoming image validity during OTA update
   - done for ESP-IDF v6.1.0 or greater
+* Wi-Fi APIs
+  - esp_wifi_set_scan_parameters()
+  - esp_wifi_get_scan_parameters()
 
 ## 2.11.7
 

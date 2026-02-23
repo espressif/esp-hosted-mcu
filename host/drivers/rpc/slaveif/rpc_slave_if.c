@@ -178,6 +178,12 @@ ctrl_cmd_t * rpc_slaveif_wifi_set_config(ctrl_cmd_t *req)
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
 
+ctrl_cmd_t * rpc_slaveif_wifi_scan_params(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_WifiScanParams);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
+
 ctrl_cmd_t * rpc_slaveif_wifi_scan_start(ctrl_cmd_t *req)
 {
 	RPC_SEND_REQ(RPC_ID__Req_WifiScanStart);

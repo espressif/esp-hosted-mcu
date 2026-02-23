@@ -4248,6 +4248,53 @@ static esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data)
 }
 #endif
 
+/* Function gets/sets scan parameters */
+static esp_err_t req_wifi_scan_params(Rpc *req,
+		Rpc *resp, void *priv_data)
+{
+	wifi_scan_default_params_t config = {0};
+	const wifi_scan_default_params_t *p_config = NULL;
+
+	RPC_TEMPLATE(RpcRespWifiScanParams, resp_wifi_scan_params,
+			RpcReqWifiScanParams, req_wifi_scan_params,
+			rpc__resp__wifi_scan_params__init);
+
+	if (req_payload->cmd == RPC_CMD__Set) {
+		if (!req_payload->is_config_null && req_payload->config) {
+			config.scan_time.passive = req_payload->config->scan_time->passive;
+			config.scan_time.active.min = req_payload->config->scan_time->active->min;
+			config.scan_time.active.max = req_payload->config->scan_time->active->max;
+			config.home_chan_dwell_time = req_payload->config->home_chan_dwell_time;
+			ESP_LOGI(TAG, "rpc_wifi_scan_params_set: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu32 "]",
+				config.scan_time.passive, config.scan_time.active.min, config.scan_time.active.max, config.home_chan_dwell_time);
+			p_config = &config;
+		} else {
+			ESP_LOGE(TAG, "rpc_wifi_scan_params_set: config is null");
+		}
+		RPC_RET_FAIL_IF(esp_wifi_set_scan_parameters(p_config));
+	} else if (req_payload->cmd == RPC_CMD__Get) {
+
+		RPC_RET_FAIL_IF(esp_wifi_get_scan_parameters(&config));
+
+		RPC_ALLOC_ELEMENT(WifiScanDefaultParams, resp_payload->config, wifi_scan_default_params__init);
+		RPC_ALLOC_ELEMENT(WifiScanTime, resp_payload->config->scan_time, wifi_scan_time__init);
+		RPC_ALLOC_ELEMENT(WifiActiveScanTime, resp_payload->config->scan_time->active, wifi_active_scan_time__init);
+
+		resp_payload->config->scan_time->passive = config.scan_time.passive;
+		resp_payload->config->scan_time->active->min = config.scan_time.active.min;
+		resp_payload->config->scan_time->active->max = config.scan_time.active.max;
+		resp_payload->config->home_chan_dwell_time = config.home_chan_dwell_time;
+
+		ESP_LOGI(TAG, "rpc_wifi_scan_params_get: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu32 "]",
+			config.scan_time.passive, config.scan_time.active.min, config.scan_time.active.max, config.home_chan_dwell_time);
+	} else {
+		RPC_RET_FAIL_IF(ESP_ERR_INVALID_ARG);
+	}
+
+err:
+	return ESP_OK;
+}
+
 static esp_rpc_req_t req_table[] = {
 	{
 		.req_num = RPC_ID__Req_GetMACAddress ,
@@ -4328,6 +4375,10 @@ static esp_rpc_req_t req_table[] = {
 	{
 		.req_num = RPC_ID__Req_WifiSetConfig,
 		.command_handler = req_wifi_set_config
+	},
+	{
+		.req_num = RPC_ID__Req_WifiScanParams,
+		.command_handler = req_wifi_scan_params
 	},
 	{
 		.req_num = RPC_ID__Req_WifiGetConfig,
