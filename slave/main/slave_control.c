@@ -221,12 +221,12 @@ void send_dhcp_dns_info_to_host(uint8_t network_up, uint8_t send_wifi_connected)
 				 &lkg_sta_connected_event, sizeof(wifi_event_sta_connected_t));
 	}
 
-	ESP_EARLY_LOGI(TAG, "Send DHCP-DNS status to Host: IP: %s, NM: %s, GW: %s, DNS IP: %s, Type: %"PRId32,
+	ESP_EARLY_LOGI(TAG, "Send DHCP-DNS status to Host: IP: %s, NM: %s, GW: %s, DNS IP: %s, Type: %d",
 			(char *)evnt_to_send->dhcp_ip,
 			(char *)evnt_to_send->dhcp_nm,
 			(char *)evnt_to_send->dhcp_gw,
 			(char *)evnt_to_send->dns_ip,
-			evnt_to_send->dns_type);
+			(int)evnt_to_send->dns_type);
 }
 
 /* Get DNS information */
@@ -2883,7 +2883,7 @@ static esp_err_t req_get_dhcp_dns_status(Rpc *req, Rpc *resp, void *priv_data)
 			resp_payload->dhcp_nm.data,
 			resp_payload->dhcp_gw.data,
 			resp_payload->dns_ip.data,
-			resp_payload->dns_type);
+			(int32_t)resp_payload->dns_type);
 
 	resp_payload->resp = ESP_OK;
 #else
@@ -3384,7 +3384,7 @@ static esp_err_t req_iface_mac_addr_set_get(Rpc *req, Rpc *resp, void *priv_data
 				// copy the mac address that was set in the response
 				RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->mac, req_payload->mac.data, len);
 			} else {
-				ESP_LOGE(TAG, "expected mac length %" PRIu16 ", but got %" PRIu16, len, req_payload->mac.len);
+				ESP_LOGE(TAG, "expected mac length %" PRIu32 ", but got %" PRIu32, (uint32_t)len, req_payload->mac.len);
 				resp_payload->resp = ESP_ERR_INVALID_ARG;
 			}
 		} else {
@@ -4265,7 +4265,7 @@ static esp_err_t req_wifi_scan_params(Rpc *req,
 			config.scan_time.active.min = req_payload->config->scan_time->active->min;
 			config.scan_time.active.max = req_payload->config->scan_time->active->max;
 			config.home_chan_dwell_time = req_payload->config->home_chan_dwell_time;
-			ESP_LOGI(TAG, "rpc_wifi_scan_params_set: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu32 "]",
+			ESP_LOGI(TAG, "rpc_wifi_scan_params_set: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu8 "]",
 				config.scan_time.passive, config.scan_time.active.min, config.scan_time.active.max, config.home_chan_dwell_time);
 			p_config = &config;
 		} else {
@@ -4285,7 +4285,7 @@ static esp_err_t req_wifi_scan_params(Rpc *req,
 		resp_payload->config->scan_time->active->max = config.scan_time.active.max;
 		resp_payload->config->home_chan_dwell_time = config.home_chan_dwell_time;
 
-		ESP_LOGI(TAG, "rpc_wifi_scan_params_get: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu32 "]",
+		ESP_LOGI(TAG, "rpc_wifi_scan_params_get: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu8 "]",
 			config.scan_time.passive, config.scan_time.active.min, config.scan_time.active.max, config.home_chan_dwell_time);
 	} else {
 		RPC_RET_FAIL_IF(ESP_ERR_INVALID_ARG);

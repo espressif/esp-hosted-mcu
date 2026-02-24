@@ -377,7 +377,7 @@ static int h_uart_read(interface_handle_t *if_handle, interface_buffer_handle_t 
 
 static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_t *buf_handle)
 {
-	int32_t total_len = 0;
+	uint32_t total_len = 0;
 	uint8_t* sendbuf = NULL;
 	uint16_t offset = sizeof(struct esp_payload_header);
 	struct esp_payload_header *header = NULL;
