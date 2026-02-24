@@ -3384,7 +3384,7 @@ static esp_err_t req_iface_mac_addr_set_get(Rpc *req, Rpc *resp, void *priv_data
 				// copy the mac address that was set in the response
 				RPC_RESP_COPY_BYTES_SRC_UNCHECKED(resp_payload->mac, req_payload->mac.data, len);
 			} else {
-				ESP_LOGE(TAG, "expected mac length %" PRIu32 ", but got %" PRIu32, (uint32_t)len, req_payload->mac.len);
+				ESP_LOGE(TAG, "expected mac length %" PRIu32 ", but got %" PRIu32, (uint32_t)len, (uint32_t)req_payload->mac.len);
 				resp_payload->resp = ESP_ERR_INVALID_ARG;
 			}
 		} else {
