@@ -62,6 +62,7 @@ typedef enum {
 	ESP_PRIV_TX_Q_SIZE,
 	ESP_PRIV_CAP_EXT, // extended capability (4 bytes)
 	ESP_PRIV_FIRMWARE_VERSION,
+	ESP_PRIV_TRANS_SDIO_MODE,
 } ESP_PRIV_TAG_TYPE;
 
 #endif

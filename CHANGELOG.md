@@ -10,6 +10,10 @@
   - esp_wifi_set_scan_parameters()
   - esp_wifi_get_scan_parameters()
 
+### Fixes
+
+* Assert if slave uses SDIO streaming and host as SDIO packet mode
+
 ## 2.11.7
 
 ### Features
