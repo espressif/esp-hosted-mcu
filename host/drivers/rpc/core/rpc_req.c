@@ -220,6 +220,26 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 
 		req_payload->iface = p_a->iface;
 		break;
+    } case RPC_ID__Req_WifiScanParams: {
+		rpc_wifi_scan_params_t *p_a = &app_req->u.wifi_scan_params;
+		RPC_ALLOC_ASSIGN(RpcReqWifiScanParams, req_wifi_scan_params,
+				rpc__req__wifi_scan_params__init);
+
+		req_payload->cmd = p_a->cmd;
+		if (!p_a->is_config_null) {
+			RPC_ALLOC_ELEMENT(WifiScanDefaultParams, req_payload->config, wifi_scan_default_params__init);
+			RPC_ALLOC_ELEMENT(WifiScanTime, req_payload->config->scan_time, wifi_scan_time__init);
+			RPC_ALLOC_ELEMENT(WifiActiveScanTime, req_payload->config->scan_time->active, wifi_active_scan_time__init);
+
+			req_payload->config->scan_time->passive = p_a->config.scan_time.passive;
+			req_payload->config->scan_time->active->min = p_a->config.scan_time.active.min;
+			req_payload->config->scan_time->active->max = p_a->config.scan_time.active.max;
+			req_payload->config->home_chan_dwell_time = p_a->config.home_chan_dwell_time;
+			req_payload->is_config_null = false;
+		} else {
+			req_payload->is_config_null = true;
+		}
+		break;
     } case RPC_ID__Req_WifiSetConfig: {
 		wifi_cfg_t * p_a = &app_req->u.wifi_config;
 		RPC_ALLOC_ASSIGN(RpcReqWifiSetConfig, req_wifi_set_config,

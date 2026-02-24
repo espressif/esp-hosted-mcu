@@ -298,6 +298,18 @@ esp_err_t esp_wifi_remote_scan_start(const wifi_scan_config_t *config, bool bloc
 	return rpc_wifi_scan_start(config, block);
 }
 
+esp_err_t esp_wifi_remote_set_scan_parameters(const wifi_scan_default_params_t *config)
+{
+	check_transport_up();
+	return rpc_wifi_set_scan_parameters(config);
+}
+
+esp_err_t esp_wifi_remote_get_scan_parameters(wifi_scan_default_params_t *config)
+{
+	check_transport_up();
+	return rpc_wifi_get_scan_parameters(config);
+}
+
 esp_err_t esp_wifi_remote_scan_stop(void)
 {
 	check_transport_up();

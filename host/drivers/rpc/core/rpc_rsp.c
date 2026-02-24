@@ -234,6 +234,20 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_wifi_set_config);
 		RPC_ERR_IN_RESP(resp_wifi_set_config);
 		break;
+	} case RPC_ID__Resp_WifiScanParams: {
+		rpc_wifi_scan_params_t *p_a = &app_resp->u.wifi_scan_params;
+		WifiScanDefaultParams *p_c = rpc_msg->resp_wifi_scan_params->config;
+
+		RPC_FAIL_ON_NULL(resp_wifi_scan_params);
+		RPC_ERR_IN_RESP(resp_wifi_scan_params);
+
+		if (p_c) {
+			p_a->config.scan_time.passive = p_c->scan_time->passive;
+			p_a->config.scan_time.active.min = p_c->scan_time->active->min;
+			p_a->config.scan_time.active.max = p_c->scan_time->active->max;
+			p_a->config.home_chan_dwell_time = p_c->home_chan_dwell_time;
+		}
+		break;
 	} case RPC_ID__Resp_WifiGetConfig: {
 		RPC_FAIL_ON_NULL(resp_wifi_set_config);
 		RPC_ERR_IN_RESP(resp_wifi_set_config);

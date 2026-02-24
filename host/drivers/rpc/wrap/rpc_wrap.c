@@ -680,6 +680,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_FeatureControl:
 	case RPC_ID__Resp_AppGetDesc:
 	case RPC_ID__Resp_MemMonitor:
+	case RPC_ID__Resp_WifiScanParams:
 #if H_WIFI_HE_SUPPORT
 	case RPC_ID__Resp_WifiStaTwtConfig:
 	case RPC_ID__Resp_WifiStaItwtSetup:
@@ -1370,6 +1371,43 @@ int rpc_wifi_get_config(wifi_interface_t interface, wifi_config_t *conf)
 	resp = rpc_slaveif_wifi_get_config(req);
 
 	g_h.funcs->_h_memcpy(conf, &resp->u.wifi_config.u, sizeof(wifi_config_t));
+
+	return rpc_rsp_callback(resp);
+}
+
+int rpc_wifi_set_scan_parameters(const wifi_scan_default_params_t *config)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.wifi_scan_params.cmd = RPC_CMD__Set;
+	if (config) {
+		g_h.funcs->_h_memcpy(&req->u.wifi_scan_params.config, config, sizeof(rpc_wifi_scan_default_params_t));
+		req->u.wifi_scan_params.is_config_null = false;
+	} else {
+		req->u.wifi_scan_params.is_config_null = true;
+	}
+
+	resp = rpc_slaveif_wifi_scan_params(req);
+	return rpc_rsp_callback(resp);
+}
+
+int rpc_wifi_get_scan_parameters(wifi_scan_default_params_t *config)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!config)
+		return FAILURE;
+
+	req->u.wifi_scan_params.cmd = RPC_CMD__Get;
+	resp = rpc_slaveif_wifi_scan_params(req);
+
+	if (resp && resp->resp_event_status == SUCCESS) {
+		g_h.funcs->_h_memcpy(config, &resp->u.wifi_scan_params.config, sizeof(rpc_wifi_scan_default_params_t));
+	}
 
 	return rpc_rsp_callback(resp);
 }

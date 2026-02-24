@@ -37,6 +37,12 @@ enum Rpc_Status {
 }
 
 
+enum RpcCmd {
+	Invalid = 0;
+	Get = 1;
+	Set = 2;
+}
+
 enum RpcType {
 MsgType_Invalid = 0;
 	Req = 1;
@@ -90,6 +96,7 @@ enum RpcId {
 
 	Req_AppGetDesc                    = 267; //0x10b
 	Req_MemMonitor                    = 268; //0x10c
+	Req_WifiScanParams                = 269; //0x10d
 
 	Req_WifiSetPs                     = 270; //0x10e
 	Req_WifiGetPs                     = 271; //0x10f
@@ -276,6 +283,7 @@ enum RpcId {
 
 	Resp_AppGetDesc                   = 523;
 	Resp_MemMonitor                   = 524;
+	Resp_WifiScanParams               = 525;
 
 	Resp_WifiSetPs                    = 526;
 	Resp_WifiGetPs                    = 527;
@@ -535,6 +543,11 @@ message wifi_scan_config {
 	wifi_scan_channel_bitmap channel_bitmap = 8; /**< Channel bitmap for setting specific channels to be scanned.
 												   Please note that the 'channel' parameter above needs to be set to 0 to allow scanning by bitmap.
 												   Also, note that only allowed channels configured by wifi_country_t can be scanned. */
+}
+
+message wifi_scan_default_params {
+	wifi_scan_time scan_time = 1;               /**< Scan time per channel */
+	uint32         home_chan_dwell_time = 2;    /**< Time spent at home channel between scanning consecutive channels.*/
 }
 
 message wifi_he_ap_info {
@@ -1359,6 +1372,17 @@ message Rpc_Resp_WifiStaGetRssi {
 	int32 rssi = 2;
 }
 
+message Rpc_Req_WifiScanParams {
+	RpcCmd cmd = 1;
+	wifi_scan_default_params config = 2;
+	bool is_config_null = 3;
+}
+
+message Rpc_Resp_WifiScanParams {
+	int32 resp = 1;
+	wifi_scan_default_params config = 2;
+}
+
 message Rpc_Req_WifiStaGetAid {
 }
 
@@ -2108,6 +2132,7 @@ message Rpc {
 		Rpc_Req_AppGetDesc                  req_app_get_desc                  = 267;
 
 		Rpc_Req_MemMonitor                  req_mem_monitor                   = 268;
+		Rpc_Req_WifiScanParams              req_wifi_scan_params              = 269;
 
 		Rpc_Req_SetPs                       req_wifi_set_ps                   = 270;
 		Rpc_Req_GetPs                       req_wifi_get_ps                   = 271;
@@ -2245,6 +2270,7 @@ message Rpc {
 		Rpc_Resp_AppGetDesc                 resp_app_get_desc                  = 523;
 
 		Rpc_Resp_MemMonitor                 resp_mem_monitor                   = 524;
+		Rpc_Resp_WifiScanParams             resp_wifi_scan_params              = 525;
 
 		Rpc_Resp_SetPs                      resp_wifi_set_ps                   = 526;
 		Rpc_Resp_GetPs                      resp_wifi_get_ps                   = 527;

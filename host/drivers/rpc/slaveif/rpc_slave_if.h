@@ -111,6 +111,17 @@ typedef struct {
 } wifi_cfg_t;
 
 
+typedef struct {
+	wifi_scan_time_t scan_time;
+	uint8_t home_chan_dwell_time;
+} rpc_wifi_scan_default_params_t;
+
+typedef struct {
+	uint8_t cmd;
+	rpc_wifi_scan_default_params_t config;
+	bool is_config_null;
+} rpc_wifi_scan_params_t;
+
 /** @brief Parameters for an SSID scan. */
 typedef struct {
 	bool block;
@@ -398,6 +409,7 @@ typedef struct Ctrl_cmd_t {
 	union {
 		wifi_init_config_t          wifi_init_config;
 		wifi_cfg_t                  wifi_config;
+		rpc_wifi_scan_params_t      wifi_scan_params;
 		wifi_mac_t                  wifi_mac;
 		hosted_mode_t               wifi_mode;
 
@@ -752,6 +764,7 @@ ctrl_cmd_t * rpc_slaveif_wifi_connect(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_disconnect(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_set_config(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_get_config(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_wifi_scan_params(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_scan_start(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_scan_stop(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_wifi_scan_get_ap_num(ctrl_cmd_t *req);
