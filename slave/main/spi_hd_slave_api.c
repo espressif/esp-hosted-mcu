@@ -717,7 +717,7 @@ static esp_err_t esp_spi_hd_reset(interface_handle_t *handle)
 static int32_t esp_spi_hd_write(interface_handle_t *handle, interface_buffer_handle_t *buf_handle)
 {
 	esp_err_t ret = ESP_OK;
-	int32_t total_len = 0;
+	uint32_t total_len = 0;
 	uint8_t* sendbuf = NULL;
 	uint16_t offset = sizeof(struct esp_payload_header);
 	struct esp_payload_header *header = NULL;
