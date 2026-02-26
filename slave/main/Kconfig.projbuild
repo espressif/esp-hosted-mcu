@@ -595,7 +595,7 @@ menu "Example Configuration"
 					default 2 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD
 					default 28 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 9 if ESP_HOST_DEV_BOARD_P4_C6_CORE
-					default 9 if ESP_HOST_BOARD_P4_C61_CORE
+					default 9 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 9 if ESP32P4_EYE_C6_BOARD
 					default 0 if IDF_TARGET_ESP32C5
 					default 1 if IDF_TARGET_ESP32C2
@@ -1253,7 +1253,8 @@ menu "Example Configuration"
 				default 2 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD && !ESP_SPI_HD_HOST_INTERFACE
 				default 9 if ESP_HOST_DEV_BOARD_P4_FUNC_BOARD && ESP_SPI_HD_HOST_INTERFACE
 				default 3 if ESP_HOST_DEV_BOARD_P4_C5_CORE
-				default 9 if (ESP_HOST_DEV_BOARD_P4_C6_CORE || ESP32P4_EYE_C6_BOARD) && !ESP_SPI_HD_HOST_INTERFACE
+				default -1 if (ESP_HOST_DEV_BOARD_P4_C6_CORE || ESP_HOST_DEV_BOARD_P4_C61_CORE) # /*C6 IO09 Connected to P4 IO53, unfit for wake-up at P4*/
+				default -1 if ESP32P4_EYE_C6_BOARD     # /*C6 IO09 Connected to P4 IO33, unfit for wake-up at P4*/
 				default 6 if C2_C5_MODULE_SUB_BOARD && IDF_TARGET_ESP32C2
 				default 1 if ESP_HOST_DEV_BOARD_NONE && IDF_TARGET_ESP32C3
 				default 25 if ESP_HOST_DEV_BOARD_NONE && IDF_TARGET_ESP32C5
@@ -1550,46 +1551,53 @@ endif
 	endmenu
 endmenu
 
+# ==============================================================================
 # GPIO Mapping Strategy for Development Boards
-#
-# For development boards (e.g., ESP32-P4-C6 Core Board, ESP32-P4-C61 Core Board),
-# GPIO pins are mapped consistently across different transport interfaces (SDIO, SPI Full Duplex,
-# SPI Half-Duplex, UART) to allow users to switch between transports without changing physical
-# connections.
+# ==============================================================================
+# This strategy ensures GPIO pins are mapped consistently across transport
+# interfaces (SDIO, SPI FD, SPI HD, UART). This allows users to switch
+# transports without changing physical hardware connections.
 #
 # Mapping Pattern:
-# - SDIO pins serve as the base reference for all transports
-# - The same physical GPIO pins are reused across different transport interfaces
+# 1. SDIO pins serve as the base reference for all transports.
+# 2. The same physical GPIOs are reused across different interfaces.
 #
-# Example for ESP32-P4-C6 Core Board:
-#   SDIO CMD (GPIO 18) -> SPI HD CS (GPIO 18), SPI Full Duplex CS (GPIO 18)
-#   SDIO CLK (GPIO 19) -> SPI HD CLK (GPIO 19), SPI Full Duplex CLK (GPIO 19)
-#   SDIO D0  (GPIO 20) -> SPI HD D0 (GPIO 20), SPI Full Duplex MOSI (GPIO 20), UART RX (GPIO 20)
-#   SDIO D1  (GPIO 21) -> SPI HD D1 (GPIO 21), SPI Full Duplex MISO (GPIO 21), UART TX (GPIO 21)
-#   SDIO D2  (GPIO 22) -> SPI HD D2 (GPIO 22), SPI Full Duplex Handshake (GPIO 22)
-#   SDIO D3  (GPIO 23) -> SPI HD D3 (GPIO 23), SPI Full Duplex Data Ready (GPIO 23)
-#   Wakeup   (GPIO 9)  -> SPI HD Data Ready (GPIO 9), Host Wakeup (GPIO 9)
+# Reference Table:
+# ----------------------------------------------------------------------------
+# SDIO Pin  | SPI Full Duplex | SPI Half Duplex | UART (If Applicable)
+# ----------------------------------------------------------------------------
+# CMD       | CS              | CS              | -
+# CLK       | CLK             | CLK             | -
+# D0        | MOSI            | D0              | -
+# D1        | MISO            | D1              | -
+# D2        | Handshake       | D2              | RX
+# D3        | Data Ready      | D3              | TX
+# ----------------------------------------------------------------------------
+# Note: UART Host side Rx is connected to Slave Tx and Vice Versa.
 #
-# Example for ESP32-P4-C61 Core Board:
-#   SDIO CMD (GPIO 25) -> SPI HD CS (GPIO 25), SPI Full Duplex CS (GPIO 25)
-#   SDIO CLK (GPIO 26) -> SPI HD CLK (GPIO 26), SPI Full Duplex CLK (GPIO 26)
-#   SDIO D0  (GPIO 27) -> SPI HD D0 (GPIO 27), SPI Full Duplex MOSI (GPIO 27)
-#   SDIO D1  (GPIO 28) -> SPI HD D1 (GPIO 28), SPI Full Duplex MISO (GPIO 28)
-#   SDIO D2  (GPIO 22) -> SPI HD D2 (GPIO 22), SPI Full Duplex Handshake (GPIO 22), UART RX (GPIO 22)
-#   SDIO D3  (GPIO 23) -> SPI HD D3 (GPIO 23), SPI Full Duplex Data Ready (GPIO 23), UART TX (GPIO 23)
-#   Wakeup   (GPIO 9)  -> SPI HD Data Ready (GPIO 9), Host Wakeup (GPIO 9)
+# Example: ESP32-P4-C6 Core Board
+#   SDIO (CMD/CLK/D0-D3) -> GPIOs 18, 19, 20, 21, 22, 23
+#   Wakeup               -> Unavailable
 #
-# When adding support for a new development board:
-# 1. Define the SDIO pin mapping first (CMD, CLK, D0-D3)
-# 2. Map the same GPIOs to corresponding pins in other transports:
-#    - SDIO CMD -> SPI HD CS, SPI Full Duplex CS
-#    - SDIO CLK -> SPI HD CLK, SPI Full Duplex CLK
-#    - SDIO D0  -> SPI HD D0, SPI Full Duplex MOSI
-#    - SDIO D1  -> SPI HD D1, SPI Full Duplex MISO
-#    - SDIO D2  -> SPI HD D2, SPI Full Duplex Handshake, UART RX (if applicable)
-#    - SDIO D3  -> SPI HD D3, SPI Full Duplex Data Ready, UART TX (if applicable)
-# 3. Configure wakeup pin (typically GPIO 9 for P4 Core Boards)
-# 4. Ensure host-side Kconfig has matching GPIO configurations
+# Example: ESP32-P4-C61 Core Board
+#   SDIO (CMD/CLK/D0-D1) -> GPIOs 25, 26, 27, 28
+#   SDIO (D2/D3)         -> GPIOs 22, 23 (Used for UART RX/TX here)
+#   Wakeup               -> Unavailable
 #
-# This mapping ensures that users can test different transport interfaces using the same
-# physical board connections, simplifying development and testing workflows.
+# ----------------------------------------------------------------------------
+# Resource Allocation Rules:
+# ----------------------------------------------------------------------------
+# 1. Limited GPIO Rule:
+#    - If only 1 extra GPIO is available (apart from the 6 SDIO pins):
+#      - SPI HD Mode: Used as 'Data Ready' (Host Wakeup disabled).
+#      - Other Modes: Used as 'Host Wakeup' (Only if host side GPIO falls in RTC-capable GPIO)
+#    - If 2 extra GPIOs are available:
+#      - One for 'Data Ready', one for 'Host Wakeup'.
+#
+# 2. Deep Sleep Requirement:
+#    - The 'Host Wakeup' pin MUST be an RTC-capable GPIO.
+#    - If a non-RTC GPIO is used (like IO33 on P4-EYE), the host can only be
+#      woken from Light Sleep, not Deep Sleep, so prefer RTC GPIO at Host, if connected as host deep sleep wake up pin.
+#      If unavailable, just map -1 for that board.
+#
+# ----------------------------------------------------------------------------
