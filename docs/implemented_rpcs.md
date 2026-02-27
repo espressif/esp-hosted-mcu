@@ -117,7 +117,7 @@ The RPC IDs listed here are for requests and events. Each request will have a co
 | 107 |    394 | GpioInputEnable                    |           2.10.0 |
 | 108 |    395 | GpioSetPullMode                    |           2.10.0 |
 | 109 |    268 | MemMonitor                         |           2.11.7 |
-| 110 |    269 | WifiScanParams                     |           2.11.8 |
+| 110 |    269 | WifiScanParams                     |           2.12.0 |
 
 ## List of RPC Events
 
