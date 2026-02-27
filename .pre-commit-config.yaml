@@ -19,6 +19,20 @@ repos:
       entry: tools/check_changelog.py
       language: python
       files: ^idf_component.yml$
+    - id: esp-weak-function-checker
+      name: ESP-Hosted Weak Function Checker
+      entry: tools/check_weak_functions.py
+      language: python
+      args:
+        - "--file"
+        - "host/api/src/esp_wifi_weak.c"
+        # add more files/functions like in below:
+        # - "--file"
+        # - "host/api/src/esp_extra_weak.c"
+        # - "--functions"
+        # - "esp_extra_foo,esp_extra_bar"
+      files: ^host/api/src/.*\.c$
+      pass_filenames: false
   - repo: https://github.com/espressif/check-copyright/
     rev: v1.1.1
     hooks:

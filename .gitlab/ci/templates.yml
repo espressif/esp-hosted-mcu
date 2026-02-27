@@ -10,6 +10,8 @@
     - python tools/check_fw_versions.py
     # check the changelog
     - python tools/check_changelog.py
+    # check weak functions # Can also pass --functions optionally # Can also pass --functions optionally.
+    - python tools/check_weak_functions.py --file host/api/src/esp_wifi_weak.c
 
 .build_template_coprocessor:
   stage: build_coprocessor
