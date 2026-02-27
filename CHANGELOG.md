@@ -14,6 +14,10 @@
 
 * Assert if slave uses SDIO streaming and host as SDIO packet mode
 
+### Config
+
+* Added ESP32-P4-Eye board GPIOs at slave and host Kconfig
+
 ## 2.11.7
 
 ### Features
