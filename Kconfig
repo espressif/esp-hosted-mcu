@@ -1,7 +1,11 @@
 config ESP_HOSTED_ENABLED
-	bool
+	bool "Enable ESP-Hosted component"
 	default y if ESP_WIFI_REMOTE_ENABLED && ESP_WIFI_REMOTE_LIBRARY_HOSTED
 	default n
+	help
+		Enable the esp-hosted component, allowing this device to act as a
+		Wi-Fi co-processor for a host MCU. Disable to exclude esp-hosted
+		from the build entirely.
 
 menu "ESP-Hosted config"
 	depends on ESP_HOSTED_ENABLED
