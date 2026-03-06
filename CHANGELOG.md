@@ -1,6 +1,13 @@
 # Unreleased - Main Branch
 
-None
+## Features
+
+- Added support for Bluetooth-only Co-processors (like ESP32-H2)
+- Added Co-processor option to disable Wi-Fi support (for Bluetooth-only support)
+- Re-organised co-processor code: moved Wi-Fi, Wi-Fi Enterprise and Network Split code into individual files
+- Added initial support for ESP32-H4 as co-processor
+  - only works with UART interface as ESP-Hosted Transport. SPI to be enabled later.
+  - Bluetooth not yet enabled in ESP-IDF
 
 # Releases
 
@@ -11,18 +18,18 @@ None
 - Checked incoming image validity during OTA update
   - done for ESP-IDF v6.1.0 or greater
 - Wi-Fi APIs
-  - esp_wifi_set_scan_parameters()
-  - esp_wifi_get_scan_parameters()
+  - `esp_wifi_set_scan_parameters()`
+  - `esp_wifi_get_scan_parameters()`
 - Allow slave OTA only if correct SPI Flash Mode
 
 ## Bug Fixes
 
 - Assert if slave uses SDIO streaming and host as SDIO packet mode
-- Guard esp_hosted_coprocessor.h, host_power_save.h, interface.h for cplusplus inclusion
+- Guard `esp_hosted_coprocessor.h`, `host_power_save.h`, `interface.h` for cplusplus inclusion
 - Replace assert with graceful error on mempool alloc failure
 - Building with and without bt enabled
 - Disable auto connect upon sta mode started
-- Add esp_eap_client_set_eap_methods() as weak in esp_wifi_weak.c
+- Add `esp_eap_client_set_eap_methods()` as `weak` in `esp_wifi_weak.c`
 
 ## Config
 

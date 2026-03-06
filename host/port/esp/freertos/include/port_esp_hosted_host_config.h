@@ -58,24 +58,66 @@ enum {
 	H_GPIO_INTR_MAX,
 };
 
-#if CONFIG_SLAVE_IDF_TARGET_ESP32
-  #define H_SLAVE_TARGET_ESP32 1
-#elif CONFIG_SLAVE_IDF_TARGET_ESP32S2
-  #define H_SLAVE_TARGET_ESP32S2 1
-#elif CONFIG_SLAVE_IDF_TARGET_ESP32C3
-  #define H_SLAVE_TARGET_ESP32C3 1
-#elif CONFIG_SLAVE_IDF_TARGET_ESP32S3
-  #define H_SLAVE_TARGET_ESP32S3 1
-#elif CONFIG_SLAVE_IDF_TARGET_ESP32C2
-  #define H_SLAVE_TARGET_ESP32C2 1
-#elif CONFIG_SLAVE_IDF_TARGET_ESP32C6
-  #define H_SLAVE_TARGET_ESP32C6 1
-#elif CONFIG_SLAVE_IDF_TARGET_ESP32C5
-  #define H_SLAVE_TARGET_ESP32C5 1
-#elif CONFIG_SLAVE_IDF_TARGET_ESP32C61
-  #define H_SLAVE_TARGET_ESP32C61 1
-#else
-  #error "Unknown Slave Target"
+#ifdef ESP_PLATFORM
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32
+    #define H_SLAVE_TARGET_ESP32 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32S2
+    #define H_SLAVE_TARGET_ESP32S2 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32C3
+    #define H_SLAVE_TARGET_ESP32C3 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32S3
+    #define H_SLAVE_TARGET_ESP32S3 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32C2
+    #define H_SLAVE_TARGET_ESP32C2 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6
+    #define H_SLAVE_TARGET_ESP32C6 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32C5
+    #define H_SLAVE_TARGET_ESP32C5 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32C61
+    #define H_SLAVE_TARGET_ESP32C61 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32H2
+    #define H_SLAVE_TARGET_ESP32H2 1
+  #endif
+  #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32H4
+    #define H_SLAVE_TARGET_ESP32H4 1
+  #endif
+#else // ESP_PLATFORM
+    /* For non ESP Host, use manual selection.
+	 * Uncomment ONLY ONE target below
+	 */
+
+    // #define H_SLAVE_TARGET_ESP32     1
+    // #define H_SLAVE_TARGET_ESP32S2   1
+    // #define H_SLAVE_TARGET_ESP32C3   1
+    // #define H_SLAVE_TARGET_ESP32S3   1
+    // #define H_SLAVE_TARGET_ESP32C2   1
+    // #define H_SLAVE_TARGET_ESP32C6   1
+    // #define H_SLAVE_TARGET_ESP32C5   1
+    // #define H_SLAVE_TARGET_ESP32C61  1
+    // #define H_SLAVE_TARGET_ESP32H2   1
+    // #define H_SLAVE_TARGET_ESP32H4   1
+#endif // ESP_PLATFORM
+
+// check that only one slave target is set
+#if defined(H_SLAVE_TARGET_ESP32) + \
+  defined(H_SLAVE_TARGET_ESP32S2) + \
+  defined(H_SLAVE_TARGET_ESP32C3) + \
+  defined(H_SLAVE_TARGET_ESP32S3) + \
+  defined(H_SLAVE_TARGET_ESP32C2) + \
+  defined(H_SLAVE_TARGET_ESP32C6) + \
+  defined(H_SLAVE_TARGET_ESP32C5) + \
+  defined(H_SLAVE_TARGET_ESP32C61) + \
+  defined(H_SLAVE_TARGET_ESP32H2) + \
+  defined(H_SLAVE_TARGET_ESP32H4) != 1
+  #error "No Slave Target or more than one Slave Target was defined."
 #endif
 
 #if CONFIG_ESP_HOSTED_USE_MEMPOOL

@@ -11,12 +11,11 @@
 #include "esp_idf_version.h"
 #include <stdbool.h>
 
-#if defined(CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED) && (!defined(CONFIG_BT_ENABLED) || !defined(CONFIG_SOC_BT_SUPPORTED))
-#error "ESP_HOSTED_COPROCESSOR_BT_ENABLED is enabled but CONFIG_BT_ENABLED or CONFIG_SOC_BT_SUPPORTED is not enabled. Please enable BT support in menuconfig."
+#if defined(CONFIG_ESP_HOSTED_CP_BT) && (!defined(CONFIG_BT_ENABLED) || !defined(CONFIG_SOC_BT_SUPPORTED))
+#error "CONFIG_ESP_HOSTED_CP_BT is enabled but CONFIG_BT_ENABLED or CONFIG_SOC_BT_SUPPORTED is not enabled. Please enable BT support in menuconfig."
 #endif
 
-#ifdef CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED
-#include "esp_bt.h"
+#ifdef CONFIG_ESP_HOSTED_CP_BT
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
   #include "driver/periph_ctrl.h"
@@ -163,6 +162,6 @@ esp_err_t deinit_bluetooth(bool mem_release);
 
 uint8_t get_bluetooth_capabilities(void);
 uint32_t get_bluetooth_ext_capabilities(void);
-#endif /* CONFIG_ESP_HOSTED_COPROCESSOR_BT_ENABLED */
+#endif /* CONFIG_ESP_HOSTED_CP_BT */
 
 #endif /* __SLAVE_BT_H__ */

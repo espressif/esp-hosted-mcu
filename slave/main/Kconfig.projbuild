@@ -4,18 +4,25 @@ menu "Example Configuration"
 		bool
 		default y
 
-	config ESP_HOSTED_COPROCESSOR_BT_ENABLED
+	config ESP_HOSTED_CP_BT
 		bool "Enable BT sharing via hosted"
-		default n if IDF_TARGET_ESP32S2
+		default n if !SOC_BT_SUPPORTED
 		default y
 		help
 			This removes coprocessor sharing BT capabilities with the Host irrespective of
 			if it supports BT or not
 			For use-case where, BT is only required on co-processor, this option can be used
 
-	if ESP_HOSTED_COPROCESSOR_BT_ENABLED && (!BT_ENABLED || !SOC_BT_SUPPORTED)
-		comment "WARNING: ESP_HOSTED_COPROCESSOR_BT_ENABLED is enabled but BT_ENABLED or SOC_BT_SUPPORTED is disabled. This needs to be enabled for BT sharing to work."
+	if ESP_HOSTED_CP_BT && (!BT_ENABLED || !SOC_BT_SUPPORTED)
+		comment "WARNING: ESP_HOSTED_CP_BT is enabled but BT_ENABLED or SOC_BT_SUPPORTED is disabled. This needs to be enabled for BT sharing to work."
 	endif
+
+	config ESP_HOSTED_CP_WIFI
+		depends on SOC_WIFI_SUPPORTED
+		bool "Enable Wi-Fi on Co-processor"
+		default y
+		help
+			Disable if you do not need Wi-Fi support on the co-processor
 
 	config ESP_HOSTED_COPROCESSOR_APP_MAIN
 		bool "Use ESP-Hosted coprocessor app_main"
@@ -68,12 +75,14 @@ menu "Example Configuration"
 
 		choice ESP_HOST_INTERFACE
 			bool "Transport layer"
+			default ESP_UART_HOST_INTERFACE if IDF_TARGET_ESP32H4
 			default ESP_SDIO_HOST_INTERFACE if SOC_SDIO_SLAVE_SUPPORTED
 			default ESP_SPI_HOST_INTERFACE
 			help
 				Bus interface to be used for communication with the host
 
 			config ESP_SPI_HOST_INTERFACE
+				depends on !IDF_TARGET_ESP32H4 # not yet supported on ESP32-H4
 				bool "SPI Full-duplex"
 				help
 					Enable/Disable SPI Full-duplex host interface
@@ -86,6 +95,7 @@ menu "Example Configuration"
 
 			config ESP_SPI_HD_HOST_INTERFACE
 				bool "SPI Half-duplex"
+				depends on !IDF_TARGET_ESP32H4 # not yet supported on ESP32-H4
 				depends on SOC_SPI_SUPPORT_SLAVE_HD_VER2
 				help
 					Enable/Disable SPI Half-duplex host interface
@@ -160,6 +170,7 @@ menu "Example Configuration"
 					default 27 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 13 if IDF_TARGET_ESP32
 					default 11 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+					default 5 if IDF_TARGET_ESP32H2
 					default 7
 					help
 						SPI controller Host MOSI
@@ -174,6 +185,7 @@ menu "Example Configuration"
 					default 28 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 12 if IDF_TARGET_ESP32
 					default 13 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+					default 0 if IDF_TARGET_ESP32H2
 					default 2
 					help
 						SPI controller Host MISO
@@ -190,6 +202,7 @@ menu "Example Configuration"
 					default 0 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
 					default 14 if IDF_TARGET_ESP32
 					default 12 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+					default 4 if IDF_TARGET_ESP32H2
 					default 6
 					help
 						SPI controller Host CLK
@@ -205,6 +218,7 @@ menu "Example Configuration"
 					default 15 if IDF_TARGET_ESP32
 					default 10 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 					default 8 if IDF_TARGET_ESP32C61
+					default 1 if IDF_TARGET_ESP32H2
 					default 10
 					help
 						SPI controller Host CS
@@ -271,6 +285,7 @@ menu "Example Configuration"
 					default 3 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C6
 					default 17 if IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32S2
 					default 22 if IDF_TARGET_ESP32C61
+					default 22 if IDF_TARGET_ESP32H2
 					default 26
 					help
 						Slave GPIO pin to use for handshake with other spi controller
@@ -287,6 +302,7 @@ menu "Example Configuration"
 					default 0 if IDF_TARGET_ESP32C5 && C2_C5_MODULE_SUB_BOARD
 					default 4 if IDF_TARGET_ESP32C5 && !C2_C5_MODULE_SUB_BOARD
 					default 23 if IDF_TARGET_ESP32C61
+					default 12 if IDF_TARGET_ESP32H2
 					default 4
 					help
 						Slave GPIO pin for indicating host that SPI slave has data to be read by host
@@ -648,7 +664,7 @@ menu "Example Configuration"
 				int "UART Port to Use"
 				default 1
 				range 0 2 if IDF_TARGET_ESP32
-				range 0 1 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32C6
+				range 0 1 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32C6 || IDF_TARGET_ESP32H2
 				range 0 2 if IDF_TARGET_ESP32C61
 				range 0 1 if IDF_TARGET_ESP32S2
 				range 0 2 if IDF_TARGET_ESP32S3
@@ -665,6 +681,8 @@ menu "Example Configuration"
 				default 23 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 				default 21 if IDF_TARGET_ESP32C6
 				default 23 if IDF_TARGET_ESP32C61
+				default 12 if IDF_TARGET_ESP32H2
+				default 17 if IDF_TARGET_ESP32H4
 				default 5 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 				help
 					GPIO used for UART TX
@@ -679,6 +697,8 @@ menu "Example Configuration"
 				default 22 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 				default 20 if IDF_TARGET_ESP32C6
 				default 22 if IDF_TARGET_ESP32C61
+				default 22 if IDF_TARGET_ESP32H2
+				default 18 if IDF_TARGET_ESP32H4
 				default 4 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 				help
 					GPIO used for UART RX
@@ -958,6 +978,7 @@ menu "Example Configuration"
 			Enable/disable sleeps while OTA operations
 
 	config ESP_HOSTED_WIFI_TX_RETRY_ENABLED
+		depends on ESP_HOSTED_CP_WIFI
 		bool "Enable WiFi TX retry on failure"
 		default y
 		help
@@ -974,6 +995,7 @@ menu "Example Configuration"
 			information on heap size or get an event when heap falls below a set threshold.
 
 	config ESP_WIFI_DPP_SUPPORT
+		depends on ESP_HOSTED_CP_WIFI
 		bool "Enable Wi-Fi Easy Connect (DPP)"
 		default n
 		help
@@ -1054,6 +1076,7 @@ menu "Example Configuration"
 	endmenu
 
 	config ESP_HOSTED_NETWORK_SPLIT_ENABLED
+		depends on ESP_HOSTED_CP_WIFI
 		bool "Enable Network Split: Shared IP address between host and slave"
 		depends on !IDF_TARGET_ESP32C2 && !IDF_TARGET_ESP32C3
 		default n
@@ -1303,6 +1326,7 @@ menu "Example Configuration"
 	rsource "Kconfig.light_sleep"
 
 	config ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START
+		depends on ESP_HOSTED_CP_WIFI
 		bool "Auto-connect WiFi on STA_START"
 		default y if ESP_HOSTED_NETWORK_SPLIT_ENABLED
 		default n
@@ -1312,6 +1336,7 @@ menu "Example Configuration"
 			Disable to manually control WiFi connection timing from host or application.
 
 	config ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_DISCONNECT
+		depends on ESP_HOSTED_CP_WIFI
 		bool "Auto-reconnect WiFi on STA_DISCONNECT"
 		default n
 		help
@@ -1341,6 +1366,7 @@ endif
 		default y
 
 	config ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG
+		depends on ESP_HOSTED_CP_WIFI
 		bool "Wi-Fi default config (pre-provisioning)"
 		default n
 		help
@@ -1551,9 +1577,9 @@ endif
 	endmenu
 endmenu
 
-# ==============================================================================
+#
 # GPIO Mapping Strategy for Development Boards
-# ==============================================================================
+#
 # This strategy ensures GPIO pins are mapped consistently across transport
 # interfaces (SDIO, SPI FD, SPI HD, UART). This allows users to switch
 # transports without changing physical hardware connections.

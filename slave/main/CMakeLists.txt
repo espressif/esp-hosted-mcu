@@ -23,6 +23,18 @@ if(CONFIG_SOC_BT_SUPPORTED)
 	list(APPEND COMPONENT_SRCS "slave_bt.c")
 endif()
 
+if(CONFIG_ESP_HOSTED_CP_WIFI)
+	list(APPEND COMPONENT_SRCS "slave_wifi_std.c")
+endif()
+
+if(CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT)
+	list(APPEND COMPONENT_SRCS "slave_wifi_enterprise.c")
+endif()
+
+if (CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED)
+	list(APPEND COMPONENT_SRCS "slave_network_split.c")
+endif()
+
 set(COMPONENT_ADD_INCLUDEDIRS
 	"."
 	"${common_dir}"
