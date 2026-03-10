@@ -235,7 +235,6 @@ static esp_err_t req_ota_write_handler (Rpc *req,
 #else
 		ESP_LOGW(TAG, "esp_ota_check_image_validity() not available in this IDF version, skipping validation");
 		resp_payload->resp = ESP_OK;
-		return ESP_OK;
 #endif
 	}
 
