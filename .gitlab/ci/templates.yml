@@ -60,8 +60,13 @@
         echo "Added esp_hosted override to idf_component.yml"
       fi
     # Add slave target configuration if specified
+    # Also add wi-fi remote slave target for supported targets (not ESP32-H2)
     - |
       if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
+        if [[ "${IDF_SLAVE_TARGET}" != "esp32h2" ]]; then
+          echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+          echo "Added target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+        fi
         echo "CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
         echo "Added target CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
@@ -111,8 +116,13 @@
     - mkdir -p components
     - ln -sf ${OVERRIDE_PATH} components/esp_hosted
     # Add slave target configuration if specified
+    # Also add wi-fi remote slave target for supported targets (not ESP32-H2)
     - |
       if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
+        if [[ "${IDF_SLAVE_TARGET}" != "esp32h2" ]]; then
+          echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+          echo "Added target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+        fi
         echo "CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
         echo "Added slave target CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi
@@ -179,8 +189,13 @@
         echo "Added esp_hosted override to idf_component.yml"
       fi
     # Add slave target configuration if specified
+    # Also add wi-fi remote slave target for supported targets (not ESP32-H2)
     - |
       if [ ! -z "${IDF_SLAVE_TARGET}" ]; then
+        if [[ "${IDF_SLAVE_TARGET}" != "esp32h2" ]]; then
+          echo "CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
+          echo "Added target CONFIG_SLAVE_IDF_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
+        fi
         echo "CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y" >> sdkconfig.defaults
         echo "Added slave target CONFIG_ESP_HOSTED_CP_TARGET_${IDF_SLAVE_TARGET^^}=y to sdkconfig.defaults"
       fi

@@ -120,6 +120,7 @@ For the ESP32-C6 as the co-processor, edit `sdkconfig.defaults.esp32p4` to inclu
 ```
 ### sdkconfig for ESP32-P4 + C6 Dev board
 CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
 CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y
 
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16

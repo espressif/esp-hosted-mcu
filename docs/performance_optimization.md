@@ -64,6 +64,11 @@ A diagram showing the setup used to get the throughput numbers.
 
 ```
 ### sdkconfig for ESP32-P4 + C6 as co-processor
+
+# Let P4 know, C6 is attached as slave
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C6=y
+
 # Wi-Fi Performance
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16
 CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=64
@@ -102,6 +107,7 @@ Using SDIO Transport, 4-bits, running at 40MHz, connected to a 2.4GHz network ov
 
 # Let P4 know, C5 is attached as slave
 CONFIG_SLAVE_IDF_TARGET_ESP32C5=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C5=y
 
 # Optional PCB selection: Uncomment if you are using Pre designed PCB P4_C5_CORE_BOARD (to use correct GPIOs on that PCB)
 # CONFIG_ESP_HOSTED_P4_C5_CORE_BOARD=y
@@ -145,6 +151,7 @@ Using SDIO Transport, 4-bits, running at 40MHz, connected to a 5GHz network over
 
 # Let P4 know, C61 is attached as slave
 CONFIG_SLAVE_IDF_TARGET_ESP32C61=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C61=y
 
 # Optional PCB selection: Uncomment if you are using Pre designed PCB P4_C61_CORE_BOARD (to use correct GPIOs on that PCB)
 # CONFIG_ESP_HOSTED_P4_C61_CORE_BOARD=y
@@ -190,6 +197,7 @@ Using SPI-FD Transport, running at 40MHz, connected to a 2.4GHz network over the
 ```
 # Let P4 know, C2 is attached as slave
 CONFIG_SLAVE_IDF_TARGET_ESP32C2=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C2=y
 
 ### sdkconfig for ESP32-P4 + C2 as co-processor
 # Wi-Fi Performance
@@ -231,6 +239,7 @@ Using SPI-FD Transport, running at 40MHz, connected to a 2.4GHz network over the
 
 # Let P4 know, S2 is attached as slave
 CONFIG_SLAVE_IDF_TARGET_ESP32S2=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32S2=y
 
 # Wi-Fi Performance
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=8
@@ -255,6 +264,11 @@ CONFIG_LWIP_TCP_SACK_OUT=y
 
 ```
 ### sdkconfig for ESP32-P4 + C3 as co-processor
+
+# Let P4 know, C3 is attached as slave
+CONFIG_SLAVE_IDF_TARGET_ESP32C3=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32C3=y
+
 # Wi-Fi Performance
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=20
 CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=40
