@@ -1,5 +1,11 @@
 # Unreleased - Main Branch
 
+None
+
+# Releases
+
+# $${\color{green} \text{2.12.1}}$$
+
 ## Features
 
 ### Allow disabling Wi-Fi and/or Bluetooth
@@ -38,8 +44,6 @@
 ## Bug Fixes
 
 - ESP Slave FW validation fails because OTA image validation depends on non-existent IDF 6.0+ APIs (GitHub ##165)
-
-# Releases
 
 # $${\color{cyan} \text{2.12.0}}$$
 
