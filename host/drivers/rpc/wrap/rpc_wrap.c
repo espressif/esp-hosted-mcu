@@ -738,6 +738,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_GpioInputEnable:
 	case RPC_ID__Resp_GpioSetPullMode:
 #endif
+#if H_EXT_COEX_SUPPORT
+	case RPC_ID__Resp_ExtCoex:
+#endif
 
 	case RPC_ID__Resp_GetCoprocessorFwVersion:
 									 {
@@ -2649,4 +2652,73 @@ esp_err_t esp_hosted_cp_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode
 	resp = rpc_slaveif_gpio_set_pull_mode(req);
 	return rpc_rsp_callback(resp);
 }
+#endif
+
+#if H_EXT_COEX_SUPPORT
+
+esp_err_t esp_hosted_cp_ext_coex_set_work_mode(esp_hosted_ext_coex_work_mode_t work_mode)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.ext_coex.cmd = RPC__EXT_COEX_CMD__SetWorkMode;
+	req->u.ext_coex.set_work_mode = (uint32_t)work_mode;
+	resp = rpc_slaveif_ext_coex(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_ext_coex_set_gpio_pin(uint32_t wire_type,
+		const esp_hosted_ext_coex_gpio_set_t *gpio_pins)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!gpio_pins || wire_type > ESP_HOSTED_EXT_COEX_WIRE_4)
+		return ESP_ERR_INVALID_ARG;
+
+	req->u.ext_coex.cmd = RPC__EXT_COEX_CMD__SetGpioPin;
+	req->u.ext_coex.set_gpio_wire_type = wire_type;
+	req->u.ext_coex.set_gpio_request_pin = gpio_pins->request;
+	req->u.ext_coex.set_gpio_priority_pin = gpio_pins->priority;
+	req->u.ext_coex.set_gpio_grant_pin = gpio_pins->grant;
+	req->u.ext_coex.set_gpio_tx_line_pin = gpio_pins->tx_line;
+
+	resp = rpc_slaveif_ext_coex(req);
+	return rpc_rsp_callback(resp);
+}
+
+#if H_EXT_COEX_ADVANCE_SUPPORT
+esp_err_t esp_hosted_cp_ext_coex_set_grant_delay(uint8_t delay_us)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.ext_coex.cmd = RPC__EXT_COEX_CMD__SetGrantDelay;
+	req->u.ext_coex.set_grant_delay_us = delay_us;
+	resp = rpc_slaveif_ext_coex(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_ext_coex_set_validate_high(bool is_high_valid)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.ext_coex.cmd = RPC__EXT_COEX_CMD__SetValidateHigh;
+	req->u.ext_coex.set_validate_high = is_high_valid;
+	resp = rpc_slaveif_ext_coex(req);
+	return rpc_rsp_callback(resp);
+}
+#endif
+
+esp_err_t esp_hosted_cp_ext_coex_disable(void)
+{
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.ext_coex.cmd = RPC__EXT_COEX_CMD__Disable;
+	resp = rpc_slaveif_ext_coex(req);
+	return rpc_rsp_callback(resp);
+}
+
 #endif

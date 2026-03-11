@@ -14,7 +14,7 @@ menu "Example Configuration"
 			For use-case where, BT is only required on co-processor, this option can be used
 
 	if ESP_HOSTED_CP_BT && (!BT_ENABLED || !SOC_BT_SUPPORTED)
-		comment "WARNING: ESP_HOSTED_CP_BT is enabled but BT_ENABLED or SOC_BT_SUPPORTED is disabled. This needs to be enabled for BT sharing to work."
+		comment "⚠️  Warning: ESP_HOSTED_CP_BT is enabled but BT_ENABLED or SOC_BT_SUPPORTED is disabled. This needs to be enabled for BT sharing to work."
 	endif
 
 	config ESP_HOSTED_CP_WIFI
@@ -1070,7 +1070,7 @@ menu "Example Configuration"
 				of run time stats' (FREERTOS_GENERATE_RUN_TIME_STATS) to be enabled.
 
 		if ESP_HOSTED_LOG_RUNTIME_FREERTOS_STATS && !FREERTOS_GENERATE_RUN_TIME_STATS
-			comment "WARNING: FREERTOS_GENERATE_RUN_TIME_STATS must be enabled for runtime stats logging to work!"
+			comment "⚠️  Warning: FREERTOS_GENERATE_RUN_TIME_STATS must be enabled for runtime stats logging to work!"
 		endif
 
 	endmenu
@@ -1381,6 +1381,38 @@ endif
 			Enable RPC methods that allow the HOST MCU to configure and control
 			GPIOs on the SLAVE. Leave disabled unless you really need it.
 			Access to GPIOs used by the transport (SPI/SDIO/SPI-HD/UART) are always blocked.
+
+	config ESP_HOSTED_CP_EXT_COEX
+		bool "External Coexistence support (Host controls slave external co-ex)"
+		select ESP_COEX_EXTERNAL_COEXIST_ENABLE if !(BT_ENABLED || NIMBLE_ENABLED) && !IDF_TARGET_ESP32 && ESP_COEX_ENABLED
+		default n
+		help
+			Enable RPC handlers for external coexistence configuration from the host.
+			Requires CONFIG_EXTERNAL_COEX_ENABLE (Component config -> Wi-Fi -> External coexistence).
+
+	if ESP_HOSTED_CP_EXT_COEX
+
+		if BT_ENABLED
+			comment "⚠️  DISABLE idf BT for external coex. Disable BT_ENABLED (Component config → Bluetooth => Bluetooth)"
+		endif
+
+		if ESP_HOSTED_COPROCESSOR_BT_ENABLED
+			comment "⚠️  DISABLE Hosted BT flag for external coex. Disable ESP_HOSTED_COPROCESSOR_BT_ENABLED (Example Configuration => Enable BT sharing via hosted)"
+		endif
+
+		if IDF_TARGET_ESP32
+			comment "⚠️  ESP32 target not supported for external coex, Use another co-processor"
+		endif
+
+		if !ESP_COEX_ENABLED
+			comment "⚠️  Cannot work without ESP_COEX_ENABLED. Check why is this disabled."
+		endif
+
+		if !ESP_COEX_EXTERNAL_COEXIST_ENABLE
+			comment "⚠️  Enable WiFi external coexistence, ESP_COEX_EXTERNAL_COEXIST_ENABLE (Component config → Wireless Coexistence => External Coexistence)"
+		endif
+
+	endif
 
 	menu "Wi-Fi default config (pre-provisioning)"
 		depends on ESP_HOSTED_USE_EXAMPLE_WIFI_PRE_PROVISION_CONFIG

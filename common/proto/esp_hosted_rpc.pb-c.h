@@ -247,6 +247,8 @@ typedef struct RpcReqGpioInputEnable RpcReqGpioInputEnable;
 typedef struct RpcRespGpioInputEnable RpcRespGpioInputEnable;
 typedef struct RpcReqGpioSetPullMode RpcReqGpioSetPullMode;
 typedef struct RpcRespGpioSetPullMode RpcRespGpioSetPullMode;
+typedef struct RpcReqExtCoex RpcReqExtCoex;
+typedef struct RpcRespExtCoex RpcRespExtCoex;
 typedef struct RpcEventDhcpDnsStatus RpcEventDhcpDnsStatus;
 typedef struct RpcEventStaItwtSetup RpcEventStaItwtSetup;
 typedef struct RpcEventStaItwtTeardown RpcEventStaItwtTeardown;
@@ -979,13 +981,17 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_GpioSetPullMode = 395,
   /*
+   * 0x18C
+   */
+  RPC_ID__Req_ExtCoex = 396,
+  /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   *0x18C
+   *0x18D
    */
-  RPC_ID__Req_Max = 396,
+  RPC_ID__Req_Max = 397,
   /*
    ** Response Msgs *
    */
@@ -1146,11 +1152,12 @@ typedef enum _RpcId {
   RPC_ID__Resp_GpioSetDirection = 649,
   RPC_ID__Resp_GpioInputEnable = 650,
   RPC_ID__Resp_GpioSetPullMode = 651,
+  RPC_ID__Resp_ExtCoex = 652,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 652,
+  RPC_ID__Resp_Max = 653,
   /*
    ** Event Msgs *
    */
@@ -1223,6 +1230,17 @@ typedef enum _RpcMemMonitorConfig {
   RPC__MEM_MONITOR_CONFIG__MEMMONITOR_ENABLE = 2
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC__MEM_MONITOR_CONFIG)
 } RpcMemMonitorConfig;
+/*
+ * Single RPC for external coex: cmd determines which fields are used 
+ */
+typedef enum _RpcExtCoexCmd {
+  RPC__EXT_COEX_CMD__SetGpioPin = 0,
+  RPC__EXT_COEX_CMD__Disable = 1,
+  RPC__EXT_COEX_CMD__SetWorkMode = 2,
+  RPC__EXT_COEX_CMD__SetGrantDelay = 3,
+  RPC__EXT_COEX_CMD__SetValidateHigh = 4
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC__EXT_COEX_CMD)
+} RpcExtCoexCmd;
 
 /* --- messages --- */
 
@@ -4702,6 +4720,34 @@ struct  RpcRespGpioSetPullMode
     , 0 }
 
 
+struct  RpcReqExtCoex
+{
+  ProtobufCMessage base;
+  uint32_t cmd;
+  uint32_t set_gpio_wire_type;
+  int32_t set_gpio_request_pin;
+  int32_t set_gpio_priority_pin;
+  int32_t set_gpio_grant_pin;
+  int32_t set_gpio_tx_line_pin;
+  uint32_t set_work_mode;
+  uint32_t set_grant_delay_us;
+  protobuf_c_boolean set_validate_high;
+};
+#define RPC__REQ__EXT_COEX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__ext_coex__descriptor) \
+    , 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+
+
+struct  RpcRespExtCoex
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__EXT_COEX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__ext_coex__descriptor) \
+    , 0 }
+
+
 struct  RpcEventDhcpDnsStatus
 {
   ProtobufCMessage base;
@@ -5540,6 +5586,7 @@ typedef enum {
   RPC__PAYLOAD_REQ_GPIO_SET_DIRECTION = 393,
   RPC__PAYLOAD_REQ_GPIO_INPUT_ENABLE = 394,
   RPC__PAYLOAD_REQ_GPIO_SET_PULL_MODE = 395,
+  RPC__PAYLOAD_REQ_EXT_COEX = 396,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -5650,6 +5697,7 @@ typedef enum {
   RPC__PAYLOAD_RESP_GPIO_SET_DIRECTION = 649,
   RPC__PAYLOAD_RESP_GPIO_INPUT_ENABLE = 650,
   RPC__PAYLOAD_RESP_GPIO_SET_PULL_MODE = 651,
+  RPC__PAYLOAD_RESP_EXT_COEX = 652,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -5804,6 +5852,7 @@ struct  Rpc
     RpcReqGpioSetDirection *req_gpio_set_direction;
     RpcReqGpioInputEnable *req_gpio_input_enable;
     RpcReqGpioSetPullMode *req_gpio_set_pull_mode;
+    RpcReqExtCoex *req_ext_coex;
     /*
      ** Responses *
      */
@@ -5917,6 +5966,7 @@ struct  Rpc
     RpcRespGpioSetDirection *resp_gpio_set_direction;
     RpcRespGpioInputEnable *resp_gpio_input_enable;
     RpcRespGpioSetPullMode *resp_gpio_set_pull_mode;
+    RpcRespExtCoex *resp_ext_coex;
     /*
      ** Notifications *
      */
@@ -10356,6 +10406,44 @@ RpcRespGpioSetPullMode *
 void   rpc__resp__gpio_set_pull_mode__free_unpacked
                      (RpcRespGpioSetPullMode *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqExtCoex methods */
+void   rpc__req__ext_coex__init
+                     (RpcReqExtCoex         *message);
+size_t rpc__req__ext_coex__get_packed_size
+                     (const RpcReqExtCoex   *message);
+size_t rpc__req__ext_coex__pack
+                     (const RpcReqExtCoex   *message,
+                      uint8_t             *out);
+size_t rpc__req__ext_coex__pack_to_buffer
+                     (const RpcReqExtCoex   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqExtCoex *
+       rpc__req__ext_coex__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__ext_coex__free_unpacked
+                     (RpcReqExtCoex *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespExtCoex methods */
+void   rpc__resp__ext_coex__init
+                     (RpcRespExtCoex         *message);
+size_t rpc__resp__ext_coex__get_packed_size
+                     (const RpcRespExtCoex   *message);
+size_t rpc__resp__ext_coex__pack
+                     (const RpcRespExtCoex   *message,
+                      uint8_t             *out);
+size_t rpc__resp__ext_coex__pack_to_buffer
+                     (const RpcRespExtCoex   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespExtCoex *
+       rpc__resp__ext_coex__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__ext_coex__free_unpacked
+                     (RpcRespExtCoex *message,
+                      ProtobufCAllocator *allocator);
 /* RpcEventDhcpDnsStatus methods */
 void   rpc__event__dhcp_dns_status__init
                      (RpcEventDhcpDnsStatus         *message);
@@ -12270,6 +12358,12 @@ typedef void (*RpcReqGpioSetPullMode_Closure)
 typedef void (*RpcRespGpioSetPullMode_Closure)
                  (const RpcRespGpioSetPullMode *message,
                   void *closure_data);
+typedef void (*RpcReqExtCoex_Closure)
+                 (const RpcReqExtCoex *message,
+                  void *closure_data);
+typedef void (*RpcRespExtCoex_Closure)
+                 (const RpcRespExtCoex *message,
+                  void *closure_data);
 typedef void (*RpcEventDhcpDnsStatus_Closure)
                  (const RpcEventDhcpDnsStatus *message,
                   void *closure_data);
@@ -12481,6 +12575,7 @@ extern const ProtobufCEnumDescriptor    rpc_id__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__gpio_mode__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__gpio_pull_mode__descriptor;
 extern const ProtobufCEnumDescriptor    rpc__mem_monitor_config__descriptor;
+extern const ProtobufCEnumDescriptor    rpc__ext_coex_cmd__descriptor;
 extern const ProtobufCMessageDescriptor wifi_init_config__descriptor;
 extern const ProtobufCMessageDescriptor wifi_country__descriptor;
 extern const ProtobufCMessageDescriptor wifi_active_scan_time__descriptor;
@@ -12713,6 +12808,8 @@ extern const ProtobufCMessageDescriptor rpc__req__gpio_input_enable__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_input_enable__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__gpio_set_pull_mode__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__gpio_set_pull_mode__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__ext_coex__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__ext_coex__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__dhcp_dns_status__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_setup__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__sta_itwt_teardown__descriptor;

@@ -56,3 +56,8 @@ CONFIG_IPERF_REPORT_TASK_PRIORITY=18
 # 9. Mem optimizations
 #---------------------
 CONFIG_FREERTOS_PLACE_FUNCTIONS_INTO_FLASH=y
+
+# 10. Bluetooth
+#--------------
+CONFIG_BT_ENABLED=n
+

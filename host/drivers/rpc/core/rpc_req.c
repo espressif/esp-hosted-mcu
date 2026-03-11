@@ -930,6 +930,22 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->pull = app_req->u.gpio_set_pull_mode.pull_mode;
 		break;
 #endif
+#if H_EXT_COEX_SUPPORT
+	} case RPC_ID__Req_ExtCoex: {
+		RPC_ALLOC_ASSIGN(RpcReqExtCoex, req_ext_coex,
+				rpc__req__ext_coex__init);
+
+		req_payload->cmd = app_req->u.ext_coex.cmd;
+		req_payload->set_gpio_wire_type = app_req->u.ext_coex.set_gpio_wire_type;
+		req_payload->set_gpio_request_pin = app_req->u.ext_coex.set_gpio_request_pin;
+		req_payload->set_gpio_priority_pin = app_req->u.ext_coex.set_gpio_priority_pin;
+		req_payload->set_gpio_grant_pin = app_req->u.ext_coex.set_gpio_grant_pin;
+		req_payload->set_gpio_tx_line_pin = app_req->u.ext_coex.set_gpio_tx_line_pin;
+		req_payload->set_work_mode = app_req->u.ext_coex.set_work_mode;
+		req_payload->set_grant_delay_us = app_req->u.ext_coex.set_grant_delay_us;
+		req_payload->set_validate_high = app_req->u.ext_coex.set_validate_high;
+		break;
+#endif
 	} default: {
 		*failure_status = RPC_ERR_UNSUPPORTED_MSG;
 		ESP_LOGE(TAG, "Unsupported RPC Req[%u]",req->msg_id);

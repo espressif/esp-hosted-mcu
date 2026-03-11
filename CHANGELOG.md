@@ -1,15 +1,49 @@
 # Unreleased - Main Branch
 
+None
+
+# Releases
+
+# $${\color{green} \text{2.12.1}}$$
+
 ## Features
 
-- Added support for Bluetooth-only Co-processors (like ESP32-H2)
+### Allow disabling Wi-Fi and/or Bluetooth
+
 - Added Co-processor option to disable Wi-Fi support (for Bluetooth-only support)
 - Re-organised co-processor code: moved Wi-Fi, Wi-Fi Enterprise and Network Split code into individual files
 - Added initial support for ESP32-H4 as co-processor
   - only works with UART interface as ESP-Hosted Transport. SPI to be enabled later.
   - Bluetooth not yet enabled in ESP-IDF
 
-# Releases
+### Co-processor: External Coexistence
+
+- Add support to manage co-processor external Wi-Fi coexistence from the host.
+- APIs Added
+  - `esp_hosted_cp_ext_coex_set_work_mode`
+  - `esp_hosted_cp_ext_coex_set_gpio_pin`
+  - `esp_hosted_cp_ext_coex_set_grant_delay`
+  - `esp_hosted_cp_ext_coex_set_validate_high`
+  - `esp_hosted_cp_ext_coex_disable`
+- Host Example Added
+  - examples/host_manage_copro_ext_coex
+- Documentation
+  - examples/host_manage_copro_ext_coex/README.md
+- Config
+  - Host
+    - ESP_HOSTED_CP_EXT_COEX
+    - ESP_HOSTED_CP_EXT_COEX_ADVANCE
+  - Slave
+    - ESP_HOSTED_CP_EXT_COEX
+
+### Other Features
+
+- Added support for Bluetooth-only Co-processors (like ESP32-H2)
+- Allow ESP-Hosted component to be manually disabled through idf menuconfig
+
+## Bug Fixes
+
+- ESP Slave FW validation fails because OTA image validation depends on non-existent IDF 6.0+ APIs (GitHub ##165)
 
 # $${\color{cyan} \text{2.12.0}}$$
 

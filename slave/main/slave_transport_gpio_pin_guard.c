@@ -1,13 +1,13 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "sdkconfig.h"
-#include "slave_gpio_extender.h"
 
-#if H_GPIO_EXPANDER_SUPPORT
+#include "slave_transport_gpio_pin_guard.h"
+
 
 static inline void add_pin(uint64_t *mask, int pin)
 {
@@ -75,5 +75,3 @@ uint8_t transport_gpio_pin_guard_is_eligible(gpio_num_t pin)
 	uint64_t reserved = get_reserved_pin_mask();
 	return ((reserved & (1ULL << pin)) == 0);
 }
-
-#endif

@@ -657,4 +657,16 @@ bool esp_hosted_is_config_valid(void);
   #define H_GPIO_EXPANDER_SUPPORT 0
 #endif
 
+#if CONFIG_ESP_HOSTED_CP_EXT_COEX
+  #define H_EXT_COEX_SUPPORT 1
+#else
+  #define H_EXT_COEX_SUPPORT 0
+#endif
+
+#if CONFIG_ESP_HOSTED_CP_EXT_COEX_ADVANCE
+  #define H_EXT_COEX_ADVANCE_SUPPORT 1
+#else
+  #define H_EXT_COEX_ADVANCE_SUPPORT 0
+#endif
+
 #endif /*__ESP_HOSTED_CONFIG_H__*/

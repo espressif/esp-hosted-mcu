@@ -1830,6 +1830,23 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			GPIO requests that target pins used by the active transport will be rejected.
 			Note: ESP_HOSTED_ENABLE_GPIO_EXPANDER should also be enabled at co-processor to use this
 
+	config ESP_HOSTED_CP_EXT_COEX
+		bool "Co-Processor External Coexistence"
+		default n
+		help
+			Enable RPC methods to configure external coexistence GPIO pins on the
+			co-processor (slave). Call before esp_wifi_init(). GPIOs are on the
+			slave; used for C6-H2 external coex. Requires CONFIG_ESP_HOSTED_CP_EXT_COEX
+			and CONFIG_EXTERNAL_COEX_ENABLE on the co-processor.
+
+	config ESP_HOSTED_CP_EXT_COEX_ADVANCE
+		bool "Co-Processor External Coexistence - Advanced"
+		depends on ESP_HOSTED_CP_EXT_COEX
+		default n
+		help
+			Enable work mode, grant delay, and validate-high RPCs. Requires
+			SOC_EXTERNAL_COEX_ADVANCE support on the co-processor (e.g. ESP32-C6).
+
 	config ESP_HOSTED_ENABLE_DPP
 		depends on ESP_HOSTED_PRIV_ENABLE_WIFI_OPTIONS
 		bool "Enable Wi-Fi Easy Connect (DPP)"

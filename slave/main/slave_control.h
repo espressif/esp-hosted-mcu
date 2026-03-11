@@ -7,6 +7,7 @@
 #ifndef __SLAVE_CONTROL__H__
 #define __SLAVE_CONTROL__H__
 #include <esp_err.h>
+#include "esp_idf_version.h"
 #include "interface.h"
 #include "sdkconfig.h"
 

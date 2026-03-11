@@ -109,15 +109,16 @@ The RPC IDs listed here are for requests and events. Each request will have a co
 |  99 |    266 | OTAActivate                        |            2.6.0 |
 | 100 |    267 | AppGetDesc                         |            2.6.7 |
 | 101 |    388 | CustomRpc                          |            2.8.1 |
-| 102 |    389 | GpioConfig                         |           2.10.0 |
-| 103 |    390 | GpioResetPin                       |           2.10.0 |
-| 104 |    391 | GpioSetLevel                       |           2.10.0 |
-| 105 |    392 | GpioGetLevel                       |           2.10.0 |
-| 106 |    393 | GpioSetDirection                   |           2.10.0 |
-| 107 |    394 | GpioInputEnable                    |           2.10.0 |
-| 108 |    395 | GpioSetPullMode                    |           2.10.0 |
-| 109 |    268 | MemMonitor                         |           2.11.7 |
-| 110 |    269 | WifiScanParams                     |           2.12.0 |
+| 102 |    389 | GpioConfig                         |            2.10.0 |
+| 103 |    390 | GpioResetPin                       |            2.10.0 |
+| 104 |    391 | GpioSetLevel                       |            2.10.0 |
+| 105 |    392 | GpioGetLevel                       |            2.10.0 |
+| 106 |    393 | GpioSetDirection                   |            2.10.0 |
+| 107 |    394 | GpioInputEnable                    |            2.10.0 |
+| 108 |    395 | GpioSetPullMode                    |            2.10.0 |
+| 109 |    268 | MemMonitor                         |            2.11.7 |
+| 110 |    269 | WifiScanParams                     |            2.12.0 |
+| 111 |    396 | ExtCoex                            |            2.12.1 |
 
 ## List of RPC Events
 
