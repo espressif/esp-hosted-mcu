@@ -365,6 +365,25 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			break;
 		} case RPC_ID__Event_DhcpDnsStatus: {
 			break;
+#if H_GPIO_EXPANDER_SUPPORT && CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+        } case RPC_ID__Event_GpioInterrupt: {
+            int gpio_num = app_event->u.e_gpio_interrupt.gpio_num;
+            int level = app_event->u.e_gpio_interrupt.level;
+            esp_hosted_gpio_isr_t handler = NULL;
+            void *handler_arg = NULL;
+
+            gpio_isr_table_lock();
+            int slot = gpio_isr_find_slot(gpio_num);
+            if (slot >= 0 && s_gpio_isr_table[slot].handler) {
+                handler = s_gpio_isr_table[slot].handler;
+                handler_arg = s_gpio_isr_table[slot].arg;
+            }
+            gpio_isr_table_unlock();
+            if (handler) {
+                handler(gpio_num, level, handler_arg);
+            }
+            break;
+#endif
 		} case RPC_ID__Event_MemMonitor: {
 			esp_hosted_event_mem_info_t *p_e = &app_event->u.e_mem_info;
 			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_MEM_MONITOR,
@@ -482,6 +501,9 @@ int rpc_register_event_callbacks(void)
 		{ RPC_ID__Event_StaDisconnected,           rpc_event_callback },
 		{ RPC_ID__Event_DhcpDnsStatus,             rpc_event_callback },
 		{ RPC_ID__Event_MemMonitor,                rpc_event_callback },
+#if H_GPIO_EXPANDER_SUPPORT && CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+		{ RPC_ID__Event_GpioInterrupt,             rpc_event_callback },
+#endif
 #if H_WIFI_HE_SUPPORT
 		{ RPC_ID__Event_StaItwtSetup,              rpc_event_callback },
 		{ RPC_ID__Event_StaItwtTeardown,           rpc_event_callback },
@@ -2555,6 +2577,64 @@ esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec)
 }
 
 #if H_GPIO_EXPANDER_SUPPORT
+#include "esp_hosted_cp_gpio.h"
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+#define H_GPIO_EXPANDER_ISR_TABLE_SIZE 10
+
+typedef struct {
+    int gpio_num;
+    esp_hosted_gpio_isr_t handler;
+    void *arg;
+} hosted_gpio_isr_entry_t;
+
+static hosted_gpio_isr_entry_t s_gpio_isr_table[H_GPIO_EXPANDER_ISR_TABLE_SIZE] = {
+    [0 ... (H_GPIO_EXPANDER_ISR_TABLE_SIZE - 1)] = {
+        .gpio_num = -1,
+        .handler = NULL,
+        .arg = NULL,
+    }
+};
+
+static void *s_gpio_isr_table_mutex = NULL;
+
+static void gpio_isr_table_lock(void)
+{
+    if (!s_gpio_isr_table_mutex) {
+        s_gpio_isr_table_mutex = g_h.funcs->_h_create_mutex();
+    }
+    if (s_gpio_isr_table_mutex) {
+        g_h.funcs->_h_lock_mutex(s_gpio_isr_table_mutex, HOSTED_BLOCK_MAX);
+    }
+}
+
+static void gpio_isr_table_unlock(void)
+{
+    if (s_gpio_isr_table_mutex) {
+        g_h.funcs->_h_unlock_mutex(s_gpio_isr_table_mutex);
+    }
+}
+
+static int gpio_isr_find_slot(int gpio_num)
+{
+    for (int i = 0; i < H_GPIO_EXPANDER_ISR_TABLE_SIZE; i++) {
+        if (s_gpio_isr_table[i].gpio_num == gpio_num) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int gpio_isr_find_free_slot(void)
+{
+    for (int i = 0; i < H_GPIO_EXPANDER_ISR_TABLE_SIZE; i++) {
+        if (s_gpio_isr_table[i].gpio_num == -1) {
+            return i;
+        }
+    }
+    return -1;
+}
+#endif
+
 esp_err_t esp_hosted_cp_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConfig)
 {
 	/* implemented synchronous */
@@ -2569,6 +2649,14 @@ esp_err_t esp_hosted_cp_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConf
 	req->u.gpio_config.pull_up_en = pGPIOConfig->pull_up_en;
 	req->u.gpio_config.pull_down_en = pGPIOConfig->pull_down_en;
 	req->u.gpio_config.intr_type = pGPIOConfig->intr_type;
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+	req->u.gpio_config.hosted_isr_enable = 1;
+#else
+	if (pGPIOConfig->intr_type != H_GPIO_INTR_DISABLE) {
+		return ESP_ERR_NOT_SUPPORTED;
+	}
+	req->u.gpio_config.hosted_isr_enable = 0;
+#endif
 
 	resp = rpc_slaveif_gpio_config(req);
 
@@ -2652,6 +2740,123 @@ esp_err_t esp_hosted_cp_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode
 	resp = rpc_slaveif_gpio_set_pull_mode(req);
 	return rpc_rsp_callback(resp);
 }
+
+esp_err_t esp_hosted_cp_gpio_set_intr_type(uint32_t gpio_num, uint32_t intr_type)
+{
+#if !CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+    if (intr_type != H_GPIO_INTR_DISABLE) {
+        ESP_LOGE(TAG, "GPIO ISR not enabled in Kconfig");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+#endif
+    /* implemented synchronous */
+    ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+    ctrl_cmd_t *resp = NULL;
+
+    req->u.gpio_intr_control.cmd = RPC__REQ__GPIO_INTR__MSG_ID__GPIO_INTR_SET_TYPE;
+    req->u.gpio_intr_control.gpio_num = gpio_num;
+    req->u.gpio_intr_control.intr_type = intr_type;
+
+    resp = rpc_slaveif_gpio_intr_control(req);
+    return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_intr_enable(uint32_t gpio_num)
+{
+#if !CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+    ESP_LOGE(TAG, "GPIO ISR not enabled in Kconfig");
+    return ESP_ERR_NOT_SUPPORTED;
+#endif
+    /* implemented synchronous */
+    ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+    ctrl_cmd_t *resp = NULL;
+
+    req->u.gpio_intr_control.cmd = RPC__REQ__GPIO_INTR__MSG_ID__GPIO_INTR_ENABLE;
+    req->u.gpio_intr_control.gpio_num = gpio_num;
+    req->u.gpio_intr_control.intr_type = -1;
+    resp = rpc_slaveif_gpio_intr_control(req);
+    return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_intr_disable(uint32_t gpio_num)
+{
+#if !CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+    ESP_LOGE(TAG, "GPIO ISR not enabled in Kconfig");
+    return ESP_ERR_NOT_SUPPORTED;
+#endif
+    /* implemented synchronous */
+    ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+    ctrl_cmd_t *resp = NULL;
+
+    req->u.gpio_intr_control.cmd = RPC__REQ__GPIO_INTR__MSG_ID__GPIO_INTR_DISABLE;
+    req->u.gpio_intr_control.gpio_num = gpio_num;
+    req->u.gpio_intr_control.intr_type = -1;
+    resp = rpc_slaveif_gpio_intr_control(req);
+    return rpc_rsp_callback(resp);
+}
+
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+esp_err_t esp_hosted_cp_gpio_isr_handler_add(int gpio_num,
+        esp_hosted_gpio_isr_t handler, void *arg)
+{
+    if (gpio_num < 0 || !handler) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    gpio_isr_table_lock();
+
+    int slot = gpio_isr_find_slot(gpio_num);
+    if (slot < 0) {
+        slot = gpio_isr_find_free_slot();
+        if (slot < 0) {
+            gpio_isr_table_unlock();
+            return ESP_ERR_NO_MEM;
+        }
+        s_gpio_isr_table[slot].gpio_num = gpio_num;
+    }
+
+    s_gpio_isr_table[slot].handler = handler;
+    s_gpio_isr_table[slot].arg = arg;
+
+    gpio_isr_table_unlock();
+    return ESP_OK;
+}
+
+esp_err_t esp_hosted_cp_gpio_isr_handler_remove(int gpio_num)
+{
+    if (gpio_num < 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    gpio_isr_table_lock();
+
+    int slot = gpio_isr_find_slot(gpio_num);
+    if (slot < 0) {
+        gpio_isr_table_unlock();
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    s_gpio_isr_table[slot].gpio_num = -1;
+    s_gpio_isr_table[slot].handler = NULL;
+    s_gpio_isr_table[slot].arg = NULL;
+
+    gpio_isr_table_unlock();
+    return ESP_OK;
+}
+#else
+esp_err_t esp_hosted_cp_gpio_isr_handler_add(int gpio_num,
+        esp_hosted_gpio_isr_t handler, void *arg)
+{
+    ESP_LOGE(TAG, "GPIO ISR not enabled in Kconfig");
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t esp_hosted_cp_gpio_isr_handler_remove(int gpio_num)
+{
+    ESP_LOGE(TAG, "GPIO ISR not enabled in Kconfig");
+    return ESP_ERR_NOT_SUPPORTED;
+}
+#endif
 #endif
 
 #if H_EXT_COEX_SUPPORT

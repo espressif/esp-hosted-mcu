@@ -1830,6 +1830,16 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			GPIO requests that target pins used by the active transport will be rejected.
 			Note: ESP_HOSTED_ENABLE_GPIO_EXPANDER should also be enabled at co-processor to use this
 
+    config ESP_HOSTED_ENABLE_GPIO_EXPANDER_ISR
+        bool "Enable GPIO Expander ISR events (host consent)"
+        depends on ESP_HOSTED_ENABLE_GPIO_EXPANDER
+        default n
+        help
+            Enable host-side consent for GPIO Expander interrupt events.
+            When enabled, the host sets a consent flag in GPIO config RPCs
+            so the slave can install ISR handlers. Events are delivered over
+            transport and are not real hardware interrupts.
+
 	config ESP_HOSTED_CP_EXT_COEX
 		bool "Co-Processor External Coexistence"
 		default n

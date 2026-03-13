@@ -40,6 +40,12 @@ enum {
 #define H_CP_GPIO_PULL_UP                  (1)
 #define H_CP_GPIO_PULL_DOWN                (0)
 
+typedef void (*esp_hosted_gpio_isr_t)(int gpio_num, int level, void *arg);
+
+esp_err_t esp_hosted_cp_gpio_isr_handler_add(int gpio_num,
+        esp_hosted_gpio_isr_t handler, void *arg);
+esp_err_t esp_hosted_cp_gpio_isr_handler_remove(int gpio_num);
+
 esp_err_t esp_hosted_cp_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConfig);
 esp_err_t esp_hosted_cp_gpio_reset_pin(uint32_t gpio_num);
 esp_err_t esp_hosted_cp_gpio_set_level(uint32_t gpio_num, uint32_t level);
@@ -47,5 +53,8 @@ esp_err_t esp_hosted_cp_gpio_get_level(uint32_t gpio_num, int *level);
 esp_err_t esp_hosted_cp_gpio_set_direction(uint32_t gpio_num, uint32_t mode);
 esp_err_t esp_hosted_cp_gpio_input_enable(uint32_t gpio_num);
 esp_err_t esp_hosted_cp_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode);
+esp_err_t esp_hosted_cp_gpio_set_intr_type(uint32_t gpio_num, uint32_t intr_type);
+esp_err_t esp_hosted_cp_gpio_intr_enable(uint32_t gpio_num);
+esp_err_t esp_hosted_cp_gpio_intr_disable(uint32_t gpio_num);
 
 #endif /*__ESP_HOSTED_CP_GPIO_H__*/
