@@ -258,10 +258,11 @@ enum RpcId {
 	Req_GpioSetPullMode               = 395; // 0x18B
 
 	Req_ExtCoex                      = 396; // 0x18C
+	Req_GpioIntrControl              = 397; // 0x18D
 
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 397; //0x18D
+	Req_Max = 398; //0x18E
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -440,10 +441,11 @@ enum RpcId {
 	Resp_GpioInputEnable                      = 650;
 	Resp_GpioSetPullMode                      = 651;
 	Resp_ExtCoex                              = 652;
+	Resp_GpioIntrControl                      = 653;
 
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 653;
+	Resp_Max = 654;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -475,10 +477,11 @@ enum RpcId {
 	Event_CustomRpc = 788;
 
 	Event_MemMonitor = 789;
+	Event_GpioInterrupt = 790;
 
 	/* Add new control path command notification before Event_Max
 	 * and update Event_Max */
-	Event_Max = 790;
+	Event_Max = 791;
 }
 
 message wifi_init_config {
@@ -1731,6 +1734,12 @@ message Rpc_Event_StaDisconnected {
 	wifi_event_sta_disconnected sta_disconnected = 2;
 }
 
+message Rpc_Event_GpioInterrupt {
+    int32 resp = 1;
+    int32 gpio_num = 2;
+    uint32 level = 3;
+}
+
 enum Rpc_GpioMode {
 	GPIO_MODE_DISABLE = 0;
 	GPIO_MODE_INPUT = 1;
@@ -1757,6 +1766,7 @@ message Rpc_GpioConfig {
 	bool pull_up_en = 3;
 	bool pull_down_en = 4;
 	int32 intr_type = 5;
+	bool hosted_isr_enable = 6;
 }
 
 message Rpc_Req_GpioConfig {
@@ -1810,6 +1820,21 @@ message Rpc_Req_GpioSetPullMode {
 }
 message Rpc_Resp_GpioSetPullMode {
 	int32 resp = 1;
+}
+
+enum Rpc_Req_GpioIntr_MsgId {
+    GPIO_INTR_SET_TYPE = 0;
+    GPIO_INTR_ENABLE = 1;
+    GPIO_INTR_DISABLE = 2;
+}
+
+message Rpc_Req_GpioIntrControl {
+    Rpc_Req_GpioIntr_MsgId cmd = 1;
+    int32 gpio_num = 2;
+    int32 intr_type = 3; // only used when cmd=GPIO_INTR_SET_TYPE
+}
+message Rpc_Resp_GpioIntrControl {
+    int32 resp = 1;
 }
 
 /* Single RPC for external coex: cmd determines which fields are used */
@@ -2281,6 +2306,7 @@ message Rpc {
 		Rpc_Req_GpioSetPullMode             req_gpio_set_pull_mode            = 395;
 
 		Rpc_Req_ExtCoex                     req_ext_coex                      = 396;
+		Rpc_Req_GpioIntrControl             req_gpio_intr_control             = 397;
 
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
@@ -2420,6 +2446,7 @@ message Rpc {
 		Rpc_Resp_GpioSetPullMode            resp_gpio_set_pull_mode            = 651;
 
 		Rpc_Resp_ExtCoex                    resp_ext_coex                     = 652;
+		Rpc_Resp_GpioIntrControl            resp_gpio_intr_control             = 653;
 
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
@@ -2444,5 +2471,6 @@ message Rpc {
 
 		Rpc_Event_CustomRpc                 event_custom_rpc                   = 788;
 		Rpc_Event_MemMonitor                event_mem_monitor                  = 789;
+		Rpc_Event_GpioInterrupt             event_gpio_interrupt               = 790;
 	}
 }

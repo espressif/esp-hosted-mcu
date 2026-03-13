@@ -890,6 +890,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->config->mode = app_req->u.gpio_config.mode;
 		req_payload->config->pull_up_en = app_req->u.gpio_config.pull_up_en;
 		req_payload->config->pull_down_en = app_req->u.gpio_config.pull_down_en;
+		req_payload->config->hosted_isr_enable = app_req->u.gpio_config.hosted_isr_enable;
 		break;
 	} case RPC_ID__Req_GpioResetPin: {
 		RPC_ALLOC_ASSIGN(RpcReqGpioResetPin, req_gpio_reset_pin,
@@ -929,6 +930,13 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->gpio_num = app_req->u.gpio_set_pull_mode.gpio_num;
 		req_payload->pull = app_req->u.gpio_set_pull_mode.pull_mode;
 		break;
+    } case RPC_ID__Req_GpioIntrControl: {
+        RPC_ALLOC_ASSIGN(RpcReqGpioIntrControl, req_gpio_intr_control,
+                rpc__req__gpio_intr_control__init);
+        req_payload->cmd = app_req->u.gpio_intr_control.cmd;
+        req_payload->gpio_num = app_req->u.gpio_intr_control.gpio_num;
+        req_payload->intr_type = app_req->u.gpio_intr_control.intr_type;
+        break;
 #endif
 #if H_EXT_COEX_SUPPORT
 	} case RPC_ID__Req_ExtCoex: {
