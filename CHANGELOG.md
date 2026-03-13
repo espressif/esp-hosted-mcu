@@ -4,6 +4,10 @@ None
 
 # Releases
 
+## Bug Fixes
+
+- Add slave target strings to `Kconfig` (required by Arduino build)
+
 # $${\color{green} \text{2.12.1}}$$
 
 ## Features
