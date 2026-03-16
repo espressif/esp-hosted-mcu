@@ -88,6 +88,20 @@ menu "ESP-Hosted config"
 	comment "ESP32-H4 is Co-processor Target"
 		depends on ESP_HOSTED_CP_TARGET_ESP32H4
 
+	config ESP_HOSTED_IDF_SLAVE_TARGET
+		string
+		default "esp32" if ESP_HOSTED_CP_TARGET_ESP32
+		default "esp32s2" if ESP_HOSTED_CP_TARGET_ESP32S2
+		default "esp32s3" if ESP_HOSTED_CP_TARGET_ESP32S3
+		default "esp32c2" if ESP_HOSTED_CP_TARGET_ESP32C2
+		default "esp32c3" if ESP_HOSTED_CP_TARGET_ESP32C3
+		default "esp32c6" if ESP_HOSTED_CP_TARGET_ESP32C6
+		default "esp32c5" if ESP_HOSTED_CP_TARGET_ESP32C5
+		default "esp32c61" if ESP_HOSTED_CP_TARGET_ESP32C61
+		default "esp32h2" if ESP_HOSTED_CP_TARGET_ESP32H2
+		default "esp32h4" if ESP_HOSTED_CP_TARGET_ESP32H4
+		default "invalid"
+
 	choice ESP_HOSTED_P4_DEV_BOARD
 		bool "Configure GPIOs for Development Board"
 		depends on IDF_TARGET_ESP32P4

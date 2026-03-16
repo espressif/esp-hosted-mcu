@@ -1549,6 +1549,11 @@ message Rpc_Resp_GetCoprocessorFwVersion {
 	uint32 major1 = 2;
 	uint32 minor1 = 3;
 	uint32 patch1 = 4;
+	int32 revision = 5;
+	int32 prerelease = 6;
+	int32 build = 7;
+	uint32 chip_id = 8;    // from sdkconfig->CONFIG_IDF_FIRMWARE_CHIP_ID
+	bytes idf_target = 9;  // from sdkconfig->CONFIG_IDF_TARGET
 }
 
 message Rpc_Req_SetDhcpDnsStatus {

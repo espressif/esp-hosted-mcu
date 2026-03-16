@@ -905,6 +905,10 @@ int rpc_ota_activate(void)
 
 esp_err_t rpc_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info)
 {
+	if (!ver_info) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	// change timeout value for this call
@@ -913,9 +917,46 @@ esp_err_t rpc_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info
 
 	resp = rpc_slaveif_get_coprocessor_fwversion(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
-		ver_info->major1 = resp->u.coprocessor_fwversion.major1;
-		ver_info->minor1 = resp->u.coprocessor_fwversion.minor1;
-		ver_info->patch1 = resp->u.coprocessor_fwversion.patch1;
+		ver_info->major1     = resp->u.coprocessor_fwversion.major1;
+		ver_info->minor1     = resp->u.coprocessor_fwversion.minor1;
+		ver_info->patch1     = resp->u.coprocessor_fwversion.patch1;
+		ver_info->revision   = resp->u.coprocessor_fwversion.revision;
+		ver_info->prerelease = resp->u.coprocessor_fwversion.prerelease;
+		ver_info->build      = resp->u.coprocessor_fwversion.build;
+	}
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t rpc_get_cp_info(uint32_t *cp_chip_id, char *cp_target_name, size_t cp_target_name_len)
+{
+	// allow caller to get the chip_id or target_name or both
+	if (!cp_chip_id && !cp_target_name) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	// change timeout value for this call
+	req->rsp_timeout_sec = GET_FWVERSION_TIMEOUT_SEC;
+	ctrl_cmd_t *resp = NULL;
+
+	resp = rpc_slaveif_get_coprocessor_fwversion(req);
+	if (resp && resp->resp_event_status == SUCCESS) {
+		if (cp_chip_id) {
+			// caller wants chip_id
+			*cp_chip_id = resp->u.coprocessor_fwversion.chip_id;
+		}
+		if (cp_target_name && cp_target_name_len) {
+			// caller wants target_name
+			size_t name_len = strlen(resp->u.coprocessor_fwversion.idf_target) + 1;
+			if (name_len <= cp_target_name_len) {
+				g_h.funcs->_h_memcpy(cp_target_name, resp->u.coprocessor_fwversion.idf_target, name_len);
+			} else {
+				ESP_LOGE(TAG, "Buffer is too small to hold Co-processor Name: should be at least %"PRIu16 " bytes", name_len);
+				resp->resp_event_status = ESP_ERR_INVALID_SIZE;
+			}
+		}
 	}
 
 	return rpc_rsp_callback(resp);

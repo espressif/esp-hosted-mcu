@@ -445,9 +445,14 @@ static esp_err_t req_get_coprocessor_fw_version(Rpc *req, Rpc *resp, void *priv_
 			RpcReqGetCoprocessorFwVersion, req_get_coprocessor_fwversion,
 			rpc__resp__get_coprocessor_fw_version__init);
 
-	resp_payload->major1 = PROJECT_VERSION_MAJOR_1;
-	resp_payload->minor1 = PROJECT_VERSION_MINOR_1;
-	resp_payload->patch1 = PROJECT_VERSION_PATCH_1;
+	resp_payload->major1     = PROJECT_VERSION_MAJOR_1;
+	resp_payload->minor1     = PROJECT_VERSION_MINOR_1;
+	resp_payload->patch1     = PROJECT_VERSION_PATCH_1;
+	resp_payload->revision   = -1;
+	resp_payload->prerelease = -1;
+	resp_payload->build      = -1;
+	resp_payload->chip_id    = CONFIG_IDF_FIRMWARE_CHIP_ID;
+	RPC_RESP_COPY_STR(resp_payload->idf_target, CONFIG_IDF_TARGET, strlen(CONFIG_IDF_TARGET));
 	resp_payload->resp = ESP_OK;
 
 	return ESP_OK;

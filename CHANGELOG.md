@@ -4,6 +4,20 @@ None
 
 # Releases
 
+# $${\color{green} \text{2.12.2}}$$
+
+## Bug Fixes
+
+- Add slave target strings to `Kconfig` (required by Arduino build)
+
+## Features
+
+- Add api to get the co-processor name and chip id to identify the co-processor
+- API Added
+  - `esp_hosted_get_cp_info`
+- Updated `examples/host_bt_controller_mac_addr` to request this information
+- Extended RPC for GetCoprocessorFwVersion to include the co-processor name and chip id
+
 # $${\color{green} \text{2.12.1}}$$
 
 ## Features

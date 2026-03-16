@@ -4153,10 +4153,21 @@ struct  RpcRespGetCoprocessorFwVersion
   uint32_t major1;
   uint32_t minor1;
   uint32_t patch1;
+  int32_t revision;
+  int32_t prerelease;
+  int32_t build;
+  /*
+   * from sdkconfig->CONFIG_IDF_FIRMWARE_CHIP_ID
+   */
+  uint32_t chip_id;
+  /*
+   * from sdkconfig->CONFIG_IDF_TARGET
+   */
+  ProtobufCBinaryData idf_target;
 };
 #define RPC__RESP__GET_COPROCESSOR_FW_VERSION__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__get_coprocessor_fw_version__descriptor) \
-    , 0, 0, 0, 0 }
+    , 0, 0, 0, 0, 0, 0, 0, 0, {0,NULL} }
 
 
 struct  RpcReqSetDhcpDnsStatus

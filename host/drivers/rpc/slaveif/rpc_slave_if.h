@@ -35,7 +35,8 @@ extern "C" {
 #define STATUS_LENGTH                        14
 #define VENDOR_OUI_BUF                       3
 
-#define IFACE_MAC_SIZE                       8 // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
+#define IFACE_MAC_SIZE                       8  // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
+#define IDF_TARGET_SIZE                      20 // increase as required if CONFIG_IDF_TARGET gets larger
 
 /*
 #define SUCCESS 0
@@ -208,6 +209,11 @@ typedef struct {
 	uint32_t major1;
 	uint32_t minor1;
 	uint32_t patch1;
+	int32_t revision;
+	int32_t prerelease;
+	int32_t build;
+	uint32_t chip_id;
+	char idf_target[IDF_TARGET_SIZE];
 } rpc_coprocessor_fwversion_t;
 
 typedef struct {

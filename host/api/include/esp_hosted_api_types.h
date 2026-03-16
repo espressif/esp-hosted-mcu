@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
 *
 * SPDX-License-Identifier: Apache-2.0
 */
@@ -18,6 +18,9 @@ typedef struct {
 	uint32_t major1;
 	uint32_t minor1;
 	uint32_t patch1;
+	int32_t revision;
+	int32_t prerelease;
+	int32_t build;
 } esp_hosted_coprocessor_fwver_t;
 
 #ifdef __cplusplus
