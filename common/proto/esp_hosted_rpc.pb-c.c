@@ -23044,7 +23044,7 @@ const ProtobufCMessageDescriptor rpc__req__get_coprocessor_fw_version__descripto
   (ProtobufCMessageInit) rpc__req__get_coprocessor_fw_version__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rpc__resp__get_coprocessor_fw_version__field_descriptors[4] =
+static const ProtobufCFieldDescriptor rpc__resp__get_coprocessor_fw_version__field_descriptors[9] =
 {
   {
     "resp",
@@ -23094,17 +23094,82 @@ static const ProtobufCFieldDescriptor rpc__resp__get_coprocessor_fw_version__fie
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "revision",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespGetCoprocessorFwVersion, revision),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "prerelease",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespGetCoprocessorFwVersion, prerelease),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "build",
+    7,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespGetCoprocessorFwVersion, build),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "chip_id",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespGetCoprocessorFwVersion, chip_id),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "idf_target",
+    9,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BYTES,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespGetCoprocessorFwVersion, idf_target),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned rpc__resp__get_coprocessor_fw_version__field_indices_by_name[] = {
+  6,   /* field[6] = build */
+  7,   /* field[7] = chip_id */
+  8,   /* field[8] = idf_target */
   1,   /* field[1] = major1 */
   2,   /* field[2] = minor1 */
   3,   /* field[3] = patch1 */
+  5,   /* field[5] = prerelease */
   0,   /* field[0] = resp */
+  4,   /* field[4] = revision */
 };
 static const ProtobufCIntRange rpc__resp__get_coprocessor_fw_version__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 4 }
+  { 0, 9 }
 };
 const ProtobufCMessageDescriptor rpc__resp__get_coprocessor_fw_version__descriptor =
 {
@@ -23114,7 +23179,7 @@ const ProtobufCMessageDescriptor rpc__resp__get_coprocessor_fw_version__descript
   "RpcRespGetCoprocessorFwVersion",
   "",
   sizeof(RpcRespGetCoprocessorFwVersion),
-  4,
+  9,
   rpc__resp__get_coprocessor_fw_version__field_descriptors,
   rpc__resp__get_coprocessor_fw_version__field_indices_by_name,
   1,  rpc__resp__get_coprocessor_fw_version__number_ranges,

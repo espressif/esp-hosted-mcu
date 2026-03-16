@@ -643,6 +643,13 @@ esp_err_t esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *v
 	return rpc_get_coprocessor_fwversion(ver_info);
 }
 
+esp_err_t esp_hosted_get_cp_info(uint32_t *cp_chip_id, char *cp_target_name,
+		size_t cp_target_name_len)
+{
+	check_transport_up();
+	return rpc_get_cp_info(cp_chip_id, cp_target_name, cp_target_name_len);
+}
+
 #if H_WIFI_ENTERPRISE_SUPPORT
 esp_err_t esp_wifi_remote_sta_enterprise_enable(void)
 {

@@ -28,6 +28,7 @@ int esp_hosted_deinit(void);
 
 int esp_hosted_connect_to_slave(void);
 int esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info);
+int esp_hosted_get_cp_info(uint32_t *cp_chip_id, char *cp_target_name, size_t cp_target_name_len);
 
 /* --------- Exhaustive API list --------- */
 /*

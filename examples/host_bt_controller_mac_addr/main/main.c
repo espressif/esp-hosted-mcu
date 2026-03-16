@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -131,6 +131,19 @@ void app_main(void)
         ESP_LOGW(TAG, "failed to get fw version");
     }
 
+    // get co-processor ID and name
+    char cp_name[30];
+    uint32_t cp_name_len = sizeof(cp_name);
+    uint32_t cp_chip_id = 0;
+
+    esp_err_t res;
+    memset(cp_name, 0, sizeof(cp_name));
+    res = esp_hosted_get_cp_info(&cp_chip_id, cp_name, cp_name_len);
+    if (res == ESP_OK) {
+        ESP_LOGI(TAG, "cp info: 0x%08"PRIx32 ", cp name: %s", cp_chip_id, cp_name);
+    } else {
+        ESP_LOGW(TAG, "failed to get cp info: %s", esp_err_to_name(res));
+    }
     // changes to the MAC must be done before the BT Controller is initialised
     bt_mac_actions();
 
