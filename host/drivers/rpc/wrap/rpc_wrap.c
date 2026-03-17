@@ -812,6 +812,10 @@ int rpc_set_wifi_mode_none(void)
 
 int rpc_wifi_get_mac(wifi_interface_t mode, uint8_t out_mac[6])
 {
+	if (!out_mac) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	ctrl_cmd_t *resp = NULL;
 
 	/* implemented synchronous */
@@ -834,8 +838,17 @@ int rpc_station_mode_get_mac(uint8_t mac[6])
 	return rpc_wifi_get_mac(WIFI_MODE_STA, mac);
 }
 
+int rpc_softap_mode_get_mac_addr(uint8_t mac[6])
+{
+	return rpc_wifi_get_mac(WIFI_MODE_AP, mac);
+}
+
 int rpc_wifi_set_mac(wifi_interface_t mode, const uint8_t mac[6])
 {
+	if (!mac) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -847,11 +860,6 @@ int rpc_wifi_set_mac(wifi_interface_t mode, const uint8_t mac[6])
 	return rpc_rsp_callback(resp);
 }
 
-
-int rpc_softap_mode_get_mac_addr(uint8_t mac[6])
-{
-	return rpc_wifi_get_mac(WIFI_MODE_AP, mac);
-}
 
 int rpc_ota_begin(void)
 {
@@ -869,6 +877,10 @@ int rpc_ota_begin(void)
 
 int rpc_ota_write(uint8_t* ota_data, uint32_t ota_data_len)
 {
+	if (!ota_data || !ota_data_len) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -976,6 +988,9 @@ int rpc_wifi_set_max_tx_power(int8_t in_power)
 
 int rpc_wifi_get_max_tx_power(int8_t *power)
 {
+	if (!power)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -989,6 +1004,9 @@ int rpc_wifi_get_max_tx_power(int8_t *power)
 
 esp_err_t rpc_wifi_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode)
 {
+	if (!phymode)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1002,6 +1020,9 @@ esp_err_t rpc_wifi_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode)
 
 esp_err_t rpc_wifi_sta_get_aid(uint16_t *aid)
 {
+	if (!aid)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1028,6 +1049,9 @@ esp_err_t rpc_wifi_set_inactive_time(wifi_interface_t ifx, uint16_t sec)
 
 esp_err_t rpc_wifi_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
 {
+	if (!sec)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1043,12 +1067,12 @@ esp_err_t rpc_wifi_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
 #if H_WIFI_HE_SUPPORT
 esp_err_t rpc_wifi_sta_twt_config(wifi_twt_config_t *config)
 {
+	if (!config)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!config)
-		return FAILURE;
 
 	g_h.funcs->_h_memcpy(&req->u.wifi_twt_config, config, sizeof(wifi_twt_config_t));
 	resp = rpc_slaveif_wifi_sta_twt_config(req);
@@ -1061,12 +1085,12 @@ esp_err_t rpc_wifi_sta_itwt_setup(wifi_itwt_setup_config_t *setup_config)
 esp_err_t rpc_wifi_sta_itwt_setup(wifi_twt_setup_config_t *setup_config)
 #endif
 {
+	if (!setup_config)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!setup_config)
-		return FAILURE;
 
 #if H_WIFI_HE_GREATER_THAN_ESP_IDF_5_3
 	g_h.funcs->_h_memcpy(&req->u.wifi_itwt_setup_config, setup_config, sizeof(wifi_itwt_setup_config_t));
@@ -1102,6 +1126,9 @@ esp_err_t rpc_wifi_sta_itwt_suspend(int flow_id, int suspend_time_ms)
 
 esp_err_t rpc_wifi_sta_itwt_get_flow_id_status(int *flow_id_bitmap)
 {
+	if (!flow_id_bitmap)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1151,6 +1178,9 @@ esp_err_t rpc_wifi_set_band(wifi_band_t band)
 
 esp_err_t rpc_wifi_get_band(wifi_band_t *band)
 {
+	if (!band)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1176,6 +1206,9 @@ esp_err_t rpc_wifi_set_band_mode(wifi_band_mode_t band_mode)
 
 esp_err_t rpc_wifi_get_band_mode(wifi_band_mode_t *band_mode)
 {
+	if (!band_mode)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1189,6 +1222,9 @@ esp_err_t rpc_wifi_get_band_mode(wifi_band_mode_t *band_mode)
 
 esp_err_t rpc_wifi_set_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
 {
+	if (!protocols)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1203,6 +1239,9 @@ esp_err_t rpc_wifi_set_protocols(wifi_interface_t ifx, wifi_protocols_t *protoco
 
 esp_err_t rpc_wifi_get_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
 {
+	if (!protocols)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1219,6 +1258,9 @@ esp_err_t rpc_wifi_get_protocols(wifi_interface_t ifx, wifi_protocols_t *protoco
 
 esp_err_t rpc_wifi_set_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
 {
+	if (!bw)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1233,6 +1275,8 @@ esp_err_t rpc_wifi_set_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
 
 esp_err_t rpc_wifi_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
 {
+	if (!bw)
+		return ESP_ERR_INVALID_ARG;
 
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
@@ -1276,14 +1320,14 @@ int rpc_disable_heartbeat(void)
 
 int rpc_wifi_init(const wifi_init_config_t *arg)
 {
+	if (!arg)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
 	req->rsp_timeout_sec = WIFI_INIT_RSP_TIMEOUT_SEC;
-
-	if (!arg)
-		return FAILURE;
 
 	g_h.funcs->_h_memcpy(&req->u.wifi_init_config, (void*)arg, sizeof(wifi_init_config_t));
 
@@ -1312,12 +1356,12 @@ int rpc_wifi_set_mode(wifi_mode_t mode)
 
 int rpc_wifi_get_mode(wifi_mode_t* mode)
 {
+	if (!mode)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!mode)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_get_mode(req);
 
@@ -1387,12 +1431,12 @@ int rpc_wifi_disconnect(void)
 
 int rpc_wifi_set_config(wifi_interface_t interface, wifi_config_t *conf)
 {
+	if (!conf)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!conf)
-		return FAILURE;
 
 	g_h.funcs->_h_memcpy(&req->u.wifi_config.u, conf, sizeof(wifi_config_t));
 
@@ -1403,24 +1447,28 @@ int rpc_wifi_set_config(wifi_interface_t interface, wifi_config_t *conf)
 
 int rpc_wifi_get_config(wifi_interface_t interface, wifi_config_t *conf)
 {
+	if (!conf)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!conf)
-		return FAILURE;
 
 	req->u.wifi_config.iface = interface;
 
 	resp = rpc_slaveif_wifi_get_config(req);
 
-	g_h.funcs->_h_memcpy(conf, &resp->u.wifi_config.u, sizeof(wifi_config_t));
+	if (resp && resp->resp_event_status == SUCCESS) {
+		g_h.funcs->_h_memcpy(conf, &resp->u.wifi_config.u, sizeof(wifi_config_t));
+	}
 
 	return rpc_rsp_callback(resp);
 }
 
 int rpc_wifi_set_scan_parameters(const wifi_scan_default_params_t *config)
 {
+	// don't check: config can be NULL
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1439,12 +1487,12 @@ int rpc_wifi_set_scan_parameters(const wifi_scan_default_params_t *config)
 
 int rpc_wifi_get_scan_parameters(wifi_scan_default_params_t *config)
 {
+	if (!config)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!config)
-		return FAILURE;
 
 	req->u.wifi_scan_params.cmd = RPC_CMD__Get;
 	resp = rpc_slaveif_wifi_scan_params(req);
@@ -1458,6 +1506,8 @@ int rpc_wifi_get_scan_parameters(wifi_scan_default_params_t *config)
 
 int rpc_wifi_scan_start(const wifi_scan_config_t *config, bool block)
 {
+	// don't check: config can be NULL
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -1490,12 +1540,12 @@ int rpc_wifi_scan_stop(void)
 
 int rpc_wifi_scan_get_ap_num(uint16_t *number)
 {
+	if (!number)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!number)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_scan_get_ap_num(req);
 
@@ -1507,12 +1557,12 @@ int rpc_wifi_scan_get_ap_num(uint16_t *number)
 
 int rpc_wifi_scan_get_ap_record(wifi_ap_record_t *ap_record)
 {
+	if (!ap_record)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!ap_record)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_scan_get_ap_record(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
@@ -1523,12 +1573,12 @@ int rpc_wifi_scan_get_ap_record(wifi_ap_record_t *ap_record)
 
 int rpc_wifi_scan_get_ap_records(uint16_t *number, wifi_ap_record_t *ap_records)
 {
+	if (!number || !(*number) || !ap_records)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!number || !*number || !ap_records)
-		return FAILURE;
 
 	g_h.funcs->_h_memset(ap_records, 0, (*number)*sizeof(wifi_ap_record_t));
 
@@ -1587,12 +1637,12 @@ int rpc_wifi_deauth_sta(uint16_t aid)
 
 int rpc_wifi_sta_get_ap_info(wifi_ap_record_t *ap_info)
 {
+	if (!ap_info)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!ap_info)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_sta_get_ap_info(req);
 
@@ -1605,12 +1655,12 @@ int rpc_wifi_sta_get_ap_info(wifi_ap_record_t *ap_info)
 
 int rpc_wifi_set_ps(wifi_ps_type_t type)
 {
+	if (type > WIFI_PS_MAX_MODEM)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (type > WIFI_PS_MAX_MODEM)
-		return FAILURE;
 
 	req->u.wifi_ps.ps_mode = type;
 
@@ -1622,14 +1672,11 @@ int rpc_wifi_set_ps(wifi_ps_type_t type)
 int rpc_wifi_get_ps(wifi_ps_type_t *type)
 {
 	if (!type)
-		return FAILURE;
+		return ESP_ERR_INVALID_ARG;
 
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!type)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_get_ps(req);
 
@@ -1663,12 +1710,12 @@ int rpc_wifi_set_bandwidth(wifi_interface_t ifx, wifi_bandwidth_t bw)
 
 int rpc_wifi_get_bandwidth(wifi_interface_t ifx, wifi_bandwidth_t *bw)
 {
+	if (!bw)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!bw)
-		return FAILURE;
 
 	req->u.wifi_bandwidth.ifx = ifx;
 	resp = rpc_slaveif_wifi_get_bandwidth(req);
@@ -1693,12 +1740,12 @@ int rpc_wifi_set_channel(uint8_t primary, wifi_second_chan_t second)
 
 int rpc_wifi_get_channel(uint8_t *primary, wifi_second_chan_t *second)
 {
+	if ((!primary) || (!second))
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if ((!primary) || (!second))
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_get_channel(req);
 
@@ -1711,12 +1758,12 @@ int rpc_wifi_get_channel(uint8_t *primary, wifi_second_chan_t *second)
 
 int rpc_wifi_set_country_code(const char *country, bool ieee80211d_enabled)
 {
+	if (!country)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!country)
-		return FAILURE;
 
 	memcpy(&req->u.wifi_country_code.cc[0], country, sizeof(req->u.wifi_country_code.cc));
 	req->u.wifi_country_code.ieee80211d_enabled = ieee80211d_enabled;
@@ -1726,12 +1773,12 @@ int rpc_wifi_set_country_code(const char *country, bool ieee80211d_enabled)
 
 int rpc_wifi_get_country_code(char *country)
 {
+	if (!country)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!country)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_get_country_code(req);
 
@@ -1743,12 +1790,12 @@ int rpc_wifi_get_country_code(char *country)
 
 int rpc_wifi_set_country(const wifi_country_t *country)
 {
+	if (!country)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!country)
-		return FAILURE;
 
 	memcpy(&req->u.wifi_country.cc[0], &country->cc[0], sizeof(country->cc));
 	req->u.wifi_country.schan        = country->schan;
@@ -1762,12 +1809,12 @@ int rpc_wifi_set_country(const wifi_country_t *country)
 
 int rpc_wifi_get_country(wifi_country_t *country)
 {
+	if (!country)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!country)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_get_country(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
@@ -1782,12 +1829,12 @@ int rpc_wifi_get_country(wifi_country_t *country)
 
 int rpc_wifi_ap_get_sta_list(wifi_sta_list_t *sta)
 {
+	if (!sta)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!sta)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_ap_get_sta_list(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
@@ -1811,12 +1858,12 @@ int rpc_wifi_ap_get_sta_list(wifi_sta_list_t *sta)
 
 int rpc_wifi_ap_get_sta_aid(const uint8_t mac[6], uint16_t *aid)
 {
+	if (!mac || !aid)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!mac || !aid)
-		return FAILURE;
 
 	memcpy(&req->u.wifi_ap_get_sta_aid.mac[0], &mac[0], MAC_SIZE_BYTES);
 
@@ -1830,12 +1877,12 @@ int rpc_wifi_ap_get_sta_aid(const uint8_t mac[6], uint16_t *aid)
 
 int rpc_wifi_sta_get_rssi(int *rssi)
 {
+	if (!rssi)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!rssi)
-		return FAILURE;
 
 	resp = rpc_slaveif_wifi_sta_get_rssi(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
@@ -1860,10 +1907,10 @@ int rpc_wifi_set_protocol(wifi_interface_t ifx, uint8_t protocol_bitmap)
 
 int rpc_wifi_get_protocol(wifi_interface_t ifx, uint8_t *protocol_bitmap)
 {
-	/* implemented synchronous */
 	if (!protocol_bitmap)
-		return FAILURE;
+		return ESP_ERR_INVALID_ARG;
 
+	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
@@ -1929,12 +1976,12 @@ esp_err_t rpc_wifi_sta_enterprise_disable(void)
 
 esp_err_t rpc_eap_client_set_identity(const unsigned char *identity, int len)
 {
+	if (!identity || len <= 0) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!identity || len <= 0) {
-		return FAILURE;
-	}
 
 	req->u.eap_identity.identity = identity;
 	req->u.eap_identity.len = len;
@@ -1954,12 +2001,12 @@ esp_err_t rpc_eap_client_clear_identity(void)
 
 esp_err_t rpc_eap_client_set_username(const unsigned char *username, int len)
 {
+	if (!username || len <= 0) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!username || len <= 0) {
-		return FAILURE;
-	}
 
 	req->u.eap_username.username = username;
 	req->u.eap_username.len = len;
@@ -1979,12 +2026,12 @@ esp_err_t rpc_eap_client_clear_username(void)
 
 esp_err_t rpc_eap_client_set_password(const unsigned char *password, int len)
 {
+	if (!password || len <= 0) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!password || len <= 0) {
-		return FAILURE;
-	}
 
 	req->u.eap_password.password = password;
 	req->u.eap_password.len = len;
@@ -2004,12 +2051,12 @@ esp_err_t rpc_eap_client_clear_password(void)
 
 esp_err_t rpc_eap_client_set_new_password(const unsigned char *new_password, int len)
 {
+	if (!new_password || len <= 0) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!new_password || len <= 0) {
-		return FAILURE;
-	}
 
 	req->u.eap_password.password = new_password;
 	req->u.eap_password.len = len;
@@ -2029,12 +2076,12 @@ esp_err_t rpc_eap_client_clear_new_password(void)
 
 esp_err_t rpc_eap_client_set_ca_cert(const unsigned char *ca_cert, int ca_cert_len)
 {
+	if (!ca_cert || ca_cert_len <= 0) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!ca_cert || ca_cert_len <= 0) {
-		return FAILURE;
-	}
 
 	req->u.eap_ca_cert.ca_cert = ca_cert;
 	req->u.eap_ca_cert.len = ca_cert_len;
@@ -2053,18 +2100,18 @@ esp_err_t rpc_eap_client_clear_ca_cert(void)
 }
 
 esp_err_t rpc_eap_client_set_certificate_and_key(const unsigned char *client_cert, int client_cert_len,
-												 const unsigned char *private_key, int private_key_len,
-												 const unsigned char *private_key_password, int private_key_passwd_len)
+		const unsigned char *private_key, int private_key_len,
+		const unsigned char *private_key_password, int private_key_passwd_len)
 {
-	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-	ctrl_cmd_t *resp = NULL;
-
 	if (!client_cert || (client_cert_len <= 0) ||
 		!private_key || (private_key_len <= 0) ||
 		(private_key_password && private_key_passwd_len <= 0) ||
 		(private_key_passwd_len > 0 && !private_key_password)) {
-			return FAILURE;
+			return ESP_ERR_INVALID_ARG;
 	}
+
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
 	req->u.eap_cert_key.client_cert = client_cert;
 	req->u.eap_cert_key.client_cert_len = client_cert_len;
@@ -2100,11 +2147,11 @@ esp_err_t rpc_eap_client_set_disable_time_check(bool disable)
 
 esp_err_t rpc_eap_client_get_disable_time_check(bool *disable)
 {
+	if (!disable)
+		return ESP_ERR_INVALID_ARG;
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!disable)
-		return FAILURE;
 
 	resp = rpc_slaveif_eap_get_disable_time_check(req);
 
@@ -2137,11 +2184,11 @@ esp_err_t rpc_eap_client_set_suiteb_192bit_certification(bool enable)
 
 esp_err_t rpc_eap_client_set_pac_file(const unsigned char *pac_file, int pac_file_len)
 {
+	if (!pac_file || pac_file_len <= 0)
+		return ESP_ERR_INVALID_ARG;
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!pac_file || pac_file_len <= 0)
-		return FAILURE;
 
 	req->u.eap_pac_file.pac_file = pac_file;
 	req->u.eap_pac_file.len = pac_file_len;
@@ -2182,11 +2229,11 @@ esp_err_t rpc_wifi_set_okc_support(bool enable)
 
 esp_err_t rpc_eap_client_set_domain_name(const char *domain_name)
 {
+	if (!domain_name)
+		return ESP_ERR_INVALID_ARG;
+
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!domain_name)
-		return FAILURE;
 
 	req->u.eap_domain_name.domain_name = domain_name;
 	resp = rpc_slaveif_eap_set_domain_name(req);
@@ -2268,14 +2315,16 @@ esp_err_t rpc_supp_dpp_bootstrap_gen(const char *chan_list,
 		esp_supp_dpp_bootstrap_t type,
 		const char *key, const char *info)
 {
+	// key and info are optional parameters
+	if (!chan_list) {
+		ESP_LOGE(TAG, "chan_list cannot be NULL");
+		return ESP_ERR_INVALID_ARG;
+	}
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
-	if (!chan_list) {
-		ESP_LOGE(TAG, "chan_list cannot be NULL");
-		return ESP_FAIL;
-	}
 	req->u.dpp_bootstrap_gen.chan_list = chan_list;
 	req->u.dpp_bootstrap_gen.type = type;
 	req->u.dpp_bootstrap_gen.key = key;
@@ -2420,6 +2469,9 @@ static void rpc_supp_thread(void const *arg)
 
 esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp_mac_type_t type)
 {
+	if (!mac)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -2444,6 +2496,9 @@ esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp
 
 esp_err_t rpc_iface_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc)
 {
+	if (!app_desc)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -2459,6 +2514,9 @@ esp_err_t rpc_iface_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc)
 #if H_MEM_MONITOR
 esp_err_t rpc_iface_set_mem_monitor(esp_hosted_config_mem_monitor_t *config, esp_hosted_curr_mem_info_t *curr_mem_info)
 {
+	if (!config || !curr_mem_info)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -2524,6 +2582,9 @@ int rpc_bt_controller_disable(void)
 
 esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type)
 {
+	if (!len)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -2539,6 +2600,9 @@ esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type)
 
 static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_control)
 {
+	if (!feature_control)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -2556,12 +2620,12 @@ static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_contro
 
 esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size_t data_len)
 {
-	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-	ctrl_cmd_t *resp = NULL;
-
 	if ((!data && data_len != 0) || (data && data_len == 0)) {
 		return ESP_ERR_INVALID_ARG;
 	}
+
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
 	/* Fill custom RPC data */
 	req->u.custom_rpc.custom_msg_id = msg_id;
@@ -2598,12 +2662,12 @@ esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec)
 #if H_GPIO_EXPANDER_SUPPORT
 esp_err_t esp_hosted_cp_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConfig)
 {
+	if (!pGPIOConfig)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-
-	if (!pGPIOConfig)
-		return FAILURE;
 
 	req->u.gpio_config.pin_bit_mask = pGPIOConfig->pin_bit_mask;
 	req->u.gpio_config.mode = pGPIOConfig->mode;
@@ -2643,6 +2707,9 @@ esp_err_t esp_hosted_cp_gpio_set_level(uint32_t gpio_num, uint32_t level)
 
 esp_err_t esp_hosted_cp_gpio_get_level(uint32_t gpio_num, int *level)
 {
+	if (!level)
+		return ESP_ERR_INVALID_ARG;
+
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
@@ -2711,11 +2778,11 @@ esp_err_t esp_hosted_cp_ext_coex_set_work_mode(esp_hosted_ext_coex_work_mode_t w
 esp_err_t esp_hosted_cp_ext_coex_set_gpio_pin(uint32_t wire_type,
 		const esp_hosted_ext_coex_gpio_set_t *gpio_pins)
 {
-	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
-	ctrl_cmd_t *resp = NULL;
-
 	if (!gpio_pins || wire_type > ESP_HOSTED_EXT_COEX_WIRE_4)
 		return ESP_ERR_INVALID_ARG;
+
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
 
 	req->u.ext_coex.cmd = RPC__EXT_COEX_CMD__SetGpioPin;
 	req->u.ext_coex.set_gpio_wire_type = wire_type;
