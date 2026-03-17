@@ -1536,7 +1536,7 @@ int rpc_wifi_scan_get_ap_records(uint16_t *number, wifi_ap_record_t *ap_records)
 	resp = rpc_slaveif_wifi_scan_get_ap_records(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
 		ESP_LOGV(TAG, "num: %u",resp->u.wifi_scan_ap_list.number);
-
+		*number = resp->u.wifi_scan_ap_list.number;
 		g_h.funcs->_h_memcpy(ap_records, resp->u.wifi_scan_ap_list.out_list,
 				resp->u.wifi_scan_ap_list.number * sizeof(wifi_ap_record_t));
 	}

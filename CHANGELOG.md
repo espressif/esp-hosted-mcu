@@ -4,6 +4,12 @@ None
 
 # Releases
 
+# $${\color{green} \text{2.12.3}}$$
+
+## Bug Fixes
+
+- Fixed `esp_wifi_scan_get_ap_records` to set the actual AP number this API returns
+
 # $${\color{green} \text{2.12.2}}$$
 
 ## Bug Fixes
