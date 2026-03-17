@@ -1,6 +1,8 @@
 # Unreleased - Main Branch
 
-None
+## Features
+
+- added parameter checking for RPC calls
 
 # Releases
 
