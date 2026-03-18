@@ -2618,9 +2618,9 @@ static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_contro
 
 #ifdef H_PEER_DATA_TRANSFER
 
-esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size_t data_len)
+esp_err_t esp_hosted_send_custom_data(uint32_t msg_id_to_send, const uint8_t *data_to_send, size_t data_len_to_send)
 {
-	if ((!data && data_len != 0) || (data && data_len == 0)) {
+	if ((!data_to_send && data_len_to_send != 0) || (data_to_send && data_len_to_send == 0)) {
 		return ESP_ERR_INVALID_ARG;
 	}
 
@@ -2628,19 +2628,20 @@ esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size
 	ctrl_cmd_t *resp = NULL;
 
 	/* Fill custom RPC data */
-	req->u.custom_rpc.custom_msg_id = msg_id;
-	req->u.custom_rpc.data = (uint8_t *)data;
-	req->u.custom_rpc.data_len = data_len;
+	req->u.custom_rpc.custom_msg_id = msg_id_to_send;
+	req->u.custom_rpc.data = (uint8_t *)data_to_send;
+	req->u.custom_rpc.data_len = data_len_to_send;
 	req->u.custom_rpc.free_func = NULL;
 
 	resp = rpc_slaveif_custom_rpc(req);
 	return rpc_rsp_callback(resp);
 }
 
-esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
-    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
+esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id_exp,
+    void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context),
+    void *local_context)
 {
-	return rpc_slaveif_register_custom_callback(msg_id, callback);
+	return rpc_slaveif_register_custom_callback(msg_id_exp, callback, local_context);
 }
 #endif
 

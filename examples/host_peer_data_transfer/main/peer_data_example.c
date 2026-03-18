@@ -45,12 +45,44 @@
 
 static const char *TAG = "peer_data_example";
 
+/**
+ * @brief Static context passed as 'user' at callback registration.
+ *
+ * Describes fixed properties of the entity owning this callback.
+ * The framework returns this pointer as-is on every invocation —
+ * the callback uses it without needing any global state.
+ */
+typedef struct {
+    char home[32];   /**< Where this animal lives */
+    char likes[32];  /**< What this animal enjoys */
+} animal_ctx_t;
+
+/* One context per response handler — static, never modified after init */
+static animal_ctx_t meow_ctx  = { "cozy apartment",  "sunny window" };
+static animal_ctx_t woof_ctx  = { "backyard kennel", "chew toy"     };
+static animal_ctx_t hello_ctx = { "suburban house",  "couch"        };
+
 /* Statistics tracking */
 static uint32_t total_sent = 0;
 static uint32_t total_received = 0;
 static uint32_t total_bytes_sent = 0;
 static uint32_t total_bytes_received = 0;
 static uint32_t data_mismatch_count = 0;
+
+/**
+ * @brief Verify the user pointer returned by the framework matches what was registered.
+ *
+ * The user pointer passed at registration is returned as-is on every invocation.
+ * This function confirms that contract holds.
+ *
+ * @param user         Pointer received in the callback
+ * @param expected_ctx Pointer that was passed at registration
+ * @return true if they match and are non-NULL, false otherwise
+ */
+static bool verify_user_ptr(void *user, void *expected_ctx)
+{
+	return (user != NULL) && (user == expected_ctx);
+}
 
 /**
  * @brief Verify received data matches expected pattern for given msg_id
@@ -87,51 +119,66 @@ static uint32_t get_random_size_for_msg_id(uint32_t msg_id)
 /**
  * @brief Callback for receiving MEOW response from slave
  */
-static void meow_callback(uint32_t msg_id, const uint8_t *data, size_t data_len)
+static void meow_callback(uint32_t msg_id, const uint8_t *data, size_t data_len, void *user)
 {
+	/* Verify the user pointer came back as registered */
+	if (!verify_user_ptr(user, &meow_ctx)) {
+		ESP_LOGW(TAG, "slave ---> host: MEOW      (%zu bytes Rx) [unexpected user ptr]", data_len);
+	}
+
 	total_received++;
 	total_bytes_received += data_len;
 
 	/* Verify against CAT request pattern */
 	if (verify_received_data(data, data_len, MSG_ID_CAT)) {
-		ESP_LOGI(TAG, "host <-- slave: MEOW (%zu bytes) .. OK!", data_len);
+		ESP_LOGI(TAG, "slave ---> host: MEOW      (%zu bytes Rx) .. Verified, all OK!", data_len);
 	} else {
 		data_mismatch_count++;
-		ESP_LOGE(TAG, "host <-- slave: MEOW (%zu bytes) ❌", data_len);
+		ESP_LOGE(TAG, "slave ---> host: MEOW      (%zu bytes Rx) ❌ data mismatch", data_len);
 	}
 }
 
 /**
  * @brief Callback for receiving WOOF response from slave
  */
-static void woof_callback(uint32_t msg_id, const uint8_t *data, size_t data_len)
+static void woof_callback(uint32_t msg_id, const uint8_t *data, size_t data_len, void *user)
 {
+	/* Verify the user pointer came back as registered */
+	if (!verify_user_ptr(user, &woof_ctx)) {
+		ESP_LOGW(TAG, "slave ---> host: WOOF      (%zu bytes Rx) [unexpected user ptr]", data_len);
+	}
+
 	total_received++;
 	total_bytes_received += data_len;
 
 	/* Verify against DOG request pattern */
 	if (verify_received_data(data, data_len, MSG_ID_DOG)) {
-		ESP_LOGI(TAG, "host <-- slave: WOOF (%zu bytes) .. OK!", data_len);
+		ESP_LOGI(TAG, "slave ---> host: WOOF      (%zu bytes Rx) .. Verified, all OK!", data_len);
 	} else {
 		data_mismatch_count++;
-		ESP_LOGE(TAG, "host <-- slave: WOOF (%zu bytes) ❌", data_len);
+		ESP_LOGE(TAG, "slave ---> host: WOOF      (%zu bytes Rx) ❌ data mismatch", data_len);
 	}
 }
 
 /**
  * @brief Callback for receiving HELLO response from slave
  */
-static void hello_callback(uint32_t msg_id, const uint8_t *data, size_t data_len)
+static void hello_callback(uint32_t msg_id, const uint8_t *data, size_t data_len, void *user)
 {
+	/* Verify the user pointer came back as registered */
+	if (!verify_user_ptr(user, &hello_ctx)) {
+		ESP_LOGW(TAG, "slave ---> host: HELLO     (%zu bytes Rx) [unexpected user ptr]", data_len);
+	}
+
 	total_received++;
 	total_bytes_received += data_len;
 
 	/* Verify against HUMAN request pattern */
 	if (verify_received_data(data, data_len, MSG_ID_HUMAN)) {
-		ESP_LOGI(TAG, "host <-- slave: HELLO (%zu bytes) .. OK!", data_len);
+		ESP_LOGI(TAG, "slave ---> host: HELLO     (%zu bytes Rx) .. Verified, all OK!", data_len);
 	} else {
 		data_mismatch_count++;
-		ESP_LOGI(TAG, "host <-- slave: HELLO (%zu bytes) ❌", data_len);
+		ESP_LOGE(TAG, "slave ---> host: HELLO     (%zu bytes Rx) ❌ data mismatch", data_len);
 	}
 }
 
@@ -204,7 +251,7 @@ static void rpc_test_task(void *pvParameters)
 			uint32_t msg_id = msg_ids[i];
 			uint32_t size = get_random_size_for_msg_id(msg_id);
 
-			ESP_LOGI(TAG, "host --> slave: %s (%" PRIu32 " bytes), ", msg_names[i], size);
+			ESP_LOGI(TAG, "slave <--- host: %-5s     (%" PRIu32 " bytes Tx)", msg_names[i], size);
 
 			uint8_t *test_data = create_test_data(size, msg_id);
 			if (!test_data) {
@@ -233,7 +280,7 @@ static void rpc_test_task(void *pvParameters)
 	/* Test GHOST message - exceeds max payload size */
 	ESP_LOGI(TAG, "\n--- Testing GHOST (exceeds max payload) ---");
 	uint32_t ghost_size = get_random_size_for_msg_id(MSG_ID_GHOST);
-	ESP_LOGI(TAG, "host --> slave: GHOST (%" PRIu32 " bytes), ", ghost_size);
+	ESP_LOGI(TAG, "slave <--- host: GHOST     (%" PRIu32 " bytes Tx)", ghost_size);
 
 	uint8_t *ghost_data = create_test_data(ghost_size, MSG_ID_GHOST);
 	if (!ghost_data) {
@@ -260,7 +307,7 @@ static void rpc_test_task(void *pvParameters)
 	ESP_LOGI(TAG, "Bytes sent:           %" PRIu32 "", total_bytes_sent);
 	ESP_LOGI(TAG, "Bytes received:       %" PRIu32 "", total_bytes_received);
 
-	if ( total_sent && (total_sent == total_received) && (data_mismatch_count == 0)) {
+	if (total_sent && (total_sent == total_received) && (data_mismatch_count == 0)) {
 		ESP_LOGI(TAG, "Data validation:      ✅ ALL PASSED");
 		ESP_LOGI(TAG, "Result:               ✅ PASS");
 	} else {
@@ -299,19 +346,23 @@ void app_main(void)
 	}
 
 	/* Register callbacks for response message IDs */
-	ret = esp_hosted_register_custom_callback(MSG_ID_MEOW, meow_callback);
+	/* Each callback is registered with a static animal_ctx_t as the user pointer.
+	 * The framework returns this pointer as-is on every invocation — the callback
+	 * uses it to log where the animal lives and what it likes.
+	 * Passing NULL instead is also valid if no context is needed. */
+	ret = esp_hosted_register_custom_callback(MSG_ID_MEOW, meow_callback, &meow_ctx);
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to register MEOW callback: %s", esp_err_to_name(ret));
 		return;
 	}
 
-	ret = esp_hosted_register_custom_callback(MSG_ID_WOOF, woof_callback);
+	ret = esp_hosted_register_custom_callback(MSG_ID_WOOF, woof_callback, &woof_ctx);
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to register WOOF callback: %s", esp_err_to_name(ret));
 		return;
 	}
 
-	ret = esp_hosted_register_custom_callback(MSG_ID_HELLO, hello_callback);
+	ret = esp_hosted_register_custom_callback(MSG_ID_HELLO, hello_callback, &hello_ctx);
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to register HELLO callback: %s", esp_err_to_name(ret));
 		return;

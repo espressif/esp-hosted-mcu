@@ -2,9 +2,36 @@
 
 ## Features
 
+### Custom RPC callbacks: support user context pointer
+
+  - Allows passing per-callback context without global state
+  - User pointer is returned as-is on every invocation
+
+##### API Changes
+
+- `esp_hosted_register_custom_callback`
+
+```c
+// Old
+esp_err_t esp_hosted_register_custom_callback(
+    uint32_t msg_id,
+    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+
+// New
+esp_err_t esp_hosted_register_custom_callback(
+    uint32_t msg_id,
+    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len, void *user),
+    void *user);
+```
+
+### Others
 - used common mempool code for both Host and Co-processor
 - made ESP-Hosted mempool code private to fix build break
 - added parameter checking for RPC calls
+
+## Bug Fixes
+- Host: added NULL or validation checks for exposed user APIs
+
 
 # Releases
 

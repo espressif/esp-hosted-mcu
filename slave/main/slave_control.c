@@ -116,7 +116,8 @@ extern volatile uint8_t softap_started;
 /* Array of callback slots (empty slot has callback = NULL, msg_id = -1 is invalid sentinel) */
 static struct {
 	uint32_t msg_id;
-	void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len);
+	void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context);
+	void *local_context;
 } custom_msg_callbacks[CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS] = {
 	[0 ... (CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS - 1)] = {
 		.msg_id = (uint32_t)-1,
@@ -820,11 +821,13 @@ static esp_err_t handle_custom_rpc_request(uint32_t msg_id, uint8_t *req_data, u
 	}
 
 	/* Find callback under mutex protection */
-	void (*cb)(uint32_t, const uint8_t *, size_t) = NULL;
+	void (*cb)(uint32_t, const uint8_t *, size_t, void *) = NULL;
+	void *cb_local_context = NULL;
 	if (custom_callbacks_mutex && xSemaphoreTake(custom_callbacks_mutex, portMAX_DELAY) == pdTRUE) {
 		for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
 			if (custom_msg_callbacks[i].msg_id == msg_id && custom_msg_callbacks[i].callback) {
 				cb = custom_msg_callbacks[i].callback;
+				cb_local_context = custom_msg_callbacks[i].local_context;
 				break;
 			}
 		}
@@ -833,7 +836,7 @@ static esp_err_t handle_custom_rpc_request(uint32_t msg_id, uint8_t *req_data, u
 
 	/* Invoke callback outside mutex to avoid deadlock */
 	if (cb) {
-		cb(msg_id, req_data, req_len);
+		cb(msg_id, req_data, req_len, cb_local_context);
 		return ESP_OK;
 	}
 
@@ -842,14 +845,14 @@ static esp_err_t handle_custom_rpc_request(uint32_t msg_id, uint8_t *req_data, u
 	return ESP_ERR_NOT_FOUND;
 }
 
-esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size_t data_len)
+esp_err_t esp_hosted_send_custom_data(uint32_t msg_id_to_send, const uint8_t *data_to_send, size_t data_len_to_send)
 {
-	if ((!data && data_len != 0) || (data && data_len == 0)) {
+	if ((!data_to_send && data_len_to_send != 0) || (data_to_send && data_len_to_send == 0)) {
 		return ESP_ERR_INVALID_ARG;
 	}
 
 	/* Validate payload size */
-	if (data_len > 8166) {
+	if (data_len_to_send > 8166) {
 		/* Why 8166?
 		 * pserial r.data has max 8192 bytes size.
 		 * We want to get rid of this static buffer later.
@@ -860,7 +863,7 @@ esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size
 	}
 
 	/* Allocate buffer for [msg_id (4 bytes)][data...] */
-	size_t total_len = sizeof(msg_id) + data_len;
+	size_t total_len = sizeof(msg_id_to_send) + data_len_to_send;
 	uint8_t *buf = malloc(total_len);
 	if (!buf) {
 		ESP_LOGE(TAG, "Failed to allocate %zu bytes", total_len);
@@ -868,11 +871,11 @@ esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size
 	}
 
 	/* Pack msg_id as little-endian uint32_t */
-	memcpy(buf, &msg_id, sizeof(msg_id));
+	memcpy(buf, &msg_id_to_send, sizeof(msg_id_to_send));
 
 	/* Copy user data after msg_id */
-	if (data_len > 0) {
-		memcpy(buf + sizeof(msg_id), data, data_len);
+	if (data_len_to_send > 0) {
+		memcpy(buf + sizeof(msg_id_to_send), data_to_send, data_len_to_send);
 	}
 
 	/* Send to RPC layer - rpc_evt_custom_rpc will unpack and wrap in protobuf */
@@ -882,11 +885,12 @@ esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size
 	return ESP_OK;
 }
 
-esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
-	void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
+esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id_exp,
+	void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context),
+	void *local_context)
 {
 	/* Validate message ID (-1/0xFFFFFFFF is invalid) */
-	if (msg_id == (uint32_t)-1) {
+	if (msg_id_exp == (uint32_t)-1) {
 		ESP_LOGE(TAG, "Invalid message ID 0xFFFFFFFF");
 		return ESP_ERR_INVALID_ARG;
 	}
@@ -907,27 +911,29 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 
 	/* Search for existing registration */
 	for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
-		if (custom_msg_callbacks[i].msg_id == msg_id) {
+		if (custom_msg_callbacks[i].msg_id == msg_id_exp) {
 			/* Found existing registration */
 			if (callback == NULL) {
 				/* Deregister: clean up entry */
 				custom_msg_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
 				custom_msg_callbacks[i].callback = NULL;
-				ESP_LOGI(TAG, "Deregistered callback for message ID %" PRIu32, msg_id);
+				custom_msg_callbacks[i].local_context = NULL;
+				ESP_LOGI(TAG, "Deregistered callback for message ID %" PRIu32, msg_id_exp);
 			} else {
 				/* Update existing callback */
 				custom_msg_callbacks[i].callback = callback;
-				ESP_LOGI(TAG, "Updated callback for message ID %" PRIu32, msg_id);
+				custom_msg_callbacks[i].local_context = local_context;
+				ESP_LOGI(TAG, "Updated callback for message ID %" PRIu32, msg_id_exp);
 			}
 			xSemaphoreGive(custom_callbacks_mutex);
 			return ESP_OK;
 		}
 	}
 
-	/* msg_id not found */
+	/* msg_id_exp not found */
 	if (callback == NULL) {
 		/* Cannot deregister what doesn't exist */
-		ESP_LOGW(TAG, "Cannot deregister message ID %" PRIu32 " - not registered", msg_id);
+		ESP_LOGW(TAG, "Cannot deregister message ID %" PRIu32 " - not registered", msg_id_exp);
 		xSemaphoreGive(custom_callbacks_mutex);
 		return ESP_ERR_NOT_FOUND;
 	}
@@ -935,9 +941,10 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 	/* Find empty slot for new registration */
 	for (int i = 0; i < CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS; i++) {
 		if (custom_msg_callbacks[i].callback == NULL) {
-			custom_msg_callbacks[i].msg_id = msg_id;
+			custom_msg_callbacks[i].msg_id = msg_id_exp;
 			custom_msg_callbacks[i].callback = callback;
-			ESP_LOGI(TAG, "Registered callback for message ID %" PRIu32, msg_id);
+			custom_msg_callbacks[i].local_context = local_context;
+			ESP_LOGI(TAG, "Registered callback for message ID %" PRIu32, msg_id_exp);
 			xSemaphoreGive(custom_callbacks_mutex);
 			return ESP_OK;
 		}
