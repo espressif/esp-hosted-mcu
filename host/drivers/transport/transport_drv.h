@@ -22,6 +22,7 @@ extern "C" {
 #include "esp_hosted_header.h"
 
 #include "port_esp_hosted_host_config.h"
+#include "mempool.h"
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
 #include "port_esp_hosted_host_spi.h"
@@ -123,7 +124,7 @@ typedef struct {
 	uint8_t secure;
 	transport_channel_tx_fn_t tx;
 	transport_channel_rx_fn_t rx;
-	void *memp;
+	hosted_mempool_t *memp;
 } transport_channel_t;
 
 

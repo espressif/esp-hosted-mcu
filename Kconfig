@@ -1877,10 +1877,10 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			Increase this value if the received URI can be larger
 
 	config ESP_HOSTED_USE_MEMPOOL
-		bool "Cache allocated memory like mempool - helps to reduce malloc calls"
+		bool "Enable Mempool"
 		default y
 		help
-			Cache allocated memory - reduces number of malloc calls
+			Mempool will help to alloc buffer without going to heap for every memory allocation or free
 
 	config ESP_HOSTED_MAX_SIMULTANEOUS_SYNC_RPC_REQUESTS
 		int "Maximum number of simultaneous synchronous RPC Request"

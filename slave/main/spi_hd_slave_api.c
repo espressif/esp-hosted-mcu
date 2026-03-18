@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,6 +16,7 @@
 #include "interface.h"
 #include "endian.h"
 #include "mempool.h"
+#include "memdump.h"
 #include "stats.h"
 #include "esp_hosted_interface.h"
 #include "esp_hosted_header.h"
@@ -24,8 +25,17 @@
 #include "esp_hosted_transport_spi_hd.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
 
+#include "slave_util.h"
+#include "slave_config.h"
+#include "mempool.h"
+
 #include "esp_log.h"
 static const char TAG[] = "SPI_HD_DRIVER";
+
+#if H_USE_MEMPOOL
+// memory should be 4 byte aligned for DMA access
+#define MEM_ALIGNMENT_BYTES          4
+#endif
 
 /* SPI HD settings */
 #define NUM_DATA_BITS              CONFIG_ESP_SPI_HD_INTERFACE_NUM_DATA_LINES
@@ -131,23 +141,38 @@ if_ops_t if_ops = {
 	.deinit = esp_spi_hd_deinit,
 };
 
-static struct hosted_mempool * buf_mp_tx_g;
-static struct hosted_mempool * buf_mp_rx_g;
-static struct hosted_mempool * trans_tx_g;
-static struct hosted_mempool * trans_rx_g;
+#if H_USE_MEMPOOL
+static hosted_mempool_t * buf_mp_tx_g;
+static hosted_mempool_t * buf_mp_rx_g;
+static hosted_mempool_t * trans_tx_g;
+static hosted_mempool_t * trans_rx_g;
+#endif
+
 static SemaphoreHandle_t mempool_tx_sem = NULL; // to count number of Tx bufs in IDF SPI HD driver
 
 static inline void spi_hd_mempool_create(void)
 {
-	buf_mp_tx_g = hosted_mempool_create(NULL, 0,
-			TX_MEMPOOL_NUM_BLOCKS, SPI_HD_BUFFER_SIZE);
-	trans_tx_g = hosted_mempool_create(NULL, 0,
-			TX_MEMPOOL_NUM_BLOCKS, sizeof(spi_slave_hd_data_t));
-	buf_mp_rx_g = hosted_mempool_create(NULL, 0,
-			RX_MEMPOOL_NUM_BLOCKS, SPI_HD_BUFFER_SIZE);
-	trans_rx_g = hosted_mempool_create(NULL, 0,
-			RX_MEMPOOL_NUM_BLOCKS, sizeof(spi_slave_hd_data_t));
-#if CONFIG_ESP_HOSTED_USE_MEMPOOL
+#if H_USE_MEMPOOL
+	hosted_mempool_config_t config = {
+		.pre_allocated_mem = NULL,
+		.pre_allocated_mem_size = 0,
+		.num_blocks = TX_MEMPOOL_NUM_BLOCKS,
+		.block_size = SPI_HD_BUFFER_SIZE,
+		.alignment_in_bytes = MEM_ALIGNMENT_BYTES,
+		.malloc = slave_util_malloc,
+		.calloc = slave_util_calloc,
+		.memset = memset,
+		.free   = free,
+	};
+
+	buf_mp_tx_g = hosted_mempool_create(&config);
+	buf_mp_rx_g = hosted_mempool_create(&config);
+
+	config.block_size = sizeof(spi_slave_hd_data_t);
+
+	trans_tx_g = hosted_mempool_create(&config);
+	trans_rx_g = hosted_mempool_create(&config);
+
 	assert(buf_mp_tx_g);
 	assert(buf_mp_rx_g);
 	assert(trans_tx_g);
@@ -157,50 +182,52 @@ static inline void spi_hd_mempool_create(void)
 
 static inline void spi_hd_mempool_destroy(void)
 {
+#if H_USE_MEMPOOL
 	hosted_mempool_destroy(buf_mp_tx_g);
 	hosted_mempool_destroy(buf_mp_rx_g);
 	hosted_mempool_destroy(trans_tx_g);
 	hosted_mempool_destroy(trans_rx_g);
+#endif
 }
 
 static inline void *spi_hd_buffer_tx_alloc(size_t nbytes, uint need_memset)
 {
-	return hosted_mempool_alloc(buf_mp_tx_g, nbytes, need_memset);
+	MEMPOOL_ALLOC(buf_mp_tx_g, nbytes, need_memset);
 }
 
 static inline void spi_hd_buffer_tx_free(void *buf)
 {
-	hosted_mempool_free(buf_mp_tx_g, buf);
+	MEMPOOL_FREE(buf_mp_tx_g, buf);
 }
 
 static inline void *spi_hd_buffer_rx_alloc(uint need_memset)
 {
-	return hosted_mempool_alloc(buf_mp_rx_g, SPI_HD_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_rx_g, SPI_HD_BUFFER_SIZE, need_memset);
 }
 
 static inline void spi_hd_buffer_rx_free(void *buf)
 {
-	hosted_mempool_free(buf_mp_rx_g, buf);
+	MEMPOOL_FREE(buf_mp_rx_g, buf);
 }
 
 static inline spi_slave_hd_data_t *spi_hd_trans_tx_alloc(uint need_memset)
 {
-	return hosted_mempool_alloc(trans_tx_g, sizeof(spi_slave_hd_data_t), need_memset);
+	MEMPOOL_ALLOC(trans_tx_g, sizeof(spi_slave_hd_data_t), need_memset);
 }
 
 static inline void spi_hd_trans_tx_free(spi_slave_hd_data_t *trans)
 {
-	hosted_mempool_free(trans_tx_g, trans);
+	MEMPOOL_FREE(trans_tx_g, trans);
 }
 
 static inline spi_slave_hd_data_t *spi_hd_trans_rx_alloc(uint need_memset)
 {
-	return hosted_mempool_alloc(trans_rx_g, sizeof(spi_slave_hd_data_t), need_memset);
+	MEMPOOL_ALLOC(trans_rx_g, sizeof(spi_slave_hd_data_t), need_memset);
 }
 
 static inline void spi_hd_trans_rx_free(spi_slave_hd_data_t *trans)
 {
-	hosted_mempool_free(trans_rx_g, trans);
+	MEMPOOL_FREE(trans_rx_g, trans);
 }
 
 static bool cb_rx_ready(void *arg, spi_slave_hd_event_t *event, BaseType_t *awoken)
