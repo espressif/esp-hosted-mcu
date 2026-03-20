@@ -660,26 +660,13 @@ void bus_deinit_internal(void *bus_handle)
 int ensure_slave_bus_ready(void *bus_handle)
 {
 	esp_err_t res = ESP_OK;
-	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
-
-	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
-		ESP_LOGE(TAG, "Unable to get RESET config for transport");
-		return ESP_FAIL;
-	}
-
-	assert(reset_pin.pin != -1);
 
 	release_slave_reset_gpio_post_wakeup();
 
 	if (!esp_hosted_woke_from_power_save()) {
 		/* Reset the slave */
-		ESP_LOGI(TAG, "Resetting slave on UART bus with pin %d", reset_pin.pin);
-		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
-		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-		g_h.funcs->_h_msleep(10);
-		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-		g_h.funcs->_h_msleep(10);
-		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+		ESP_LOGI(TAG, "Resetting slave on UART bus");
+		g_h.funcs->_h_restart_slave();
 		// flush input
 		if (uart_handle) {
 			g_h.funcs->_h_uart_flush_input(uart_handle);
