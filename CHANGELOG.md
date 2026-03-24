@@ -1,5 +1,7 @@
 # Unreleased - Main Branch
 
+- Host: removed Unicode encoded characters in cmake file to prevent Windows build failure
+
 # Releases
 
 # $${\color{green} \text{2.12.6}}$$
