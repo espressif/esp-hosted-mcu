@@ -965,7 +965,7 @@ menu "Example Configuration"
 		help
 			Default task priority of ESP-Hosted tasks
 
-	config ESP_CACHE_MALLOC
+	config ESP_HOSTED_USE_MEMPOOL
 		bool "Enable Mempool"
 		default y
 		help

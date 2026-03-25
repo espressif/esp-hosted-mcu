@@ -88,7 +88,7 @@ if_ops_t if_ops = {
 static inline void sdio_mempool_create(void)
 {
 	buf_mp_tx_g = hosted_mempool_create(NULL, 0, SDIO_MEMPOOL_NUM_BLOCKS, SDIO_RX_BUFFER_SIZE);
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef CONFIG_ESP_HOSTED_USE_MEMPOOL
 	assert(buf_mp_tx_g);
 #endif
 }

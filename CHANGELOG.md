@@ -2,6 +2,7 @@
 
 ## Features
 
+- made ESP-Hosted mempool code private to fix build break
 - added parameter checking for RPC calls
 
 # Releases
