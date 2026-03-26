@@ -1,7 +1,31 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2022 The Apache Software Foundation (ASF)
  *
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2019-2026 Espressif Systems (Shanghai) CO LTD
+ */
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ */
+/*
+ * NOTICE: File has been changed from original implementation.
  */
 
 #include <string.h>
@@ -9,7 +33,7 @@
 #include <stdbool.h>
 #include "mempool_ll.h"
 #include "freertos/portable.h"
-#if CONFIG_ESP_CACHE_MALLOC
+#if CONFIG_ESP_HOSTED_USE_MEMPOOL
 
 //portMUX_TYPE hosted_port_mutex = portMUX_INITIALIZER_UNLOCKED;
 SemaphoreHandle_t hosted_port_mutex;
@@ -52,7 +76,7 @@ os_mempool_poison_check(void *start, int sz)
 #define os_mempool_poison_check(start, sz)
 #endif
 
-os_error_t
+static os_error_t
 os_mempool_init(struct os_mempool *mp, uint16_t blocks, uint32_t block_size,
                 void *membuf, const char *name)
 {
@@ -110,123 +134,13 @@ os_mempool_init(struct os_mempool *mp, uint16_t blocks, uint32_t block_size,
 	return OS_OK;
 }
 
-os_error_t
-os_mempool_ext_init(struct os_mempool_ext *mpe, uint16_t blocks,
-                    uint32_t block_size, void *membuf, const char *name)
-{
-	int rc;
-
-	rc = os_mempool_init(&mpe->mpe_mp, blocks, block_size, membuf, name);
-	if (rc != 0) {
-		return rc;
-	}
-
-	mpe->mpe_mp.mp_flags = OS_MEMPOOL_F_EXT;
-	mpe->mpe_put_cb = NULL;
-	mpe->mpe_put_arg = NULL;
-
-	return 0;
-}
-
-os_error_t
-os_mempool_clear(struct os_mempool *mp)
-{
-	struct os_memblock *block_ptr;
-	int true_block_size;
-	uint8_t *block_addr;
-	uint16_t blocks;
-
-	if (!mp) {
-		return OS_INVALID_PARM;
-	}
-
-	true_block_size = OS_MEM_TRUE_BLOCK_SIZE(mp->mp_block_size);
-
-	/* cleanup the memory pool structure */
-	mp->mp_num_free = mp->mp_num_blocks;
-	mp->mp_min_free = mp->mp_num_blocks;
-	os_mempool_poison((void *)mp->mp_membuf_addr, true_block_size);
-	SLIST_FIRST(mp) = (void *)mp->mp_membuf_addr;
-
-	/* Chain the memory blocks to the free list */
-	block_addr = (uint8_t *)mp->mp_membuf_addr;
-	block_ptr = (struct os_memblock *)block_addr;
-	blocks = mp->mp_num_blocks;
-
-	while (blocks > 1) {
-		block_addr += true_block_size;
-		os_mempool_poison(block_addr, true_block_size);
-		SLIST_NEXT(block_ptr, mb_next) = (struct os_memblock *)block_addr;
-		block_ptr = (struct os_memblock *)block_addr;
-		--blocks;
-	}
-
-	/* Last one in the list should be NULL */
-	SLIST_NEXT(block_ptr, mb_next) = NULL;
-
-	return OS_OK;
-}
-
-os_error_t
-os_mempool_ext_clear(struct os_mempool_ext *mpe)
-{
-	mpe->mpe_mp.mp_flags = 0;
-	mpe->mpe_put_cb = NULL;
-	mpe->mpe_put_arg = NULL;
-
-	return os_mempool_clear(&mpe->mpe_mp);
-}
-
-void
+static void
 os_mempool_unregister(struct os_mempool *mp)
 {
 	STAILQ_REMOVE(&g_os_hosted_mempool_list, mp, os_mempool, mp_list);
 }
 
-bool
-os_mempool_is_sane(const struct os_mempool *mp)
-{
-	struct os_memblock *block;
-
-	/* Verify that each block in the free list belongs to the mempool. */
-	SLIST_FOREACH(block, mp, mb_next) {
-		if (!os_memblock_from(mp, block)) {
-			return false;
-		}
-		os_mempool_poison_check(block, OS_MEMPOOL_TRUE_BLOCK_SIZE(mp));
-	}
-
-	return true;
-}
-
-int
-os_memblock_from(const struct os_mempool *mp, const void *block_addr)
-{
-	uintptr_t true_block_size;
-	uintptr_t baddr_ptr;
-	uintptr_t end;
-
-	_Static_assert(sizeof block_addr == sizeof baddr_ptr,
-			"Pointer to void must be native word size.");
-
-	baddr_ptr = (uintptr_t)block_addr;
-	true_block_size = OS_MEMPOOL_TRUE_BLOCK_SIZE(mp);
-	end = mp->mp_membuf_addr + (mp->mp_num_blocks * true_block_size);
-
-	/* Check that the block is in the memory buffer range. */
-	if ((baddr_ptr < mp->mp_membuf_addr) || (baddr_ptr >= end)) {
-		return 0;
-	}
-
-	/* All freed blocks should be on true block size boundaries! */
-	if (((baddr_ptr - mp->mp_membuf_addr) % true_block_size) != 0) {
-		return 0;
-	}
-
-	return 1;
-}
-
-void *
+static void *
 os_memblock_get(struct os_mempool *mp)
 {
 	struct os_memblock *block;
@@ -259,7 +173,7 @@ os_memblock_get(struct os_mempool *mp)
 	return (void *)block;
 }
 
-os_error_t
+static os_error_t
 os_memblock_put_from_cb(struct os_mempool *mp, void *block_addr)
 {
 	struct os_memblock *block;
@@ -282,7 +196,7 @@ os_memblock_put_from_cb(struct os_mempool *mp, void *block_addr)
 	return OS_OK;
 }
 
-os_error_t
+static os_error_t
 os_memblock_put(struct os_mempool *mp, void *block_addr)
 {
 	struct os_mempool_ext *mpe;
@@ -323,7 +237,118 @@ os_memblock_put(struct os_mempool *mp, void *block_addr)
 	return os_memblock_put_from_cb(mp, block_addr);
 }
 
-struct os_mempool *
+#if 0
+static os_error_t
+os_mempool_clear(struct os_mempool *mp)
+{
+	struct os_memblock *block_ptr;
+	int true_block_size;
+	uint8_t *block_addr;
+	uint16_t blocks;
+
+	if (!mp) {
+		return OS_INVALID_PARM;
+	}
+
+	true_block_size = OS_MEM_TRUE_BLOCK_SIZE(mp->mp_block_size);
+
+	/* cleanup the memory pool structure */
+	mp->mp_num_free = mp->mp_num_blocks;
+	mp->mp_min_free = mp->mp_num_blocks;
+	os_mempool_poison((void *)mp->mp_membuf_addr, true_block_size);
+	SLIST_FIRST(mp) = (void *)mp->mp_membuf_addr;
+
+	/* Chain the memory blocks to the free list */
+	block_addr = (uint8_t *)mp->mp_membuf_addr;
+	block_ptr = (struct os_memblock *)block_addr;
+	blocks = mp->mp_num_blocks;
+
+	while (blocks > 1) {
+		block_addr += true_block_size;
+		os_mempool_poison(block_addr, true_block_size);
+		SLIST_NEXT(block_ptr, mb_next) = (struct os_memblock *)block_addr;
+		block_ptr = (struct os_memblock *)block_addr;
+		--blocks;
+	}
+
+	/* Last one in the list should be NULL */
+	SLIST_NEXT(block_ptr, mb_next) = NULL;
+
+	return OS_OK;
+}
+
+static os_error_t
+os_mempool_ext_init(struct os_mempool_ext *mpe, uint16_t blocks,
+                    uint32_t block_size, void *membuf, const char *name)
+{
+	int rc;
+
+	rc = os_mempool_init(&mpe->mpe_mp, blocks, block_size, membuf, name);
+	if (rc != 0) {
+		return rc;
+	}
+
+	mpe->mpe_mp.mp_flags = OS_MEMPOOL_F_EXT;
+	mpe->mpe_put_cb = NULL;
+	mpe->mpe_put_arg = NULL;
+
+	return 0;
+}
+
+static os_error_t
+os_mempool_ext_clear(struct os_mempool_ext *mpe)
+{
+	mpe->mpe_mp.mp_flags = 0;
+	mpe->mpe_put_cb = NULL;
+	mpe->mpe_put_arg = NULL;
+
+	return os_mempool_clear(&mpe->mpe_mp);
+}
+
+static int
+os_memblock_from(const struct os_mempool *mp, const void *block_addr)
+{
+	uintptr_t true_block_size;
+	uintptr_t baddr_ptr;
+	uintptr_t end;
+
+	_Static_assert(sizeof block_addr == sizeof baddr_ptr,
+			"Pointer to void must be native word size.");
+
+	baddr_ptr = (uintptr_t)block_addr;
+	true_block_size = OS_MEMPOOL_TRUE_BLOCK_SIZE(mp);
+	end = mp->mp_membuf_addr + (mp->mp_num_blocks * true_block_size);
+
+	/* Check that the block is in the memory buffer range. */
+	if ((baddr_ptr < mp->mp_membuf_addr) || (baddr_ptr >= end)) {
+		return 0;
+	}
+
+	/* All freed blocks should be on true block size boundaries! */
+	if (((baddr_ptr - mp->mp_membuf_addr) % true_block_size) != 0) {
+		return 0;
+	}
+
+	return 1;
+}
+
+static bool
+os_mempool_is_sane(const struct os_mempool *mp)
+{
+	struct os_memblock *block;
+
+	/* Verify that each block in the free list belongs to the mempool. */
+	SLIST_FOREACH(block, mp, mb_next) {
+		if (!os_memblock_from(mp, block)) {
+			return false;
+		}
+		os_mempool_poison_check(block, OS_MEMPOOL_TRUE_BLOCK_SIZE(mp));
+	}
+
+	return true;
+}
+
+static struct os_mempool *
 os_mempool_info_get_next(struct os_mempool *mp, struct os_mempool_info *omi)
 {
 	struct os_mempool *cur;
@@ -347,6 +372,18 @@ os_mempool_info_get_next(struct os_mempool *mp, struct os_mempool_info *omi)
 
 	return (cur);
 }
+#endif
 
+static struct mempool_ops_t opts = {
+	.mempool_init = os_mempool_init,
+	.mempool_unregister = os_mempool_unregister,
+	.memblock_get = os_memblock_get,
+	.memblock_put = os_memblock_put,
+};
+
+struct mempool_ops_t * os_mempool_get_ops(void)
+{
+	return &opts;
+}
 
 #endif

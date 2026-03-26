@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,15 +14,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/portmacro.h>
 
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef CONFIG_ESP_HOSTED_USE_MEMPOOL
 #include "mempool_ll.h"
-struct hosted_mempool {
-	struct os_mempool *pool;
-	uint8_t *heap;
-	uint8_t static_heap;
-	size_t num_blocks;
-	size_t block_size;
-};
 #endif
 
 #define MEM_DUMP(s) \

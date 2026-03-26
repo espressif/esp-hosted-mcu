@@ -147,7 +147,7 @@ static inline void spi_hd_mempool_create(void)
 			RX_MEMPOOL_NUM_BLOCKS, SPI_HD_BUFFER_SIZE);
 	trans_rx_g = hosted_mempool_create(NULL, 0,
 			RX_MEMPOOL_NUM_BLOCKS, sizeof(spi_slave_hd_data_t));
-#if CONFIG_ESP_CACHE_MALLOC
+#if CONFIG_ESP_HOSTED_USE_MEMPOOL
 	assert(buf_mp_tx_g);
 	assert(buf_mp_rx_g);
 	assert(trans_tx_g);

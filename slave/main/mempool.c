@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,6 +7,15 @@
 #include "mempool.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
+
+struct hosted_mempool {
+	struct os_mempool *pool;
+	uint8_t *heap;
+	uint8_t static_heap;
+	size_t num_blocks;
+	size_t block_size;
+	struct mempool_ops_t *ops;
+};
 
 const char *TAG = "HS_MP";
 
@@ -16,7 +25,7 @@ const char *TAG = "HS_MP";
 struct hosted_mempool * hosted_mempool_create(void *pre_allocated_mem,
 		size_t pre_allocated_mem_size, size_t num_blocks, size_t block_size)
 {
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef CONFIG_ESP_HOSTED_USE_MEMPOOL
 	struct hosted_mempool *new = NULL;
 	struct os_mempool *pool = NULL;
 	uint8_t *heap = NULL;
@@ -51,10 +60,15 @@ struct hosted_mempool * hosted_mempool_create(void *pre_allocated_mem,
 		goto free_buffs;
 	}
 
+	new->ops = os_mempool_get_ops();
+	if (!new->ops) {
+		goto free_buffs;
+	}
+
 	snprintf(str, MEMPOOL_NAME_STR_SIZE, "hosted_%p", pool);
 
-	if (os_mempool_init(pool, num_blocks, block_size, heap, str)) {
-		ESP_LOGE(TAG, "os_mempool_init failed\n");
+	if (new->ops->mempool_init(pool, num_blocks, block_size, heap, str)) {
+		ESP_LOGE(TAG, "mempool_init failed\n");
 		goto free_buffs;
 	}
 
@@ -85,14 +99,14 @@ free_buffs:
 
 void hosted_mempool_destroy(struct hosted_mempool *mempool)
 {
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef CONFIG_ESP_HOSTED_USE_MEMPOOL
 	if (!mempool)
 		return;
 #if MEMPOOL_DEBUG
 	ESP_LOGI(MEM_TAG, "Destroy mempool %p num_blk[%lu] blk_size:[%lu]", mempool->pool, mempool->num_blocks, mempool->block_size);
 #endif
 
-	os_mempool_unregister(mempool->pool);
+	mempool->ops->mempool_unregister(mempool->pool);
 	FREE(mempool->pool);
 
 	if (!mempool->static_heap)
@@ -107,7 +121,7 @@ void * hosted_mempool_alloc(struct hosted_mempool *mempool,
 {
 	void *mem = NULL;
 
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef CONFIG_ESP_HOSTED_USE_MEMPOOL
 	if (!mempool) {
 		ESP_LOGE(TAG, "mempool %p is NULL", mempool);
 		return NULL;
@@ -124,7 +138,7 @@ void * hosted_mempool_alloc(struct hosted_mempool *mempool,
 	}
 #endif
 
-	mem = os_memblock_get(mempool->pool);
+	mem = mempool->ops->memblock_get(mempool->pool);
 #else
 	mem = MEM_ALLOC(MEMPOOL_ALIGNED(nbytes));
 #endif
@@ -142,7 +156,7 @@ int hosted_mempool_free(struct hosted_mempool *mempool, void *mem)
 	if (!mem) {
 		return 0;
 	}
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef CONFIG_ESP_HOSTED_USE_MEMPOOL
 	if (!mempool) {
 		ESP_LOGE(TAG, "%s: mempool %p is NULL", __func__, mempool);
 		return MEMPOOL_FAIL;
@@ -153,7 +167,7 @@ int hosted_mempool_free(struct hosted_mempool *mempool, void *mem)
 	assert(mempool->pool);
 #endif
 
-	return os_memblock_put(mempool->pool, mem);
+	return mempool->ops->memblock_put(mempool->pool, mem);
 #else
 	FREE(mem);
 	return 0;

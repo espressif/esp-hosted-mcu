@@ -151,7 +151,7 @@ static inline void spi_mempool_create(void)
 	buf_mp_rx_g = buf_mp_tx_g;
 	trans_mp_g = hosted_mempool_create(NULL, 0,
 			SPI_MEMPOOL_NUM_BLOCKS, sizeof(spi_slave_transaction_t));
-#if CONFIG_ESP_CACHE_MALLOC
+#if CONFIG_ESP_HOSTED_USE_MEMPOOL
 	assert(buf_mp_tx_g);
 	assert(buf_mp_rx_g);
 	assert(trans_mp_g);

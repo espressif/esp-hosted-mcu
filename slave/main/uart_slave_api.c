@@ -116,7 +116,7 @@ static inline void h_uart_mempool_create(void)
 			HOSTED_UART_TX_QUEUE_SIZE, BUFFER_SIZE);
 	buf_mp_rx_g = hosted_mempool_create(NULL, 0,
 			HOSTED_UART_RX_QUEUE_SIZE, BUFFER_SIZE);
-#if CONFIG_ESP_CACHE_MALLOC
+#if CONFIG_ESP_HOSTED_USE_MEMPOOL
 	assert(buf_mp_tx_g);
 	assert(buf_mp_rx_g);
 #endif
