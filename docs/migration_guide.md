@@ -1,9 +1,54 @@
 This migration guide documents key changes in ESP-Hosted that users must be aware of when migrating from older versions.
 
 #### Index
-1. [2.11.0 - ESP-Hosted Host Driver](#coloryellow-text2100---esp-hosted-host-driver)
+1. [2.5.2 - Bluetooth Controller on Co-Processor Disabled by Default](#coloryellow-text252---bluetooth-controller-on-co-processor-disabled-by-default)
 2. [2.6.0 - ESP-Hosted Slave OTA](#coloryellow-text260---esp-hosted-slave-ota)
-3. [2.5.2 - Bluetooth Controller on Co-Processor Disabled by Default](#coloryellow-text252---bluetooth-controller-on-co-processor-disabled-by-default)
+3. [2.11.0 - ESP-Hosted Host Driver](#coloryellow-text2110---esp-hosted-host-driver)
+4. [2.12.4 - Custom Msg Callback - User Ptr](#coloryellow-text2124---custom-msg-callback---user-ptr)
+
+# $${\color{yellow} \text{2.12.4 - Custom Msg Callback - User Ptr}}$$
+
+## Migration needed from versions
+
+
+| Firmware | Version    | Migration required |
+| -------- | ---------- | ------------------ |
+| Host     | < 2.12.4  | ✅                  |
+| Slave    | < 2.12.4  | ✅                  |
+
+## Reason for change
+
+1. `esp_hosted_register_custom_callback()` now supports a user-provided pointer to be passed back on every callback invocation.
+2. This allows external code to maintain per-callback context without global variables.
+
+### Old API
+
+```c
+esp_err_t esp_hosted_register_custom_callback(
+    uint32_t msg_id,
+    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+
+esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size_t data_len);
+```
+
+### New API
+
+```c
+esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id_exp,
+    void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context), // <-- Changed
+    void *local_context); // <-- Extra argument
+
+esp_err_t esp_hosted_send_custom_data(uint32_t msg_id_to_send, const uint8_t *data_to_send, size_t data_len_to_send); // no logical change
+```
+
+*Arguments:*
+
+* `msg_id` – message ID to register
+* :zap: `callback` – function pointer to handle the message (adds void* as last arg)
+* :zap: `user` – user-provided pointer returned on every callback invocation
+
+*Returns:* `ESP_OK` on success, or an error code on failure.
+
 
 #  $${\color{yellow} \text{2.11.0 - ESP-Hosted Host Driver}}$$
 
@@ -136,7 +181,7 @@ Example methods supported:
 | LittleFS method  | Host partition formatted as LittleFS and stores the slave firmware. Requires an extra host partition, but no Wi-Fi connectivity.            |
 | HTTPS method     | Slave firmware binary hosted on an HTTPS server. No extra host partition needed, but requires Wi-Fi connectivity.                           |
 
-# $${\color{yellow} \text{2.5.2 - Bluetooth Controller on Co-Processor Disabled by Default}}$$ 
+# $${\color{yellow} \text{2.5.2 - Bluetooth Controller on Co-Processor Disabled by Default}}$$
 
 ## Migration needed from versions
 
@@ -235,4 +280,3 @@ All ESP-Hosted Bluetooth host examples (NimBLE and BlueDroid) have been updated 
 
 For an example showing how to change the BT MAC address before starting the controller, refer to:
 [BT Controller Example](../examples/host_bt_controller_mac_addr/)
-

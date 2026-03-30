@@ -139,8 +139,9 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy);
 int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp);
 
 #if H_PEER_DATA_TRANSFER
-int rpc_evt_register_custom_callback(uint32_t msg_id,
-		void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
+		void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context),
+		void *local_context);
 #endif
 
 #endif /* __RPC_CORE_H */

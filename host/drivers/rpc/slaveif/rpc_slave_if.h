@@ -882,8 +882,9 @@ ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req);
 
 #ifdef H_PEER_DATA_TRANSFER
 ctrl_cmd_t * rpc_slaveif_custom_rpc(ctrl_cmd_t *req);
-int rpc_slaveif_register_custom_callback(uint32_t msg_id,
-		void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+int rpc_slaveif_register_custom_callback(uint32_t msg_id_exp,
+		void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context),
+		void *local_context);
 #endif
 
 #if H_GPIO_EXPANDER_SUPPORT

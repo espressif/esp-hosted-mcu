@@ -22,7 +22,8 @@ DEFINE_LOG_TAG(rpc_evt);
 /* Callback slots (empty slot has callback = NULL, msg_id = -1 is invalid sentinel) */
 static struct {
 	uint32_t msg_id;
-	void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len);
+	void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context);
+	void *local_context;
 } custom_callbacks[MAX_CUSTOM_CALLBACKS] = {
 	[0 ... (MAX_CUSTOM_CALLBACKS - 1)] = {
 		.msg_id = (uint32_t)-1,
@@ -34,11 +35,12 @@ static void* custom_callbacks_mutex = NULL;
 
 
 /* Register callback for specific message ID */
-int rpc_evt_register_custom_callback(uint32_t msg_id,
-		void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len))
+int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
+		void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context),
+		void *local_context)
 {
 	/* Validate message ID (-1/0xFFFFFFFF is invalid) */
-	if (msg_id == (uint32_t)-1) {
+	if (msg_id_exp == (uint32_t)-1) {
 		ESP_LOGE(TAG, "Invalid message ID 0xFFFFFFFF");
 		return FAILURE;
 	}
@@ -54,31 +56,33 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 
 	g_h.funcs->_h_lock_mutex(custom_callbacks_mutex, HOSTED_BLOCK_MAX);
 
-	/* First, check if this msg_id is already registered */
+	/* First, check if this msg_id_exp is already registered */
 	for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
-		if (custom_callbacks[i].msg_id == msg_id) {
+		if (custom_callbacks[i].msg_id == msg_id_exp) {
 			/* Found existing registration */
 			if (callback == NULL) {
 				/* Deregister: clean up this entry */
 				custom_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
 				custom_callbacks[i].callback = NULL;
-				ESP_LOGD(TAG, "Deregistered callback for msg_id %" PRIu32, msg_id);
+				custom_callbacks[i].local_context = NULL;
+				ESP_LOGD(TAG, "Deregistered callback for msg_id %" PRIu32, msg_id_exp);
 				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			} else {
 				/* Update existing callback */
 				custom_callbacks[i].callback = callback;
-				ESP_LOGD(TAG, "Updated callback for msg_id %" PRIu32, msg_id);
+				custom_callbacks[i].local_context = local_context;
+				ESP_LOGD(TAG, "Updated callback for msg_id %" PRIu32, msg_id_exp);
 				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			}
 		}
 	}
 
-	/* msg_id not found - need to register new */
+	/* msg_id_exp not found - need to register new */
 	if (callback == NULL) {
 		/* Cannot deregister what doesn't exist */
-		ESP_LOGD(TAG, "Cannot deregister msg_id %" PRIu32 " - not registered", msg_id);
+		ESP_LOGD(TAG, "Cannot deregister msg_id %" PRIu32 " - not registered", msg_id_exp);
 		g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 		return FAILURE;
 	}
@@ -86,9 +90,10 @@ int rpc_evt_register_custom_callback(uint32_t msg_id,
 	/* Find empty slot for new registration */
 	for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
 		if (custom_callbacks[i].callback == NULL) {
-			custom_callbacks[i].msg_id = msg_id;
+			custom_callbacks[i].msg_id = msg_id_exp;
 			custom_callbacks[i].callback = callback;
-			ESP_LOGD(TAG, "Registered callback for msg_id %" PRIu32, msg_id);
+			custom_callbacks[i].local_context = local_context;
+			ESP_LOGD(TAG, "Registered callback for msg_id %" PRIu32, msg_id_exp);
 			g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 			return SUCCESS;
 		}
@@ -459,7 +464,8 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		size_t payload_len = p_c->data.len;
 
 		bool callback_found = false;
-		void (*cb)(uint32_t, const uint8_t *, size_t) = NULL;
+		void (*cb)(uint32_t, const uint8_t *, size_t, void *) = NULL;
+		void *cb_local_context = NULL;
 
 		/* Find callback under mutex protection */
 		if (custom_callbacks_mutex) {
@@ -467,6 +473,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 			for (int i = 0; i < MAX_CUSTOM_CALLBACKS; i++) {
 				if (custom_callbacks[i].msg_id == msg_id && custom_callbacks[i].callback) {
 					cb = custom_callbacks[i].callback;
+					cb_local_context = custom_callbacks[i].local_context;
 					callback_found = true;
 					break;
 				}
@@ -476,7 +483,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 
 		/* Invoke callback outside mutex to avoid deadlock */
 		if (callback_found && cb) {
-			cb(msg_id, payload, payload_len);
+			cb(msg_id, payload, payload_len, cb_local_context);
 		} else {
 			ESP_LOGI(TAG, "No callback registered for message ID %" PRIu32 ", ignore", msg_id);
 		}

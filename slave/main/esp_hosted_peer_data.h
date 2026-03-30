@@ -18,24 +18,29 @@ extern "C" {
 /**
  * @brief Send custom data to host
  *
- * @param msg_id Message ID to send (any uint32_t except 0xFFFFFFFF)
- * @param data Data buffer to send
- * @param data_len Length of data
+ * @param msg_id_to_send    Message ID to send (any uint32_t except 0xFFFFFFFF)
+ * @param data_to_send      Data buffer to send
+ * @param data_len_to_send  Length of data
  * @return ESP_OK on success
  */
-esp_err_t esp_hosted_send_custom_data(uint32_t msg_id, const uint8_t *data, size_t data_len);
+esp_err_t esp_hosted_send_custom_data(uint32_t msg_id_to_send, const uint8_t *data_to_send, size_t data_len_to_send);
 
 /**
  * @brief Register callback for receiving custom data from host
  *
- * @param msg_id Message ID to listen for (any uint32_t except 0xFFFFFFFF)
- * @param callback Function called when data with this msg_id is received (NULL to deregister)
+ * @param msg_id_exp      Message ID to listen for (any uint32_t except 0xFFFFFFFF)
+ * @param callback        Function called when data with matching msg_id is received (NULL to deregister)
+ * @param local_context   Opaque pointer returned as-is to the callback on every invocation.
+ *                        May be NULL. Caller is responsible for ensuring the pointed-to object
+ *                        remains valid until the callback is deregistered.
+ *
  * @return ESP_OK on success
  *
  * @note Callback runs in RPC RX thread - keep it fast!
  */
-esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
-    void (*callback)(uint32_t msg_id, const uint8_t *data, size_t data_len));
+esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id_exp,
+    void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context),
+    void *local_context);
 
 #ifdef __cplusplus
 }
