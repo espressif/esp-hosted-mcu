@@ -20,7 +20,28 @@
 #include "esp_hosted_bt.h"
 #include "port_esp_hosted_host_os.h"
 
+#include "mempool.h"
+#include "transport_util.h"
+
 static const char TAG[] = "H_UART_DRV";
+
+#if H_USE_MEMPOOL
+/*
+ * Tx is expected to be mainly zerocopy tx of packets allocated in transport_drv,
+ * so a minimal Tx mempool is required to handle that, plus serial and bt data
+ *
+ * Rx needs a larger mempool based on expected Rx packets of:
+ * - network data (largest user)
+ * - serial data (minimal)
+ * - bt data (minimal)
+ */
+
+#define MIN_MEMPOOL_BT_PACKETS        3
+#define MIN_MEMPOOL_SERIAL_PACKETS    3
+#define MIN_MEMPOOL_NET_PACKETS       5
+
+#define MIN_MEMPOOL_REQ (MIN_MEMPOOL_BT_PACKETS + MIN_MEMPOOL_SERIAL_PACKETS + MIN_MEMPOOL_NET_PACKETS)
+#endif
 
 // UART is low throughput, so throttling should not be needed
 #define USE_DATA_THROTTLING (0)
@@ -48,26 +69,48 @@ static semaphore_handle_t sem_from_slave_queue;
 // one-time trigger to start write thread
 static bool uart_start_write_thread = false;
 
+#if H_USE_MEMPOOL
 /* Create mempool for cache mallocs */
-static struct mempool * buf_mp_g;
+static struct hosted_mempool_t * buf_mp_g;
+#endif
 
-static inline void h_uart_mempool_create(void)
+static inline void h_uart_mempool_create(int tx_q_size, int rx_q_size)
 {
+#if H_USE_MEMPOOL
 	MEM_DUMP("h_uart_mempool_create");
-	buf_mp_g = mempool_create(MAX_UART_BUFFER_SIZE);
-#ifdef H_USE_MEMPOOL
+	hosted_mempool_config_t config = {
+		.pre_allocated_mem = NULL,
+		.pre_allocated_mem_size = 0,
+		// allocate enough blocks to handle full RX and possible peak tx requests
+		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
+		.block_size = MAX_UART_BUFFER_SIZE,
+		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.malloc = transport_util_malloc,
+		.calloc = transport_util_calloc,
+		.memset = g_h.funcs->_h_memset,
+		.free   = g_h.funcs->_h_free,
+	};
+	buf_mp_g = hosted_mempool_create(&config);
 	assert(buf_mp_g);
+#endif
+}
+
+static inline void h_uart_mempool_destroy(void)
+{
+#if H_USE_MEMPOOL
+	hosted_mempool_destroy(buf_mp_g);
+	buf_mp_g = NULL;
 #endif
 }
 
 static inline void *h_uart_buffer_alloc(uint need_memset)
 {
-	return mempool_alloc(buf_mp_g, MAX_UART_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_g, MAX_UART_BUFFER_SIZE, need_memset);
 }
 
 static inline void h_uart_buffer_free(void *buf)
 {
-	mempool_free(buf_mp_g, buf);
+	MEMPOOL_FREE(buf_mp_g, buf);
 }
 
 /*
@@ -522,7 +565,7 @@ void *bus_init_internal(void)
 		assert(to_slave_queue[prio_q_idx]);
 	}
 
-	h_uart_mempool_create();
+	h_uart_mempool_create(H_UART_TX_QUEUE_SIZE, H_UART_RX_QUEUE_SIZE);
 
 	uart_handle = g_h.funcs->_h_bus_init();
 	if (!uart_handle) {
@@ -648,13 +691,10 @@ void bus_deinit_internal(void *bus_handle)
 		if (bus_handle) {
 			g_h.funcs->_h_bus_deinit(bus_handle);
 		}
-
-		if (buf_mp_g) {
-			mempool_destroy(buf_mp_g);
-			buf_mp_g = NULL;
-		}
 		uart_handle = NULL;
 	}
+
+	h_uart_mempool_destroy();
 }
 
 int ensure_slave_bus_ready(void *bus_handle)

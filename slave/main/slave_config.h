@@ -6,6 +6,7 @@
 #ifndef __SLAVE_CONFIG_H__
 #define __SLAVE_CONFIG_H__
 
+#include "sdkconfig.h"
 #include "esp_idf_version.h"
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0)
@@ -37,5 +38,11 @@
 #define H_GOT_MMU_PAGE_SIZE_FULL_APP_DESC 0
 #endif
 #endif // H_ALLOW_FULL_APP_DESC
+
+#if CONFIG_ESP_HOSTED_USE_MEMPOOL
+#define H_USE_MEMPOOL 1
+#else
+#define H_USE_MEMPOOL 0
+#endif
 
 #endif

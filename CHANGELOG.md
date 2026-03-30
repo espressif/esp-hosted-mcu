@@ -2,6 +2,7 @@
 
 ## Features
 
+- used common mempool code for both Host and Co-processor
 - made ESP-Hosted mempool code private to fix build break
 - added parameter checking for RPC calls
 

@@ -17,13 +17,15 @@
 #include "esp_hosted_log.h"
 #include "serial_drv.h"
 #include "serial_ll_if.h"
-#include "mempool.h"
 #include "stats.h"
 #include "errno.h"
 #include "hci_drv.h"
 #include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_log.h"
 #include "esp_hosted_power_save.h"
+
+#include "mempool.h"
+#include "transport_util.h"
 
 #include "esp_hosted_cli.h"
 #include "rpc_wrap.h"
@@ -35,6 +37,11 @@
  * @param  None
  * @retval None
  */
+
+#define MEMPOOL_ALIGNED(VAL, BYTES)      ((VAL) + (BYTES) -    \
+		((VAL) & (BYTES - 1)))
+#define MEMPOOL_ALIGNMENT_BYTES 64
+#define MEMPOOL_PADDING  5 // to cater for possible peak tx requests
 
 DEFINE_LOG_TAG(transport);
 static char chip_type = ESP_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
@@ -49,6 +56,10 @@ static volatile uint8_t transport_state = TRANSPORT_INACTIVE;
 static void process_event(uint8_t *evt_buf, uint16_t len);
 static int process_init_event(uint8_t *evt_buf, uint16_t len);
 
+#if H_USE_MEMPOOL
+static hosted_mempool_t * transport_drv_common_mempool_create(void);
+static void transport_drv_common_mempool_destroy(hosted_mempool_t * param);
+#endif
 
 #if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 static void *init_timeout_timer = NULL;
@@ -231,26 +242,83 @@ esp_err_t transport_drv_remove_channel(transport_channel_t *channel)
 
 	assert(chan_arr[channel->if_type] == channel);
 
-	mempool_destroy(channel->memp);
+#if H_USE_MEMPOOL
+	transport_drv_common_mempool_destroy(channel->memp);
+#endif
 	chan_arr[channel->if_type] = NULL;
 	HOSTED_FREE(channel);
 
 	return ESP_OK;
 }
 
+#if H_USE_MEMPOOL
+/*
+ * Use a common mempool for all tx channels to optimise memory usage
+ * instead of separate mempools for STA and AP tx.
+ *
+ * If user does not use AP, for example, separate mempool allocated
+ * for AP will be unused.
+ */
+
+// reference count mempool allocations
+static int ref_count_mempool = 0;
+static hosted_mempool_t * mempool_common = NULL;
+
+static hosted_mempool_t * transport_drv_common_mempool_create(void)
+{
+	if (!ref_count_mempool) {
+		// create mempool once only
+		hosted_mempool_config_t config = {
+			.pre_allocated_mem = NULL,
+			.pre_allocated_mem_size = 0,
+			.num_blocks = H_TRANSPORT_QUEUE_SIZE + MEMPOOL_PADDING,
+			.block_size = ESP_TRANSPORT_MAX_BUF_SIZE,
+			.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+			.malloc = transport_util_malloc,
+			.calloc = transport_util_calloc,
+			.memset = g_h.funcs->_h_memset,
+			.free   = g_h.funcs->_h_free,
+		};
+		mempool_common = hosted_mempool_create(&config);
+		assert(mempool_common);
+	}
+
+	// increment ref count
+	ref_count_mempool++;
+
+	return mempool_common;
+}
+#endif
+
+#if H_USE_MEMPOOL
+static void transport_drv_common_mempool_destroy(hosted_mempool_t * param)
+{
+	// decrement ref count
+	ref_count_mempool--;
+	if (ref_count_mempool == 0) {
+		// destroy the mempool
+	}
+}
+#endif
+
 static void transport_sta_free_cb(void *buf)
 {
-	mempool_free(chan_arr[ESP_STA_IF]->memp, buf);
+	MEMPOOL_FREE(chan_arr[ESP_STA_IF]->memp, buf);
 }
 
 static void transport_ap_free_cb(void *buf)
 {
-	mempool_free(chan_arr[ESP_AP_IF]->memp, buf);
+	MEMPOOL_FREE(chan_arr[ESP_AP_IF]->memp, buf);
 }
 
 static void transport_serial_free_cb(void *buf)
 {
-	mempool_free(chan_arr[ESP_SERIAL_IF]->memp, buf);
+	MEMPOOL_FREE(chan_arr[ESP_SERIAL_IF]->memp, buf);
+}
+
+static inline void *mempool_alloc(hosted_mempool_t * mempool, size_t size, uint need_memset)
+{
+	MEMPOOL_ALLOC(mempool, size, need_memset);
 }
 
 static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
@@ -286,7 +354,7 @@ static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 	assert(h && h==chan_arr[ESP_STA_IF]->api_chan);
 
 	/*  Prepare transport buffer directly consumable */
-	copy_buff = mempool_alloc(((struct mempool*)chan_arr[ESP_STA_IF]->memp), MAX_TRANSPORT_BUFFER_SIZE, true);
+	copy_buff = mempool_alloc(chan_arr[ESP_STA_IF]->memp, MAX_TRANSPORT_BUFFER_SIZE, true);
 	if (!copy_buff) {
 		ESP_LOGW(TAG, "STA TX: mempool_alloc failed, dropping pkt (len=%u)", len);
 #if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
@@ -321,7 +389,7 @@ static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 	assert(h && h==chan_arr[ESP_AP_IF]->api_chan);
 
 	/*  Prepare transport buffer directly consumable */
-	copy_buff = mempool_alloc(((struct mempool*)chan_arr[ESP_AP_IF]->memp), MAX_TRANSPORT_BUFFER_SIZE, true);
+	copy_buff = mempool_alloc(chan_arr[ESP_AP_IF]->memp, MAX_TRANSPORT_BUFFER_SIZE, true);
 	if (!copy_buff) {
 		ESP_LOGW(TAG, "AP TX: mempool_alloc failed, dropping pkt (len=%u)", len);
 #if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
@@ -372,7 +440,9 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 		ESP_LOGW(TAG, "Channel [%u] already created, replacing with new callbacks", if_type);
 
 		if (chan_arr[if_type]->memp) {
-			mempool_destroy(chan_arr[if_type]->memp);
+#if H_USE_MEMPOOL
+			transport_drv_common_mempool_destroy(chan_arr[if_type]->memp);
+#endif
 		}
 		HOSTED_FREE(chan_arr[if_type]);
 		chan_arr[if_type] = NULL;
@@ -410,9 +480,8 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 	channel->rx = rx;
 
 	/* Need to change size wrt transport */
-	channel->memp = mempool_create(MAX_TRANSPORT_BUFFER_SIZE);
-#ifdef H_USE_MEMPOOL
-	assert(channel->memp);
+#if H_USE_MEMPOOL
+	channel->memp = transport_drv_common_mempool_create();
 #endif
 
 	ESP_LOGD(TAG, "Add ESP-Hosted channel IF[%u]: S[%u] Tx[%p] Rx[%p]",
@@ -659,7 +728,7 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	uint16_t len = 0;
 	uint8_t *sendbuf = NULL;
 
-	sendbuf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(256), MEMPOOL_ALIGNMENT_BYTES);
+	sendbuf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(256, 64), MEMPOOL_ALIGNMENT_BYTES);
 	assert(sendbuf);
 
 	/* Populate event data */

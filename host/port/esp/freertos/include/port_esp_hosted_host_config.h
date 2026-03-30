@@ -122,6 +122,8 @@ enum {
 
 #if CONFIG_ESP_HOSTED_USE_MEMPOOL
   #define H_USE_MEMPOOL 1
+#else
+  #define H_USE_MEMPOOL 0
 #endif
 
 #define H_MAX_SYNC_RPC_REQUESTS                      CONFIG_ESP_HOSTED_MAX_SIMULTANEOUS_SYNC_RPC_REQUESTS
@@ -194,6 +196,9 @@ enum {
 
   #define H_SPI_MODE                                   CONFIG_ESP_HOSTED_SPI_MODE
   #define H_SPI_FD_CLK_MHZ                           CONFIG_ESP_HOSTED_SPI_CLK_FREQ
+
+  // used by transport_drv to determine the mempool size
+  #define H_TRANSPORT_QUEUE_SIZE                     CONFIG_ESP_HOSTED_SPI_TX_Q_SIZE
 
   /*  -------------------------- SPI Master Config end ------------------------  */
 #endif
@@ -298,6 +303,9 @@ enum {
     #define H_SDIO_RX_BLOCKS_TO_TRANSFER(x) (x / ESP_BLOCK_SIZE)
   #endif
 
+  // used by transport_drv to determine the mempool size
+  #define H_TRANSPORT_QUEUE_SIZE                      CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE
+
   /*  -------------------------- SDIO Host Config end -------------------------  */
 #endif
 
@@ -363,6 +371,9 @@ enum {
   #define H_SPI_HD_NUM_ADDRESS_BITS                    8
   #define H_SPI_HD_NUM_DUMMY_BITS                      8
 
+  // used by transport_drv to determine the mempool size
+  #define H_TRANSPORT_QUEUE_SIZE                       CONFIG_ESP_HOSTED_SPI_HD_TX_Q_SIZE
+
 /*  -------------------------- SPI_HD Host Config end -------------------------  */
 #else
   #define H_SPI_HD_HOST_INTERFACE 0
@@ -390,6 +401,9 @@ enum {
   #define H_UART_PORT_RX                               NULL
   #define H_UART_TX_QUEUE_SIZE                         CONFIG_ESP_HOSTED_UART_TX_Q_SIZE
   #define H_UART_RX_QUEUE_SIZE                         CONFIG_ESP_HOSTED_UART_RX_Q_SIZE
+
+  // used by transport_drv to determine the mempool size
+  #define H_TRANSPORT_QUEUE_SIZE                       CONFIG_ESP_HOSTED_UART_TX_Q_SIZE
 
   /*  -------------------------- UART Host Config end -------------------------  */
 #else

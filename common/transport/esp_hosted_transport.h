@@ -46,6 +46,9 @@ typedef enum {
 #define ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE 1600
 #define ESP_TRANSPORT_UART_MAX_BUF_SIZE   1600
 
+// max transport size based on all transports
+#define ESP_TRANSPORT_MAX_BUF_SIZE        1600
+
 #define MAX_FRAGMENTABLE_PAYLOAD_SIZE     8192
 
 struct esp_priv_event {

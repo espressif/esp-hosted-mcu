@@ -27,6 +27,9 @@
 #include "esp_hosted_bt.h"
 #include "port_esp_hosted_host_os.h"
 
+#include "mempool.h"
+#include "transport_util.h"
+
 static const char TAG[] = "H_SPI_HD_DRV";
 
 // this locks the spi_hd transaction at the driver level, instead of at the HAL layer
@@ -36,6 +39,24 @@ static const char TAG[] = "H_SPI_HD_DRV";
 #define ACQUIRE_LOCK false
 #else
 #define ACQUIRE_LOCK true
+#endif
+
+#if H_USE_MEMPOOL
+/*
+ * Tx is expected to be mainly zerocopy tx of packets allocated in transport_drv,
+ * so a minimal Tx mempool is required to handle that, plus serial and bt data
+ *
+ * Rx needs a larger mempool based on expected Rx packets of:
+ * - network data (largest user)
+ * - serial data (minimal)
+ * - bt data (minimal)
+ */
+
+#define MIN_MEMPOOL_BT_PACKETS        3
+#define MIN_MEMPOOL_SERIAL_PACKETS    3
+#define MIN_MEMPOOL_NET_PACKETS       5
+
+#define MIN_MEMPOOL_REQ (MIN_MEMPOOL_BT_PACKETS + MIN_MEMPOOL_SERIAL_PACKETS + MIN_MEMPOOL_NET_PACKETS)
 #endif
 
 // some SPI HD slave registers must be polled (read multiple times)
@@ -71,8 +92,10 @@ static void * spi_hd_bus_lock;
 // max number of time to try to read write buffer available reg
 #define MAX_WRITE_BUF_RETRIES             25
 
+#if H_USE_MEMPOOL
 /* Create mempool for cache mallocs */
-static struct mempool * buf_mp_g;
+static hosted_mempool_t * buf_mp_g;
+#endif
 
 /* TODO to move this in transport drv */
 extern transport_channel_t *chan_arr[ESP_MAX_IF];
@@ -102,28 +125,43 @@ static void spi_hd_read_task(void const* pvParameters);
 static void spi_hd_process_rx_task(void const* pvParameters);
 static int update_flow_ctrl(uint8_t *rxbuff);
 
-static inline void spi_hd_mempool_create(void)
+static inline void spi_hd_mempool_create(int tx_q_size, int rx_q_size)
 {
+#if H_USE_MEMPOOL
 	MEM_DUMP("spi_hd_mempool_create");
-	buf_mp_g = mempool_create(MAX_SPI_HD_BUFFER_SIZE);
-#ifdef H_USE_MEMPOOL
+	hosted_mempool_config_t config = {
+		.pre_allocated_mem = NULL,
+		.pre_allocated_mem_size = 0,
+		// allocate enough blocks to handle full RX and possible peak tx requests
+		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
+		.block_size = MAX_SPI_HD_BUFFER_SIZE,
+		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.malloc = transport_util_malloc,
+		.calloc = transport_util_calloc,
+		.memset = g_h.funcs->_h_memset,
+		.free   = g_h.funcs->_h_free,
+	};
+	buf_mp_g = hosted_mempool_create(&config);
 	assert(buf_mp_g);
 #endif
 }
 
 static inline void spi_hd_mempool_destroy(void)
 {
-	mempool_destroy(buf_mp_g);
+#if H_USE_MEMPOOL
+	hosted_mempool_destroy(buf_mp_g);
+	buf_mp_g = NULL;
+#endif
 }
 
 static inline void *spi_hd_buffer_alloc(uint need_memset)
 {
-	return mempool_alloc(buf_mp_g, MAX_SPI_HD_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_g, MAX_SPI_HD_BUFFER_SIZE, need_memset);
 }
 
 static inline void spi_hd_buffer_free(void *buf)
 {
-	mempool_free(buf_mp_g, buf);
+	MEMPOOL_FREE(buf_mp_g, buf);
 }
 
 /*
@@ -745,7 +783,7 @@ void * bus_init_internal(void)
 		assert(to_slave_queue[prio_q_idx]);
 	}
 
-	spi_hd_mempool_create();
+	spi_hd_mempool_create(H_SPI_HD_TX_QUEUE_SIZE, H_SPI_HD_RX_QUEUE_SIZE);
 
 	spi_hd_read_thread = g_h.funcs->_h_thread_create("spi_hd_read",
 			DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, spi_hd_read_task, NULL);

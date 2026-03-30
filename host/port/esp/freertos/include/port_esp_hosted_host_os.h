@@ -18,8 +18,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include "mempool.h"
-
 #include "port_esp_hosted_host_config.h"
 #include "esp_hosted_os_abstraction.h"
 #include "esp_timer.h"

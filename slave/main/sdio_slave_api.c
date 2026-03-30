@@ -14,7 +14,6 @@
 #include "sdio_slave_api.h"
 #include "driver/sdio_slave.h"
 #include "endian.h"
-#include "mempool.h"
 #include "stats.h"
 #include "esp_hosted_interface.h"
 #include "esp_hosted_header.h"
@@ -22,6 +21,15 @@
 #include "esp_hosted_transport_init.h"
 #include "host_power_save.h"
 #include "esp_hosted_coprocessor_fw_ver.h"
+
+#include "slave_util.h"
+#include "slave_config.h"
+#include "mempool.h"
+
+#if H_USE_MEMPOOL
+// memory should be 4 byte aligned for DMA access
+#define MEM_ALIGNMENT_BYTES          4
+#endif
 
 //#define SIMPLIFIED_SDIO_SLAVE          1
 #define SDIO_DRIVER_TX_QUEUE_SIZE        CONFIG_ESP_SDIO_TX_Q_SIZE
@@ -31,7 +39,10 @@ static uint8_t sdio_slave_rx_buffer[SDIO_NUM_RX_BUFFERS][SDIO_RX_BUFFER_SIZE];
 static sdio_slave_buf_handle_t sdio_rx_buf_handles[SDIO_NUM_RX_BUFFERS];
 
 #define SDIO_MEMPOOL_NUM_BLOCKS         SDIO_DRIVER_TX_QUEUE_SIZE+2
-static struct hosted_mempool * buf_mp_tx_g;
+
+#if H_USE_MEMPOOL
+static hosted_mempool_t * buf_mp_tx_g;
+#endif
 
 interface_context_t context;
 interface_handle_t if_handle_g;
@@ -87,28 +98,38 @@ if_ops_t if_ops = {
 
 static inline void sdio_mempool_create(void)
 {
-	buf_mp_tx_g = hosted_mempool_create(NULL, 0, SDIO_MEMPOOL_NUM_BLOCKS, SDIO_RX_BUFFER_SIZE);
-#ifdef CONFIG_ESP_HOSTED_USE_MEMPOOL
+#if H_USE_MEMPOOL
+	hosted_mempool_config_t config = {
+		.pre_allocated_mem = NULL,
+		.pre_allocated_mem_size = 0,
+		.num_blocks = SDIO_MEMPOOL_NUM_BLOCKS,
+		.block_size = SDIO_RX_BUFFER_SIZE,
+		.alignment_in_bytes = MEM_ALIGNMENT_BYTES,
+		.malloc = slave_util_malloc,
+		.calloc = slave_util_calloc,
+		.memset = memset,
+		.free   = free,
+	};
+	buf_mp_tx_g = hosted_mempool_create(&config);
 	assert(buf_mp_tx_g);
-#endif
+#endif // H_USE_MEMPOOL
 }
 
 static inline void sdio_mempool_destroy(void)
 {
+#if H_USE_MEMPOOL
 	hosted_mempool_destroy(buf_mp_tx_g);
+#endif // #if H_USE_MEMPOOL
 }
 
 static inline void *sdio_buffer_tx_alloc(size_t nbytes, uint need_memset)
 {
-	/* TODO: When Mempool is not needed, SDIO should use
-	 * exact bytes for allocation instead of SDIO_RX_BUFFER_SIZE
-	 * To reduce strain on system memory */
-	return hosted_mempool_alloc(buf_mp_tx_g, nbytes, need_memset);
+	MEMPOOL_ALLOC(buf_mp_tx_g, nbytes, need_memset);
 }
 
 static inline void sdio_buffer_tx_free(void *buf)
 {
-	hosted_mempool_free(buf_mp_tx_g, buf);
+	MEMPOOL_FREE(buf_mp_tx_g, buf);
 }
 
 #if !SIMPLIFIED_SDIO_SLAVE

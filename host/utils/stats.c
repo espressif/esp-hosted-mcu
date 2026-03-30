@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,8 @@
 #endif
 #include "esp_log.h"
 #include "esp_hosted_transport_init.h"
+#include "esp_hosted_os_abstraction.h"
+#include "port_esp_hosted_host_os.h"
 
 // use mempool and zero copy for Tx
 #include "mempool.h"
@@ -38,6 +40,9 @@ static const char *TAG = "stats";
 
 /** Exported Functions **/
 
+// disable usage of mempool for now
+#define DISABLE_MEMPOOL 1
+
 #if TEST_RAW_TP
 static int test_raw_tp = 0;
 static uint8_t log_raw_tp_stats_timer_running = 0;
@@ -47,11 +52,17 @@ static void * raw_tp_tx_task_id = 0;
 static uint64_t test_raw_tx_len = 0;
 static uint64_t test_raw_rx_len = 0;
 
+#if !DISABLE_MEMPOOL
 static struct mempool * buf_mp_g = NULL;
+#endif
 
 void stats_mempool_free(void* ptr)
 {
+#if DISABLE_MEMPOOL
+	g_h.funcs->_h_free(ptr);
+#else
 	mempool_free(buf_mp_g, ptr);
+#endif
 }
 
 void test_raw_tp_cleanup(void)
@@ -103,10 +114,12 @@ static void raw_tp_tx_task(void const* pvParameters)
 	uint32_t i = 0;
 	g_h.funcs->_h_sleep(5);
 
+#if !DISABLE_MEMPOOL
 	buf_mp_g = mempool_create(MAX_TRANSPORT_BUFFER_SIZE);
 #ifdef H_USE_MEMPOOL
 	assert(buf_mp_g);
 #endif
+#endif // !DISABLE_MEMPOOL
 
 	while (1) {
 
@@ -120,8 +133,12 @@ static void raw_tp_tx_task(void const* pvParameters)
 		ret = esp_hosted_tx(ESP_TEST_IF, 0, raw_tp_tx_buf, TEST_RAW_TP__BUF_SIZE, H_BUFF_ZEROCOPY, raw_tp_tx_buf, H_DEFLT_FREE_FUNC, 0);
 
 #else
+#if DISABLE_MEMPOOL
+		raw_tp_tx_buf = g_h.funcs->_h_malloc_align(MAX_TRANSPORT_BUFFER_SIZE, HOSTED_MEM_ALIGNMENT_64);
+		g_h.funcs->_h_memset(raw_tp_tx_buf, 0, MAX_TRANSPORT_BUFFER_SIZE);
+#else
 		raw_tp_tx_buf = mempool_alloc(buf_mp_g, MAX_TRANSPORT_BUFFER_SIZE, true);
-
+#endif
 		ptr = (uint32_t*) (raw_tp_tx_buf + H_ESP_PAYLOAD_HEADER_OFFSET);
 		for (i=0; i<(TEST_RAW_TP__BUF_SIZE/4-1); i++, ptr++)
 			*ptr = 0xBAADF00D;

@@ -9,6 +9,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${host_dir}/api/src/esp_hosted_transport_config.c"
 		"${host_dir}/api/src/esp_hosted_ota_api.c"
 		"${host_dir}/drivers/transport/transport_drv.c"
+		"${host_dir}/drivers/transport/transport_util.c"
 		"${host_dir}/drivers/serial/serial_ll_if.c"
 		"${host_dir}/utils/stats.c"
 		"${host_dir}/drivers/serial/serial_drv.c")
@@ -51,10 +52,6 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	list(APPEND srcs  "${virt_serial_dir}/serial_if.c")
 	list(APPEND priv_include "${virt_serial_dir}")
 
-	# mempool
-	list(APPEND srcs "${host_dir}/drivers/mempool/mempool.c")
-	list(APPEND priv_include "${host_dir}/drivers/mempool" )
-
 	# slave and host common files
 	set(common_dir "${FG_root_dir}/common")
 
@@ -70,6 +67,12 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${common_dir}/protobuf-c"
 		"${common_dir}/proto" )
 
+	# mempool
+	if (CONFIG_ESP_HOSTED_USE_MEMPOOL)
+		list(APPEND srcs "${common_dir}/mempool/mempool_ll.c"
+			"${common_dir}/mempool/mempool.c")
+	endif()
+	list(APPEND priv_include "${common_dir}/mempool/include" )
 
 	# cli
 	list(APPEND srcs "${common_dir}/utils/esp_hosted_cli.c")

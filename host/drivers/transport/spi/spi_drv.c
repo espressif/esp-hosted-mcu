@@ -22,7 +22,28 @@
 #include "port_esp_hosted_host_log.h"
 #include "port_esp_hosted_host_os.h"
 
+#include "mempool.h"
+#include "transport_util.h"
+
 DEFINE_LOG_TAG(spi);
+
+#if H_USE_MEMPOOL
+/*
+ * Tx is expected to be mainly zerocopy tx of packets allocated in transport_drv,
+ * so a minimal Tx mempool is required to handle that, plus serial and bt data
+ *
+ * Rx needs a larger mempool based on expected Rx packets of:
+ * - network data (largest user)
+ * - serial data (minimal)
+ * - bt data (minimal)
+ */
+
+#define MIN_MEMPOOL_BT_PACKETS        3
+#define MIN_MEMPOOL_SERIAL_PACKETS    3
+#define MIN_MEMPOOL_NET_PACKETS       5
+
+#define MIN_MEMPOOL_REQ (MIN_MEMPOOL_BT_PACKETS + MIN_MEMPOOL_SERIAL_PACKETS + MIN_MEMPOOL_NET_PACKETS)
+#endif
 
 void * spi_handle = NULL;
 semaphore_handle_t spi_trans_ready_sem;
@@ -34,8 +55,10 @@ static void * spi_transaction_thread;
 /* TODO to move this in transport drv */
 extern transport_channel_t *chan_arr[ESP_MAX_IF];
 
+#if H_USE_MEMPOOL
 /* Create mempool for cache mallocs */
-static struct mempool * buf_mp_g;
+static hosted_mempool_t * buf_mp_g;
+#endif
 
 /** Exported variables **/
 
@@ -98,28 +121,44 @@ static esp_err_t create_static_netif(void)
 }
 #endif
 
-static inline void spi_mempool_create(void)
+static inline void spi_mempool_create(int tx_q_size, int rx_q_size)
 {
 	MEM_DUMP("spi_mempool_create");
-	buf_mp_g = mempool_create(MAX_SPI_BUFFER_SIZE);
-#ifdef H_USE_MEMPOOL
+#if H_USE_MEMPOOL
+	hosted_mempool_config_t config = {
+		.pre_allocated_mem = NULL,
+		.pre_allocated_mem_size = 0,
+		// allocate enough blocks to handle full RX and possible peak tx requests
+		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
+		.block_size = MAX_SPI_BUFFER_SIZE,
+		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.malloc = transport_util_malloc,
+		.calloc = transport_util_calloc,
+		.memset = g_h.funcs->_h_memset,
+		.free   = g_h.funcs->_h_free,
+	};
+	buf_mp_g = hosted_mempool_create(&config);
 	assert(buf_mp_g);
 #endif
 }
 
 static inline void spi_mempool_destroy(void)
 {
-	mempool_destroy(buf_mp_g);
+#if H_USE_MEMPOOL
+	ESP_LOGD(TAG, "Destroying SPI mempool");
+	hosted_mempool_destroy(buf_mp_g);
+	buf_mp_g = NULL;
+#endif
 }
 
 static inline void *spi_buffer_alloc(uint32_t need_memset)
 {
-	return mempool_alloc(buf_mp_g, MAX_SPI_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_g, MAX_SPI_BUFFER_SIZE, need_memset);
 }
 
 static inline void spi_buffer_free(void *buf)
 {
-	mempool_free(buf_mp_g, buf);
+	MEMPOOL_FREE(buf_mp_g, buf);
 }
 
 
@@ -260,7 +299,7 @@ void *bus_init_internal(void)
 		assert(to_slave_queue[prio_q_idx]);
 	}
 
-	spi_mempool_create();
+	spi_mempool_create(TO_SLAVE_QUEUE_SIZE, FROM_SLAVE_QUEUE_SIZE);
 
 	/* Creates & Give sem for next spi trans */
 	spi_trans_ready_sem = g_h.funcs->_h_create_semaphore(1);
