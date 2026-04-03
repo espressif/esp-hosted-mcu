@@ -962,12 +962,24 @@ static esp_err_t sdio_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 		}
 		/* Allocate rx buffer */
 		pkt_rxbuff = sdio_buffer_alloc(MEMSET_REQUIRED);
-		assert(pkt_rxbuff);
+		if (!pkt_rxbuff) {
+			ESP_LOGW(TAG, "RX mempool exhausted, dropping packet (%lu bytes remaining in stream)",
+					(unsigned long)buf_len);
+			/* Skip this packet and continue processing remaining stream data */
+			packet_size = len + offset;
+			if (packet_size > buf_len) {
+				return ESP_FAIL;
+			}
+			buf_len -= packet_size;
+			buf     += packet_size;
+			continue;
+		}
 
 		packet_size = len + offset;
 		if (packet_size > buf_len) {
 			ESP_LOGE(TAG, "packet size[%lu]>[%lu] too big for remaining stream data",
 					packet_size, buf_len);
+			sdio_buffer_free(pkt_rxbuff);
 			return ESP_FAIL;
 		}
 		memcpy(pkt_rxbuff, buf, packet_size);
