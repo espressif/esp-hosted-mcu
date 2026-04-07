@@ -727,6 +727,12 @@ ctrl_cmd_t * rpc_slaveif_gpio_set_pull_mode(ctrl_cmd_t *req)
 	RPC_SEND_REQ(RPC_ID__Req_GpioSetPullMode);
 	RPC_DECODE_RSP_IF_NOT_ASYNC();
 }
+
+ctrl_cmd_t * rpc_slaveif_gpio_intr_control(ctrl_cmd_t *req)
+{
+	RPC_SEND_REQ(RPC_ID__Req_GpioIntrControl);
+	RPC_DECODE_RSP_IF_NOT_ASYNC();
+}
 #endif
 
 #if H_EXT_COEX_SUPPORT

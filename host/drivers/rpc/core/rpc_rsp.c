@@ -888,6 +888,10 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_gpio_set_pull_mode);
 		RPC_ERR_IN_RESP(resp_gpio_set_pull_mode);
 		break;
+    } case RPC_ID__Resp_GpioIntrControl: {
+        RPC_FAIL_ON_NULL(resp_gpio_intr_control);
+        RPC_ERR_IN_RESP(resp_gpio_intr_control);
+        break;
 #endif
 #if H_EXT_COEX_SUPPORT
 	} case RPC_ID__Resp_ExtCoex: {

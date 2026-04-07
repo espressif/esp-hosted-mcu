@@ -339,6 +339,12 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 			p_a->rssi = p_c->rssi;
 		}
 		break;
+	} case RPC_ID__Event_GpioInterrupt: {
+		RPC_FAIL_ON_NULL(event_gpio_interrupt);
+		app_ntfy->resp_event_status = rpc_msg->event_gpio_interrupt->resp;
+		app_ntfy->u.e_gpio_interrupt.gpio_num = rpc_msg->event_gpio_interrupt->gpio_num;
+		app_ntfy->u.e_gpio_interrupt.level = rpc_msg->event_gpio_interrupt->level;
+		break;
 	} case RPC_ID__Event_DhcpDnsStatus: {
 		RPC_FAIL_ON_NULL(event_dhcp_dns);
 		RpcEventDhcpDnsStatus *p_c = rpc_msg->event_dhcp_dns;

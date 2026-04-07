@@ -39,6 +39,13 @@
 #include "slave_gpio_expander.h"
 #include "slave_ext_coex.h"
 
+#if H_GPIO_EXPANDER_SUPPORT
+typedef struct {
+	int gpio_num;
+	int level;
+} gpio_expander_isr_evt_t;
+#endif
+
 #define IFACE_MAC_SIZE              8 // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
 
 #define TIMEOUT_IN_MIN              (60*TIMEOUT_IN_SEC)
@@ -1453,6 +1460,10 @@ static esp_rpc_req_t req_table[] = {
 		.req_num = RPC_ID__Req_GpioSetPullMode,
 		.command_handler = req_gpio_set_pull_mode
 	},
+	{
+		.req_num = RPC_ID__Req_GpioIntrControl,
+		.command_handler = req_gpio_intr_control
+	},
 #endif // H_GPIO_EXPANDER_SUPPORT
 
 #if H_EXT_COEX_SUPPORT
@@ -1716,6 +1727,20 @@ static esp_err_t rpc_evt_mem_monitor(Rpc *ntfy, const uint8_t *data, ssize_t len
 }
 #endif // CONFIG_ESP_HOSTED_MEM_MONITOR
 
+#if H_GPIO_EXPANDER_SUPPORT
+static esp_err_t rpc_evt_gpio_interrupt(Rpc *ntfy, const uint8_t *data, ssize_t len)
+{
+	NTFY_TEMPLATE(RPC_ID__Event_GpioInterrupt,
+			RpcEventGpioInterrupt, event_gpio_interrupt,
+			rpc__event__gpio_interrupt__init);
+
+	gpio_expander_isr_evt_t *evt = (gpio_expander_isr_evt_t *)data;
+	ntfy_payload->gpio_num = evt->gpio_num;
+	ntfy_payload->level = evt->level;
+	return ESP_OK;
+}
+#endif
+
 esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 		ssize_t inlen, uint8_t **outbuf, ssize_t *outlen, void *priv_data)
 {
@@ -1777,6 +1802,11 @@ esp_err_t rpc_evt_handler(uint32_t session_id,const uint8_t *inbuf,
 		} case RPC_ID__Event_WifiEventNoArgs: {
 			ret = rpc_evt_Event_WifiEventNoArgs(ntfy, inbuf, inlen);
 			break;
+#if H_GPIO_EXPANDER_SUPPORT
+		} case RPC_ID__Event_GpioInterrupt: {
+			ret = rpc_evt_gpio_interrupt(ntfy, inbuf, inlen);
+			break;
+#endif
 #ifdef CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED
 		} case RPC_ID__Event_DhcpDnsStatus: {
 			ret = rpc_evt_Event_DhcpDnsStatus(ntfy, inbuf, inlen);

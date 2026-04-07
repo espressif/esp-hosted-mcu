@@ -22,6 +22,7 @@
 	esp_err_t req_gpio_set_direction(Rpc *req, Rpc *resp, void *priv_data);
 	esp_err_t req_gpio_input_enable(Rpc *req, Rpc *resp, void *priv_data);
 	esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data);
+	esp_err_t req_gpio_intr_control(Rpc *req, Rpc *resp, void *priv_data);
 
 #else
     #define H_GPIO_EXPANDER_SUPPORT (0)

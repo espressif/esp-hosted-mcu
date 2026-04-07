@@ -302,6 +302,10 @@ typedef struct {
 	int32_t wifi_event_id;
 } event_wifi_simple_t;
 
+typedef struct {
+    int gpio_num;
+    int level;
+} event_gpio_interrupt_t;
 
 #if H_WIFI_ENTERPRISE_SUPPORT
 typedef struct {
@@ -376,6 +380,7 @@ typedef struct {
 	uint32_t pull_up_en;     /*!< GPIO pull-up                                         */
 	uint32_t pull_down_en;   /*!< GPIO pull-down                                       */
 	uint32_t intr_type;      /*!< GPIO interrupt type                                  */
+	uint32_t hosted_isr_enable; /*!< Host consent for ISR events                      */
 	//#if SOC_GPIO_SUPPORT_PIN_HYS_FILTER
 	//    uint32_t hys_ctrl_mode;       /*!< GPIO hysteresis: hysteresis filter on slope input    */
 	//#endif
@@ -395,6 +400,12 @@ typedef struct {
 	uint32_t gpio_num;
 	uint32_t pull_mode;
 } rpc_gpio_set_pull_mode_t;
+
+typedef struct {
+    uint32_t gpio_num;
+    uint32_t cmd;
+    uint32_t intr_type;
+} rpc_gpio_intr_control_t;
 #endif
 
 #if H_EXT_COEX_SUPPORT
@@ -538,6 +549,8 @@ typedef struct Ctrl_cmd_t {
 
 		event_wifi_simple_t         e_wifi_simple;
 
+		event_gpio_interrupt_t      e_gpio_interrupt;
+
 		esp_hosted_event_mem_info_t  e_mem_info;
 
 		wifi_event_ap_staconnected_t e_wifi_ap_staconnected;
@@ -610,6 +623,8 @@ typedef struct Ctrl_cmd_t {
 		rpc_gpio_set_direction_t    gpio_set_direction;
 
 		rpc_gpio_set_pull_mode_t    gpio_set_pull_mode;
+
+		rpc_gpio_intr_control_t     gpio_intr_control;
 #endif
 #if H_EXT_COEX_SUPPORT
 		rpc_ext_coex_t              ext_coex;
@@ -895,6 +910,7 @@ ctrl_cmd_t * rpc_slaveif_gpio_get_level(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_gpio_set_direction(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_gpio_input_enable(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_gpio_set_pull_mode(ctrl_cmd_t *req);
+ctrl_cmd_t * rpc_slaveif_gpio_intr_control(ctrl_cmd_t *req);
 #endif
 #if H_EXT_COEX_SUPPORT
 ctrl_cmd_t * rpc_slaveif_ext_coex(ctrl_cmd_t *req);
