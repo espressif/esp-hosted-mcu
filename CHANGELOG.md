@@ -1,5 +1,13 @@
 # Unreleased - Main Branch
 
+# Releases
+
+# $${\color{green} \text{2.12.4}}$$
+
+## Bug Fixes
+
+- fix build break on co-processor if using SPI-HD interface with 2 data lines
+
 ## Features
 
 ### Custom RPC callbacks: support user context pointer
@@ -25,15 +33,14 @@ esp_err_t esp_hosted_register_custom_callback(
 ```
 
 ### Others
+
 - used common mempool code for both Host and Co-processor
 - made ESP-Hosted mempool code private to fix build break
 - added parameter checking for RPC calls
 
 ## Bug Fixes
+
 - Host: added NULL or validation checks for exposed user APIs
-
-
-# Releases
 
 # $${\color{green} \text{2.12.3}}$$
 
