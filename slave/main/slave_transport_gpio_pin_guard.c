@@ -53,8 +53,10 @@ static uint64_t get_reserved_pin_mask(void)
 	add_pin(&mask, CONFIG_ESP_SPI_HD_GPIO_CLK);
 	add_pin(&mask, CONFIG_ESP_SPI_HD_GPIO_D0);
 	add_pin(&mask, CONFIG_ESP_SPI_HD_GPIO_D1);
+#ifdef CONFIG_ESP_SPI_HD_PRIV_INTERFACE_4_DATA_LINES
 	add_pin(&mask, CONFIG_ESP_SPI_HD_GPIO_D2);
 	add_pin(&mask, CONFIG_ESP_SPI_HD_GPIO_D3);
+#endif
 	add_pin(&mask, CONFIG_ESP_SPI_HD_GPIO_DATA_READY);
 	add_pin(&mask, CONFIG_ESP_SPI_HD_GPIO_RESET);
 #endif
