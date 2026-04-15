@@ -1,5 +1,9 @@
 # Unreleased - Main Branch
 
+## Bug Fixes
+
+- fixed CI to allow building ESP32 co-processor with ESP-IDF v5.5 for SPI-FD and UART transports: was running out of IRAM space
+
 # Releases
 
 # $${\color{green} \text{2.12.4}}$$

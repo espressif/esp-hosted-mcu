@@ -120,6 +120,22 @@ static uint8_t hosted_constructs_init_done = 0;
   #define H_DR_PULL_REGISTER                         GPIO_PULLUP_ONLY
 #endif
 
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
+/**
+ * For ESP-IDF v5.5, Building ESP32 with UART Transport can fail due to
+ * lack of IRAM space.
+ * To reduce IRAM usage
+ * - `CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y`
+ * should be enabled
+ */
+#if CONFIG_IDF_TARGET_ESP32 && !CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH
+#error Building for SPI-FD transport can fail due to lack of IRAM space
+#error To free up IRAM, enable Component config --> ESP Ringbuf ---> Place non-ISR ringbuf functions into flash
+#error or uncomment
+#error CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y in sdkconfig.defaults.esp32 and regenerate sdkconfig
+#endif
+#endif
+
 static interface_context_t context;
 static interface_handle_t if_handle_g;
 static SemaphoreHandle_t spi_tx_sem;
