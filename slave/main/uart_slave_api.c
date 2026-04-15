@@ -53,13 +53,17 @@
 /**
  * For ESP-IDF v5.5, Building ESP32 with UART Transport can fail due to
  * lack of IRAM space.
- * To reduce IRAM usage, `CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y`
+ * To reduce IRAM usage
+ * - `CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y`
+ * - `CONFIG_RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH=y`
  * should be enabled
  */
-#if CONFIG_IDF_TARGET_ESP32 && !CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH
+#if CONFIG_IDF_TARGET_ESP32 && (!CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH || !CONFIG_RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH)
 #error Building for UART transport can fail due to lack of IRAM space
-#error To free up IRAM, enable Component config --> ESP Ringbuf ---> Place non-ISR ringbuf functions into flash
-#error or uncomment CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y in sdkconfig.defaults.esp32 and regenerate sdkconfig
+#error To free up IRAM, enable Component config --> ESP Ringbuf ---> Place non-ISR ringbuf functions into flash and
+#error Component config --> ESP Ringbuf ---> Place ISR ringbuf functions into flash
+#error or uncomment
+#error CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH=y and CONFIG_RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH=y in sdkconfig.defaults.esp32 and regenerate sdkconfig
 #endif
 #endif
 
