@@ -364,6 +364,11 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				p_e, sizeof(wifi_event_sta_scan_done_t), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_DhcpDnsStatus: {
+			rpc_set_dhcp_dns_status_t *p_e = &app_event->u.slave_dhcp_dns_status;
+			ESP_LOGI(TAG,
+			         "ESP Event: DHCP/DNS status: iface[%d] link_up[%d] dhcp_up[%d] dns_up[%d] ip[%s] gw[%s] dns[%s]",
+			         p_e->iface, p_e->net_link_up, p_e->dhcp_up, p_e->dns_up,
+			         p_e->dhcp_ip, p_e->dhcp_gw, p_e->dns_ip);
 			break;
 		} case RPC_ID__Event_MemMonitor: {
 			esp_hosted_event_mem_info_t *p_e = &app_event->u.e_mem_info;
