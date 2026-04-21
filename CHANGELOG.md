@@ -3,6 +3,8 @@
 ## Bug Fixes
 
 - fixed CI to allow building ESP32 co-processor with ESP-IDF v5.5 for SPI-FD and UART transports: was running out of IRAM space
+- fixed CI build failure when building co-processor with ESP-IDF release/v5.3
+- added more ESP-IDF releases to CI for testing
 
 # Releases
 

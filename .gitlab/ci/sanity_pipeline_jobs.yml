@@ -14,21 +14,19 @@ premerge_check:
 ### Build host using ESP-IDF examples
 ###
 
-# ### protocols/mqtt/tcp example
-# ### for master, mqtt/tcp example is now in Component Registry
-# sanity_build_idf_master_mqtt_tcp:
-#   variables:
-#     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
-#     IDF_REGISTRY_COMPONENT: "espressif/mqtt"
-#     IDF_REGISTRY_COMPONENT_EXAMPLE: "tcp"
-#   rules:
-#     - !reference [.default_rules, rules]
-#   extends: .build_template_mqtt_tcp_component
-#   image: espressif/idf:latest
-#   parallel:
-#     matrix:
-#       - IDF_TARGET: ["esp32p4"]
-#         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
+### protocols/mqtt example
+sanity_build_idf_master_mqtt:
+  variables:
+    EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_example_mqtt
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_VER: ["latest", "release-v6.0", "release-v5.5"]
+        IDF_TARGET: ["esp32p4"]
+        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
 
 ### wifi/iperf example
 sanity_build_idf_v5.5_iperf:
@@ -38,7 +36,7 @@ sanity_build_idf_v5.5_iperf:
   image: espressif/idf:${IDF_VER}
   parallel:
     matrix:
-      - IDF_VER: ["v5.5", "v5.5.1", "release-v5.5"]
+      - IDF_VER: ["v5.5.4", "release-v5.5"]
         IDF_TARGET: ["esp32p4"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
@@ -66,7 +64,7 @@ sanity_build_coprocessor_idf_v5.5:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32c6", "esp32c5"]
-        IDF_VER: ["v5.5", "v5.5.1", "release-v5.5"]
+        IDF_VER: ["v5.5.4", "release-v5.5"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
 # verify co-processor targets with Wi-Fi + BT
@@ -104,7 +102,7 @@ sanity_build_nimble_examples:
     matrix:
       - IDF_TARGET: ["esp32p4"]
         IDF_VER: ["latest",
-        "v5.5", "v5.5.1", "release-v5.5"]
+        "v5.5.4", "release-v5.5"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32h2"]
         EXAMPLE_TO_BUILD: ["host_nimble_bleprph_host_only_vhci",
         "host_nimble_bleprph_host_only_uart_hci"]
@@ -132,7 +130,7 @@ sanity_build_bluedroid_examples:
     matrix:
       - IDF_TARGET: ["esp32p4"]
         IDF_VER: ["latest",
-        "v5.5", "v5.5.1", "release-v5.5"]
+        "v5.5.4", "release-v5.5"]
         IDF_SLAVE_TARGET: ["esp32"]
         EXAMPLE_TO_BUILD: ["host_bluedroid_ble_compatibility_test",
         "host_bluedroid_bt_hid_mouse_device",
@@ -148,7 +146,7 @@ sanity_build_wifi_examples:
     matrix:
       - IDF_TARGET: ["esp32p4"]
         IDF_VER: ["latest",
-        "v5.5", "v5.5.1", "release-v5.5"]
+        "v5.5.4", "release-v5.5"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         EXAMPLE_TO_BUILD: ["host_wifi_easy_connect_dpp_enrollee",
         "host_wifi_itwt",
@@ -167,7 +165,7 @@ sanity_build_transport_examples:
     matrix:
       - IDF_TARGET: ["esp32p4"]
         IDF_VER: ["latest",
-        "v5.5", "v5.5.1", "release-v5.5"]
+        "v5.5.4", "release-v5.5"]
         IDF_SLAVE_TARGET: ["esp32c6"]
         EXAMPLE_TO_BUILD: ["host_network_split__power_save"]
         EXAMPLE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
