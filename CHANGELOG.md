@@ -6,6 +6,10 @@
 - fixed CI build failure when building co-processor with ESP-IDF release/v5.3
 - added more ESP-IDF releases to CI for testing
 
+### OTA: fix image size calculation for partition-based OTA
+- Add 16-byte alignment padding before SHA256 hash in image size parser
+- Previously sent 15 fewer bytes than actual image, causing hash mismatch
+
 # Releases
 
 # $${\color{green} \text{2.12.4}}$$

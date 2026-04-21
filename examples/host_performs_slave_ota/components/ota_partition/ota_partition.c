@@ -179,8 +179,11 @@ static esp_err_t parse_image_header(const esp_partition_t* partition, size_t* fi
 	/* Add SHA256 hash if appended */
 	bool has_hash = (image_header.hash_appended == 1);
 	if (has_hash) {
+		/* ESP-IDF pads to 16-byte alignment AFTER checksum, before hash */
+		size_t hash_padding = (16 - (total_size % 16)) % 16;
+		total_size += hash_padding;
 		total_size += 32;  // SHA256 hash is 32 bytes
-		ESP_LOGD(TAG, "Added 32 bytes for SHA256 hash (hash_appended=1)");
+		ESP_LOGD(TAG, "Added %u bytes padding + 32 bytes for SHA256 hash", (unsigned int)hash_padding);
 	} else {
 		ESP_LOGD(TAG, "No SHA256 hash appended (hash_appended=0)");
 	}
