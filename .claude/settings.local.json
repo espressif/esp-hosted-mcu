@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && cat {}')",
+      "Bash(git *)",
+      "Bash(xargs wc *)",
+      "Bash(xargs grep *)",
+      "Bash(codeagent-wrapper *)",
+      "Bash(npm list *)",
+      "Bash(npm search *)"
+    ]
+  }
+}
