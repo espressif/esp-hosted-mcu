@@ -9,23 +9,28 @@
 
 #include <stdbool.h>
 #include "sdkconfig.h"
+#include "soc/soc_caps.h"
 #include "esp_err.h"
 
 #include "esp_hosted_rpc.pb-c.h"
 
 #ifdef CONFIG_ESP_HOSTED_CP_EXT_COEX
-    #ifdef CONFIG_BT_ENABLED
-        #error "External Coexistence RPC handlers are enabled but Bluetooth is also enabled. For proper external coexistence, CONFIG_BT_ENABLED should be disabled."
+    /*
+     * On chips with SOC_EXTERNAL_COEX_ADVANCE, external coexistence works
+     * alongside BT controller. On other chips, BT controller must be off.
+     */
+    #if defined(CONFIG_BT_CONTROLLER_ENABLED) && !SOC_EXTERNAL_COEX_ADVANCE
+        #error "External Coexistence requires BT controller disabled on this chip. Disable CONFIG_BT_CONTROLLER_ENABLED or use a chip with SOC_EXTERNAL_COEX_ADVANCE."
     #endif
     #ifdef CONFIG_IDF_TARGET_ESP32
-        #error "External Coexistence RPC handlers are enabled but the target is ESP32. For proper external coexistence, the ESP-IDF target should not be ESP32."
+        #error "External Coexistence is not supported on ESP32. Use another co-processor."
     #endif
     #ifndef CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE
-        #error "External Coexistence RPC handlers are enabled but CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE is disabled. For proper external coexistence, it should be enabled (Component config -> Wi-Fi -> External coexistence)."
+        #error "External Coexistence RPC handlers are enabled but CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE is disabled (Component config -> Wireless Coexistence -> External Coexistence)."
     #endif
-	#ifndef CONFIG_ESP_COEX_ENABLED
-		#error "External Coexistence RPC handlers are enabled but CONFIG_ESP_COEX_ENABLED is disabled, Incompatible config/slave"
-	#endif
+    #ifndef CONFIG_ESP_COEX_ENABLED
+        #error "External Coexistence RPC handlers are enabled but CONFIG_ESP_COEX_ENABLED is disabled, Incompatible config/slave"
+    #endif
 
 #endif
 
