@@ -9,7 +9,7 @@
 #include "mempool.h"
 #include "mempool_ll.h"
 
-const char *TAG = "HS_MP";
+static const char *TAG = "HS_MP";
 
 #define MEMPOOL_NAME_STR_SIZE            32
 

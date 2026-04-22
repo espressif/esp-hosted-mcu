@@ -2,6 +2,12 @@
 
 # Releases
 
+# $${\color{green} \text{2.12.6}}$$
+
+## Bug Fixes
+
+- make `TAG` in `mempool.c` static to avoid link-time clash with other components (#187)
+
 # $${\color{green} \text{2.12.5}}$$
 
 ## Features
