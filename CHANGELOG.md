@@ -1,5 +1,16 @@
 # Unreleased - Main Branch
 
+# Releases
+
+# $${\color{green} \text{2.12.5}}$$
+
+## Features
+
+### External Coexistence: allow with BT on advanced coex chips
+- Aligned Kconfig with IDF change that relaxes `ESP_COEX_EXTERNAL_COEXIST_ENABLE` dependency
+- On chips with `SOC_EXTERNAL_COEX_ADVANCE`, external coexistence now works alongside BT controller
+- Updated compile-time checks in `slave_ext_coex.h` to match (includes `soc/soc_caps.h`)
+
 ## Bug Fixes
 
 - fixed CI to allow building ESP32 co-processor with ESP-IDF v5.5 for SPI-FD and UART transports: was running out of IRAM space
@@ -9,8 +20,6 @@
 ### OTA: fix image size calculation for partition-based OTA
 - Add 16-byte alignment padding before SHA256 hash in image size parser
 - Previously sent 15 fewer bytes than actual image, causing hash mismatch
-
-# Releases
 
 # $${\color{green} \text{2.12.4}}$$
 
