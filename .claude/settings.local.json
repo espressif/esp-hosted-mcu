@@ -7,7 +7,9 @@
       "Bash(xargs grep *)",
       "Bash(codeagent-wrapper *)",
       "Bash(npm list *)",
-      "Bash(npm search *)"
+      "Bash(npm search *)",
+      "Read(//c/Users/31933/.claude/skills/codeagent/**)",
+      "Read(//c//**)"
     ]
   }
 }
