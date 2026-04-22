@@ -1384,20 +1384,24 @@ endif
 
 	config ESP_HOSTED_CP_EXT_COEX
 		bool "External Coexistence support (Host controls slave external co-ex)"
-		select ESP_COEX_EXTERNAL_COEXIST_ENABLE if !(BT_ENABLED || NIMBLE_ENABLED) && !IDF_TARGET_ESP32 && ESP_COEX_ENABLED
+		select ESP_COEX_EXTERNAL_COEXIST_ENABLE if ((!BT_CONTROLLER_ENABLED && !IDF_TARGET_ESP32) || SOC_EXTERNAL_COEX_ADVANCE) && ESP_COEX_ENABLED
 		default n
 		help
 			Enable RPC handlers for external coexistence configuration from the host.
-			Requires CONFIG_EXTERNAL_COEX_ENABLE (Component config -> Wi-Fi -> External coexistence).
+			Requires CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE
+			(Component config → Wireless Coexistence → External Coexistence).
+
+			On chips with SOC_EXTERNAL_COEX_ADVANCE, external coexistence works
+			alongside Bluetooth. On other chips, BT controller must be disabled.
 
 	if ESP_HOSTED_CP_EXT_COEX
 
-		if BT_ENABLED
-			comment "⚠️  DISABLE idf BT for external coex. Disable BT_ENABLED (Component config → Bluetooth => Bluetooth)"
+		if BT_CONTROLLER_ENABLED && !SOC_EXTERNAL_COEX_ADVANCE
+			comment "⚠️  BT controller conflicts with external coex on this chip. Disable BT_CONTROLLER_ENABLED or use a chip with SOC_EXTERNAL_COEX_ADVANCE."
 		endif
 
-		if ESP_HOSTED_COPROCESSOR_BT_ENABLED
-			comment "⚠️  DISABLE Hosted BT flag for external coex. Disable ESP_HOSTED_COPROCESSOR_BT_ENABLED (Example Configuration => Enable BT sharing via hosted)"
+		if ESP_HOSTED_COPROCESSOR_BT_ENABLED && !SOC_EXTERNAL_COEX_ADVANCE
+			comment "⚠️  Hosted BT (controller on co-processor) conflicts with external coex on this chip. Disable ESP_HOSTED_COPROCESSOR_BT_ENABLED or use a chip with SOC_EXTERNAL_COEX_ADVANCE."
 		endif
 
 		if IDF_TARGET_ESP32
@@ -1409,7 +1413,7 @@ endif
 		endif
 
 		if !ESP_COEX_EXTERNAL_COEXIST_ENABLE
-			comment "⚠️  Enable WiFi external coexistence, ESP_COEX_EXTERNAL_COEXIST_ENABLE (Component config → Wireless Coexistence => External Coexistence)"
+			comment "⚠️  Enable WiFi external coexistence, ESP_COEX_EXTERNAL_COEXIST_ENABLE (Component config → Wireless Coexistence → External Coexistence)"
 		endif
 
 	endif
