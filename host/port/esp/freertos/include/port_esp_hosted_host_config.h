@@ -411,7 +411,11 @@ enum {
 #endif
 
 /* Generic reset pin config */
+#ifdef CONFIG_ESP_HOSTED_RESET_SLAVE_USING_CALLBACK
+#define H_GPIO_PIN_RESET                             -1
+#else
 #define H_GPIO_PIN_RESET                             CONFIG_ESP_HOSTED_GPIO_SLAVE_RESET_SLAVE
+#endif
 #define H_GPIO_PORT_RESET                            NULL
 
 /* If Reset pin is Enable, it is Active High.

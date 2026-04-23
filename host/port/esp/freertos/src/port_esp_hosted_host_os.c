@@ -834,6 +834,22 @@ int hosted_event_post(esp_event_base_t event_base, int32_t event_id,
 	return esp_event_post(event_base, event_id, event_data, event_data_size, ticks_to_wait);
 }
 
+int hosted_restart_slave(void)
+{
+#ifndef CONFIG_ESP_HOSTED_RESET_SLAVE_USING_CALLBACK
+	hosted_config_gpio(H_GPIO_PORT_RESET, H_GPIO_PIN_RESET, H_GPIO_MODE_DEF_OUTPUT);
+	hosted_write_gpio(H_GPIO_PORT_RESET, H_GPIO_PIN_RESET, H_RESET_VAL_ACTIVE);
+	hosted_msleep(10);
+	hosted_write_gpio(H_GPIO_PORT_RESET, H_GPIO_PIN_RESET, H_RESET_VAL_INACTIVE);
+	hosted_msleep(10);
+	hosted_write_gpio(H_GPIO_PORT_RESET, H_GPIO_PIN_RESET, H_RESET_VAL_ACTIVE);
+	return 0;
+#else
+	extern int hosted_reset_slave_callback(void);
+	return hosted_reset_slave_callback();
+#endif
+}
+
 void hosted_log_write(int  level,
 					const char *tag,
 					const char *format, ...)
@@ -1002,4 +1018,5 @@ hosted_osi_funcs_t g_hosted_osi_funcs = {
 	._h_config_host_power_save_hal_impl = hosted_config_host_power_save,
 	._h_start_host_power_save_hal_impl = hosted_start_host_power_save,
 	._h_event_post               =  hosted_event_post              ,
+	._h_restart_slave            =  hosted_restart_slave           ,
 };

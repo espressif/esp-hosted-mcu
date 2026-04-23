@@ -257,6 +257,14 @@ menu "ESP-Hosted config"
 
 		menu "Host SPI GPIOs Config"
 
+			config ESP_HOSTED_SPI_RESET_SLAVE_USING_CALLBACK
+				bool "Reset slave using callback function"
+				default n
+				help
+					Select this option if you want to reset the slave device using a callback function instead of using a GPIO pin.
+					This is useful if the reset line of the slave device is not connected to a GPIO pin of the host device.
+					The callback function should be defined as int hosted_reset_slave_callback(void); in user code.
+
 			choice ESP_HOSTED_SPI_HANDSHAKE_GPIO_CONFIG
 				bool "Handshake GPIO Config"
 				default ESP_HOSTED_HS_ACTIVE_HIGH
@@ -278,6 +286,7 @@ menu "ESP-Hosted config"
 			endchoice
 
 			choice ESP_HOSTED_SPI_RESET_GPIO_CONFIG
+				depends on !ESP_HOSTED_SPI_RESET_SLAVE_USING_CALLBACK
 				bool "Reset GPIO Config"
 				default ESP_HOSTED_SPI_RESET_ACTIVE_HIGH
 				help
@@ -563,6 +572,7 @@ menu "ESP-Hosted config"
 				default 100
 
 			config ESP_HOSTED_SPI_GPIO_RESET_SLAVE
+				depends on !ESP_HOSTED_SPI_RESET_SLAVE_USING_CALLBACK
 				int "GPIO pin for Resetting slave ESP"
 				default 54 if ESP_HOSTED_P4_C5_CORE_BOARD || ESP_HOSTED_P4_C6_CORE_BOARD || ESP_HOSTED_P4_C61_CORE_BOARD
 				default 9 if ESP32P4_EYE_C6_BOARD
@@ -640,7 +650,16 @@ ESP32XX_SPI_CLK_FREQ_RANGE_MAX := 40
 		menu "Hosted SDIO Configuration"
 			depends on ESP_HOSTED_SDIO_HOST_INTERFACE
 
+			config ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
+				bool "Reset slave using callback function"
+				default n
+				help
+					Select this option if you want to reset the slave device using a callback function instead of using a GPIO pin.
+					This is useful if the reset line of the slave device is not connected to a GPIO pin of the host device.
+					The callback function should be defined as int hosted_reset_slave_callback(void); in user code.
+
 			choice ESP_HOSTED_SDIO_RESET_GPIO_CONFIG
+				depends on !ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
 				bool "RESET GPIO Config"
 				default ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH
 				help
@@ -1048,6 +1067,7 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 			endif
 
 			config ESP_HOSTED_SDIO_GPIO_RESET_SLAVE
+				depends on !ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK
 				int "GPIO pin for Resetting slave ESP"
 				default 9 if ESP32P4_EYE_C6_BOARD
 				default 54 if IDF_TARGET_ESP32P4
@@ -1156,7 +1176,16 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 			default 4 if ESP_HOSTED_SPI_HD_PRIV_INTERFACE_4_DATA_LINES
 			default 2 if ESP_HOSTED_SPI_HD_PRIV_INTERFACE_2_DATA_LINES
 
+		config ESP_HOSTED_SPI_HD_RESET_SLAVE_USING_CALLBACK
+			bool "Reset slave using callback function"
+			default n
+			help
+				Select this option if you want to reset the slave device using a callback function instead of using a GPIO pin.
+				This is useful if the reset line of the slave device is not connected to a GPIO pin of the host device.
+				The callback function should be defined as int hosted_reset_slave_callback(void); in user code.
+
 		choice ESP_HOSTED_SPI_HD_RESET_GPIO_CONFIG
+			depends on !ESP_HOSTED_SPI_HD_RESET_SLAVE_USING_CALLBACK
 			bool "RESET GPIO Config"
 			default ESP_HOSTED_SPI_HD_RESET_ACTIVE_HIGH
 			help
@@ -1432,6 +1461,7 @@ ESP32XX_SDIO_CLK_FREQ_KHZ_RANGE_MAX := 50000
 				default 100
 
 			config ESP_HOSTED_SPI_HD_GPIO_RESET_SLAVE
+				depends on !ESP_HOSTED_SPI_HD_RESET_SLAVE_USING_CALLBACK
 				int "GPIO pin for Resetting slave ESP"
 				default 54 if ESP_HOSTED_P4_C5_CORE_BOARD || ESP_HOSTED_P4_C6_CORE_BOARD || ESP_HOSTED_P4_C61_CORE_BOARD
 				default 9 if ESP32P4_EYE_C6_BOARD
@@ -1495,7 +1525,16 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 	menu "UART Configuration"
 		depends on ESP_HOSTED_UART_HOST_INTERFACE
 
+		config ESP_HOSTED_UART_RESET_SLAVE_USING_CALLBACK
+			bool "Reset slave using callback function"
+			default n
+			help
+				Select this option if you want to reset the slave device using a callback function instead of using a GPIO pin.
+				This is useful if the reset line of the slave device is not connected to a GPIO pin of the host device.
+				The callback function should be defined as int hosted_reset_slave_callback(void); in user code.
+
 		choice ESP_HOSTED_UART_RESET_GPIO_CONFIG
+			depends on !ESP_HOSTED_UART_RESET_SLAVE_USING_CALLBACK
 			bool "RESET GPIO Config"
 			default ESP_HOSTED_UART_RESET_ACTIVE_HIGH
 			help
@@ -1637,6 +1676,7 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			default 2 if ESP_HOSTED_UART_PRIV_STOP_BITS_2
 
 		config ESP_HOSTED_UART_GPIO_RESET_SLAVE
+			depends on !ESP_HOSTED_UART_RESET_SLAVE_USING_CALLBACK
 			int "GPIO pin for Resetting slave ESP"
 			default 54 if ESP_HOSTED_P4_C5_CORE_BOARD || ESP_HOSTED_P4_C6_CORE_BOARD || ESP_HOSTED_P4_C61_CORE_BOARD
 			default 9 if ESP32P4_EYE_C6_BOARD
@@ -1721,6 +1761,11 @@ ESP32XX_SPI_HD_CLK_FREQ_RANGE_MAX := 40
 			bool
 			default n if ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH || ESP_HOSTED_SPI_RESET_ACTIVE_HIGH || ESP_HOSTED_SPI_HD_RESET_ACTIVE_HIGH || ESP_HOSTED_UART_RESET_ACTIVE_HIGH
 			default y if ESP_HOSTED_SDIO_RESET_ACTIVE_LOW || ESP_HOSTED_SPI_RESET_ACTIVE_LOW || ESP_HOSTED_SPI_HD_RESET_ACTIVE_LOW || ESP_HOSTED_UART_RESET_ACTIVE_LOW
+
+	config ESP_HOSTED_RESET_SLAVE_USING_CALLBACK
+			bool
+			default n if !ESP_HOSTED_SPI_RESET_SLAVE_USING_CALLBACK && !ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK && !ESP_HOSTED_SPI_HD_RESET_SLAVE_USING_CALLBACK && !ESP_HOSTED_UART_RESET_SLAVE_USING_CALLBACK
+			default y if ESP_HOSTED_SPI_RESET_SLAVE_USING_CALLBACK || ESP_HOSTED_SDIO_RESET_SLAVE_USING_CALLBACK || ESP_HOSTED_SPI_HD_RESET_SLAVE_USING_CALLBACK || ESP_HOSTED_UART_RESET_SLAVE_USING_CALLBACK
 
 	menu "Bluetooth Support"
 
