@@ -1,5 +1,38 @@
 # Unreleased - Main Branch
 
+# Releases
+
+# $${\color{green} \text{2.12.6}}$$
+
+## Bug Fixes
+
+- make `TAG` in `mempool.c` static to avoid link-time clash with other components (#187)
+
+# $${\color{green} \text{2.12.5}}$$
+
+## Features
+
+### External Coexistence: allow with BT on advanced coex chips
+- Aligned Kconfig with IDF change that relaxes `ESP_COEX_EXTERNAL_COEXIST_ENABLE` dependency
+- On chips with `SOC_EXTERNAL_COEX_ADVANCE`, external coexistence now works alongside BT controller
+- Updated compile-time checks in `slave_ext_coex.h` to match (includes `soc/soc_caps.h`)
+
+## Bug Fixes
+
+- fixed CI to allow building ESP32 co-processor with ESP-IDF v5.5 for SPI-FD and UART transports: was running out of IRAM space
+- fixed CI build failure when building co-processor with ESP-IDF release/v5.3
+- added more ESP-IDF releases to CI for testing
+
+### OTA: fix image size calculation for partition-based OTA
+- Add 16-byte alignment padding before SHA256 hash in image size parser
+- Previously sent 15 fewer bytes than actual image, causing hash mismatch
+
+# $${\color{green} \text{2.12.4}}$$
+
+## Bug Fixes
+
+- fix build break on co-processor if using SPI-HD interface with 2 data lines
+
 ## Features
 
 ### Custom RPC callbacks: support user context pointer
@@ -25,15 +58,14 @@ esp_err_t esp_hosted_register_custom_callback(
 ```
 
 ### Others
+
 - used common mempool code for both Host and Co-processor
 - made ESP-Hosted mempool code private to fix build break
 - added parameter checking for RPC calls
 
 ## Bug Fixes
+
 - Host: added NULL or validation checks for exposed user APIs
-
-
-# Releases
 
 # $${\color{green} \text{2.12.3}}$$
 

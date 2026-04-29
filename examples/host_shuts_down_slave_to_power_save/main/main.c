@@ -49,8 +49,8 @@
 
 static const char *TAG = "power_save_example";
 
-#define WIFI_SSID "ESP_1"
-#define WIFI_PASS "Espressif!123"
+#define WIFI_SSID CONFIG_ESP_WIFI_SSID
+#define WIFI_PASS CONFIG_ESP_WIFI_PASSWORD
 
 static gpio_pin_t s_reset_pin;
 
