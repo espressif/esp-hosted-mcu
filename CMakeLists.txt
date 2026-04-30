@@ -126,10 +126,10 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 endif()
 
 if(EXISTS "${IDF_PATH}/components/esp_driver_sdio")
-    message(STATUS "Using new driver components (IDF ≥ 5.0)")
+    message(STATUS "Using new driver components (IDF >= 5.0)")
     list(APPEND driver_requires esp_driver_sdmmc esp_driver_spi esp_driver_uart esp_driver_gpio)
 else()
-    message(STATUS "Using legacy driver component (IDF ≤ 4.4)")
+    message(STATUS "Using legacy driver component (IDF <= 4.4)")
     list(APPEND driver_requires driver)
 endif()
 
