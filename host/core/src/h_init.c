@@ -2,15 +2,17 @@
 #include "h_init.h"
 #include "h_wrapper.h"
 
-/* OSAL init/deinit stubs — filled during port implementation (Plan 2) */
-extern h_err_t h_osal_init(void);
-extern void    h_osal_deinit(void);
-extern h_err_t h_event_init(void);
-extern void    h_event_deinit(void);
-extern h_err_t h_transport_init(void);
-extern void    h_transport_deinit(void);
-extern h_err_t h_rpc_core_init(void);
-extern void    h_rpc_core_deinit(void);
+/* Port entry points — defined by each port (e.g. host/port/esp-idf/port_init.c).
+ * Uses h_port_* prefix to avoid collision with h_wrapper.h macros
+ * (e.g. h_transport_init is a macro that expands to g_h_transport.init). */
+extern h_err_t h_port_osal_init(void);
+extern void    h_port_osal_deinit(void);
+extern h_err_t h_port_event_init(void);
+extern void    h_port_event_deinit(void);
+extern h_err_t h_port_transport_init(void);
+extern void    h_port_transport_deinit(void);
+extern h_err_t h_port_rpc_init(void);
+extern void    h_port_rpc_deinit(void);
 
 static bool g_hosted_initialized = false;
 
@@ -63,16 +65,16 @@ h_err_t h_hosted_init(void)
     err = h_validate_contracts();
     if (err != H_OK) return err;
 
-    err = h_osal_init();
+    err = h_port_osal_init();
     if (err != H_OK) goto cleanup_osal;
 
-    err = h_event_init();
+    err = h_port_event_init();
     if (err != H_OK) goto cleanup_event;
 
-    err = h_transport_init();
+    err = h_port_transport_init();
     if (err != H_OK) goto cleanup_transport;
 
-    err = h_rpc_core_init();
+    err = h_port_rpc_init();
     if (err != H_OK) goto cleanup_rpc;
 
     g_hosted_initialized = true;
@@ -80,11 +82,11 @@ h_err_t h_hosted_init(void)
     return H_OK;
 
 cleanup_rpc:
-    h_transport_deinit();
+    h_port_transport_deinit();
 cleanup_transport:
-    h_event_deinit();
+    h_port_event_deinit();
 cleanup_event:
-    h_osal_deinit();
+    h_port_osal_deinit();
 cleanup_osal:
     return err;
 }
@@ -95,10 +97,10 @@ h_err_t h_hosted_deinit(void)
 {
     if (!g_hosted_initialized) return H_OK;
 
-    h_rpc_core_deinit();
-    h_transport_deinit();
-    h_event_deinit();
-    h_osal_deinit();
+    h_port_rpc_deinit();
+    h_port_transport_deinit();
+    h_port_event_deinit();
+    h_port_osal_deinit();
 
     g_hosted_initialized = false;
     return H_OK;
