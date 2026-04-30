@@ -17,7 +17,7 @@ extern void    h_port_rpc_deinit(void);
 static bool g_hosted_initialized = false;
 
 /* ── Contract Validation (fail-fast at startup) ── */
-static h_err_t h_validate_contracts(void)
+h_err_t h_validate_contracts(void)
 {
     /* OSAL required functions */
     if (!g_h_osal.malloc || !g_h_osal.free || !g_h_osal.mutex_create ||

@@ -4,6 +4,7 @@
 
 #include "h_types.h"
 
+h_err_t h_validate_contracts(void);
 h_err_t h_hosted_init(void);
 h_err_t h_hosted_deinit(void);
 
