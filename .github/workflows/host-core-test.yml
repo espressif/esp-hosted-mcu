@@ -1,0 +1,207 @@
+# .github/workflows/host-core-test.yml
+#
+# Three-tier CI for host core layer:
+#   Tier 1: Compile isolation check (30s)
+#   Tier 2: Linux mock tests with ASAN/TSAN (3min)
+#   Tier 3: ESP-IDF slave build matrix (30min)
+#
+# All jobs run on ubuntu-latest with zero hardware dependencies.
+
+name: Host Core Test
+
+on:
+  push:
+    paths:
+      - 'host/core/**'
+      - 'host/port/include/**'
+      - 'host/port/linux/**'
+      - 'host/port/esp-idf/**'
+      - 'common/proto/**'
+      - 'common/transport/**'
+      - 'common/mempool/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - '.github/workflows/host-core-test.yml'
+  pull_request:
+    paths:
+      - 'host/core/**'
+      - 'host/port/**'
+      - 'common/proto/**'
+      - 'tests/**'
+      - 'scripts/**'
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ── Tier 1: Compile Isolation Check (30s) ──
+  isolation-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check core layer is ESP-IDF free
+        run: bash scripts/check_core_isolation.sh
+
+      - name: Verify core compiles with zero ESP-IDF deps
+        run: |
+          for f in host/core/src/*.c; do
+            echo "Checking $f..."
+            gcc -fsyntax-only \
+              -I host/core/include/h_public \
+              -I host/core/include/h_internal \
+              -I host/port/include \
+              -I common/proto \
+              -I common/protobuf-c/protobuf-c \
+              -I common/transport \
+              -DH_BUILD_TESTS \
+              -Wall -Werror \
+              "$f"
+          done
+
+  # ── Tier 2: Linux Mock Tests (3min) ──
+  linux-mock-test:
+    runs-on: ubuntu-latest
+    needs: isolation-check
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive  # Need protobuf-c
+
+      - name: Create build directory
+        run: mkdir -p build
+
+      - name: Build test executable (ASAN + UBSAN)
+        run: |
+          gcc -o build/test_runner \
+            -I host/core/include/h_public \
+            -I host/core/include/h_internal \
+            -I host/port/include \
+            -I host/port/linux \
+            -I common/proto \
+            -I common/protobuf-c/protobuf-c \
+            -I tests/unity \
+            -DH_BUILD_TESTS \
+            -fsanitize=address,undefined \
+            -g -O0 \
+            -Wall -Wextra -Werror \
+            host/core/src/h_init.c \
+            host/core/src/h_rpc_core.c \
+            host/core/src/h_rpc_wrap.c \
+            host/core/src/h_transport_drv.c \
+            host/core/src/h_transport_util.c \
+            host/core/src/h_serial_if.c \
+            host/core/src/h_event.c \
+            host/core/src/h_api.c \
+            host/port/linux/src/h_osal.c \
+            host/port/linux/src/h_event.c \
+            host/port/linux/src/h_transport_mock.c \
+            tests/test_runner.c \
+            tests/test_osal.c \
+            tests/test_event.c \
+            tests/test_transport.c \
+            tests/test_rpc_core.c \
+            tests/unity/unity.c \
+            common/protobuf-c/protobuf-c/protobuf-c.c \
+            common/proto/esp_hosted_rpc.pb-c.c \
+            -lpthread
+
+      - name: Run tests (ASAN + UBSAN)
+        run: ./build/test_runner -v
+
+      - name: Build test executable (TSAN)
+        run: |
+          gcc -o build/test_runner_tsan \
+            -I host/core/include/h_public \
+            -I host/core/include/h_internal \
+            -I host/port/include \
+            -I host/port/linux \
+            -I common/proto \
+            -I common/protobuf-c/protobuf-c \
+            -I tests/unity \
+            -DH_BUILD_TESTS \
+            -fsanitize=thread \
+            -g -O1 \
+            -Wall -Wextra -Werror \
+            host/core/src/h_init.c \
+            host/core/src/h_rpc_core.c \
+            host/core/src/h_rpc_wrap.c \
+            host/core/src/h_transport_drv.c \
+            host/core/src/h_transport_util.c \
+            host/core/src/h_serial_if.c \
+            host/core/src/h_event.c \
+            host/core/src/h_api.c \
+            host/port/linux/src/h_osal.c \
+            host/port/linux/src/h_event.c \
+            host/port/linux/src/h_transport_mock.c \
+            tests/test_runner.c tests/test_osal.c tests/test_event.c \
+            tests/test_transport.c tests/test_rpc_core.c \
+            tests/unity/unity.c \
+            common/protobuf-c/protobuf-c/protobuf-c.c \
+            common/proto/esp_hosted_rpc.pb-c.c \
+            -lpthread
+
+      - name: Run tests (TSAN)
+        run: TSAN_OPTIONS="second_deadlock_stack=1" ./build/test_runner_tsan -v
+
+  # ── Tier 3: ESP-IDF Slave Build Matrix (30min) ──
+  # Only compiles slave firmware; host build tested in hardware regression.
+  esp-idf-build-matrix:
+    runs-on: ubuntu-latest
+    needs: linux-mock-test
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [esp32c6]
+        transport: [sdio, spi, uart]
+        idf_version: [v5.3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build slave (${{ matrix.target }}, ${{ matrix.transport }}, IDF ${{ matrix.idf_version }})
+        uses: espressif/esp-idf-ci-action@v2
+        with:
+          esp_idf_version: ${{ matrix.idf_version }}
+          target: ${{ matrix.target }}
+          command: |
+            cd slave
+            idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.ci.${{ matrix.transport }}" build
+
+  # ── Tier 3 (supplement): ESP-IDF Host Build Verification ──
+  # Verifies ESP-IDF port files are compilable within IDF toolchain context.
+  esp-idf-host-build:
+    runs-on: ubuntu-latest
+    needs: linux-mock-test
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        transport: [spi]
+        idf_version: [v5.3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Verify ESP-IDF port files compile (syntax check)
+        uses: espressif/esp-idf-ci-action@v2
+        with:
+          esp_idf_version: ${{ matrix.idf_version }}
+          target: esp32p4
+          command: |
+            # Syntax-check ESP-IDF port source files against IDF includes
+            for f in host/port/esp-idf/*.c; do
+              echo "Checking $f..."
+              xtensa-esp32p4-elf-gcc -fsyntax-only \
+                $(idf.py --preview set-target esp32p4 2>/dev/null; echo "-I${IDF_PATH}/components/freertos/FreeRTOS-Kernel/include") \
+                -I host/core/include/h_public \
+                -I host/port/include \
+                -I host/port/esp-idf \
+                "$f" || { echo "  [ERROR] Syntax check failed — fix before merge"; exit 1; }
+            done

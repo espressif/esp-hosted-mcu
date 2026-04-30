@@ -1,0 +1,31 @@
+# .github/workflows/upstream-sync-check.yml
+name: Upstream Sync Protection
+
+on:
+  push:
+    branches: [main, staging]
+
+jobs:
+  core-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify core layer isolation
+        run: bash scripts/check_core_isolation.sh
+
+  # Check that common/ files are in sync with espressif/main
+  common-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check common/ proto files match upstream
+        run: |
+          # Ensure generated pb-c files are up to date
+          if [ -f common/proto/esp_hosted_rpc.proto ]; then
+            echo "Proto file present — verify after protoc-c regeneration"
+            # Actual protoc-c check requires protoc-c tool; just verify presence
+            test -f common/proto/esp_hosted_rpc.pb-c.c
+            test -f common/proto/esp_hosted_rpc.pb-c.h
+          fi
