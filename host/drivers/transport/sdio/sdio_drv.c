@@ -194,6 +194,12 @@ static uint32_t sdio_tx_buf_count = 0;
 /* Counter to hold the amount of bytes already received from sdio slave */
 static uint32_t sdio_rx_byte_count = 0;
 
+/* True between "OOM start" and "OOM end" log lines. RX and TX share buf_mp_g,
+ * so one flag covers both paths: whichever fails first logs OOM start;
+ * whichever next allocates successfully logs OOM end and clears the flag.
+ * Touched only from the rx and tx tasks. */
+static bool mempool_oom_logged = false;
+
 // one-time trigger to start write thread
 static bool sdio_start_write_thread = false;
 
@@ -374,6 +380,7 @@ void bus_deinit_internal(void *bus_handle)
 	/* Reset SDIO counters */
 	sdio_tx_buf_count = 0;
 	sdio_rx_byte_count = 0;
+	mempool_oom_logged = false;
 	sdio_start_write_thread = false;
 
 	sdio_mempool_destroy();
@@ -624,7 +631,6 @@ static void sdio_write_task(void const* pvParameters)
 
 		if (!buf_handle.payload_zcopy) {
 			sendbuf = sdio_buffer_alloc(MEMSET_REQUIRED);
-			assert(sendbuf);
 			free_func = sdio_buffer_free;
 		} else {
 			sendbuf = buf_handle.payload;
@@ -632,9 +638,23 @@ static void sdio_write_task(void const* pvParameters)
 		}
 
 		if (!sendbuf) {
-			ESP_LOGE(TAG, "sdio buff malloc failed");
+			if (!mempool_oom_logged) {
+				ESP_LOGW(TAG, "mempool OOM start (TX)");
+				mempool_oom_logged = true;
+			}
 			free_func = NULL;
+#if ESP_PKT_STATS
+			if (buf_handle.if_type == ESP_STA_IF)
+				pkt_stats.sta_tx_out_drop++;
+#endif
 			goto done;
+		}
+
+		/* Non-zerocopy alloc just succeeded -> pool has space.
+		 * Zerocopy path doesn't touch the pool, so doesn't signal end. */
+		if (!buf_handle.payload_zcopy && mempool_oom_logged) {
+			ESP_LOGW(TAG, "mempool OOM end");
+			mempool_oom_logged = false;
 		}
 
 		if (buf_handle.payload_len > MAX_SDIO_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
@@ -962,12 +982,31 @@ static esp_err_t sdio_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 		}
 		/* Allocate rx buffer */
 		pkt_rxbuff = sdio_buffer_alloc(MEMSET_REQUIRED);
-		assert(pkt_rxbuff);
+		if (!pkt_rxbuff) {
+			if (!mempool_oom_logged) {
+				ESP_LOGW(TAG, "mempool OOM start (RX)");
+				mempool_oom_logged = true;
+			}
+			/* Skip this packet and continue processing remaining stream data */
+			packet_size = len + offset;
+			if (packet_size > buf_len) {
+				return ESP_FAIL;
+			}
+			buf_len -= packet_size;
+			buf     += packet_size;
+			continue;
+		}
+
+		if (mempool_oom_logged) {
+			ESP_LOGW(TAG, "mempool OOM end");
+			mempool_oom_logged = false;
+		}
 
 		packet_size = len + offset;
 		if (packet_size > buf_len) {
 			ESP_LOGE(TAG, "packet size[%lu]>[%lu] too big for remaining stream data",
 					packet_size, buf_len);
+			sdio_buffer_free(pkt_rxbuff);
 			return ESP_FAIL;
 		}
 		memcpy(pkt_rxbuff, buf, packet_size);
