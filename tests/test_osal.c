@@ -3,6 +3,7 @@
 #include "h_port_contract.h"
 #include "h_wrapper.h"
 #include "h_types.h"
+#include "h_init.h"
 #include <string.h>
 
 /* Test: malloc/free cycle */
@@ -77,7 +78,6 @@ void test_vtable_null_protection(void)
     /* h_validate_contracts() is defined in host/core/src/h_init.c
      * and checks that the three g_h_* vtable instances have their
      * required fields filled. */
-    extern h_err_t h_validate_contracts(void);
     h_err_t ret = h_validate_contracts();
     TEST_ASSERT_EQUAL(H_OK, ret);
 }
