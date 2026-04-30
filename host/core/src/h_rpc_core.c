@@ -1175,3 +1175,23 @@ int rpc_core_stop(void)
 	set_rpc_lib_state(RPC_LIB_STATE_INIT);
 	return SUCCESS;
 }
+
+/* ── Phase 1 Stub: h_rpc_send_request ──
+ * Full implementation requires transport layer integration (serial IF + RPC
+ * request tracking). Returns H_ERR_TIMEOUT to indicate no slave is connected
+ * in mock/test mode. Corresponding real implementation will use the existing
+ * rpc_send_req() internals adapted to the new buffer-based API. */
+h_err_t h_rpc_send_request(uint8_t msg_type, const uint8_t *req, uint16_t req_len,
+                           uint8_t *rsp, uint16_t *rsp_len, int32_t timeout_ms)
+{
+	(void)msg_type; (void)req; (void)req_len; (void)rsp; (void)rsp_len; (void)timeout_ms;
+	return H_ERR_TIMEOUT;
+}
+
+h_err_t h_rpc_register_handler(uint8_t msg_type,
+                               h_err_t (*handler)(const uint8_t *req, uint16_t req_len,
+                                                  uint8_t *rsp, uint16_t *rsp_len))
+{
+	(void)msg_type; (void)handler;
+	return H_OK; /* Stub — no handlers registered in Phase 1 */
+}
