@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <sys/time.h>
@@ -161,10 +162,18 @@ static int linux_queue_reset(h_queue_t q)
 {
     if (!q) return H_ERR_INVALID_ARG;
     linux_queue_t *lq = (linux_queue_t *)q;
+
+    /* Set non-blocking to avoid hang on empty pipe */
+    int flags = fcntl(lq->fd_read, F_GETFL, 0);
+    fcntl(lq->fd_read, F_SETFL, flags | O_NONBLOCK);
+
     char buf[256];
     while (read(lq->fd_read, buf, sizeof(buf)) > 0) {
         /* drain */
     }
+
+    /* Restore original flags */
+    fcntl(lq->fd_read, F_SETFL, flags);
     return H_OK;
 }
 
@@ -282,6 +291,18 @@ static void linux_log_write(int level, const char *tag, const char *fmt, ...)
     fprintf(stderr, "\n");
 }
 
+/* ── Aligned Memory (Linux mock: no DMA alignment needed) ── */
+static void *linux_malloc_align(size_t size, size_t align)
+{
+    (void)align;
+    return malloc(size);
+}
+
+static void linux_free_align(void *ptr)
+{
+    free(ptr);
+}
+
 /* ── OSAL Vtable ── */
 const h_osal_contract_t g_h_osal = {
     .malloc       = malloc,
@@ -290,8 +311,8 @@ const h_osal_contract_t g_h_osal = {
     .free         = free,
     .memcpy       = memcpy,
     .memset       = memset,
-    .malloc_align = malloc,   /* Linux mock: no DMA alignment needed */
-    .free_align   = free,
+    .malloc_align = linux_malloc_align,
+    .free_align   = linux_free_align,
 
     .thread_create     = linux_thread_create,
     .thread_delete     = linux_thread_delete,

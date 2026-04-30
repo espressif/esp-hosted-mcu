@@ -2,6 +2,7 @@
  * Linux mock Transport — stub functions overridable by test fixtures. */
 
 #include "h_port_contract.h"
+#include "h_config.h"
 #include "h_port_config.h"
 
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
