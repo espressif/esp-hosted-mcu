@@ -91,7 +91,7 @@ static int h_sdio_write_block_adapter(void *handle, uint32_t reg,
  * The caller is responsible for converting ms to ticks before calling. */
 static int h_sdio_wait_intr_adapter(void *handle, uint32_t timeout_ms)
 {
-    int ret = hosted_sdio_wait_slave_intr(handle, timeout_ms);
+    int ret = hosted_sdio_wait_slave_intr(handle, pdMS_TO_TICKS(timeout_ms));
     return (ret == 0) ? H_OK : H_ERR_TIMEOUT;
 }
 
