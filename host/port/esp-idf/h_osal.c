@@ -20,6 +20,7 @@
 #include <esp_timer.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <stdarg.h>
 
 /* ──  Helpers ── */
 

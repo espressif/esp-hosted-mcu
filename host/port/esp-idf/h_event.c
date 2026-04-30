@@ -42,6 +42,10 @@ static int h_event_register_adapter(h_event_base_t base, int32_t event_id,
     esp_event_base_t esp_base = h_base_to_esp(base);
     if (!esp_base) return H_ERR_INVALID_ARG;
 
+    /* NOTE: Cast from h_event_handler_t(void *data, size_t len, void *ctx)
+     * to esp_event_handler_t(void *arg, base, id, void *data) is formally UB
+     * per C11 6.3.2.3p8. Safe on Xtensa/RISC-V ABI — extra params passed in
+     * unused registers. Phase 2 will add a proper trampoline adapter. */
     esp_err_t ret = esp_event_handler_register(
         esp_base, event_id,
         (esp_event_handler_t)handler, user_ctx);
@@ -55,6 +59,10 @@ static int h_event_unregister_adapter(h_event_base_t base, int32_t event_id,
     esp_event_base_t esp_base = h_base_to_esp(base);
     if (!esp_base) return H_ERR_INVALID_ARG;
 
+    /* NOTE: Cast from h_event_handler_t(void *data, size_t len, void *ctx)
+     * to esp_event_handler_t(void *arg, base, id, void *data) is formally UB
+     * per C11 6.3.2.3p8. Safe on Xtensa/RISC-V ABI — extra params passed in
+     * unused registers. Phase 2 will add a proper trampoline adapter. */
     esp_err_t ret = esp_event_handler_unregister(
         esp_base, event_id,
         (esp_event_handler_t)handler);
