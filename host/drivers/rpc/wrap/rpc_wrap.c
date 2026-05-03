@@ -576,6 +576,9 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 		ESP_LOGV(TAG, "Wifi power save mode is: ");
 
 		switch(app_resp->u.wifi_ps.ps_mode) {
+			case WIFI_PS_NONE:
+				ESP_LOGV(TAG, "None");
+				break;
 			case WIFI_PS_MIN_MODEM:
 				ESP_LOGV(TAG, "Min");
 				break;
