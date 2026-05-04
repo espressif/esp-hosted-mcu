@@ -1,0 +1,6 @@
+.DS_Store
+.vscode/
+build/
+managed_components/
+sdkconfig
+tools/__pycache__/
