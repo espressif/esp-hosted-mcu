@@ -12,6 +12,7 @@
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
 
 #include <esp_err.h>
+#include "freertos/FreeRTOS.h"  /* pdMS_TO_TICKS */
 
 /* ──  Existing implementations (from host/port/esp/freertos/src/) ── */
 extern void *hosted_sdio_init(void);

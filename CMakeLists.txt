@@ -2,17 +2,21 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	message(STATUS "Using Hosted Wi-Fi")
 	set(FG_root_dir ".")
 	set(host_dir "${FG_root_dir}/host")
+	set(core_src_dir "${host_dir}/core/src")
 
 	set(srcs
 		"${host_dir}/api/src/esp_wifi_weak.c"
 		"${host_dir}/api/src/esp_hosted_api.c"
 		"${host_dir}/api/src/esp_hosted_transport_config.c"
 		"${host_dir}/api/src/esp_hosted_ota_api.c"
-		"${host_dir}/drivers/transport/transport_drv.c"
-		"${host_dir}/drivers/transport/transport_util.c"
+		"${core_src_dir}/h_init.c"
+		"${core_src_dir}/h_api.c"
+		"${core_src_dir}/h_event.c"
+		"${core_src_dir}/h_serial_if.c"
+		"${core_src_dir}/h_transport_drv.c"
+		"${core_src_dir}/h_transport_util.c"
 		"${host_dir}/drivers/serial/serial_ll_if.c"
-		"${host_dir}/utils/stats.c"
-		"${host_dir}/drivers/serial/serial_drv.c")
+		"${host_dir}/port/esp-idf/tools/stats.c")
 
 	# only these directories are public. Others are private
 	set(pub_include
@@ -24,7 +28,11 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${host_dir}/drivers/transport/spi"
 		"${host_dir}/drivers/transport/sdio"
 		"${host_dir}/drivers/serial"
-		"${host_dir}/utils"
+		"${host_dir}/core/include/h_internal"
+		"${host_dir}/core/include/h_public"
+		"${host_dir}/port/esp-idf"
+		"${host_dir}/port/include"
+		"${host_dir}/port/esp-idf/tools"
 		"${host_dir}/api/priv")
 
 	# rpc files - wrap -> slaveif -> core
@@ -34,13 +42,14 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	set(rpc_wrap_dir "${rpc_dir}/wrap")
 
 	list(APPEND srcs
-		"${rpc_core_dir}/rpc_core.c"
-		"${rpc_core_dir}/rpc_req.c"
-		"${rpc_core_dir}/rpc_rsp.c"
-		"${rpc_core_dir}/rpc_evt.c"
-		"${rpc_core_dir}/rpc_utils.c"
-		"${rpc_slaveif_dir}/rpc_slave_if.c"
-		"${rpc_wrap_dir}/rpc_wrap.c")
+		"${core_src_dir}/h_rpc_core.c"
+		"${core_src_dir}/h_rpc_req.c"
+		"${core_src_dir}/h_rpc_rsp.c"
+		"${core_src_dir}/h_rpc_evt.c"
+		"${core_src_dir}/h_rpc_utils.c"
+		"${core_src_dir}/h_rpc_slave_if.c"
+		"${core_src_dir}/h_rpc_wrap.c"
+		"${host_dir}/drivers/rpc/slaveif/rpc_slave_if.c")
 
 	list(APPEND priv_include
 		"${rpc_core_dir}"
@@ -103,11 +112,10 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		list(APPEND srcs "${host_dir}/drivers/transport/uart/uart_drv.c")
 	endif()
 
-	# port files
+	# port files (legacy — still needed by h_rpc_core.c g_h.funcs usage)
 	list(APPEND priv_include "${host_dir}/port/esp/freertos/include")
 
 	list(APPEND srcs
-		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_init.c"
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_os.c"
 		#"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c"
 		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_transport_defaults.c"
@@ -122,10 +130,26 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	elseif(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)
 		list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_uart.c")
 	endif()
-
 	# OpenThread utility functions
 	if(CONFIG_ESP_HOSTED_OT_HOST_ENABLE)
 		list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ot_util.c")
+	endif()
+
+	# new portable port layer (host/port/esp-idf)
+	list(APPEND srcs
+		"${host_dir}/port/esp-idf/port_init.c"
+		"${host_dir}/port/esp-idf/h_osal.c"
+		"${host_dir}/port/esp-idf/h_event.c"
+	)
+
+	if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
+		list(APPEND srcs "${host_dir}/port/esp-idf/h_transport_sdio.c")
+	elseif(CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE)
+		# no SPI-HD portable port yet
+	elseif(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
+		list(APPEND srcs "${host_dir}/port/esp-idf/h_transport_spi.c")
+	elseif(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)
+		list(APPEND srcs "${host_dir}/port/esp-idf/h_transport_uart.c")
 	endif()
 endif()
 

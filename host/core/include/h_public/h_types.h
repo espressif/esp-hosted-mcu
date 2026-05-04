@@ -40,38 +40,6 @@ typedef void* h_queue_t;
 typedef void* h_semaphore_t;
 typedef void* h_timer_t;
 
-/* ── Wi-Fi Modes ── */
-typedef enum {
-    H_WIFI_MODE_NULL = 0,
-    H_WIFI_MODE_STA,
-    H_WIFI_MODE_AP,
-    H_WIFI_MODE_APSTA,
-    H_WIFI_MODE_MAX
-} h_wifi_mode_t;
-
-/* ── Wi-Fi Interface ── */
-typedef enum {
-    H_WIFI_IF_STA = 0,
-    H_WIFI_IF_AP,
-    H_WIFI_IF_NAN,
-    H_WIFI_IF_MAX
-} h_wifi_interface_t;
-
-/* ── Wi-Fi Bandwidth ── */
-typedef enum {
-    H_WIFI_BW_20MHZ = 0,
-    H_WIFI_BW_40MHZ,
-    H_WIFI_BW_HT20 = H_WIFI_BW_20MHZ,  /* alias */
-    H_WIFI_BW_HT40 = H_WIFI_BW_40MHZ,
-} h_wifi_bandwidth_t;
-
-/* ── Wi-Fi Power Save ── */
-typedef enum {
-    H_WIFI_PS_NONE = 0,
-    H_WIFI_PS_MIN_MODEM,
-    H_WIFI_PS_MAX_MODEM,
-} h_wifi_ps_type_t;
-
 /* ── Event Base ── */
 typedef enum {
     H_EVENT_WIFI = 0,

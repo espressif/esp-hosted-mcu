@@ -28,13 +28,13 @@ static struct serial_drv_handle_t* g_serial_drv_handle = NULL;
 struct serial_drv_handle_t* serial_drv_open(const char *transport)
 {
 	if (!transport) {
-		H_LOGE(TAG, TAG, "Invalid parameter in open");
+		ESP_LOGE(TAG, "Invalid parameter in open");
 		return NULL;
 	}
 
 	/* Return existing handle if already opened */
 	if(g_serial_drv_handle) {
-		H_LOGD(TAG, TAG, "Serial already open, returning existing handle");
+		ESP_LOGD(TAG, "Serial already open, returning existing handle");
 		return g_serial_drv_handle;
 	}
 
@@ -42,11 +42,11 @@ struct serial_drv_handle_t* serial_drv_open(const char *transport)
 	g_serial_drv_handle = (struct serial_drv_handle_t*) g_h.funcs->_h_calloc
 		(1,sizeof(struct serial_drv_handle_t));
 	if (!g_serial_drv_handle) {
-		H_LOGE(TAG, TAG, "Failed to allocate memory \n");
+		ESP_LOGE(TAG, "Failed to allocate memory \n");
 		return NULL;
 	}
 
-	H_LOGD(TAG, TAG, "Serial handle allocated");
+	ESP_LOGD(TAG, "Serial handle allocated");
 	return g_serial_drv_handle;
 }
 
@@ -55,14 +55,14 @@ int serial_drv_write (struct serial_drv_handle_t* serial_drv_handle,
 {
 	int ret = 0;
 	if (!serial_drv_handle || !buf || !in_count || !out_count) {
-		H_LOGE(TAG, TAG,"Invalid parameters in write\n\r");
+		ESP_LOGE(TAG,"Invalid parameters in write\n\r");
 		return RET_INVALID;
 	}
 
 	if( (!serial_ll_if_g) ||
 		(!serial_ll_if_g->fops) ||
 		(!serial_ll_if_g->fops->write)) {
-		H_LOGE(TAG, TAG,"serial interface not valid\n\r");
+		ESP_LOGE(TAG,"serial interface not valid\n\r");
 		return RET_INVALID;
 	}
 
@@ -70,7 +70,7 @@ int serial_drv_write (struct serial_drv_handle_t* serial_drv_handle,
 	ret = serial_ll_if_g->fops->write(serial_ll_if_g, buf, in_count);
 	if (ret != RET_OK) {
 		*out_count = 0;
-		H_LOGE(TAG, TAG,"Failed to write data\n\r");
+		ESP_LOGE(TAG,"Failed to write data\n\r");
 		return RET_FAIL;
 	}
 
@@ -94,32 +94,32 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 
 
 	if (!serial_drv_handle || !out_nbyte) {
-		H_LOGE(TAG, TAG,"Invalid parameters in read\n\r");
+		ESP_LOGE(TAG,"Invalid parameters in read\n\r");
 		return NULL;
 	}
 
 	*out_nbyte = 0;
 
 	if(!readSemaphore) {
-		H_LOGE(TAG, TAG,"Semaphore not initialized\n\r");
+		ESP_LOGE(TAG,"Semaphore not initialized\n\r");
 		return NULL;
 	}
 
-	H_LOGV(TAG, TAG, "Wait for serial_ll_semaphore");
+	ESP_LOGV(TAG, "Wait for serial_ll_semaphore");
 	g_h.funcs->_h_get_semaphore(readSemaphore, HOSTED_BLOCK_MAX);
 
 	if( (!serial_ll_if_g) ||
 		(!serial_ll_if_g->fops) ||
 		(!serial_ll_if_g->fops->read)) {
-		H_LOGE(TAG, TAG,"serial interface refusing to read\n\r");
+		ESP_LOGE(TAG,"serial interface refusing to read\n\r");
 		return NULL;
 	}
-	H_LOGV(TAG, TAG, "Starting serial_ll read");
+	ESP_LOGV(TAG, "Starting serial_ll read");
 
 	/* Get buffer from serial interface */
 	read_buf = serial_ll_if_g->fops->read(serial_ll_if_g, &rx_buf_len);
 	if ((!read_buf) || (!rx_buf_len)) {
-		H_LOGE(TAG, TAG,"serial read failed\n\r");
+		ESP_LOGE(TAG,"serial read failed\n\r");
 		return NULL;
 	}
 	ESP_HEXLOGV("serial_read", read_buf, rx_buf_len, 32);
@@ -149,7 +149,7 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 
 	if(rx_buf_len < init_read_len) {
 		HOSTED_FREE(read_buf);
-		H_LOGE(TAG, TAG,"Incomplete serial buff, return\n");
+		ESP_LOGE(TAG,"Incomplete serial buff, return\n");
 		return NULL;
 	}
 
@@ -163,19 +163,19 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 	ret = parse_tlv(buf, &buf_len);
 	if (ret || !buf_len) {
 		HOSTED_FREE(buf);
-		H_LOGE(TAG, TAG,"Failed to parse RX data \n\r");
+		ESP_LOGE(TAG,"Failed to parse RX data \n\r");
 		goto free_bufs;
 	}
-	H_LOGV(TAG, TAG, "TLV parsed");
+	ESP_LOGV(TAG, "TLV parsed");
 
 	if (rx_buf_len < (init_read_len + buf_len)) {
-		H_LOGE(TAG, TAG,"Buf read on serial iface is smaller than expected len\n");
+		ESP_LOGE(TAG,"Buf read on serial iface is smaller than expected len\n");
 		HOSTED_FREE(buf);
 		goto free_bufs;
 	}
 
 	if (rx_buf_len > (init_read_len + buf_len)) {
-		H_LOGE(TAG, TAG,"Buf read on serial iface is smaller than expected len\n");
+		ESP_LOGE(TAG,"Buf read on serial iface is smaller than expected len\n");
 	}
 
 	HOSTED_FREE(buf);
@@ -189,7 +189,7 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 	HOSTED_FREE(read_buf);
 
 	*out_nbyte = buf_len;
-	H_LOGV(TAG, TAG, "Serial payload size(after removing TLV): %" PRIu32, *out_nbyte);
+	ESP_LOGV(TAG, "Serial payload size(after removing TLV): %" PRIu32, *out_nbyte);
 	return buf;
 
 free_bufs:
@@ -201,11 +201,11 @@ free_bufs:
 int serial_drv_close(struct serial_drv_handle_t** serial_drv_handle)
 {
 	if (!serial_drv_handle || !(*serial_drv_handle)) {
-		H_LOGE(TAG, TAG,"Invalid parameter in close \n\r");
+		ESP_LOGE(TAG,"Invalid parameter in close \n\r");
 		return RET_INVALID;
 	}
 
-	H_LOGD(TAG, TAG, "Freeing serial handle");
+	ESP_LOGD(TAG, "Freeing serial handle");
 	HOSTED_FREE(*serial_drv_handle);
 	*serial_drv_handle = NULL;
 	g_serial_drv_handle = NULL;  /* Clear global so next open allocates fresh */
@@ -225,12 +225,12 @@ int rpc_platform_init(void)
 
 	serial_ll_if_g = serial_ll_init(rpc_rx_indication);
 	if (!serial_ll_if_g) {
-		H_LOGE(TAG, TAG,"Serial interface creation failed\n\r");
+		ESP_LOGE(TAG,"Serial interface creation failed\n\r");
 		assert(serial_ll_if_g);
 		return RET_FAIL;
 	}
 	if (RET_OK != serial_ll_if_g->fops->open(serial_ll_if_g)) {
-		H_LOGE(TAG, TAG,"Serial interface open failed\n\r");
+		ESP_LOGE(TAG,"Serial interface open failed\n\r");
 		return RET_FAIL;
 	}
 	return RET_OK;
@@ -241,7 +241,7 @@ int rpc_platform_deinit(void)
 {
 	if (serial_ll_if_g) {
 		if (RET_OK != serial_ll_if_g->fops->close(serial_ll_if_g)) {
-			H_LOGE(TAG, TAG,"Serial interface close failed\n\r");
+			ESP_LOGE(TAG,"Serial interface close failed\n\r");
 			return RET_FAIL;
 		}
 		/* serial_ll_close frees the handle, NULL our pointer */

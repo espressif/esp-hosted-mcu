@@ -41,7 +41,7 @@ int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
 {
 	/* Validate message ID (-1/0xFFFFFFFF is invalid) */
 	if (msg_id_exp == (uint32_t)-1) {
-		H_LOGE(TAG, TAG, "Invalid message ID 0xFFFFFFFF");
+		ESP_LOGE(TAG, "Invalid message ID 0xFFFFFFFF");
 		return FAILURE;
 	}
 
@@ -49,7 +49,7 @@ int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
 	if (!custom_callbacks_mutex) {
 		custom_callbacks_mutex = g_h.funcs->_h_create_mutex();
 		if (!custom_callbacks_mutex) {
-			H_LOGE(TAG, TAG, "Failed to create mutex");
+			ESP_LOGE(TAG, "Failed to create mutex");
 			return FAILURE;
 		}
 	}
@@ -65,14 +65,14 @@ int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
 				custom_callbacks[i].msg_id = (uint32_t)-1;  /* Mark as invalid */
 				custom_callbacks[i].callback = NULL;
 				custom_callbacks[i].local_context = NULL;
-				H_LOGD(TAG, TAG, "Deregistered callback for msg_id %" PRIu32, msg_id_exp);
+				ESP_LOGD(TAG, "Deregistered callback for msg_id %" PRIu32, msg_id_exp);
 				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			} else {
 				/* Update existing callback */
 				custom_callbacks[i].callback = callback;
 				custom_callbacks[i].local_context = local_context;
-				H_LOGD(TAG, TAG, "Updated callback for msg_id %" PRIu32, msg_id_exp);
+				ESP_LOGD(TAG, "Updated callback for msg_id %" PRIu32, msg_id_exp);
 				g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 				return SUCCESS;
 			}
@@ -82,7 +82,7 @@ int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
 	/* msg_id_exp not found - need to register new */
 	if (callback == NULL) {
 		/* Cannot deregister what doesn't exist */
-		H_LOGD(TAG, TAG, "Cannot deregister msg_id %" PRIu32 " - not registered", msg_id_exp);
+		ESP_LOGD(TAG, "Cannot deregister msg_id %" PRIu32 " - not registered", msg_id_exp);
 		g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 		return FAILURE;
 	}
@@ -93,13 +93,13 @@ int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
 			custom_callbacks[i].msg_id = msg_id_exp;
 			custom_callbacks[i].callback = callback;
 			custom_callbacks[i].local_context = local_context;
-			H_LOGD(TAG, TAG, "Registered callback for msg_id %" PRIu32, msg_id_exp);
+			ESP_LOGD(TAG, "Registered callback for msg_id %" PRIu32, msg_id_exp);
 			g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 			return SUCCESS;
 		}
 	}
 
-	H_LOGW(TAG, TAG, "No space for callback (max %d)", MAX_CUSTOM_CALLBACKS);
+	ESP_LOGW(TAG, "No space for callback (max %d)", MAX_CUSTOM_CALLBACKS);
 	g_h.funcs->_h_unlock_mutex(custom_callbacks_mutex);
 	return FAILURE;
 }
@@ -123,7 +123,7 @@ int rpc_evt_register_custom_callback(uint32_t msg_id_exp,
 int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 {
 	if (!rpc_msg || !app_ntfy) {
-		H_LOGE(TAG, TAG, "NULL rpc event or App struct\n");
+		ESP_LOGE(TAG, "NULL rpc event or App struct\n");
 		goto fail_parse_rpc_msg;
 	}
 
@@ -134,12 +134,12 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 	switch (rpc_msg->msg_id) {
 
 	case RPC_ID__Event_ESPInit: {
-		H_LOGI(TAG, TAG, "EVENT: ESP INIT\n");
+		ESP_LOGI(TAG, "EVENT: ESP INIT\n");
 		RPC_FAIL_ON_NULL(event_esp_init);
 		app_ntfy->u.e_init.cp_reset_reason = rpc_msg->event_esp_init->cp_reset_reason;
 		break;
 	} case RPC_ID__Event_Heartbeat: {
-		H_LOGD(TAG, TAG, "EVENT: Heartbeat\n");
+		ESP_LOGD(TAG, "EVENT: Heartbeat\n");
 		RPC_FAIL_ON_NULL(event_heartbeat);
 		app_ntfy->u.e_heartbeat.hb_num = rpc_msg->event_heartbeat->hb_num;
 		break;
@@ -153,7 +153,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		if(SUCCESS==app_ntfy->resp_event_status) {
 			RPC_FAIL_ON_NULL_PRINT(p_c->mac.data, "NULL mac");
 			g_h.funcs->_h_memcpy(p_a->mac, p_c->mac.data, p_c->mac.len);
-			H_LOGI(TAG, TAG, "EVENT: AP ->  sta connected mac[" MACSTR "] (len:%u)",
+			ESP_LOGI(TAG, "EVENT: AP ->  sta connected mac[" MACSTR "] (len:%u)",
 				MAC2STR(p_a->mac), p_c->mac.len);
 		}
 		p_a->aid = p_c->aid;
@@ -164,14 +164,14 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		wifi_event_ap_stadisconnected_t * p_a = &(app_ntfy->u.e_wifi_ap_stadisconnected);
 		RpcEventAPStaDisconnected * p_c = rpc_msg->event_ap_sta_disconnected;
 
-		H_LOGD(TAG, TAG, "EVENT: AP ->  sta disconnected");
+		ESP_LOGD(TAG, "EVENT: AP ->  sta disconnected");
 		RPC_FAIL_ON_NULL(event_ap_sta_disconnected);
 		app_ntfy->resp_event_status = p_c->resp;
 
 		if(SUCCESS==app_ntfy->resp_event_status) {
 			RPC_FAIL_ON_NULL_PRINT(p_c->mac.data, "NULL mac");
 			g_h.funcs->_h_memcpy(p_a->mac, p_c->mac.data, p_c->mac.len);
-			H_LOGI(TAG, TAG, "EVENT: AP ->  sta DISconnected mac[" MACSTR "] (len:%u)",
+			ESP_LOGI(TAG, "EVENT: AP ->  sta DISconnected mac[" MACSTR "] (len:%u)",
 				MAC2STR(p_a->mac), p_c->mac.len);
 		}
 
@@ -185,7 +185,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		wifi_event_sta_itwt_setup_t * p_a = &(app_ntfy->u.e_wifi_sta_itwt_setup);
 		RpcEventStaItwtSetup * p_c = rpc_msg->event_sta_itwt_setup;
 
-		H_LOGD(TAG, TAG, "EVENT: iTWT ->  setup");
+		ESP_LOGD(TAG, "EVENT: iTWT ->  setup");
 		RPC_FAIL_ON_NULL(event_sta_itwt_setup);
 		app_ntfy->resp_event_status = p_c->resp;
 
@@ -213,7 +213,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		wifi_event_sta_itwt_teardown_t * p_a = &(app_ntfy->u.e_wifi_sta_itwt_teardown);
 		RpcEventStaItwtTeardown * p_c = rpc_msg->event_sta_itwt_teardown;
 
-		H_LOGD(TAG, TAG, "EVENT: iTWT ->  teardown");
+		ESP_LOGD(TAG, "EVENT: iTWT ->  teardown");
 		RPC_FAIL_ON_NULL(event_sta_itwt_teardown);
 		app_ntfy->resp_event_status = p_c->resp;
 
@@ -227,7 +227,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		int num_elements = sizeof(p_a->actual_suspend_time_ms) / sizeof(p_a->actual_suspend_time_ms[0]);
 		int i;
 
-		H_LOGD(TAG, TAG, "EVENT: iTWT ->  suspend");
+		ESP_LOGD(TAG, "EVENT: iTWT ->  suspend");
 		RPC_FAIL_ON_NULL(event_sta_itwt_suspend);
 		app_ntfy->resp_event_status = p_c->resp;
 
@@ -244,7 +244,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		wifi_event_sta_itwt_probe_t * p_a = &(app_ntfy->u.e_wifi_sta_itwt_probe);
 		RpcEventStaItwtProbe * p_c = rpc_msg->event_sta_itwt_probe;
 
-		H_LOGD(TAG, TAG, "EVENT: iTWT ->  probe");
+		ESP_LOGD(TAG, "EVENT: iTWT ->  probe");
 		RPC_FAIL_ON_NULL(event_sta_itwt_probe);
 		app_ntfy->resp_event_status = p_c->resp;
 
@@ -256,43 +256,43 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 	} case RPC_ID__Event_WifiEventNoArgs: {
 		RPC_FAIL_ON_NULL(event_wifi_event_no_args);
 		app_ntfy->resp_event_status = rpc_msg->event_wifi_event_no_args->resp;
-        H_LOGI(TAG, TAG, "Event [0x%" PRIx32 "] received", rpc_msg->event_wifi_event_no_args->event_id);
+        ESP_LOGI(TAG, "Event [0x%" PRIx32 "] received", rpc_msg->event_wifi_event_no_args->event_id);
 		app_ntfy->u.e_wifi_simple.wifi_event_id = rpc_msg->event_wifi_event_no_args->event_id;
 
 		switch (rpc_msg->event_wifi_event_no_args->event_id) {
 		/* basic events populated, not all */
 		case WIFI_EVENT_WIFI_READY:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi Ready");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi Ready");
 			break;
 		case WIFI_EVENT_SCAN_DONE:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi scan done");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi scan done");
 			break;
 		case WIFI_EVENT_STA_START:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi Start");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi Start");
 			break;
 		case WIFI_EVENT_STA_STOP:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi Stop");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi Stop");
 			break;
 		case WIFI_EVENT_STA_CONNECTED:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi Connected");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi Connected");
 			break;
 		case WIFI_EVENT_STA_DISCONNECTED:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi Disconnected");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi Disconnected");
 			break;
 		case WIFI_EVENT_STA_AUTHMODE_CHANGE:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi AuthMode change");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi AuthMode change");
 			break;
 		case WIFI_EVENT_AP_START:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi AP Start");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi AP Start");
 			break;
 		case WIFI_EVENT_AP_STOP:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi AP stop");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi AP stop");
 			break;
 		case WIFI_EVENT_HOME_CHANNEL_CHANGE:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi Home channel change");
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi Home channel change");
 			break;
 		default:
-			H_LOGI(TAG, TAG, "EVT rcvd: Wi-Fi Event[%" PRId32 "] ignored", rpc_msg->event_wifi_event_no_args->event_id);
+			ESP_LOGI(TAG, "EVT rcvd: Wi-Fi Event[%" PRId32 "] ignored", rpc_msg->event_wifi_event_no_args->event_id);
 			break;
 		}
 		break;
@@ -301,7 +301,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		wifi_event_sta_scan_done_t *p_a = &app_ntfy->u.e_wifi_sta_scan_done;
 		RPC_FAIL_ON_NULL(event_sta_scan_done);
 		app_ntfy->resp_event_status = p_c->resp;
-		H_LOGI(TAG, TAG, "Event Scan Done, %" PRIu32 " items", rpc_msg->event_sta_scan_done->scan_done->number);
+		ESP_LOGI(TAG, "Event Scan Done, %" PRIu32 " items", rpc_msg->event_sta_scan_done->scan_done->number);
 		p_a->status = p_c->scan_done->status;
 		p_a->number = p_c->scan_done->number;
 		p_a->scan_id = p_c->scan_done->scan_id;
@@ -395,7 +395,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		if (p_a->uri_data_len <= DPP_URI_LEN_MAX) {
 			g_h.funcs->_h_memcpy(p_a->uri, p_c->qrcode.data, p_a->uri_data_len);
 		} else {
-			H_LOGE(TAG, TAG, "Incoming URI is too long (over %d bytes). Increase Kconfig ESP_HOSTED_DPP_URI_LEN_MAX for proper operation", DPP_URI_LEN_MAX - 1);
+			ESP_LOGE(TAG, "Incoming URI is too long (over %d bytes). Increase Kconfig ESP_HOSTED_DPP_URI_LEN_MAX for proper operation", DPP_URI_LEN_MAX - 1);
 			p_a->uri_data_len = 0;
 		}
 		break;
@@ -429,7 +429,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		if (p_a->uri_data_len <= DPP_URI_LEN_MAX) {
 			g_h.funcs->_h_memcpy(p_a->uri, p_c->qrcode.data, p_a->uri_data_len);
 		} else {
-			H_LOGE(TAG, TAG, "Incoming URI is too long (over %d bytes). Increase Kconfig ESP_HOSTED_DPP_URI_LEN_MAX for proper operation", DPP_URI_LEN_MAX - 1);
+			ESP_LOGE(TAG, "Incoming URI is too long (over %d bytes). Increase Kconfig ESP_HOSTED_DPP_URI_LEN_MAX for proper operation", DPP_URI_LEN_MAX - 1);
 			p_a->uri_data_len = 0;
 		}
 		break;
@@ -485,12 +485,12 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		if (callback_found && cb) {
 			cb(msg_id, payload, payload_len, cb_local_context);
 		} else {
-			H_LOGI(TAG, TAG, "No callback registered for message ID %" PRIu32 ", ignore", msg_id);
+			ESP_LOGI(TAG, "No callback registered for message ID %" PRIu32 ", ignore", msg_id);
 		}
 		break;
 #endif
 	} default: {
-		H_LOGE(TAG, TAG, "Invalid/unsupported event[%u] received\n",rpc_msg->msg_id);
+		ESP_LOGE(TAG, "Invalid/unsupported event[%u] received\n",rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;
 		break;
 	}

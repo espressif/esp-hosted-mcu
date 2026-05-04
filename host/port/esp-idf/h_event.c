@@ -8,6 +8,8 @@
 #include "h_port_contract.h"
 
 #include <esp_event.h>
+#include <esp_wifi.h>      /* WIFI_EVENT */
+#include <esp_netif.h>     /* IP_EVENT */
 
 /* ──  Helpers ── */
 
@@ -46,9 +48,12 @@ static int h_event_register_adapter(h_event_base_t base, int32_t event_id,
      * to esp_event_handler_t(void *arg, base, id, void *data) is formally UB
      * per C11 6.3.2.3p8. Safe on Xtensa/RISC-V ABI — extra params passed in
      * unused registers. Phase 2 will add a proper trampoline adapter. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
     esp_err_t ret = esp_event_handler_register(
         esp_base, event_id,
         (esp_event_handler_t)handler, user_ctx);
+#pragma GCC diagnostic pop
 
     return esp_err_to_h_err(ret);
 }
@@ -63,9 +68,12 @@ static int h_event_unregister_adapter(h_event_base_t base, int32_t event_id,
      * to esp_event_handler_t(void *arg, base, id, void *data) is formally UB
      * per C11 6.3.2.3p8. Safe on Xtensa/RISC-V ABI — extra params passed in
      * unused registers. Phase 2 will add a proper trampoline adapter. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
     esp_err_t ret = esp_event_handler_unregister(
         esp_base, event_id,
         (esp_event_handler_t)handler);
+#pragma GCC diagnostic pop
 
     return esp_err_to_h_err(ret);
 }

@@ -6,6 +6,7 @@
 
 /** Includes **/
 #include <inttypes.h>
+#include "h_wrapper.h"
 
 // REMOVED: esp_wifi.h
 #include "transport_drv.h"
@@ -44,7 +45,7 @@
 #define MEMPOOL_PADDING  5 // to cater for possible peak tx requests
 
 DEFINE_LOG_TAG(transport);
-static char chip_type = H_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
+static char chip_type = ESP_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
 void(*transport_esp_hosted_up_cb)(void) = NULL;
 transport_channel_t *chan_arr[ESP_MAX_IF];
 volatile uint8_t wifi_tx_throttling;
@@ -170,7 +171,7 @@ h_err_t transport_drv_reconfigure(void)
 		init_timeout_timer = g_h.funcs->_h_timer_start("slave_unresponsive_timer", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS, H_TIMER_TYPE_ONESHOT, init_timeout_cb, NULL);
 		if (!init_timeout_timer) {
 			H_LOGE(TAG, "Failed to create init timeout timer");
-			return H_FAIL;
+			return ESP_FAIL;
 		}
 		H_LOGI(TAG, "Started host communication init timer of %u millisec", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS);
 	}
@@ -194,7 +195,7 @@ h_err_t transport_drv_reconfigure(void)
 	if (!is_transport_tx_ready()) {
 		if (H_OK != ensure_slave_bus_ready(bus_handle)) {
 			H_LOGE(TAG, "ensure_slave_bus_ready failed");
-			return H_FAIL;
+			return ESP_FAIL;
 		}
 		transport_state = TRANSPORT_RX_ACTIVE;
 		H_LOGI(TAG, "Waiting for esp_hosted slave to be ready");
@@ -205,12 +206,12 @@ h_err_t transport_drv_reconfigure(void)
 					H_LOGI(TAG, "Not able to connect with ESP-Hosted slave device");
 					if (H_OK != ensure_slave_bus_ready(bus_handle)) {
 						H_LOGE(TAG, "ensure_slave_bus_ready failed");
-						return H_FAIL;
+						return ESP_FAIL;
 					}
 				}
 			} else {
 				H_LOGW(TAG, "Failed to get ESP_Hosted slave transport up");
-				return H_FAIL;
+				return ESP_FAIL;
 			}
 			g_h.funcs->_h_msleep(200);
 		}
@@ -225,7 +226,7 @@ h_err_t transport_drv_reconfigure(void)
 h_err_t transport_drv_remove_channel(transport_channel_t *channel)
 {
 	if (!channel)
-		return H_FAIL;
+		return ESP_FAIL;
 
 	switch (channel->if_type) {
 	case ESP_AP_IF:
@@ -569,14 +570,14 @@ static void print_ext_capabilities(uint8_t * ptr)
 static void process_event(uint8_t *evt_buf, uint16_t len)
 {
 	int ret = 0;
-	h_priv_event_t *event;
+	struct esp_priv_event *event;
 
 	if (!evt_buf || !len)
 		return;
 
-	event = (h_priv_event_t *) evt_buf;
+	event = (struct esp_priv_event *) evt_buf;
 
-	if (event->event_type == H_PRIV_EVENT_INIT) {
+	if (event->event_type == ESP_PRIV_EVENT_INIT) {
 
 		H_LOGI(TAG, "Received INIT event from ESP32 peripheral");
 		ESP_HEXLOGD("Slave_init_evt", event->event_data, event->event_len, 32);
@@ -601,40 +602,40 @@ static h_err_t get_chip_str_from_id(int chip_id, char* chip_str)
 	assert(chip_str);
 
 	switch(chip_id) {
-	case H_PRIV_FIRMWARE_CHIP_ESP32:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32:
 		strcpy(chip_str, "esp32");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32C2:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C2:
 		strcpy(chip_str, "esp32c2");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32C3:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C3:
 		strcpy(chip_str, "esp32c3");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32C6:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C6:
 		strcpy(chip_str, "esp32c6");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32S2:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32S2:
 		strcpy(chip_str, "esp32s2");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32S3:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32S3:
 		strcpy(chip_str, "esp32s3");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32C5:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C5:
 		strcpy(chip_str, "esp32c5");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32C61:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32C61:
 		strcpy(chip_str, "esp32c61");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32H2:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32H2:
 		strcpy(chip_str, "esp32h2");
 		break;
-	case H_PRIV_FIRMWARE_CHIP_ESP32H4:
+	case ESP_PRIV_FIRMWARE_CHIP_ESP32H4:
 		strcpy(chip_str, "esp32h4");
 		break;
 	default:
 		H_LOGW(TAG, "Unsupported chip id: %u", chip_id);
 		strcpy(chip_str, "unsupported");
-		ret = H_FAIL;
+		ret = ESP_FAIL;
 		break;
 	}
 	return ret;
@@ -646,25 +647,25 @@ static void verify_host_config_for_slave(uint8_t chip_type)
 
 
 #if H_SLAVE_TARGET_ESP32
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32;
 #elif H_SLAVE_TARGET_ESP32C2
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32C2;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32C2;
 #elif H_SLAVE_TARGET_ESP32C3
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32C3;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32C3;
 #elif H_SLAVE_TARGET_ESP32C6
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32C6;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32C6;
 #elif H_SLAVE_TARGET_ESP32S2
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32S2;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32S2;
 #elif H_SLAVE_TARGET_ESP32S3
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32S3;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32S3;
 #elif H_SLAVE_TARGET_ESP32C5
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32C5;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32C5;
 #elif H_SLAVE_TARGET_ESP32C61
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32C61;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32C61;
 #elif H_SLAVE_TARGET_ESP32H2
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32H2;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32H2;
 #elif H_SLAVE_TARGET_ESP32H4
-	exp_chip_id = H_PRIV_FIRMWARE_CHIP_ESP32H4;
+	exp_chip_id = ESP_PRIV_FIRMWARE_CHIP_ESP32H4;
 #else
 	H_LOGW(TAG, "Incorrect host config for ESP slave chipset[%x]", chip_type);
 #endif
@@ -723,7 +724,7 @@ h_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 		uint8_t raw_tp_direction, uint8_t low_thr_thesh, uint8_t high_thr_thesh)
 {
 #define LENGTH_1_BYTE 1
-	h_priv_event_t *event = NULL;
+	struct esp_priv_event *event = NULL;
 	uint8_t *pos = NULL;
 	uint16_t len = 0;
 	uint8_t *sendbuf = NULL;
@@ -732,10 +733,10 @@ h_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	assert(sendbuf);
 
 	/* Populate event data */
-	//event = (h_priv_event_t *) (sendbuf + sizeof(struct esp_payload_header)); //ZeroCopy
-	event = (h_priv_event_t *) (sendbuf);
+	//event = (struct esp_priv_event *) (sendbuf + sizeof(struct esp_payload_header)); //ZeroCopy
+	event = (struct esp_priv_event *) (sendbuf);
 
-	event->event_type = H_PRIV_EVENT_INIT;
+	event->event_type = ESP_PRIV_EVENT_INIT;
 
 	/* Populate TLVs for event */
 	pos = event->event_data;
@@ -743,7 +744,7 @@ h_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	/* TLVs start */
 
 	/* TLV - Board type */
-	H_LOGI(TAG, "Slave chip Id[%x]", H_PRIV_FIRMWARE_CHIP_ID);
+	H_LOGI(TAG, "Slave chip Id[%x]", ESP_PRIV_FIRMWARE_CHIP_ID);
 	*pos = HOST_CAPABILITIES;                          pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
 	*pos = host_cap;                                   pos++;len++;
@@ -802,9 +803,10 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	uint8_t raw_tp_config = H_TEST_RAW_TP_DIR;
 	uint32_t ext_cap = 0;
 	uint32_t slave_fw_version = 0;
+	h_err_t ret;
 
 	if (!evt_buf)
-		return H_FAIL;
+		return ESP_FAIL;
 
 #if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and delete the init timeout timer since we received the init event */
@@ -828,19 +830,19 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	while (len_left) {
 		tag_len = *(pos + 1);
 
-		if (*pos == H_PRIV_CAPABILITY) {
+		if (*pos == ESP_PRIV_CAPABILITY) {
 			H_LOGI(TAG, "EVENT: %2x", *pos);
 			process_capabilities(*(pos + 2));
 			print_capabilities(*(pos + 2));
-		} else if (*pos == H_PRIV_CAP_EXT) {
+		} else if (*pos == ESP_PRIV_CAP_EXT) {
 			H_LOGI(TAG, "EVENT: %2x", *pos);
 			ext_cap = process_ext_capabilities(pos + 2);
 			print_ext_capabilities(pos + 2);
-		} else if (*pos == H_PRIV_FIRMWARE_CHIP_ID) {
+		} else if (*pos == ESP_PRIV_FIRMWARE_CHIP_ID) {
 			H_LOGI(TAG, "EVENT: %2x", *pos);
 			chip_type = *(pos+2);
 			verify_host_config_for_slave(chip_type);
-		} else if (*pos == H_PRIV_TEST_RAW_TP) {
+		} else if (*pos == ESP_PRIV_TEST_RAW_TP) {
 			H_LOGI(TAG, "EVENT: %2x", *pos);
 #if TEST_RAW_TP
 			process_test_capabilities(*(pos + 2));
@@ -848,11 +850,11 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 			if (*(pos + 2))
 				H_LOGW(TAG, "Slave enabled Raw Throughput Testing, but not enabled on Host");
 #endif
-		} else if (*pos == H_PRIV_RX_Q_SIZE) {
+		} else if (*pos == ESP_PRIV_RX_Q_SIZE) {
 			H_LOGD(TAG, "slave rx queue size: %u", *(pos + 2));
-		} else if (*pos == H_PRIV_TX_Q_SIZE) {
+		} else if (*pos == ESP_PRIV_TX_Q_SIZE) {
 			H_LOGD(TAG, "slave tx queue size: %u", *(pos + 2));
-		} else if (*pos == H_PRIV_FIRMWARE_VERSION) {
+		} else if (*pos == ESP_PRIV_FIRMWARE_VERSION) {
 			// fw_version sent as a little-endian uint32_t
 			slave_fw_version =
 				*(pos + 2) |
@@ -860,7 +862,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 				(*(pos + 4) << 16) |
 				(*(pos + 5) << 24);
 			H_LOGD(TAG, "slave fw version: 0x%08" PRIx32, slave_fw_version);
-		} else if (*pos == H_PRIV_TRANS_SDIO_MODE) {
+		} else if (*pos == ESP_PRIV_TRANS_SDIO_MODE) {
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
 			uint8_t slave_sdio_mode = *(pos + 2);
 #if H_SDIO_HOST_RX_MODE == H_SDIO_HOST_STREAMING_MODE
@@ -884,21 +886,21 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 		len_left -= (tag_len+2);
 	}
 
-	// if H_PRIV_FIRMWARE_VERSION was not received, slave version will be 0.0.0
+	// if ESP_PRIV_FIRMWARE_VERSION was not received, slave version will be 0.0.0
 	compare_fw_version(slave_fw_version);
 
-	if ((chip_type != H_PRIV_FIRMWARE_CHIP_ESP32) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32S2) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32S3) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32C2) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32C3) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32C6) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32C5) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32C61) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32H2) &&
-		(chip_type != H_PRIV_FIRMWARE_CHIP_ESP32H4)) {
+	if ((chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32S2) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32S3) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C2) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C3) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C6) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C5) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32C61) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32H2) &&
+		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32H4)) {
 		H_LOGI(TAG, "ESP board type is not mentioned, ignoring [%d]\n\r", chip_type);
-		chip_type = H_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
+		chip_type = ESP_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
 		return -1;
 	} else {
 		H_LOGI(TAG, "ESP board type is : %d \n\r", chip_type);
@@ -935,9 +937,12 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 
 	transport_driver_event_handler(TRANSPORT_TX_ACTIVE);
 
-// CHECK: send_slave_config(0, chip_type, raw_tp_config, (was ESP_ERROR_CHECK)
+	ret = send_slave_config(0, chip_type, raw_tp_config,
 		H_WIFI_TX_DATA_THROTTLE_LOW_THRESHOLD,
-		H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD));
+		H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD);
+	if (ret != H_OK) {
+		return ret;
+	}
 
 	transport_delayed_init();
 

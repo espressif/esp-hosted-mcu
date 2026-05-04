@@ -24,18 +24,6 @@
 
 /* ──  Helpers ── */
 
-/* Convert ESP error codes to portable h_err_t */
-static h_err_t esp_err_to_h_err(esp_err_t err)
-{
-    switch (err) {
-        case ESP_OK:              return H_OK;
-        case ESP_ERR_NO_MEM:      return H_ERR_NO_MEM;
-        case ESP_ERR_INVALID_ARG: return H_ERR_INVALID_ARG;
-        case ESP_ERR_TIMEOUT:     return H_ERR_TIMEOUT;
-        default:                  return H_FAIL;
-    }
-}
-
 /* Convert timeout_ms to FreeRTOS ticks.
  * Negative means block indefinitely (portMAX_DELAY). */
 static TickType_t timeout_to_ticks(int32_t timeout_ms)

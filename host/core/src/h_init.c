@@ -1,5 +1,6 @@
 /* host/core/src/h_init.c */
 #include "h_init.h"
+#include "h_config.h"
 #include "h_wrapper.h"
 
 /* Port entry points — defined by each port (e.g. host/port/esp-idf/port_init.c).
@@ -61,6 +62,9 @@ h_err_t h_validate_contracts(void)
 h_err_t h_hosted_init(void)
 {
     h_err_t err;
+
+    if (g_hosted_initialized)
+        return H_OK;
 
     err = h_validate_contracts();
     if (err != H_OK) return err;

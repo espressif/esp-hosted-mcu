@@ -8,6 +8,9 @@
 #define H_TRANSPORT_SPI_HD  3
 #define H_TRANSPORT_UART    4
 
+/* ── Port-Specific Overrides ── */
+#include "h_port_config.h"
+
 #ifndef H_TRANSPORT_IN_USE
 #error "H_TRANSPORT_IN_USE must be defined by port layer (h_port_config.h)"
 #endif
@@ -29,8 +32,5 @@
 #ifndef H_FEATURE_ENTERPRISE
 #define H_FEATURE_ENTERPRISE 0
 #endif
-
-/* ── Port-Specific Overrides ── */
-#include "h_port_config.h"
 
 #endif /* H_CONFIG_H */
