@@ -7,6 +7,12 @@
 #ifndef H_PORT_CONFIG_H
 #define H_PORT_CONFIG_H
 
+#ifdef H_BUILD_TESTS
+
+#include "../linux/h_port_config.h"
+
+#else
+
 #include <sdkconfig.h>
 
 /* ── Transport selection from Kconfig ── */
@@ -38,5 +44,7 @@
 #define H_FEATURE_BLUETOOTH  0
 #define H_FEATURE_OTA        0
 #define H_FEATURE_NETSPLIT   0
+
+#endif
 
 #endif /* H_PORT_CONFIG_H */

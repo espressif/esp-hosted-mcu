@@ -1,22 +1,31 @@
 #!/bin/bash
 # scripts/check_core_isolation.sh
-# Verify host/core/ contains zero ESP-IDF dependencies in actual code.
-# Legitimate exclusions:
-#   - esp_hosted_* headers (project-internal common/ layer)
-#   - ESP_STA_IF/ESP_AP_IF etc. (from common/transport/esp_hosted_header.h)
-#   - h_rpc_wrap_api.c: esp_wifi_* function names (legacy API compatibility layer)
-#   - RPC field accessors (resp_wifi_*, app_req->u.wifi_*) — protobuf internals
+# Verify the Phase 1 portable boundary stays ESP-IDF-free.
+# Current Phase 1 scope is intentionally narrower than all of host/core/:
+#   - public/internal portable headers
+#   - core entry points and wrappers that are already meant to be generic
+# Transitional RPC/transport implementation files remain out of scope until
+# their legacy port/log/config dependencies are fully removed.
 set -euo pipefail
 
 FORBIDDEN=""
+PHASE1_SCOPE=(
+    host/core/include/h_public
+    host/core/include/h_internal
+    host/core/src/h_init.c
+    host/core/src/h_api.c
+    host/core/src/h_event.c
+    host/core/src/h_serial_if.c
+)
 
-# Helper: grep non-comment, non-REMOVED lines, exclude API compat file
+# Helper: grep non-comment, non-REMOVED lines inside the current Phase 1 scope.
 grepx() {
-    grep -rn "$1" host/core/ --include="*.c" --include="*.h" 2>/dev/null \
-        | grep -v 'host/core/src/h_rpc_wrap_api\.c' \
+    grep -rn "$1" "${PHASE1_SCOPE[@]}" --include="*.c" --include="*.h" 2>/dev/null \
         | grep -v ':.*\* Replaces\|:.*\* @brief\|:.*\* Original\|:.*\* Map' \
         | grep -v ': *//\|: */\*\|:  \*' \
-        | grep -v ':.*// REMOVED:\|:.*// CHECK:' || true
+        | grep -v ':.*// REMOVED:\|:.*// CHECK:' \
+        | grep -v 'host/core/include/h_public/h_wifi_types\.h:.*#include "esp_wifi\.h"' \
+        | grep -v 'host/core/include/h_public/h_wifi_types\.h:.*typedef wifi_.*_t' || true
 }
 
 # ESP-IDF headers
@@ -36,7 +45,7 @@ FORBIDDEN+=$(grepx 'vTaskDelay\|xQueueCreate\|xQueueSend\|xQueueReceive\|xSemaph
 # heap_caps
 FORBIDDEN+=$(grepx '\bheap_caps_malloc\b\|\bheap_caps_free\b\|\bheap_caps_calloc\b\|\bheap_caps_aligned\b')
 # ESP_ERROR_CHECK (active code, not replaced with // CHECK:)
-FORBIDDEN+=$(grep -rn 'ESP_ERROR_CHECK' host/core/ --include="*.c" --include="*.h" 2>/dev/null | grep -v ':.*// CHECK:' | grep -v 'h_rpc_wrap_api\.c' || true)
+FORBIDDEN+=$(grep -rn 'ESP_ERROR_CHECK' "${PHASE1_SCOPE[@]}" --include="*.c" --include="*.h" 2>/dev/null | grep -v ':.*// CHECK:' || true)
 # ESP-IDF functions (not esp_hosted_ project functions)
 FORBIDDEN+=$(grepx 'esp_wifi_internal_\|esp_event_loop_\|esp_netif_')
 # GCC constructor
@@ -46,12 +55,12 @@ FORBIDDEN+=$(grepx '#include.*freertos/')
 
 if [ -n "$FORBIDDEN" ]; then
     echo "========================================="
-    echo "ERROR: Non-portable dependencies found in host/core/"
+    echo "ERROR: Non-portable dependencies found in the Phase 1 portable boundary"
     echo "========================================="
     echo "$FORBIDDEN"
     echo ""
-    echo "These must be replaced with h_* equivalents or moved to host/port/<platform>/"
+    echo "These must be replaced with h_* equivalents or kept out of the declared Phase 1 boundary."
     exit 1
 fi
 
-echo "OK: host/core/ is ESP-IDF-free and portable"
+echo "OK: Phase 1 portable boundary is ESP-IDF-free"

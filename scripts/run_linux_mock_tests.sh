@@ -10,12 +10,11 @@ cd "$ROOT_DIR"
 
 mkdir -p build
 
-CORE_SRCS="host/core/src/h_init.c host/core/src/h_rpc_core.c host/core/src/h_rpc_wrap.c host/core/src/h_transport_drv.c host/core/src/h_transport_util.c host/core/src/h_serial_if.c host/core/src/h_event.c host/core/src/h_api.c"
+CORE_SRCS="host/core/src/h_init.c host/core/src/h_rpc_core.c host/core/src/h_serial_if.c host/core/src/h_event.c"
 PORT_SRCS="host/port/linux/src/h_osal.c host/port/linux/src/h_event.c host/port/linux/src/h_transport_mock.c"
-COMMON_SRCS="common/protobuf-c/protobuf-c/protobuf-c.c common/proto/esp_hosted_rpc.pb-c.c"
 TEST_SRCS="tests/test_runner.c tests/test_osal.c tests/test_event.c tests/test_transport.c tests/test_rpc_core.c tests/unity/unity.c"
 
-INC_FLAGS="-I host/core/include/h_public -I host/core/include/h_internal -I host/port/include -I host/port/linux -I common/proto -I common/protobuf-c/protobuf-c -I tests/unity"
+INC_FLAGS="-I host/core/include/h_public -I host/core/include/h_internal -I host/port/linux -I host/port/include -I tests/unity"
 
 # ── Build test executable (ASAN + UBSAN) ──
 echo "=== Building test_runner (ASAN + UBSAN) ==="
@@ -28,7 +27,6 @@ gcc -o build/test_runner \
     ${CORE_SRCS} \
     ${PORT_SRCS} \
     ${TEST_SRCS} \
-    ${COMMON_SRCS} \
     -lpthread
 
 echo "=== Running tests (ASAN + UBSAN) ==="
@@ -47,7 +45,6 @@ gcc -o build/test_runner_tsan \
     ${CORE_SRCS} \
     ${PORT_SRCS} \
     ${TEST_SRCS} \
-    ${COMMON_SRCS} \
     -lpthread
 
 echo "=== Running tests (TSAN) ==="

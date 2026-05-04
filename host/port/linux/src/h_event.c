@@ -60,12 +60,10 @@ static int linux_event_post(h_event_base_t base, int32_t event_id,
     /* Note: callbacks are invoked under the lock to prevent concurrent
      * unregister from freeing a node during traversal. Callbacks should
      * not re-enter register/unregister or block for long periods. */
-    int count = 0;
     pthread_mutex_lock(&g_event_lock);
     for (event_handler_entry_t *e = g_handlers; e; e = e->next) {
         if (e->base == base && e->event_id == event_id) {
             e->handler(event_data, event_data_size, e->user_ctx);
-            count++;
         }
     }
     pthread_mutex_unlock(&g_event_lock);
