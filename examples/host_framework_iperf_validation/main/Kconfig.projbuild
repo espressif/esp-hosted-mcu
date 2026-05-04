@@ -1,0 +1,44 @@
+menu "Example Configuration"
+
+config EXAMPLE_HOSTED_CONNECT_TIMEOUT_MS
+    int "Hosted connect timeout (ms)"
+    range 1000 60000
+    default 15000
+    help
+        Timeout used while waiting for ESP_HOSTED_EVENT_TRANSPORT_UP and
+        ESP_HOSTED_EVENT_CP_INIT after esp_hosted_connect_to_slave().
+
+config EXAMPLE_SOFTAP_START_TIMEOUT_MS
+    int "SoftAP start timeout (ms)"
+    range 1000 60000
+    default 10000
+    help
+        Timeout used while waiting for WIFI_EVENT_AP_START.
+
+config EXAMPLE_SOFTAP_SSID
+    string "SoftAP SSID"
+    default "ESP32_IPERF"
+
+config EXAMPLE_SOFTAP_PASSWORD
+    string "SoftAP password"
+    default "12345678"
+    help
+        Leave empty to start an open SoftAP.
+
+config EXAMPLE_SOFTAP_CHANNEL
+    int "SoftAP channel"
+    range 1 13
+    default 1
+
+config EXAMPLE_SOFTAP_MAX_CONN
+    int "SoftAP max connections"
+    range 1 10
+    default 2
+
+config EXAMPLE_ENABLE_IPERF_REMOTE_CONTROL
+    bool "Enable iperf remote control service"
+    default y
+    help
+        Starts a small TCP server on port 22336 for simple automation.
+
+endmenu
