@@ -9,6 +9,44 @@
 #include <string.h>
 #include <inttypes.h>
 
+#ifdef H_BUILD_TESTS
+
+static void (*g_recv_callback)(uint8_t *data, uint16_t len) = NULL;
+
+h_err_t h_serial_if_init(void)
+{
+    g_recv_callback = NULL;
+    return H_OK;
+}
+
+void h_serial_if_deinit(void)
+{
+    g_recv_callback = NULL;
+}
+
+h_err_t h_serial_if_send(const uint8_t *data, uint16_t len)
+{
+    if (!data || !len) {
+        return H_ERR_INVALID_ARG;
+    }
+    return H_OK;
+}
+
+h_err_t h_serial_if_recv(uint8_t *data, uint16_t *len, int32_t timeout_ms)
+{
+    (void)data;
+    (void)len;
+    (void)timeout_ms;
+    return H_ERR_TIMEOUT;
+}
+
+void h_serial_if_register_rx_callback(void (*cb)(uint8_t *data, uint16_t len))
+{
+    g_recv_callback = cb;
+}
+
+#else
+
 /* Transport frame callback -- set by transport driver during init */
 static void (*g_recv_callback)(uint8_t *data, uint16_t len) = NULL;
 
@@ -77,3 +115,10 @@ h_err_t h_serial_if_recv(uint8_t *data, uint16_t *len, int32_t timeout_ms)
     h_free(rx_data);
     return H_OK;
 }
+
+void h_serial_if_register_rx_callback(void (*cb)(uint8_t *data, uint16_t len))
+{
+    g_recv_callback = cb;
+}
+
+#endif

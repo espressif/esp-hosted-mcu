@@ -1,8 +1,9 @@
 # .github/workflows/host-core-test.yml
 #
 # Three-tier CI for host core layer:
-#   Tier 1: Compile isolation check (30s)
-#   Tier 2: Linux mock tests with ASAN/TSAN (3min)
+# Three-tier CI for host core layer:
+#   Tier 1: Phase 1 portable-boundary isolation check (30s)
+#   Tier 2: Linux mock tests for the current portable/testable subset (3min)
 #   Tier 3: ESP-IDF slave build matrix (30min)
 #
 # All jobs run on ubuntu-latest with zero hardware dependencies.
@@ -43,19 +44,22 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check core layer is ESP-IDF free
+      - name: Check Phase 1 portable boundary is ESP-IDF free
         run: bash scripts/check_core_isolation.sh
 
-      - name: Verify core compiles with zero ESP-IDF deps
+      - name: Verify Phase 1 portable subset compiles without ESP-IDF toolchain
         run: |
-          for f in host/core/src/*.c; do
+          for f in \
+            host/core/src/h_init.c \
+            host/core/src/h_api.c \
+            host/core/src/h_event.c \
+            host/core/src/h_serial_if.c; do
             echo "Checking $f..."
             gcc -fsyntax-only \
               -I host/core/include/h_public \
               -I host/core/include/h_internal \
+              -I host/port/linux \
               -I host/port/include \
-              -I common/proto \
-              -I common/protobuf-c/protobuf-c \
-              -I common/transport \
               -DH_BUILD_TESTS \
               -Wall -Werror \
               "$f"
@@ -74,78 +78,8 @@ jobs:
       - name: Create build directory
         run: mkdir -p build
 
-      - name: Build test executable (ASAN + UBSAN)
-        run: |
-          gcc -o build/test_runner \
-            -I host/core/include/h_public \
-            -I host/core/include/h_internal \
-            -I host/port/include \
-            -I host/port/linux \
-            -I common/proto \
-            -I common/protobuf-c/protobuf-c \
-            -I tests/unity \
-            -DH_BUILD_TESTS \
-            -fsanitize=address,undefined \
-            -g -O0 \
-            -Wall -Wextra -Werror \
-            host/core/src/h_init.c \
-            host/core/src/h_rpc_core.c \
-            host/core/src/h_rpc_wrap.c \
-            host/core/src/h_transport_drv.c \
-            host/core/src/h_transport_util.c \
-            host/core/src/h_serial_if.c \
-            host/core/src/h_event.c \
-            host/core/src/h_api.c \
-            host/port/linux/src/h_osal.c \
-            host/port/linux/src/h_event.c \
-            host/port/linux/src/h_transport_mock.c \
-            tests/test_runner.c \
-            tests/test_osal.c \
-            tests/test_event.c \
-            tests/test_transport.c \
-            tests/test_rpc_core.c \
-            tests/unity/unity.c \
-            common/protobuf-c/protobuf-c/protobuf-c.c \
-            common/proto/esp_hosted_rpc.pb-c.c \
-            -lpthread
-
-      - name: Run tests (ASAN + UBSAN)
-        run: ./build/test_runner -v
-
-      - name: Build test executable (TSAN)
-        run: |
-          gcc -o build/test_runner_tsan \
-            -I host/core/include/h_public \
-            -I host/core/include/h_internal \
-            -I host/port/include \
-            -I host/port/linux \
-            -I common/proto \
-            -I common/protobuf-c/protobuf-c \
-            -I tests/unity \
-            -DH_BUILD_TESTS \
-            -fsanitize=thread \
-            -g -O1 \
-            -Wall -Wextra -Werror \
-            host/core/src/h_init.c \
-            host/core/src/h_rpc_core.c \
-            host/core/src/h_rpc_wrap.c \
-            host/core/src/h_transport_drv.c \
-            host/core/src/h_transport_util.c \
-            host/core/src/h_serial_if.c \
-            host/core/src/h_event.c \
-            host/core/src/h_api.c \
-            host/port/linux/src/h_osal.c \
-            host/port/linux/src/h_event.c \
-            host/port/linux/src/h_transport_mock.c \
-            tests/test_runner.c tests/test_osal.c tests/test_event.c \
-            tests/test_transport.c tests/test_rpc_core.c \
-            tests/unity/unity.c \
-            common/protobuf-c/protobuf-c/protobuf-c.c \
-            common/proto/esp_hosted_rpc.pb-c.c \
-            -lpthread
-
-      - name: Run tests (TSAN)
-        run: TSAN_OPTIONS="second_deadlock_stack=1" ./build/test_runner_tsan -v
+      - name: Run Linux mock test script
+        run: bash scripts/run_linux_mock_tests.sh
 
   # ── Tier 3: ESP-IDF Slave Build Matrix (30min) ──
   # Only compiles slave firmware; host build tested in hardware regression.

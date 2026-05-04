@@ -151,6 +151,34 @@ typedef struct {
     uint8_t policy;          /* country policy */
 } h_wifi_country_t;
 
+/* ── Interface / Mode / Policy Enums ──
+ * Replaces the corresponding ESP-IDF enums in non-ESP builds. */
+typedef enum {
+    H_WIFI_IF_STA = 0,
+    H_WIFI_IF_AP,
+    H_WIFI_IF_NAN,
+    H_WIFI_IF_MAX,
+} h_wifi_interface_t;
+
+typedef enum {
+    H_WIFI_MODE_NULL = 0,
+    H_WIFI_MODE_STA,
+    H_WIFI_MODE_AP,
+    H_WIFI_MODE_APSTA,
+    H_WIFI_MODE_NAN,
+} h_wifi_mode_t;
+
+typedef enum {
+    H_WIFI_PS_NONE = 0,
+    H_WIFI_PS_MIN_MODEM,
+    H_WIFI_PS_MAX_MODEM,
+} h_wifi_ps_type_t;
+
+typedef enum {
+    H_WIFI_BW_HT20 = 0,
+    H_WIFI_BW_HT40,
+} h_wifi_bandwidth_t;
+
 /* ── Auth Mode ──
  * Replaces wifi_auth_mode_t. */
 typedef enum {

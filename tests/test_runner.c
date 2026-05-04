@@ -17,6 +17,9 @@ extern void test_event_multiple_handlers(void);
 extern void test_transport_init_spi(void);
 extern void test_transport_mock_transfer(void);
 
+void setUp(void) {}
+void tearDown(void) {}
+
 int main(void)
 {
     UNITY_BEGIN();

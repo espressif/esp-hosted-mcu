@@ -17,6 +17,13 @@
 #include <poll.h>
 #include <errno.h>
 
+#if defined(__APPLE__)
+#include <dispatch/dispatch.h>
+typedef struct {
+    dispatch_semaphore_t sem;
+} apple_sem_wrapper_t;
+#endif
+
 /* ── Thread ── */
 typedef struct {
     pthread_t thread;
@@ -71,6 +78,22 @@ static int linux_mutex_lock(h_mutex_t m, int32_t timeout_ms)
         pthread_mutex_lock((pthread_mutex_t *)m);
         return H_OK;
     }
+#if defined(__APPLE__)
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    uint64_t deadline_ms = (uint64_t)now.tv_sec * 1000ULL + (uint64_t)now.tv_nsec / 1000000ULL + (uint64_t)timeout_ms;
+    while (1) {
+        if (pthread_mutex_trylock((pthread_mutex_t *)m) == 0) {
+            return H_OK;
+        }
+        clock_gettime(CLOCK_REALTIME, &now);
+        uint64_t now_ms = (uint64_t)now.tv_sec * 1000ULL + (uint64_t)now.tv_nsec / 1000000ULL;
+        if (now_ms >= deadline_ms) {
+            return H_ERR_TIMEOUT;
+        }
+        usleep(1000);
+    }
+#else
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += timeout_ms / 1000;
@@ -78,6 +101,7 @@ static int linux_mutex_lock(h_mutex_t m, int32_t timeout_ms)
     if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
     int ret = pthread_mutex_timedlock((pthread_mutex_t *)m, &ts);
     return (ret == 0) ? H_OK : H_ERR_TIMEOUT;
+#endif
 }
 
 static int linux_mutex_unlock(h_mutex_t m)
@@ -192,16 +216,36 @@ static int linux_queue_delete(h_queue_t q)
 static int linux_sem_create(uint32_t max, uint32_t init, h_semaphore_t *out)
 {
     (void)max;
+#if defined(__APPLE__)
+    apple_sem_wrapper_t *s = malloc(sizeof(*s));
+    if (!s) return H_ERR_NO_MEM;
+    s->sem = dispatch_semaphore_create((long)init);
+    if (!s->sem) {
+        free(s);
+        return H_FAIL;
+    }
+    *out = (h_semaphore_t)s;
+    return H_OK;
+#else
     sem_t *s = malloc(sizeof(sem_t));
     if (!s) return H_ERR_NO_MEM;
     sem_init(s, 0, init);
     *out = (h_semaphore_t)s;
     return H_OK;
+#endif
 }
 
 static int linux_sem_take(h_semaphore_t sem, int32_t timeout_ms)
 {
     if (!sem) return H_ERR_INVALID_ARG;
+#if defined(__APPLE__)
+    apple_sem_wrapper_t *wrapper = (apple_sem_wrapper_t *)sem;
+    if (timeout_ms < 0) {
+        return (dispatch_semaphore_wait(wrapper->sem, DISPATCH_TIME_FOREVER) == 0) ? H_OK : H_FAIL;
+    }
+    dispatch_time_t deadline = dispatch_time(DISPATCH_TIME_NOW, (int64_t)timeout_ms * 1000000LL);
+    return (dispatch_semaphore_wait(wrapper->sem, deadline) == 0) ? H_OK : H_ERR_TIMEOUT;
+#else
     if (timeout_ms < 0) {
         sem_wait((sem_t *)sem);
         return H_OK;
@@ -212,12 +256,19 @@ static int linux_sem_take(h_semaphore_t sem, int32_t timeout_ms)
     ts.tv_nsec += (timeout_ms % 1000) * 1000000;
     if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
     return (sem_timedwait((sem_t *)sem, &ts) == 0) ? H_OK : H_ERR_TIMEOUT;
+#endif
 }
 
 static int linux_sem_give(h_semaphore_t sem)
 {
     if (!sem) return H_ERR_INVALID_ARG;
+#if defined(__APPLE__)
+    apple_sem_wrapper_t *wrapper = (apple_sem_wrapper_t *)sem;
+    dispatch_semaphore_signal(wrapper->sem);
+    return H_OK;
+#else
     return (sem_post((sem_t *)sem) == 0) ? H_OK : H_FAIL;
+#endif
 }
 
 static int linux_sem_give_from_isr(h_semaphore_t sem, void *isr_ctx)
@@ -229,8 +280,16 @@ static int linux_sem_give_from_isr(h_semaphore_t sem, void *isr_ctx)
 static int linux_sem_delete(h_semaphore_t sem)
 {
     if (!sem) return H_ERR_INVALID_ARG;
+#if defined(__APPLE__)
+    apple_sem_wrapper_t *wrapper = (apple_sem_wrapper_t *)sem;
+#if !OS_OBJECT_USE_OBJC
+    dispatch_release(wrapper->sem);
+#endif
+    free(wrapper);
+#else
     sem_destroy((sem_t *)sem);
     free(sem);
+#endif
     return H_OK;
 }
 

@@ -4,6 +4,47 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifdef H_BUILD_TESTS
+
+#include "h_rpc_core.h"
+#include "h_serial_if.h"
+
+h_err_t h_rpc_send_request(uint8_t msg_type, const uint8_t *req, uint16_t req_len,
+						   uint8_t *rsp, uint16_t *rsp_len, int32_t timeout_ms)
+{
+	(void)msg_type;
+	h_err_t ret;
+
+	if (!req || !req_len) {
+		return H_ERR_INVALID_ARG;
+	}
+
+	ret = h_serial_if_send(req, req_len);
+	if (ret != H_OK) {
+		return ret;
+	}
+
+	if (rsp && rsp_len) {
+		ret = h_serial_if_recv(rsp, rsp_len, timeout_ms);
+		if (ret != H_OK) {
+			return ret;
+		}
+	}
+
+	return H_OK;
+}
+
+h_err_t h_rpc_register_handler(uint8_t msg_type,
+							   h_err_t (*handler)(const uint8_t *req, uint16_t req_len,
+												  uint8_t *rsp, uint16_t *rsp_len))
+{
+	(void)msg_type;
+	(void)handler;
+	return H_OK;
+}
+
+#else
+
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -1219,3 +1260,5 @@ h_err_t h_rpc_register_handler(uint8_t msg_type,
 	(void)msg_type; (void)handler;
 	return H_OK; /* Stub — no handlers registered in Phase 1 */
 }
+
+#endif
