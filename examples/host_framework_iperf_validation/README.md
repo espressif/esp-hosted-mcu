@@ -8,7 +8,7 @@
 
 This example is the upper-bound validation target for the current host generic framework refactor.
 
-It goes beyond baseline transport lifecycle validation and exercises the main path the refactor was meant to enable:
+It goes beyond baseline transport lifecycle validation and exercises the main control-plane and data-plane path the refactor was meant to enable:
 
 - host starts the framework explicitly
 - host uses `esp_hosted_connect_to_slave()` to bring up the slave through the configured reset-aware transport path
@@ -17,7 +17,7 @@ It goes beyond baseline transport lifecycle validation and exercises the main pa
 - host starts the iPerf console and remote control server
 - an external test script or `iperf2` client drives TCP or UDP throughput tests over the hosted Wi-Fi link
 
-This example is intentionally focused on one integrated validation path: host lifecycle, slave bring-up, control plane, SoftAP bring-up, and data-plane throughput.
+This example is intentionally focused on one integrated validation path: host lifecycle, slave bring-up, control-plane operation, SoftAP bring-up, and data-plane throughput.
 
 ## What This Example Is For
 
@@ -25,7 +25,7 @@ This example is not just another Wi-Fi demo. It is the current **Tier 3 hardware
 
 Its role is to answer one practical question:
 
-- can the refactored host framework bring up the slave through the public framework path and sustain real data-plane traffic, not just lifecycle logs?
+- can the refactored host generic framework bring up the slave through the public framework path and sustain real data-plane traffic, not just lifecycle logs?
 
 In other words, this example exists to prove that the refactor works as an integrated system, not merely that individual APIs compile or that transport comes up once.
 
@@ -46,13 +46,15 @@ For the current refactor phase, the host generic framework should be considered 
    - the validation flow can complete TCP RX, TCP TX, UDP RX, and UDP TX throughput runs
    - no host-side crash, fatal assert, or framework teardown occurs during the run
 
-If both conditions are met, then this example demonstrates that the current ESP host port has passed the main end-to-end validation path for the host generic framework.
+If both conditions are met, then this example demonstrates that the current ESP host validation platform has passed the main control-plane and data-plane validation path for the host generic framework.
+
+That still should be read together with `host_framework_validation`, not as a replacement for it. The lifecycle-only example establishes the baseline lifecycle path first; this example establishes the main control-plane and data-plane path on top of that baseline.
 
 ## What A Pass Means And What It Does Not Mean
 
 A successful run of this example means:
 
-- the current host generic framework design is working on the validated ESP host platform
+- the current host generic framework design is working on the current ESP host validation platform
 - the public framework bring-up path is sufficient to support real hosted Wi-Fi traffic
 - the refactor has crossed the boundary from architectural intent into working integrated behavior
 
@@ -64,14 +66,15 @@ A successful run of this example does **not** mean:
 
 So the right conclusion is:
 
-- **this example can validate the main framework path on the current platform**
+- **this example can validate the main control-plane and data-plane path on the current ESP host validation platform**
 - **it cannot replace platform-by-platform follow-up validation**
+- **it should be paired with `host_framework_validation` before claiming that framework usability has been proven on the current ESP host validation platform**
 
 ## What This Example Validates
 
-This example validates the following host framework capabilities together:
+This example validates the following host generic framework capabilities together:
 
-- explicit host framework lifecycle through `esp_hosted_init()` and `esp_hosted_connect_to_slave()`
+- explicit host generic framework lifecycle through `esp_hosted_init()` and `esp_hosted_connect_to_slave()`
 - host-driven slave boot sequence through the public hosted connect path and configured reset GPIO
 - delivery of hosted lifecycle events to the application
 - remote Wi-Fi control from the host application
@@ -91,7 +94,15 @@ This example does not validate:
 - Bluetooth features
 - host power save or network split specific features
 
-Those should remain separate examples so this example stays centered on the main throughput-oriented host framework path.
+Those should remain separate examples so this example stays centered on the main throughput-oriented control-plane and data-plane path.
+
+## Relationship To host_framework_validation
+
+This example is the second half of the current validation story, not the whole story by itself.
+
+- `host_framework_validation` proves the baseline lifecycle path.
+- `host_framework_iperf_validation` proves the main control-plane and data-plane path.
+- only when both examples pass can you conclude that the host generic framework usability has been proven on the current ESP host validation platform.
 
 ## Default Hardware Profile
 
@@ -128,7 +139,7 @@ For day-to-day bring-up and refactor validation, treat the example as **passed**
 - the automation flow completes the intended iperf cases without framework crash or forced manual recovery
 - the result summary is `PASS` or acceptable `WARN` for the intended cases
 
-For the current ESP32-P4 + ESP32-C6 validation setup, a run completing all four directions (`tcp-rx`, `tcp-tx`, `udp-rx`, `udp-tx`) is the strongest evidence that the host generic framework main path is working on this platform.
+For the current ESP32-P4 + ESP32-C6 validation setup, a run completing all four directions (`tcp-rx`, `tcp-tx`, `udp-rx`, `udp-tx`) is the strongest evidence that the host generic framework main control-plane and data-plane path is working on this platform.
 
 ## Build
 

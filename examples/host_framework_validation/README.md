@@ -8,7 +8,7 @@
 
 This example is the baseline validation target for the refactored host-side generic framework.
 
-Its purpose is not to demonstrate Wi-Fi application logic. Its purpose is to prove that the host framework itself can be brought up, connected to the slave, observed through hosted events, and torn down cleanly under explicit application control.
+Its purpose is not to demonstrate Wi-Fi application logic. Its purpose is to prove that the host generic framework itself can be brought up, connected to the slave, observed through hosted events, and torn down cleanly under explicit application control.
 
 The example performs a small and repeatable lifecycle probe:
 
@@ -21,7 +21,7 @@ The example performs a small and repeatable lifecycle probe:
 - call `esp_hosted_deinit()` explicitly
 - repeat the same lifecycle for a configurable number of cycles
 
-This keeps validation focused on the host framework lifecycle itself, without mixing in station connection flow, heartbeat policy, recovery state machines, or application traffic.
+This keeps validation focused on the host generic framework lifecycle itself, without mixing in station connection flow, heartbeat policy, recovery state machines, or application traffic.
 
 Inside this repository, the example uses the local repository copy of `esp_hosted` through `components/esp_hosted`. That means a normal build of this example validates the current worktree by default, instead of the registry component.
 
@@ -29,7 +29,7 @@ Inside this repository, the example uses the local repository copy of `esp_hoste
 
 Use this example as the first acceptance check for the host generic framework on a target host platform.
 
-If this example passes, you have evidence that the following baseline path works on that platform:
+If this example passes, you have evidence that the following baseline lifecycle path works on that platform:
 
 - the host-side framework can be initialized explicitly by the application
 - the selected port layer and transport configuration are usable on that board
@@ -38,6 +38,8 @@ If this example passes, you have evidence that the following baseline path works
 - the framework can be deinitialized and initialized again in a later cycle
 
 In other words, this example answers the question: "Can this platform run the host generic framework lifecycle reliably under explicit application control?"
+
+This example does not, by itself, prove the full practical usability of the host generic framework on the current ESP host validation platform. It proves the baseline lifecycle path. The stronger platform-level conclusion requires this example to pass first and then requires `host_framework_iperf_validation` to pass as the main control-plane and data-plane validation.
 
 ## Acceptance Target
 
@@ -60,7 +62,7 @@ At the end of the run, the summary should show:
 
 If the slave firmware is very old and does not support `GetCoprocessorFwVersion`, the firmware-version RPC may time out. That warning does not fail this example, because firmware-version query is not the primary acceptance signal.
 
-## Host Framework Capabilities Validated
+## Host Generic Framework Capabilities Validated
 
 This example validates these host generic framework capabilities:
 
@@ -83,6 +85,14 @@ This example is intentionally not a recovery or feature-completeness test. It do
 - application-level network traffic such as ping, iperf, or socket workloads
 
 Those behaviors should be covered by separate examples so that baseline framework validation stays small and easy to diagnose.
+
+## Relationship To host_framework_iperf_validation
+
+This example and `host_framework_iperf_validation` are not competing acceptance targets.
+
+- `host_framework_validation` answers whether the host generic framework baseline lifecycle path is reliable on the current ESP host validation platform.
+- `host_framework_iperf_validation` answers whether the main control-plane and data-plane path is usable under real hosted Wi-Fi traffic.
+- only when both examples pass can you conclude that the host generic framework usability has been proven on the current ESP host validation platform.
 
 ## Default Hardware Profile
 
