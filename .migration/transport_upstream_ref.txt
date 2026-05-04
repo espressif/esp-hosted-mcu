@@ -1,6 +1,0 @@
-# transport_drv upstream ref
-971cf0d fix(sdio): throttle RX mempool drop log to burst start/recovery
-a914274 fix(sdio): gracefully drop packets on RX mempool exhaustion
-325e631 enhance(common_mempool): Used common mempool for host and co-processor
-056ecb3 feature(bt_only): Support BT only SOCs, option to disable Wi-Fi
-d4c23ad fix(sdio): Prevent SDIO host - slave incompatible mode
