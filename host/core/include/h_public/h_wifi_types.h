@@ -12,9 +12,37 @@
 #include "h_types.h"
 #include <stdint.h>
 
+/* ── ESP-IDF Compatibility Mode ──
+ * When building for ESP-IDF, typedef directly to native types.
+ * This ensures zero-copy and field compatibility with the legacy
+ * RPC/protobuf code path during Phase 1 transition.
+ * When porting to non-ESP hosts, the portable struct definitions
+ * below provide the canonical layout.
+ */
+#ifdef ESP_PLATFORM
+  #include "esp_wifi.h"
+  typedef wifi_init_config_t    h_wifi_init_config_t;
+  typedef wifi_config_t         h_wifi_config_t;
+  typedef wifi_scan_config_t    h_wifi_scan_config_t;
+  typedef wifi_ap_record_t      h_wifi_ap_record_t;
+  typedef wifi_sta_list_t       h_wifi_sta_list_t;
+  typedef wifi_country_t        h_wifi_country_t;
+  typedef wifi_interface_t      h_wifi_interface_t;
+  typedef wifi_mode_t           h_wifi_mode_t;
+  typedef wifi_ps_type_t        h_wifi_ps_type_t;
+  typedef wifi_bandwidth_t      h_wifi_bandwidth_t;
+  typedef wifi_auth_mode_t      h_wifi_auth_mode_t;
+  typedef wifi_cipher_type_t    h_wifi_cipher_type_t;
+#else
+/* ── Portable Struct Definitions ──
+ * These are used when building for non-ESP hosts.
+ * The layout is kept as close as possible to ESP-IDF for
+ * ease of mapping, but some nested structs are flattened.
+ */
+
 /* ── Wi-Fi Initialization Config ──
  * Replaces wifi_init_config_t.
- * ESP-IDF port adapter maps this → WIFI_INIT_CONFIG_DEFAULT() */
+ * ESP-IDF port adapter maps this -> WIFI_INIT_CONFIG_DEFAULT() */
 typedef struct {
     void     *rx_ba_win;       /* STATIC_RX_BUFFER_NUM */
     void     *tx_ba_win;       /* STATIC_TX_BUFFER_NUM */
@@ -122,5 +150,42 @@ typedef struct {
     uint8_t max_tx_power;    /* dBm */
     uint8_t policy;          /* country policy */
 } h_wifi_country_t;
+
+/* ── Auth Mode ──
+ * Replaces wifi_auth_mode_t. */
+typedef enum {
+    H_WIFI_AUTH_OPEN = 0,
+    H_WIFI_AUTH_WEP,
+    H_WIFI_AUTH_WPA_PSK,
+    H_WIFI_AUTH_WPA2_PSK,
+    H_WIFI_AUTH_WPA_WPA2_PSK,
+    H_WIFI_AUTH_WPA2_ENTERPRISE,
+    H_WIFI_AUTH_WPA3_PSK,
+    H_WIFI_AUTH_WPA2_WPA3_PSK,
+    H_WIFI_AUTH_WAPI_PSK,
+    H_WIFI_AUTH_OWE,
+    H_WIFI_AUTH_WPA3_ENT_192,
+    H_WIFI_AUTH_MAX
+} h_wifi_auth_mode_t;
+
+/* ── Cipher Type ──
+ * Replaces wifi_cipher_type_t. */
+typedef enum {
+    H_WIFI_CIPHER_TYPE_NONE = 0,
+    H_WIFI_CIPHER_TYPE_WEP40,
+    H_WIFI_CIPHER_TYPE_WEP104,
+    H_WIFI_CIPHER_TYPE_TKIP,
+    H_WIFI_CIPHER_TYPE_CCMP,
+    H_WIFI_CIPHER_TYPE_TKIP_CCMP,
+    H_WIFI_CIPHER_TYPE_AES_CMAC128,
+    H_WIFI_CIPHER_TYPE_SMS4,
+    H_WIFI_CIPHER_TYPE_GCMP,
+    H_WIFI_CIPHER_TYPE_GCMP256,
+    H_WIFI_CIPHER_TYPE_AES_GMAC128,
+    H_WIFI_CIPHER_TYPE_AES_GMAC256,
+    H_WIFI_CIPHER_TYPE_UNKNOWN,
+} h_wifi_cipher_type_t;
+
+#endif /* ESP_PLATFORM */
 
 #endif /* H_WIFI_TYPES_H */

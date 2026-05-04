@@ -5,6 +5,8 @@
  */
 
  #include <inttypes.h>
+#include "h_wrapper.h"
+#include "h_wifi_types.h"
 #include "rpc_core.h"
 #include "rpc_utils.h"
 #include "rpc_slave_if.h"
@@ -38,7 +40,7 @@ static const char *TAG = "rpc_rsp";
 #define RPC_ERR_IN_RESP(msGparaM)                                             \
     if (rpc_msg->msGparaM->resp) {                                            \
         app_resp->resp_event_status = rpc_msg->msGparaM->resp;                \
-        H_LOGW(TAG, TAG, "Hosted RPC_Resp [0x%"PRIx16"], uid [%"PRIu32"], resp code [%"PRIi32"]", \
+        ESP_LOGW(TAG, "Hosted RPC_Resp [0x%"PRIx16"], uid [%"PRIu32"], resp code [%"PRIi32"]", \
                 app_resp->msg_id, app_resp->uid, app_resp->resp_event_status); \
         goto fail_parse_rpc_msg;                                              \
     }
@@ -81,22 +83,22 @@ static int rpc_copy_ap_record(h_wifi_ap_record_t *ap_record, WifiApRecord *rpc_a
 	ap_record->country.max_tx_power = rpc_ap_record->country->max_tx_power;
 	ap_record->country.policy       = rpc_ap_record->country->policy;
 
-	H_LOGD(TAG, TAG, "SSID: %s BSSid: " MACSTR, ap_record->ssid, MAC2STR(ap_record->bssid));
-	H_LOGD(TAG, TAG, "Primary: %u Second: %u RSSI: %d Authmode: %u",
+	ESP_LOGD(TAG, "SSID: %s BSSid: " MACSTR, ap_record->ssid, MAC2STR(ap_record->bssid));
+	ESP_LOGD(TAG, "Primary: %u Second: %u RSSI: %d Authmode: %u",
 			ap_record->primary, ap_record->second,
 			ap_record->rssi, ap_record->authmode
 			);
-	H_LOGD(TAG, TAG, "PairwiseCipher: %u Groupcipher: %u Ant: %u",
+	ESP_LOGD(TAG, "PairwiseCipher: %u Groupcipher: %u Ant: %u",
 			ap_record->pairwise_cipher, ap_record->group_cipher,
 			ap_record->ant
 			);
-	H_LOGD(TAG, TAG, "Bitmask: 11b:%u g:%u n:%u ax: %u lr:%u wps:%u ftm_resp:%u ftm_ini:%u res: %u",
+	ESP_LOGD(TAG, "Bitmask: 11b:%u g:%u n:%u ax: %u lr:%u wps:%u ftm_resp:%u ftm_ini:%u res: %u",
 			ap_record->phy_11b, ap_record->phy_11g,
 			ap_record->phy_11n, ap_record->phy_11ax, ap_record->phy_lr,
 			ap_record->wps, ap_record->ftm_responder,
 			ap_record->ftm_initiator, ap_record->reserved
 			);
-	H_LOGD(TAG, TAG, "Country cc:%c%c schan: %u nchan: %u max_tx_pow: %d policy: %u",
+	ESP_LOGD(TAG, "Country cc:%c%c schan: %u nchan: %u max_tx_pow: %d policy: %u",
 			ap_record->country.cc[0], ap_record->country.cc[1], ap_record->country.schan,
 			ap_record->country.nchan, ap_record->country.max_tx_power,
 			ap_record->country.policy);
@@ -108,7 +110,7 @@ static int rpc_copy_ap_record(h_wifi_ap_record_t *ap_record, WifiApRecord *rpc_a
 	p_a_he_ap->partial_bss_color = H_GET_BIT(WIFI_HE_AP_INFO_partial_bss_color_BIT, p_c_he_ap->bitmask);
 	p_a_he_ap->bss_color_disabled = H_GET_BIT(WIFI_HE_AP_INFO_bss_color_disabled_BIT, p_c_he_ap->bitmask);
 
-	H_LOGD(TAG, TAG, "HE_AP: bss_color %d, partial_bss_color %d, bss_color_disabled %d",
+	ESP_LOGD(TAG, "HE_AP: bss_color %d, partial_bss_color %d, bss_color_disabled %d",
 			p_a_he_ap->bss_color, p_a_he_ap->bss_color_disabled, p_a_he_ap->bss_color_disabled);
 
 	ap_record->bandwidth    = rpc_ap_record->bandwidth;
@@ -128,7 +130,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 
 	/* 1. Check non NULL */
 	if (!rpc_msg || !app_resp) {
-		H_LOGE(TAG, TAG, "NULL rpc resp or NULL App Resp");
+		ESP_LOGE(TAG, "NULL rpc resp or NULL App Resp");
 		goto fail_parse_rpc_msg;
 	}
 
@@ -136,7 +138,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 	app_resp->msg_type = RPC_TYPE__Resp;
 	app_resp->msg_id = rpc_msg->msg_id;
 	app_resp->uid = rpc_msg->uid;
-	H_LOGI(TAG, TAG, " --> RPC_Resp [0x%x], uid %ld", app_resp->msg_id, app_resp->uid);
+	ESP_LOGI(TAG, " --> RPC_Resp [0x%x], uid %ld", app_resp->msg_id, app_resp->uid);
 
 	/* 3. parse Rpc into ctrl_cmd_t */
 	switch (rpc_msg->msg_id) {
@@ -151,7 +153,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_get_mac_address->mac.data);
 
 		RPC_RSP_COPY_BYTES(app_resp->u.wifi_mac.mac, rpc_msg->resp_get_mac_address->mac);
-		H_LOGD(TAG, TAG, "Mac addr: "MACSTR, MAC2STR(app_resp->u.wifi_mac.mac));
+		ESP_LOGD(TAG, "Mac addr: "MACSTR, MAC2STR(app_resp->u.wifi_mac.mac));
 		break;
 	} case RPC_ID__Resp_SetMacAddress : {
 		RPC_FAIL_ON_NULL(resp_set_mac_address);
@@ -297,7 +299,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 			break;
 		}
 		default:
-			H_LOGE(TAG, TAG, "Unsupported WiFi interface[%u]", app_resp->u.wifi_config.iface);
+			ESP_LOGE(TAG, "Unsupported WiFi interface[%u]", app_resp->u.wifi_config.iface);
 		} //switch
 
 		break;
@@ -336,10 +338,10 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		p_a->number = rpc_msg->resp_wifi_scan_get_ap_records->number;
 
 		if (!p_a->number) {
-			H_LOGI(TAG, TAG, "No AP found");
+			ESP_LOGI(TAG, "No AP found");
 			goto fail_parse_rpc_msg;
 		}
-		H_LOGD(TAG, TAG, "Num AP records: %u",
+		ESP_LOGD(TAG, "Num AP records: %u",
 				app_resp->u.wifi_scan_ap_list.number);
 
 		RPC_FAIL_ON_NULL(resp_wifi_scan_get_ap_records->ap_records);
@@ -353,7 +355,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		app_resp->app_free_buff_func = g_h.funcs->_h_free;
 		app_resp->app_free_buff_hdl = list;
 
-		H_LOGD(TAG, TAG, "Number of available APs is %d", p_a->number);
+		ESP_LOGD(TAG, "Number of available APs is %d", p_a->number);
 		for (i=0; i<p_a->number; i++) {
 			rpc_copy_ap_record(&list[i], p_c_list[i]);
 		}
@@ -457,7 +459,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		// handle case where slave's num is bigger than our ESP_WIFI_MAX_CONN_NUM
 		uint32_t num_stations = rpc_msg->resp_wifi_ap_get_sta_list->sta_list->num;
 		if (num_stations > ESP_WIFI_MAX_CONN_NUM) {
-			H_LOGW(TAG, TAG, "Slave returned %ld connected stations, but we can only accept %d items", num_stations, ESP_WIFI_MAX_CONN_NUM);
+			ESP_LOGW(TAG, "Slave returned %ld connected stations, but we can only accept %d items", num_stations, ESP_WIFI_MAX_CONN_NUM);
 			num_stations = ESP_WIFI_MAX_CONN_NUM;
 		}
 
@@ -662,7 +664,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 	} case RPC_ID__Resp_CustomRpc: {
 		RPC_FAIL_ON_NULL(resp_custom_rpc);
 		RPC_ERR_IN_RESP(resp_custom_rpc);
-		H_LOGD(TAG, TAG, "Custom RPC response received: %zu bytes", rpc_msg->resp_custom_rpc->data.len);
+		ESP_LOGD(TAG, "Custom RPC response received: %zu bytes", rpc_msg->resp_custom_rpc->data.len);
 		app_resp->u.custom_rpc.custom_msg_id = rpc_msg->resp_custom_rpc->custom_msg_id;
 		if (rpc_msg->resp_custom_rpc->data.data && rpc_msg->resp_custom_rpc->data.len > 0) {
 			/* Allocate memory for response data */
@@ -896,7 +898,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		break;
 #endif
 	} default: {
-		H_LOGE(TAG, TAG, "Unsupported rpc Resp[%u]", rpc_msg->msg_id);
+		ESP_LOGE(TAG, "Unsupported rpc Resp[%u]", rpc_msg->msg_id);
 		goto fail_parse_rpc_msg;
 		break;
 	}

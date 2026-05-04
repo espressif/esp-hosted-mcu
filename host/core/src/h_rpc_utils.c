@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "h_wrapper.h"
 #include "rpc_utils.h"
 #include "rpc_core.h"
 #include "esp_hosted_bitmasks.h"
@@ -26,7 +27,7 @@ h_err_t rpc_copy_wifi_sta_config(wifi_sta_config_t *dst, WifiStaConfig *src)
 	wifi_sta_config_t * p_a_sta = dst;
 	WifiStaConfig * p_c_sta = src;
 
-	H_LOGW(TAG, TAG, "Event: SSID %s", p_c_sta->ssid.data);
+	ESP_LOGW(TAG, "Event: SSID %s", p_c_sta->ssid.data);
 	RPC_UTILS_COPY_BYTES(p_a_sta->ssid, p_c_sta->ssid);
 	RPC_UTILS_COPY_BYTES(p_a_sta->password, p_c_sta->password);
 	p_a_sta->scan_method = p_c_sta->scan_method;

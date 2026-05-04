@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "h_wrapper.h"
 #include "esp_hosted_os_abstraction.h"
 #include "port_esp_hosted_host_os.h"
 #include "transport_util.h"
@@ -24,7 +25,7 @@ void * transport_util_calloc(size_t num_elem, size_t size_elem, hosted_mem_cap_t
 	} else {
 		// malloc DMA capable memory, then clear it
 		size_t size = num_elem * size_elem;
-		void *ptr = h_malloc_align(4096, size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
+		void *ptr = h_malloc_align(size, 4096);
 		if (ptr)
 			memset(ptr, 0, size);
 		return ptr;

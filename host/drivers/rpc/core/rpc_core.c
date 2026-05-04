@@ -1069,6 +1069,7 @@ int rpc_core_deinit(void)
 	if (is_rpc_lib_inactive())
 		return ret;
 
+	rpc_core_initialized = false;
 	set_rpc_lib_state(RPC_LIB_STATE_INACTIVE);
 
 	/* Drain rpc_rx_q before destroying to prevent buffer leaks */
@@ -1120,9 +1121,15 @@ int rpc_core_deinit(void)
 }
 
 /* Init hosted rpc lib */
+static bool rpc_core_initialized = false;
+
 int rpc_core_init(void)
 {
 	int ret = SUCCESS;
+
+	if (rpc_core_initialized) {
+		return SUCCESS;
+	}
 
 	/* semaphore init */
 	rpc_tx_sem = g_h.funcs->_h_create_semaphore(MAX_SYNC_RPC_TRANSACTIONS +
@@ -1157,6 +1164,7 @@ int rpc_core_init(void)
 
 	/* state init */
 	set_rpc_lib_state(RPC_LIB_STATE_INIT);
+	rpc_core_initialized = true;
 	return ret;
 
 free_bufs:
@@ -1172,6 +1180,8 @@ int rpc_core_start(void)
 
 int rpc_core_stop(void)
 {
+	if (is_rpc_lib_inactive())
+		return SUCCESS;
 	set_rpc_lib_state(RPC_LIB_STATE_INIT);
 	return SUCCESS;
 }

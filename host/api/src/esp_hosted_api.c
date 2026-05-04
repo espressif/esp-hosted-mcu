@@ -20,6 +20,7 @@ extern "C" {
 #include "rpc_wrap.h"
 #include "esp_log.h"
 #include "esp_hosted_event.h"
+#include "h_init.h"
 
 #if H_DPP_SUPPORT
 #include "esp_dpp.h"
@@ -135,6 +136,15 @@ int esp_hosted_init(void)
 	if (esp_hosted_init_done)
 		return ESP_OK;
 
+	/* New framework init first — contract validation, event loop, RPC core.
+	 * This unifies the init chain; legacy setup (channels, transport,
+	 * callbacks) follows. rpc_init() is skipped because h_port_rpc_init()
+	 * inside h_hosted_init() already calls rpc_core_init(). */
+	if (h_hosted_init() != H_OK) {
+		ESP_LOGE(TAG, "h_hosted_init failed");
+		return ESP_FAIL;
+	}
+
 	set_host_modules_log_level();
 
 	//create_esp_hosted_transport_up_sem();
@@ -147,7 +157,7 @@ int esp_hosted_init(void)
 	}
 	ESP_ERROR_CHECK(add_esp_wifi_remote_channels());
 	ESP_ERROR_CHECK(setup_transport(transport_active_cb));
-	ESP_ERROR_CHECK(rpc_init());
+	/* rpc_init() skipped — already done by h_hosted_init() -> h_port_rpc_init() */
 	rpc_register_event_callbacks();
 
 	esp_hosted_init_done = 1;
@@ -158,9 +168,12 @@ int esp_hosted_deinit(void)
 {
 	ESP_LOGI(TAG, "ESP-Hosted deinit\n");
 	rpc_unregister_event_callbacks();
-	ESP_ERROR_CHECK(rpc_deinit());
 	ESP_ERROR_CHECK(remove_esp_wifi_remote_channels());
 	ESP_ERROR_CHECK(teardown_transport());
+	/* Single deinit path: h_hosted_deinit handles RPC, event, osal teardown.
+	 * rpc_deinit() is intentionally skipped — h_port_rpc_deinit() inside
+	 * h_hosted_deinit() already calls rpc_core_stop() + rpc_core_deinit(). */
+	h_hosted_deinit();
 	esp_hosted_init_done = 0;
 	esp_hosted_transport_up = 0;
 	g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,

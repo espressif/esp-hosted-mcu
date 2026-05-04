@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "h_wrapper.h"
+#include "h_wifi_types.h"
 #include "rpc_slave_if.h"
 #include "string.h"
 #include "rpc_wrap.h"
@@ -107,13 +109,13 @@ typedef struct {
 
 int rpc_init(void)
 {
-	H_LOGD(TAG, TAG, "%s", __func__);
+	ESP_LOGD(TAG, "%s", __func__);
 	return rpc_slaveif_init();
 }
 
 int rpc_start(void)
 {
-	H_LOGD(TAG, TAG, "%s", __func__);
+	ESP_LOGD(TAG, "%s", __func__);
 	netif_started = false;
 	netif_connected = false;
 	return rpc_slaveif_start();
@@ -121,44 +123,44 @@ int rpc_start(void)
 
 int rpc_stop(void)
 {
-	H_LOGD(TAG, TAG, "%s", __func__);
+	ESP_LOGD(TAG, "%s", __func__);
 	return rpc_slaveif_stop();
 }
 
 int rpc_deinit(void)
 {
-	H_LOGD(TAG, TAG, "%s", __func__);
+	ESP_LOGD(TAG, "%s", __func__);
 	return rpc_slaveif_deinit();
 }
 
 // returns true if the netif is up for the wifi interface
 static bool is_wifi_netif_started(h_wifi_interface_t wifi_if) {
-	// REMOVED: esp_netif_get_handle_from_ifkey(
-			(wifi_if == WIFI_IF_STA) ? "WIFI_STA_DEF" : "WIFI_AP_DEF");
-	return false; // REMOVED: netif check (port layer responsibility)
+	/* Port layer responsibility; stubbed for Phase 1 */
+	(void)wifi_if;
+	return false;
 }
 
 static int rpc_event_callback(ctrl_cmd_t * app_event)
 {
 	static bool softap_started = false;
 
-	H_LOGV(TAG, TAG, "%u",app_event->msg_id);
+	ESP_LOGV(TAG, "%u",app_event->msg_id);
 	if (!app_event || (app_event->msg_type != RPC_TYPE__Event)) {
 		if (app_event)
-			H_LOGE(TAG, TAG, "Recvd msg [0x%x] is not event",app_event->msg_type);
+			ESP_LOGE(TAG, "Recvd msg [0x%x] is not event",app_event->msg_type);
 		goto fail_parsing;
 	}
 
 	if ((app_event->msg_id <= RPC_ID__Event_Base) ||
 		(app_event->msg_id >= RPC_ID__Event_Max)) {
-		H_LOGE(TAG, TAG, "Event Msg ID[0x%x] is not correct",app_event->msg_id);
+		ESP_LOGE(TAG, "Event Msg ID[0x%x] is not correct",app_event->msg_id);
 		goto fail_parsing;
 	}
 
 	switch(app_event->msg_id) {
 
 		case RPC_ID__Event_ESPInit: {
-			H_LOGI(TAG, TAG, "Coprocessor Boot-up");
+			ESP_LOGI(TAG, "Coprocessor Boot-up");
 			esp_hosted_event_init_t event = { 0 };
 			event.reason = app_event->u.e_init.cp_reset_reason;
 			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_CP_INIT,
@@ -173,7 +175,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 		} case RPC_ID__Event_AP_StaConnected: {
 			wifi_event_ap_staconnected_t *p_e = &app_event->u.e_wifi_ap_staconnected;
 			if (strlen((char*)p_e->mac)) {
-				H_LOGI(TAG, TAG, "ESP Event: SoftAP mode: station connected with MAC Addr " MACSTR, MAC2STR(p_e->mac));
+				ESP_LOGI(TAG, "ESP Event: SoftAP mode: station connected with MAC Addr " MACSTR, MAC2STR(p_e->mac));
 				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_AP_STACONNECTED,
 					p_e, sizeof(wifi_event_ap_staconnected_t), HOSTED_BLOCK_MAX);
 			}
@@ -181,13 +183,13 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 		} case RPC_ID__Event_AP_StaDisconnected: {
 			wifi_event_ap_stadisconnected_t *p_e = &app_event->u.e_wifi_ap_stadisconnected;
 			if (strlen((char*)p_e->mac)) {
-				H_LOGI(TAG, TAG, "ESP Event: SoftAP mode: disconnected station");
+				ESP_LOGI(TAG, "ESP Event: SoftAP mode: disconnected station");
 				g_h.funcs->_h_event_wifi_post(WIFI_EVENT_AP_STADISCONNECTED,
 					p_e, sizeof(wifi_event_ap_stadisconnected_t), HOSTED_BLOCK_MAX);
 			}
 			break;
 		} case RPC_ID__Event_StaConnected: {
-			H_LOGI(TAG, TAG, "ESP Event: Station mode: Connected");
+			ESP_LOGI(TAG, "ESP Event: Station mode: Connected");
 
 			wifi_event_sta_connected_t *p_e = &app_event->u.e_wifi_sta_connected;
 
@@ -198,7 +200,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			}
 			break;
 		} case RPC_ID__Event_StaDisconnected: {
-			H_LOGI(TAG, TAG, "ESP Event: Station mode: Disconnected");
+			ESP_LOGI(TAG, "ESP Event: Station mode: Disconnected");
 			wifi_event_sta_disconnected_t *p_e = &app_event->u.e_wifi_sta_disconnected;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_STA_DISCONNECTED,
 				p_e, sizeof(wifi_event_sta_disconnected_t), HOSTED_BLOCK_MAX);
@@ -206,25 +208,25 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			break;
 #if H_WIFI_HE_SUPPORT
 		} case RPC_ID__Event_StaItwtSetup: {
-			H_LOGV(TAG, TAG, "ESP Event: iTWT: Setup");
+			ESP_LOGV(TAG, "ESP Event: iTWT: Setup");
 			wifi_event_sta_itwt_setup_t *p_e = &app_event->u.e_wifi_sta_itwt_setup;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_SETUP,
 				p_e, sizeof(wifi_event_sta_itwt_setup_t), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_StaItwtTeardown: {
-			H_LOGV(TAG, TAG, "ESP Event: iTWT: Teardown");
+			ESP_LOGV(TAG, "ESP Event: iTWT: Teardown");
 			wifi_event_sta_itwt_teardown_t *p_e = &app_event->u.e_wifi_sta_itwt_teardown;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_TEARDOWN,
 				p_e, sizeof(wifi_event_sta_itwt_teardown_t), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_StaItwtSuspend: {
-			H_LOGV(TAG, TAG, "ESP Event: iTWT: Suspend");
+			ESP_LOGV(TAG, "ESP Event: iTWT: Suspend");
 			wifi_event_sta_itwt_suspend_t *p_e = &app_event->u.e_wifi_sta_itwt_suspend;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_SUSPEND,
 				p_e, sizeof(wifi_event_sta_itwt_suspend_t), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_StaItwtProbe: {
-			H_LOGV(TAG, TAG, "ESP Event: iTWT: Probe");
+			ESP_LOGV(TAG, "ESP Event: iTWT: Probe");
 			wifi_event_sta_itwt_probe_t *p_e = &app_event->u.e_wifi_sta_itwt_probe;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_ITWT_PROBE,
 				p_e, sizeof(wifi_event_sta_itwt_probe_t), HOSTED_BLOCK_MAX);
@@ -232,20 +234,20 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 #endif // H_WIFI_HE_SUPPORT
 #if H_WIFI_DPP_SUPPORT
 		} case RPC_ID__Event_WifiDppUriReady: {
-			H_LOGV(TAG, TAG, "ESP Event: DPP: URI Ready");
+			ESP_LOGV(TAG, "ESP Event: DPP: URI Ready");
 			supp_wifi_event_dpp_uri_ready_t *p_e = &app_event->u.e_dpp_uri_ready;
 			int len = p_e->uri_data_len;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_URI_READY,
 				p_e, sizeof(wifi_event_sta_itwt_probe_t) + len, HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_WifiDppCfgRecvd: {
-			H_LOGV(TAG, TAG, "ESP Event: DPP: CFG Received");
+			ESP_LOGV(TAG, "ESP Event: DPP: CFG Received");
 			supp_wifi_event_dpp_config_received_t *p_e = &app_event->u.e_dpp_config_received;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_CFG_RECVD,
 				p_e, sizeof(wifi_event_dpp_config_received_t), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_WifiDppFail: {
-			H_LOGV(TAG, TAG, "ESP Event: DPP: Fail");
+			ESP_LOGV(TAG, "ESP Event: DPP: Fail");
 			supp_wifi_event_dpp_failed_t *p_e = &app_event->u.e_dpp_failed;
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_DPP_FAILED,
 				p_e, sizeof(wifi_event_dpp_failed_t), HOSTED_BLOCK_MAX);
@@ -264,10 +266,10 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 					g_h.funcs->_h_memcpy(item.dpp_data, app_event->u.e_dpp_uri_ready.uri, len);
 					g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
 				} else {
-					H_LOGE(TAG, TAG, "malloc failed for dpp uri");
+					ESP_LOGE(TAG, "malloc failed for dpp uri");
 				}
 			} else {
-				H_LOGW(TAG, TAG, "no queue to push dpp uri: dropping event");
+				ESP_LOGW(TAG, "no queue to push dpp uri: dropping event");
 			}
 			break;
 		} case RPC_ID__Event_SuppDppCfgRecvd: {
@@ -281,12 +283,12 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 							sizeof(h_wifi_config_t));
 					g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
 				} else {
-					H_LOGE(TAG, TAG, "malloc failed for dpp wifi config");
+					ESP_LOGE(TAG, "malloc failed for dpp wifi config");
 				}
 			} else {
-				H_LOGW(TAG, TAG, "no queue to push dpp wifi config: dropping event");
+				ESP_LOGW(TAG, "no queue to push dpp wifi config: dropping event");
 			}
-			H_LOGW(TAG, TAG, "Finished Supplicant Event: Cfg Received");
+			ESP_LOGW(TAG, "Finished Supplicant Event: Cfg Received");
 			break;
 		} case RPC_ID__Event_SuppDppFail: {
 			if (rpc_supp_cb_thread_q) {
@@ -295,7 +297,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				item.dpp_reason = app_event->u.e_dpp_failed.failure_reason;
 				g_h.funcs->_h_queue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
 			} else {
-				H_LOGW(TAG, TAG, "no queue to push dpp wifi config: dropping event");
+				ESP_LOGW(TAG, "no queue to push dpp wifi config: dropping event");
 			}
 			break;
 #endif // H_SUPP_DPP_SUPPORT
@@ -305,7 +307,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			switch (wifi_event_id) {
 
 			case WIFI_EVENT_STA_START:
-				H_LOGI(TAG, TAG, "ESP Event: wifi station started");
+				ESP_LOGI(TAG, "ESP Event: wifi station started");
 				/* Trigger connection when station is started */
 				if (!netif_started && !is_wifi_netif_started(WIFI_IF_STA)) {
 					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
@@ -316,14 +318,14 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				}
 				break;
 			case WIFI_EVENT_STA_STOP:
-				H_LOGI(TAG, TAG, "ESP Event: wifi station stopped");
+				ESP_LOGI(TAG, "ESP Event: wifi station stopped");
 				netif_started = false;
 				netif_connected = false;
 				g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 				break;
 
 			case WIFI_EVENT_AP_START:
-				H_LOGI(TAG, TAG,"ESP Event: softap started");
+				ESP_LOGI(TAG,"ESP Event: softap started");
 				if (!softap_started && !is_wifi_netif_started(WIFI_IF_AP)) {
 					g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 					softap_started = true;
@@ -331,41 +333,41 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 				break;
 
 			case WIFI_EVENT_AP_STOP:
-				H_LOGI(TAG, TAG,"ESP Event: softap stopped");
+				ESP_LOGI(TAG,"ESP Event: softap stopped");
 				softap_started = false;
 				g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 				break;
 
 			case WIFI_EVENT_HOME_CHANNEL_CHANGE:
-				H_LOGD(TAG, TAG,"ESP Event: Home channel changed");
+				ESP_LOGD(TAG,"ESP Event: Home channel changed");
 				g_h.funcs->_h_event_wifi_post(wifi_event_id, 0, 0, HOSTED_BLOCK_MAX);
 				break;
 
 			case WIFI_EVENT_AP_STACONNECTED:
 				// should be RPC_ID__Event_AP_StaConnected
-				H_LOGE(TAG, TAG,"Incorrect ESP Event: softap station connected");
+				ESP_LOGE(TAG,"Incorrect ESP Event: softap station connected");
 				break;
 
 			case WIFI_EVENT_AP_STADISCONNECTED:
 				// should be RPC_ID__Event_AP_StaDisconnected
-				H_LOGE(TAG, TAG,"Incorrect ESP Event: softap station disconnected");
+				ESP_LOGE(TAG,"Incorrect ESP Event: softap station disconnected");
 				break;
 
 			default:
-				H_LOGV(TAG, TAG, "ESP Event: Event[%x]", wifi_event_id);
+				ESP_LOGV(TAG, "ESP Event: Event[%x]", wifi_event_id);
 				break;
 			} /* inner switch case */
 			break;
 		} case RPC_ID__Event_StaScanDone: {
 			wifi_event_sta_scan_done_t *p_e = &app_event->u.e_wifi_sta_scan_done;
-			H_LOGI(TAG, TAG, "ESP Event: StaScanDone");
-			H_LOGV(TAG, TAG, "scan: status: %lu number:%u scan_id:%u", p_e->status, p_e->number, p_e->scan_id);
+			ESP_LOGI(TAG, "ESP Event: StaScanDone");
+			ESP_LOGV(TAG, "scan: status: %lu number:%u scan_id:%u", p_e->status, p_e->number, p_e->scan_id);
 			g_h.funcs->_h_event_wifi_post(WIFI_EVENT_SCAN_DONE,
 				p_e, sizeof(wifi_event_sta_scan_done_t), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_DhcpDnsStatus: {
 			rpc_set_dhcp_dns_status_t *p_e = &app_event->u.slave_dhcp_dns_status;
-			H_LOGI(TAG, TAG,
+			ESP_LOGI(TAG,
 			         "ESP Event: DHCP/DNS status: iface[%d] link_up[%d] dhcp_up[%d] dns_up[%d] ip[%s] gw[%s] dns[%s]",
 			         p_e->iface, p_e->net_link_up, p_e->dhcp_up, p_e->dns_up,
 			         p_e->dhcp_ip, p_e->dhcp_gw, p_e->dns_ip);
@@ -381,7 +383,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			break;
 #endif
 		} default: {
-			H_LOGW(TAG, TAG, "Invalid event[0x%x] to parse", app_event->msg_id);
+			ESP_LOGW(TAG, "Invalid event[0x%x] to parse", app_event->msg_id);
 			break;
 		}
 	}
@@ -402,34 +404,34 @@ static int process_failed_responses(ctrl_cmd_t *app_msg)
 	/* Map results to a matching H_ERR_ code */
 	switch (app_msg->resp_event_status) {
 		case RPC_ERR_REQ_IN_PROG:
-			H_LOGE(TAG, TAG, "Error reported: Command In progress, Please wait");
+			ESP_LOGE(TAG, "Error reported: Command In progress, Please wait");
 			break;
 		case RPC_ERR_REQUEST_TIMEOUT:
-			H_LOGE(TAG, TAG, "Error reported: Response Timeout");
+			ESP_LOGE(TAG, "Error reported: Response Timeout");
 			break;
 		case RPC_ERR_MEMORY_FAILURE:
-			H_LOGE(TAG, TAG, "Error reported: Memory allocation failed");
+			ESP_LOGE(TAG, "Error reported: Memory allocation failed");
 			break;
 		case RPC_ERR_UNSUPPORTED_MSG:
-			H_LOGE(TAG, TAG, "Error reported: Unsupported control msg");
+			ESP_LOGE(TAG, "Error reported: Unsupported control msg");
 			break;
 		case RPC_ERR_INCORRECT_ARG:
-			H_LOGE(TAG, TAG, "Error reported: Invalid or out of range parameter values");
+			ESP_LOGE(TAG, "Error reported: Invalid or out of range parameter values");
 			break;
 		case RPC_ERR_PROTOBUF_ENCODE:
-			H_LOGE(TAG, TAG, "Error reported: Protobuf encode failed");
+			ESP_LOGE(TAG, "Error reported: Protobuf encode failed");
 			break;
 		case RPC_ERR_PROTOBUF_DECODE:
-			H_LOGE(TAG, TAG, "Error reported: Protobuf decode failed");
+			ESP_LOGE(TAG, "Error reported: Protobuf decode failed");
 			break;
 		case RPC_ERR_SET_ASYNC_CB:
-			H_LOGE(TAG, TAG, "Error reported: Failed to set aync callback");
+			ESP_LOGE(TAG, "Error reported: Failed to set aync callback");
 			break;
 		case RPC_ERR_TRANSPORT_SEND:
-			H_LOGE(TAG, TAG, "Error reported: Problem while sending data on serial driver");
+			ESP_LOGE(TAG, "Error reported: Problem while sending data on serial driver");
 			break;
 		case RPC_ERR_SET_SYNC_SEM:
-			H_LOGE(TAG, TAG, "Error reported: Failed to set sync sem");
+			ESP_LOGE(TAG, "Error reported: Failed to set sync sem");
 			break;
 		default:
 			request_failed_flag = false;
@@ -447,10 +449,10 @@ static int process_failed_responses(ctrl_cmd_t *app_msg)
 		case RPC_ID__Resp_OTABegin:
 		case RPC_ID__Resp_OTAWrite: {
 			/* intentional fallthrough */
-			H_LOGE(TAG, TAG, "OTA procedure failed");
+			ESP_LOGE(TAG, "OTA procedure failed");
 			break;
 		} default: {
-			H_LOGD(TAG, TAG, "Got Hosted Control Response with resp code %d", result);
+			ESP_LOGD(TAG, "Got Hosted Control Response with resp code %d", result);
 			break;
 		}
 	}
@@ -464,7 +466,7 @@ int rpc_unregister_event_callbacks(void)
 	int evt = 0;
 	for (evt=RPC_ID__Event_Base+1; evt<RPC_ID__Event_Max; evt++) {
 		if (CALLBACK_SET_SUCCESS != reset_event_callback(evt) ) {
-			H_LOGV(TAG, TAG, "reset event callback failed for event[%u]", evt);
+			ESP_LOGV(TAG, "reset event callback failed for event[%u]", evt);
 			ret = FAILURE;
 		}
 	}
@@ -514,7 +516,7 @@ int rpc_register_event_callbacks(void)
 
 	for (evt=0; evt<sizeof(events)/sizeof(event_callback_table_t); evt++) {
 		if (CALLBACK_SET_SUCCESS != set_event_callback(events[evt].event, events[evt].fun) ) {
-			H_LOGE(TAG, TAG, "event callback register failed for event[%u]", events[evt].event);
+			ESP_LOGE(TAG, "event callback register failed for event[%u]", events[evt].event);
 			ret = FAILURE;
 			break;
 		}
@@ -530,13 +532,13 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	uint16_t i = 0;
 	if (!app_resp || (app_resp->msg_type != RPC_TYPE__Resp)) {
 		if (app_resp)
-			H_LOGE(TAG, TAG, "Recvd Msg[0x%x] is not response",app_resp->msg_type);
+			ESP_LOGE(TAG, "Recvd Msg[0x%x] is not response",app_resp->msg_type);
 		goto fail_resp;
 	}
 
 	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
 	if ((app_resp->msg_id < RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
-		H_LOGE(TAG, TAG, "Response Msg ID[0x%x] is not correct",app_resp->msg_id);
+		ESP_LOGE(TAG, "Response Msg ID[0x%x] is not correct",app_resp->msg_id);
 		goto fail_resp;
 	}
 
@@ -547,70 +549,70 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 
 	switch(app_resp->msg_id) {
 	case RPC_ID__Resp_Base : {
-		H_LOGV(TAG, TAG, "RPC Request is not supported");
+		ESP_LOGV(TAG, "RPC Request is not supported");
 		break;
 	}
 	case RPC_ID__Resp_GetMACAddress: {
-		H_LOGV(TAG, TAG, "mac address is [" MACSTR "]", MAC2STR(app_resp->u.wifi_mac.mac));
+		ESP_LOGV(TAG, "mac address is [" MACSTR "]", MAC2STR(app_resp->u.wifi_mac.mac));
 		break;
 	} case RPC_ID__Resp_SetMacAddress : {
-		H_LOGV(TAG, TAG, "MAC address is set");
+		ESP_LOGV(TAG, "MAC address is set");
 		break;
 	} case RPC_ID__Resp_GetWifiMode : {
-		H_LOGV(TAG, TAG, "wifi mode is : ");
+		ESP_LOGV(TAG, "wifi mode is : ");
 		switch (app_resp->u.wifi_mode.mode) {
-			case WIFI_MODE_STA:     H_LOGV(TAG, TAG, "station");        break;
-			case WIFI_MODE_AP:      H_LOGV(TAG, TAG, "softap");         break;
-			case WIFI_MODE_APSTA:   H_LOGV(TAG, TAG, "station+softap"); break;
-			case WIFI_MODE_NULL:    H_LOGV(TAG, TAG, "none");           break;
-			default:                H_LOGV(TAG, TAG, "unknown");        break;
+			case WIFI_MODE_STA:     ESP_LOGV(TAG, "station");        break;
+			case WIFI_MODE_AP:      ESP_LOGV(TAG, "softap");         break;
+			case WIFI_MODE_APSTA:   ESP_LOGV(TAG, "station+softap"); break;
+			case WIFI_MODE_NULL:    ESP_LOGV(TAG, "none");           break;
+			default:                ESP_LOGV(TAG, "unknown");        break;
 		}
 		break;
 	} case RPC_ID__Resp_SetWifiMode : {
-		H_LOGV(TAG, TAG, "wifi mode is set");
+		ESP_LOGV(TAG, "wifi mode is set");
 		break;
 	} case RPC_ID__Resp_WifiSetPs: {
-		H_LOGV(TAG, TAG, "Wifi power save mode set");
+		ESP_LOGV(TAG, "Wifi power save mode set");
 		break;
 	} case RPC_ID__Resp_WifiGetPs: {
-		H_LOGV(TAG, TAG, "Wifi power save mode is: ");
+		ESP_LOGV(TAG, "Wifi power save mode is: ");
 
 		switch(app_resp->u.wifi_ps.ps_mode) {
 			case WIFI_PS_MIN_MODEM:
-				H_LOGV(TAG, TAG, "Min");
+				ESP_LOGV(TAG, "Min");
 				break;
 			case WIFI_PS_MAX_MODEM:
-				H_LOGV(TAG, TAG, "Max");
+				ESP_LOGV(TAG, "Max");
 				break;
 			default:
-				H_LOGV(TAG, TAG, "Invalid");
+				ESP_LOGV(TAG, "Invalid");
 				break;
 		}
 		break;
 	} case RPC_ID__Resp_OTABegin : {
-		H_LOGV(TAG, TAG, "OTA begin success");
+		ESP_LOGV(TAG, "OTA begin success");
 		break;
 	} case RPC_ID__Resp_OTAWrite : {
-		H_LOGV(TAG, TAG, "OTA write success");
+		ESP_LOGV(TAG, "OTA write success");
 		break;
 	} case RPC_ID__Resp_OTAEnd : {
-		H_LOGV(TAG, TAG, "OTA end success");
+		ESP_LOGV(TAG, "OTA end success");
 		break;
 	} case RPC_ID__Resp_OTAActivate : {
-		H_LOGV(TAG, TAG, "OTA activate success");
+		ESP_LOGV(TAG, "OTA activate success");
 		break;
 	} case RPC_ID__Resp_WifiSetMaxTxPower: {
-		H_LOGV(TAG, TAG, "Set wifi max tx power success");
+		ESP_LOGV(TAG, "Set wifi max tx power success");
 		break;
 	} case RPC_ID__Resp_WifiGetMaxTxPower: {
-		H_LOGV(TAG, TAG, "wifi curr tx power : %d",
+		ESP_LOGV(TAG, "wifi curr tx power : %d",
 				app_resp->u.wifi_tx_power.power);
 		break;
 	} case RPC_ID__Resp_ConfigHeartbeat: {
-		H_LOGV(TAG, TAG, "Heartbeat operation successful");
+		ESP_LOGV(TAG, "Heartbeat operation successful");
 		break;
 	} case RPC_ID__Resp_WifiScanGetApNum: {
-		H_LOGV(TAG, TAG, "Num Scanned APs: %u",
+		ESP_LOGV(TAG, "Num Scanned APs: %u",
 				app_resp->u.wifi_scan_ap_list.number);
 		break;
 	} case RPC_ID__Resp_WifiScanGetApRecords: {
@@ -618,19 +620,19 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 		h_wifi_ap_record_t *list = p_a->out_list;
 
 		if (!p_a->number) {
-			H_LOGV(TAG, TAG, "No AP info found");
+			ESP_LOGV(TAG, "No AP info found");
 			goto finish_resp;
 		}
-		H_LOGV(TAG, TAG, "Num AP records: %u",
+		ESP_LOGV(TAG, "Num AP records: %u",
 				app_resp->u.wifi_scan_ap_list.number);
 		if (!list) {
-			H_LOGV(TAG, TAG, "Failed to get scanned AP list");
+			ESP_LOGV(TAG, "Failed to get scanned AP list");
 			goto fail_resp;
 		} else {
 
-			H_LOGV(TAG, TAG, "Number of available APs is %d", p_a->number);
+			ESP_LOGV(TAG, "Number of available APs is %d", p_a->number);
 			for (i=0; i<p_a->number; i++) {
-				H_LOGV(TAG, TAG, "%d) ssid \"%s\" bssid \"%s\" rssi \"%d\" channel \"%d\" auth mode \"%d\"",\
+				ESP_LOGV(TAG, "%d) ssid \"%s\" bssid \"%s\" rssi \"%d\" channel \"%d\" auth mode \"%d\"",\
 						i, list[i].ssid, list[i].bssid, list[i].rssi,
 						list[i].primary, list[i].authmode);
 			}
@@ -752,7 +754,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 		/* Intended fallthrough */
 		break;
 	} default: {
-		H_LOGE(TAG, TAG, "Invalid Response[0x%x] to parse", app_resp->msg_id);
+		ESP_LOGE(TAG, "Invalid Response[0x%x] to parse", app_resp->msg_id);
 		goto fail_resp;
 	}
 
@@ -832,7 +834,7 @@ int rpc_wifi_get_mac(h_wifi_interface_t mode, uint8_t out_mac[6])
 	if (resp && resp->resp_event_status == SUCCESS) {
 
 		g_h.funcs->_h_memcpy(out_mac, resp->u.wifi_mac.mac, BSSID_BYTES_SIZE);
-		H_LOGD(TAG, TAG, "%s mac address is [" MACSTR "]",
+		ESP_LOGD(TAG, "%s mac address is [" MACSTR "]",
 			mode==WIFI_IF_STA? "sta":"ap", MAC2STR(out_mac));
 	}
 	return rpc_rsp_callback(resp);
@@ -970,7 +972,7 @@ h_err_t rpc_get_cp_info(uint32_t *cp_chip_id, char *cp_target_name, size_t cp_ta
 			if (name_len <= cp_target_name_len) {
 				g_h.funcs->_h_memcpy(cp_target_name, resp->u.coprocessor_fwversion.idf_target, name_len);
 			} else {
-				H_LOGE(TAG, TAG, "Buffer is too small to hold Co-processor Name: should be at least %"PRIu16 " bytes", name_len);
+				ESP_LOGE(TAG, "Buffer is too small to hold Co-processor Name: should be at least %"PRIu16 " bytes", name_len);
 				resp->resp_event_status = H_ERR_INVALID_ARG;
 			}
 		}
@@ -1537,7 +1539,7 @@ int rpc_wifi_scan_stop(void)
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
-	H_LOGV(TAG, TAG, "scan stop");
+	ESP_LOGV(TAG, "scan stop");
 
 	resp = rpc_slaveif_wifi_scan_stop(req);
 	return rpc_rsp_callback(resp);
@@ -1590,7 +1592,7 @@ int rpc_wifi_scan_get_ap_records(uint16_t *number, h_wifi_ap_record_t *ap_record
 	req->u.wifi_scan_ap_list.number = *number;
 	resp = rpc_slaveif_wifi_scan_get_ap_records(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
-		H_LOGV(TAG, TAG, "num: %u",resp->u.wifi_scan_ap_list.number);
+		ESP_LOGV(TAG, "num: %u",resp->u.wifi_scan_ap_list.number);
 		*number = resp->u.wifi_scan_ap_list.number;
 		g_h.funcs->_h_memcpy(ap_records, resp->u.wifi_scan_ap_list.out_list,
 				resp->u.wifi_scan_ap_list.number * sizeof(h_wifi_ap_record_t));
@@ -1935,9 +1937,9 @@ h_err_t rpc_set_dhcp_dns_status(h_wifi_interface_t ifx, uint8_t link_up,
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
-	H_LOGI(TAG, TAG, "iface:%u link_up:%u dhcp_up:%u dns_up:%u dns_type:%u",
+	ESP_LOGI(TAG, "iface:%u link_up:%u dhcp_up:%u dns_up:%u dns_type:%u",
 			ifx, link_up, dhcp_up, dns_up, dns_type);
-	H_LOGI(TAG, TAG, "dhcp ip:%s nm:%s gw:%s dns ip:%s",
+	ESP_LOGI(TAG, "dhcp ip:%s nm:%s gw:%s dns ip:%s",
 			dhcp_ip, dhcp_nm, dhcp_gw, dns_ip);
 	req->u.slave_dhcp_dns_status.iface = ifx;
 	req->u.slave_dhcp_dns_status.net_link_up = link_up;
@@ -2273,7 +2275,7 @@ h_err_t rpc_supp_dpp_init(esp_supp_dpp_event_cb_t evt_cb)
 	// start the cb thread, if required
 	if (dpp_evt_cb) {
 		if (H_OK != rpc_supp_cb_thread_start()) {
-			H_LOGE(TAG, TAG, "failed to start supp_cb_thread");
+			ESP_LOGE(TAG, "failed to start supp_cb_thread");
 		}
 	}
 #endif
@@ -2322,7 +2324,7 @@ h_err_t rpc_supp_dpp_bootstrap_gen(const char *chan_list,
 {
 	// key and info are optional parameters
 	if (!chan_list) {
-		H_LOGE(TAG, TAG, "chan_list cannot be NULL");
+		ESP_LOGE(TAG, "chan_list cannot be NULL");
 		return H_ERR_INVALID_ARG;
 	}
 
@@ -2369,7 +2371,7 @@ static h_err_t rpc_supp_cb_thread_start(void)
 				sizeof(supp_cb_queue_item_t));
 	}
 	if (!rpc_supp_cb_thread_q) {
-		H_LOGE(TAG, TAG, "Failed to create rpc_supp_cb_thread_q");
+		ESP_LOGE(TAG, "Failed to create rpc_supp_cb_thread_q");
 		return H_FAIL;
 	}
 
@@ -2379,7 +2381,7 @@ static h_err_t rpc_supp_cb_thread_start(void)
 			RPC_TASK_STACK_SIZE, rpc_supp_thread, NULL);
 	}
 	if (!rpc_supp_cb_thread_hdl) {
-		H_LOGE(TAG, TAG, "Failed to create rpc_supp_cb_thread_hdl");
+		ESP_LOGE(TAG, "Failed to create rpc_supp_cb_thread_hdl");
 		// destroy the created queue also
 		g_h.funcs->_h_destroy_queue(rpc_supp_cb_thread_q);
 		rpc_supp_cb_thread_q = NULL;
@@ -2402,10 +2404,10 @@ static h_err_t rpc_supp_cb_thread_stop(void)
 		if (!res) {
 			rpc_supp_cb_thread_hdl = NULL;
 		} else {
-			H_LOGE(TAG, TAG, "Failed to cancel rpc_supp_cb_thread_hdl");
+			ESP_LOGE(TAG, "Failed to cancel rpc_supp_cb_thread_hdl");
 		}
 	} else {
-		H_LOGD(TAG, TAG, "No rpc_supp_cb_thread_hdl to cancel");
+		ESP_LOGD(TAG, "No rpc_supp_cb_thread_hdl to cancel");
 	}
 
 	if (rpc_supp_cb_thread_q) {
@@ -2415,7 +2417,7 @@ static h_err_t rpc_supp_cb_thread_stop(void)
 			supp_cb_queue_item_t item;
 			res = g_h.funcs->_h_dequeue_item(rpc_supp_cb_thread_q, &item, 0);
 			if (res) {
-				H_LOGE(TAG, TAG, "Error removing item from rpc_supp_cb_thread_q");
+				ESP_LOGE(TAG, "Error removing item from rpc_supp_cb_thread_q");
 				continue;
 			}
 			if (item.dpp_data) {
@@ -2427,10 +2429,10 @@ static h_err_t rpc_supp_cb_thread_stop(void)
 		if (!g_h.funcs->_h_destroy_queue(rpc_supp_cb_thread_q)) {
 			rpc_supp_cb_thread_q = NULL;
 		} else {
-			H_LOGE(TAG, TAG, "Failed to destroy rpc_supp_cb_thread_q");
+			ESP_LOGE(TAG, "Failed to destroy rpc_supp_cb_thread_q");
 		}
 	} else {
-		H_LOGD(TAG, TAG, "No rpc_supp_cb_thread_q to delete");
+		ESP_LOGD(TAG, "No rpc_supp_cb_thread_q to delete");
 	}
 
 	return H_OK;
@@ -2445,7 +2447,7 @@ static void rpc_supp_thread(void const *arg)
 		// wait until there is an item to process
 		res = g_h.funcs->_h_dequeue_item(rpc_supp_cb_thread_q, &item, HOSTED_BLOCK_MAX);
 		if (res) {
-			H_LOGE(TAG, TAG, "Error getting item from rpc_supp_cb_thread_q");
+			ESP_LOGE(TAG, "Error getting item from rpc_supp_cb_thread_q");
 			continue;
 		}
 		// trigger the callback with the data;
@@ -2458,10 +2460,10 @@ static void rpc_supp_thread(void const *arg)
 			else if (item.dpp_data) {
 				dpp_evt_cb(item.dpp_event, item.dpp_data);
 			} else {
-				H_LOGW(TAG, TAG, "unknown supplicant DPP event: dropping");
+				ESP_LOGW(TAG, "unknown supplicant DPP event: dropping");
 			}
 		} else {
-			H_LOGW(TAG, TAG, "no registered supplicant dpp cb: dropping dpp event");
+			ESP_LOGW(TAG, "no registered supplicant dpp cb: dropping dpp event");
 		}
 		// free allocated memory
 		if (item.dpp_data) {
@@ -2472,7 +2474,7 @@ static void rpc_supp_thread(void const *arg)
 #endif // H_SUPP_DPP_SUPPORT
 #endif // H_DPP_SUPPORT
 
-h_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, uint8_t type)
+esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp_mac_type_t type)
 {
 	if (!mac)
 		return H_ERR_INVALID_ARG;
@@ -2585,7 +2587,7 @@ int rpc_bt_controller_disable(void)
 	return rpc_iface_feature_control(&feature_control);
 }
 
-h_err_t rpc_iface_mac_addr_len_get(size_t *len, uint8_t type)
+esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type)
 {
 	if (!len)
 		return H_ERR_INVALID_ARG;

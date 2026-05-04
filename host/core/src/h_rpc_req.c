@@ -25,7 +25,7 @@ static const char *TAG = "rpc_req";
     TyPe *req_payload = (TyPe *)                                              \
         g_h.funcs->_h_calloc(1, sizeof(TyPe));                                \
     if (!req_payload) {                                                       \
-        H_LOGE(TAG, TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
+        ESP_LOGE(TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
         *failure_status = RPC_ERR_MEMORY_FAILURE;                              \
 		return FAILURE;                                                       \
     }                                                                         \
@@ -37,7 +37,7 @@ static const char *TAG = "rpc_req";
 #define RPC_ALLOC_ELEMENT(TyPe,MsG_StRuCt,InIt_FuN) {                         \
     TyPe *NeW_AllocN = (TyPe *) g_h.funcs->_h_calloc(1, sizeof(TyPe));        \
     if (!NeW_AllocN) {                                                        \
-        H_LOGE(TAG, TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
+        ESP_LOGE(TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
         *failure_status = RPC_ERR_MEMORY_FAILURE;                              \
 		return FAILURE;                                                       \
     }                                                                         \
@@ -133,7 +133,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 				rpc__req__set_mode__init);
 
 		if ((p->mode < WIFI_MODE_NULL) || (p->mode >= WIFI_MODE_MAX)) {
-			H_LOGE(TAG, TAG, "Invalid wifi mode\n");
+			ESP_LOGE(TAG, "Invalid wifi mode\n");
 			*failure_status = RPC_ERR_INCORRECT_ARG;
 			return FAILURE;
 		}
@@ -152,7 +152,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 				rpc__req__otawrite__init);
 
 		if (!p->ota_data || (p->ota_data_len == 0)) {
-			H_LOGE(TAG, TAG, "Invalid parameter\n");
+			ESP_LOGE(TAG, "Invalid parameter\n");
 			*failure_status = RPC_ERR_INCORRECT_ARG;
 			return FAILURE;
 		}
@@ -172,15 +172,15 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->enable = app_req->u.e_heartbeat.enable;
 		req_payload->duration = app_req->u.e_heartbeat.duration;
 		if (req_payload->enable) {
-			H_LOGD(TAG, TAG, "Enable heartbeat with duration %ld", (long int)req_payload->duration);
+			ESP_LOGD(TAG, "Enable heartbeat with duration %ld", (long int)req_payload->duration);
 			if (CALLBACK_AVAILABLE != is_event_callback_registered(RPC_ID__Event_Heartbeat))
-				H_LOGD(TAG, TAG, "Note: ** Subscribe heartbeat event to get notification **");
+				ESP_LOGD(TAG, "Note: ** Subscribe heartbeat event to get notification **");
 		} else {
-			H_LOGD(TAG, TAG, "Disable Heartbeat");
+			ESP_LOGD(TAG, "Disable Heartbeat");
 		}
 		break;
 	} case RPC_ID__Req_WifiInit: {
-		h_wifi_init_config_t * p_a = &app_req->u.wifi_init_config;
+		wifi_init_config_t * p_a = &app_req->u.wifi_init_config;
 		RPC_ALLOC_ASSIGN(RpcReqWifiInit, req_wifi_init,
 				rpc__req__wifi_init__init);
 		RPC_ALLOC_ELEMENT(WifiInitConfig, req_payload->cfg, wifi_init_config__init);
@@ -392,7 +392,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 #endif
 			break;
         } default: {
-            H_LOGE(TAG, TAG, "unexpected wifi iface [%u]\n", p_a->iface);
+            ESP_LOGE(TAG, "unexpected wifi iface [%u]\n", p_a->iface);
 			break;
         }
 
@@ -400,7 +400,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		break;
 
     } case RPC_ID__Req_WifiScanStart: {
-		h_wifi_scan_config_t * p_a = &app_req->u.wifi_scan_config.cfg;
+		wifi_scan_config_t * p_a = &app_req->u.wifi_scan_config.cfg;
 
 		RPC_ALLOC_ASSIGN(RpcReqWifiScanStart, req_wifi_scan_start,
 				rpc__req__wifi_scan_start__init);
@@ -412,7 +412,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 
 			RPC_ALLOC_ELEMENT(WifiScanTime , req_payload->config->scan_time, wifi_scan_time__init);
 			RPC_ALLOC_ELEMENT(WifiActiveScanTime, req_payload->config->scan_time->active, wifi_active_scan_time__init);
-			H_LOGD(TAG, TAG, "scan start4\n");
+			ESP_LOGD(TAG, "scan start4\n");
 
 			WifiScanConfig *p_c = req_payload->config;
 			WifiScanTime *p_c_st = NULL;
@@ -438,7 +438,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 
 			req_payload->config_set = 1;
 		}
-		H_LOGI(TAG, TAG, "Scan start Req\n");
+		ESP_LOGI(TAG, "Scan start Req\n");
 
 		break;
 
@@ -948,7 +948,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 #endif
 	} default: {
 		*failure_status = RPC_ERR_UNSUPPORTED_MSG;
-		H_LOGE(TAG, TAG, "Unsupported RPC Req[%u]",req->msg_id);
+		ESP_LOGE(TAG, "Unsupported RPC Req[%u]",req->msg_id);
 		return FAILURE;
 		break;
 	}
