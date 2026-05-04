@@ -1,7 +1,6 @@
 # .github/workflows/host-core-test.yml
 #
 # Three-tier CI for host core layer:
-# Three-tier CI for host core layer:
 #   Tier 1: Phase 1 portable-boundary isolation check (30s)
 #   Tier 2: Linux mock tests for the current portable/testable subset (3min)
 #   Tier 3: ESP-IDF slave build matrix (30min)
@@ -43,7 +42,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check core layer is ESP-IDF free
       - name: Check Phase 1 portable boundary is ESP-IDF free
         run: bash scripts/check_core_isolation.sh
 
