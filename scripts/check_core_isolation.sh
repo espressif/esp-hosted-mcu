@@ -88,3 +88,16 @@ if [ -n "$FORBIDDEN" ]; then
 fi
 
 echo "OK: Phase 1 portable boundary is ESP-IDF-free"
+echo ""
+echo "── portable 集合(host/core/src/ 总文件数 14)──"
+PORTABLE_SRCS=(
+    host/core/src/h_init.c
+    host/core/src/h_api.c
+    host/core/src/h_event.c
+    host/core/src/h_serial_if.c
+)
+for f in "${PORTABLE_SRCS[@]}"; do
+    echo "  ✓ $f"
+done
+echo "  覆盖率: ${#PORTABLE_SRCS[@]}/14 = $(awk "BEGIN { printf \"%.0f%%\", ${#PORTABLE_SRCS[@]} / 14 * 100 }")"
+echo "(规范定义见 docs/felix/9.Host通用化实施总路线图.md §三个口径)"
