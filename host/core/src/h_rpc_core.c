@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "h_wrapper.h"
+
 #ifdef H_BUILD_TESTS
 
 #include "h_rpc_core.h"
@@ -55,8 +57,7 @@ h_err_t h_rpc_register_handler(uint8_t msg_type,
 #include "h_serial_if.h"
 #include <unistd.h>
 // REMOVED: esp_task.h
-#include "port_esp_hosted_host_config.h"
-#include "port_esp_hosted_host_log.h"
+#include "h_config.h"
 #include "esp_hosted_rpc.pb-c.h"
 
 static const char *TAG = "rpc_core";
@@ -74,8 +75,8 @@ struct rpc_lib_context {
 typedef void (*rpc_rx_ind_t)(void);
 typedef void (*rpc_tx_ind_t)(void);
 
-static queue_handle_t rpc_rx_q = NULL;
-static queue_handle_t rpc_tx_q = NULL;
+static h_queue_t rpc_rx_q = NULL;
+static h_queue_t rpc_tx_q = NULL;
 
 static void * rpc_rx_thread_hdl;
 static void * rpc_tx_thread_hdl;
@@ -148,18 +149,18 @@ static int post_sync_resp_sem(ctrl_cmd_t *app_resp);
 static int serial_init(void)
 {
 	if (transport_pserial_open()) {
-		return FAILURE;
+		return H_FAIL;
 	}
-	return SUCCESS;
+	return H_OK;
 }
 
 /* close serial interface */
 static int serial_deinit(void)
 {
 	if (transport_pserial_close()) {
-		return FAILURE;
+		return H_FAIL;
 	}
-	return SUCCESS;
+	return H_OK;
 }
 
 static inline void set_rpc_lib_state(int state)
@@ -184,8 +185,8 @@ static inline int is_rpc_lib_inactive(void)
 /* RPC TX indication */
 static void rpc_tx_ind(void)
 {
-	ESP_LOGV(TAG, "posting rpc tx semaphore");
-	g_h.funcs->_h_post_semaphore(rpc_tx_sem);
+	H_LOGV(TAG, "posting rpc tx semaphore");
+	h_sem_give(rpc_tx_sem);
 }
 
 /* Returns CALLBACK_AVAILABLE if a non NULL RPC event
@@ -198,15 +199,15 @@ int is_event_callback_registered(int event)
 	int event_cb_tbl_idx = event - RPC_ID__Event_Base;
 
 	if ((event<=RPC_ID__Event_Base) || (event>=RPC_ID__Event_Max)) {
-		ESP_LOGW(TAG, "Could not identify event[%u]", event);
+		H_LOGW(TAG, "Could not identify event[%u]", event);
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
 	if (rpc_evt_cb_table[event_cb_tbl_idx]) {
-		ESP_LOGV(TAG, "event id [0x%x]: callback %p", event, rpc_evt_cb_table[event_cb_tbl_idx]);
+		H_LOGV(TAG, "event id [0x%x]: callback %p", event, rpc_evt_cb_table[event_cb_tbl_idx]);
 		return CALLBACK_AVAILABLE;
 	}
-	ESP_LOGD(TAG, "event id [0x%x]: No callback available", event);
+	H_LOGD(TAG, "event id [0x%x]: No callback available", event);
 
 	return CALLBACK_NOT_REGISTERED;
 }
@@ -217,7 +218,7 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 	Rpc   req = {0};
 	uint32_t  tx_len = 0;
 	uint8_t  *tx_data = NULL;
-	int       ret = SUCCESS;
+	int       ret = H_OK;
 	int32_t   failure_status = 0;
 
 	req.msg_type = RPC_TYPE__Req;
@@ -227,19 +228,19 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 
 	req.msg_id = app_req->msg_id;
 	req.uid = app_req->uid;
-	ESP_LOGI(TAG, "<-- RPC_Req  [0x%x], uid %ld", app_req->msg_id, app_req->uid);
+	H_LOGI(TAG, "<-- RPC_Req  [0x%x], uid %ld", app_req->msg_id, app_req->uid);
 	/* payload case is exact match to msg id in esp_hosted_config.pb-c.h */
 	req.payload_case = (Rpc__PayloadCase) app_req->msg_id;
 
 	if (compose_rpc_req(&req, app_req, &failure_status)) {
-		ESP_LOGE(TAG, "compose_rpc_req failed for [0x%x]", app_req->msg_id);
+		H_LOGE(TAG, "compose_rpc_req failed for [0x%x]", app_req->msg_id);
 		goto fail_req;
 	}
 
 	/* 3. Protobuf msg size */
 	tx_len = rpc__get_packed_size(&req);
 	if (!tx_len) {
-		ESP_LOGE(TAG, "Invalid tx length");
+		H_LOGE(TAG, "Invalid tx length");
 		failure_status = RPC_ERR_PROTOBUF_ENCODE;
 		goto fail_req;
 	}
@@ -251,21 +252,27 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 	if (app_req->rpc_rsp_cb) {
 
 		/* 5.1 Start timeout for response for async only
-		* For sync procedures, g_h.funcs->_h_get_semaphore takes care to
+		* For sync procedures, h_sem_take takes care to
 		* handle timeout situations */
-		ESP_LOGI(TAG, "starting async resp timer for req[%u]",req.msg_id);
-		void *timer_hdl = g_h.funcs->_h_timer_start("rpc_async_timeout_timer", SEC_TO_MILLISEC(app_req->rsp_timeout_sec), H_TIMER_TYPE_ONESHOT,
+		H_LOGI(TAG, "starting async resp timer for req[%u]",req.msg_id);
+		h_timer_t timer_hdl;
+		int timer_ret = h_timer_create("rpc_async_timeout_timer", &timer_hdl);
+		if (timer_ret != H_OK || !timer_hdl) {
+			H_LOGE(TAG, "Failed to create async resp timer");
+			goto fail_req;
+		}
+		timer_ret = h_timer_start(timer_hdl, SEC_TO_MILLISEC(app_req->rsp_timeout_sec), false,
 				rpc_async_timeout_handler, app_req);
-		if (!timer_hdl) {
-			ESP_LOGE(TAG, "Failed to start async resp timer");
+		if (timer_ret != H_OK) {
+			H_LOGE(TAG, "Failed to start async resp timer");
 			goto fail_req;
 		}
 
 		/* 5.2 set async resp callback */
-		ESP_LOGD(TAG, "setting async resp callback for req[%u]",req.msg_id);
+		H_LOGD(TAG, "setting async resp callback for req[%u]",req.msg_id);
 		ret = set_async_resp_callback(app_req, app_req->rpc_rsp_cb, timer_hdl);
 		if (ret < 0) {
-			ESP_LOGE(TAG, "could not set callback for req[%u]",req.msg_id);
+			H_LOGE(TAG, "could not set callback for req[%u]",req.msg_id);
 			failure_status = RPC_ERR_SET_ASYNC_CB;
 			goto fail_req;
 		}
@@ -273,14 +280,14 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 
 	/* 7. Pack in protobuf and send the request */
 	rpc__pack(&req, tx_data);
-	ESP_LOGD(TAG, "sending rpc req[%u]",req.msg_id);
+	H_LOGD(TAG, "sending rpc req[%u]",req.msg_id);
 	if (transport_pserial_send(tx_data, tx_len)) {
-		ESP_LOGE(TAG, "Send RPC req[0x%x] failed",req.msg_id);
+		H_LOGE(TAG, "Send RPC req[0x%x] failed",req.msg_id);
 		failure_status = RPC_ERR_TRANSPORT_SEND;
 		goto fail_req;
 	}
 
-	ESP_LOGD(TAG, "Sent RPC_Req[0x%x]",req.msg_id);
+	H_LOGD(TAG, "Sent RPC_Req[0x%x]",req.msg_id);
 
 
 	/* 8. Free hook for application */
@@ -289,13 +296,13 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 	/* 9. Cleanup */
 	HOSTED_FREE(tx_data);
 	RPC_FREE_BUFFS();
-	return SUCCESS;
+	return H_OK;
 fail_req0:
 	failure_status = RPC_ERR_MEMORY_FAILURE;
 fail_req:
 
 
-	ESP_LOGW(TAG, "fail1");
+	H_LOGW(TAG, "fail1");
 	if (app_req->rpc_rsp_cb) {
 		/* 11. In case of async procedure,
 		 * Let application know of failure using callback itself
@@ -319,7 +326,7 @@ fail_req:
 		 * Prevents timeout waiting for a response that will never come
 		 * as request was never sent
 		 */
-		ESP_LOGW(TAG, "RPC Sync proc failed");
+		H_LOGW(TAG, "RPC Sync proc failed");
 
 		ctrl_cmd_t *app_resp = NULL;
 
@@ -334,18 +341,18 @@ fail_req:
 		elem.buf = app_resp;
 		elem.buf_len = sizeof(ctrl_cmd_t);
 
-		if (g_h.funcs->_h_queue_item(rpc_rx_q, &elem, HOSTED_BLOCK_MAX)) {
-			ESP_LOGE(TAG, "RPC Q put fail");
+		if (h_queue_send(rpc_rx_q, &elem, H_BLOCK_MAX)) {
+			H_LOGE(TAG, "RPC Q put fail");
 		} else if (CALLBACK_AVAILABLE == is_sync_resp_sem_available(app_resp->uid)) {
-			ESP_LOGV(TAG, "trigger semaphore to react to failed message uid %ld", app_resp->uid);
+			H_LOGV(TAG, "trigger semaphore to react to failed message uid %ld", app_resp->uid);
 			post_sync_resp_sem(app_resp);
 		} else {
-			ESP_LOGE(TAG, "no sync resp callback to react to failed message uid %ld", app_resp->uid);
+			H_LOGE(TAG, "no sync resp callback to react to failed message uid %ld", app_resp->uid);
 		}
 	}
 
 fail_req2:
-	ESP_LOGW(TAG, "fail2");
+	H_LOGW(TAG, "fail2");
 	/* 13. Cleanup */
 	H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
 
@@ -376,7 +383,7 @@ fail_req2:
 	}
 	/* Sync requests: Don't free - caller owns it */
 
-	return FAILURE;
+	return H_FAIL;
 }
 
 /* Process RPC msg (response or event) received from ESP32 */
@@ -388,7 +395,7 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 
 	/* 1. Check if valid proto msg */
 	if (!proto_msg) {
-		return FAILURE;
+		return H_FAIL;
 	}
 
 	/* Note: free proto_msg at the end of processing*/
@@ -396,7 +403,7 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 	/* 2. Check if it is event msg */
 	if (proto_msg->msg_type == RPC_TYPE__Event) {
 		/* Events are handled only asynchronously */
-		ESP_LOGD(TAG, "Received Event [0x%x]", proto_msg->msg_id);
+		H_LOGD(TAG, "Received Event [0x%x]", proto_msg->msg_id);
 		/* check if callback is available.
 		 * if not, silently drop the msg */
 		if (CALLBACK_AVAILABLE ==
@@ -413,7 +420,7 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 			/* Decode protobuf buffer of event and
 			 * copy into app structures */
 			if (rpc_parse_evt(proto_msg, app_event)) {
-				ESP_LOGE(TAG, "failed to parse event");
+				H_LOGE(TAG, "failed to parse event");
 				goto free_buffers;
 			}
 
@@ -424,7 +431,7 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 
 	/* 3. Check if it is response msg */
 	} else if (proto_msg->msg_type == RPC_TYPE__Resp) {
-		ESP_LOGD(TAG, "Received Resp [0x%x]", proto_msg->msg_id);
+		H_LOGD(TAG, "Received Resp [0x%x]", proto_msg->msg_id);
 		/* RPC responses are handled asynchronously and
 		 * asynchronpusly */
 
@@ -434,7 +441,7 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 		/* Decode protobuf buffer of response and
 		 * copy into app structures */
 		if (rpc_parse_rsp(proto_msg, app_resp)) {
-			ESP_LOGE(TAG, "failed to parse response, [0x%x]", proto_msg->msg_id);
+			H_LOGE(TAG, "failed to parse response, [0x%x]", proto_msg->msg_id);
 			goto free_buffers;
 		}
 
@@ -465,8 +472,8 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 			elem.buf = app_resp;
 			elem.buf_len = sizeof(ctrl_cmd_t);
 
-			if (g_h.funcs->_h_queue_item(rpc_rx_q, &elem, HOSTED_BLOCK_MAX)) {
-				ESP_LOGE(TAG, "RPC Q put fail");
+			if (h_queue_send(rpc_rx_q, &elem, H_BLOCK_MAX)) {
+				H_LOGE(TAG, "RPC Q put fail");
 				goto free_buffers;
 			}
 
@@ -477,12 +484,12 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 
 	} else {
 		/* 4. some unsupported msg, drop it */
-		ESP_LOGE(TAG, "Incorrect RPC Msg Type[%u]",proto_msg->msg_type);
+		H_LOGE(TAG, "Incorrect RPC Msg Type[%u]",proto_msg->msg_type);
 		goto free_buffers;
 	}
 	rpc__free_unpacked(proto_msg, NULL);
 	proto_msg = NULL;
-	return SUCCESS;
+	return H_OK;
 
 	/* 5. cleanup */
 free_buffers:
@@ -495,7 +502,7 @@ free_buffers:
 
 /* RPC rx thread
  * This is entry point for rpc messages received from ESP32 */
-static void rpc_rx_thread(void const *arg)
+static void rpc_rx_thread(void *arg)
 {
 	uint32_t buf_len = 0;
 
@@ -504,14 +511,14 @@ static void rpc_rx_thread(void const *arg)
 
 	/* If serial interface is not available, exit */
 	if (!serial_drv_open(SERIAL_IF_FILE)) {
-		ESP_LOGE(TAG, "Exiting thread, handle invalid");
+		H_LOGE(TAG, "Exiting thread, handle invalid");
 		return;
 	}
 
 	/* This queue should already be created
 	 * if NULL, exit here */
 	if (!rpc_rx_q) {
-		ESP_LOGE(TAG, "Ctrl msg rx Q is not created");
+		H_LOGE(TAG, "Ctrl msg rx Q is not created");
 		return;
 	}
 
@@ -522,13 +529,13 @@ static void rpc_rx_thread(void const *arg)
 
 		/* Block on read of protobuf encoded msg */
 		if (!is_rpc_lib_ready()) {
-			g_h.funcs->_h_sleep(1);
+			h_msleep(1);
 			continue;
 		}
 		buf = transport_pserial_read(&buf_len);
 
 		if (!buf_len || !buf) {
-			ESP_LOGE(TAG, "buf_len read = 0");
+			H_LOGE(TAG, "buf_len read = 0");
 			goto free_bufs;
 		}
 
@@ -541,9 +548,9 @@ static void rpc_rx_thread(void const *arg)
 		HOSTED_FREE(buf);
 
 		/* Send for further processing as event or response */
-		ESP_LOGV(TAG, "Before process_rpc_rx_msg");
+		H_LOGV(TAG, "Before process_rpc_rx_msg");
 		process_rpc_rx_msg(resp, rpc_rx_func);
-		ESP_LOGV(TAG, "after process_rpc_rx_msg");
+		H_LOGV(TAG, "after process_rpc_rx_msg");
 		continue;
 
 		/* Failed - cleanup */
@@ -559,47 +566,47 @@ free_bufs:
 /* Async and sync request sends the rpc msg through this thread.
  * Async thread will register callback, which will be invoked in rpc_rx_thread, once received the response.
  * Sync thread will block for response (in its own context) after submission of ctrl_msg to rpc_tx_q */
-static void rpc_tx_thread(void const *arg)
+static void rpc_tx_thread(void *arg)
 {
 	ctrl_cmd_t *app_req = NULL;
 
-	ESP_LOGD(TAG, "Starting tx thread");
+	H_LOGD(TAG, "Starting tx thread");
 	/* If serial interface is not available, exit */
 	if (!serial_drv_open(SERIAL_IF_FILE)) {
-		ESP_LOGE(TAG, "Exiting thread, handle invalid");
+		H_LOGE(TAG, "Exiting thread, handle invalid");
 		return;
 	}
 
 	/* This queue should already be created
 	 * if NULL, exit here */
 	if (!rpc_tx_q) {
-		ESP_LOGE(TAG, "RPC msg tx Q is not created");
+		H_LOGE(TAG, "RPC msg tx Q is not created");
 		return;
 	}
 
 	/* Infinite loop to process incoming msg on serial interface */
 	while (1) {
-		ESP_LOGV(TAG, "Loop: Wait for next RPC request");
+		H_LOGV(TAG, "Loop: Wait for next RPC request");
 
 		/* 4.1 Block on read of protobuf encoded msg */
 		if (!is_rpc_lib_ready()) {
-			g_h.funcs->_h_sleep(1);
-			ESP_LOGD(TAG, "%s:%u rpc lib not ready",__func__,__LINE__);
+			h_msleep(1);
+			H_LOGD(TAG, "%s:%u rpc lib not ready",__func__,__LINE__);
 			continue;
 		}
 
-		ESP_LOGV(TAG, "Waiting for RPC TX semaphore");
-		g_h.funcs->_h_get_semaphore(rpc_tx_sem, HOSTED_BLOCKING);
-		ESP_LOGV(TAG, "RPC TX semaphore acquired");
+		H_LOGV(TAG, "Waiting for RPC TX semaphore");
+		h_sem_take(rpc_tx_sem, H_BLOCK_MAX);
+		H_LOGV(TAG, "RPC TX semaphore acquired");
 
-		ESP_LOGV(TAG, "Dequeueing RPC TX Q");
-		if (g_h.funcs->_h_dequeue_item(rpc_tx_q, &app_req, HOSTED_BLOCK_MAX)) {
-			ESP_LOGE(TAG, "RPC TX Q Failed to dequeue");
+		H_LOGV(TAG, "Dequeueing RPC TX Q");
+		if (h_queue_recv(rpc_tx_q, &app_req, H_BLOCK_MAX)) {
+			H_LOGE(TAG, "RPC TX Q Failed to dequeue");
 			continue;
 		}
 
 		if (app_req) {
-			ESP_LOGV(TAG, "Processing RPC TX msg");
+			H_LOGV(TAG, "Processing RPC TX msg");
 			process_rpc_tx_msg(app_req);
 			/* app_req lifecycle:
 			 * - Async requests: Stored in async_rsp_table, freed when response arrives or timeout
@@ -607,7 +614,7 @@ static void rpc_tx_thread(void const *arg)
 			 * - Failed requests: Freed in process_rpc_tx_msg() failure path
 			 * So we don't free anything here. */
 		} else {
-			ESP_LOGE(TAG, "RPC Tx Q empty or uninitialised");
+			H_LOGE(TAG, "RPC Tx Q empty or uninitialised");
 			continue;
 		}
 	}
@@ -617,15 +624,18 @@ static void rpc_tx_thread(void const *arg)
 static int spawn_rpc_threads(void)
 {
 	/* create new thread for rpc RX path handling */
-	rpc_rx_thread_hdl = g_h.funcs->_h_thread_create("rpc_rx", RPC_TASK_PRIO,
-			RPC_TASK_STACK_SIZE, rpc_rx_thread, NULL);
-	rpc_tx_thread_hdl = g_h.funcs->_h_thread_create("rpc_tx", RPC_TASK_PRIO,
-			RPC_TASK_STACK_SIZE, rpc_tx_thread, NULL);
-	if (!rpc_rx_thread_hdl || !rpc_tx_thread_hdl) {
-		ESP_LOGE(TAG, "Thread creation failed for rpc_rx_thread");
-		return FAILURE;
+	int thread_ret;
+	thread_ret = h_thread_create("rpc_rx", RPC_TASK_PRIO,
+			RPC_TASK_STACK_SIZE, rpc_rx_thread, NULL, &rpc_rx_thread_hdl);
+	if (thread_ret == H_OK) {
+		thread_ret = h_thread_create("rpc_tx", RPC_TASK_PRIO,
+				RPC_TASK_STACK_SIZE, rpc_tx_thread, NULL, &rpc_tx_thread_hdl);
 	}
-	return SUCCESS;
+	if (thread_ret != H_OK || !rpc_rx_thread_hdl || !rpc_tx_thread_hdl) {
+		H_LOGE(TAG, "Thread creation failed for rpc_rx_thread");
+		return H_FAIL;
+	}
+	return H_OK;
 }
 
 /* cancel thread for rpc RX path handling */
@@ -634,17 +644,17 @@ static int cancel_rpc_threads(void)
 	int ret1 = 0, ret2 =0;
 
 	if (rpc_rx_thread_hdl)
-		ret1 = g_h.funcs->_h_thread_cancel(rpc_rx_thread_hdl);
+		ret1 = h_thread_delete(rpc_rx_thread_hdl);
 
 	if (rpc_tx_thread_hdl)
-		ret2 = g_h.funcs->_h_thread_cancel(rpc_tx_thread_hdl);
+		ret2 = h_thread_delete(rpc_tx_thread_hdl);
 
 	if (ret1 || ret2) {
-		ESP_LOGE(TAG, "pthread_cancel rpc threads failed");
-		return FAILURE;
+		H_LOGE(TAG, "pthread_cancel rpc threads failed");
+		return H_FAIL;
 	}
 
-	return SUCCESS;
+	return H_OK;
 }
 
 
@@ -670,7 +680,7 @@ static ctrl_cmd_t * get_response(int *read_len, ctrl_cmd_t *app_req)
 
 	/* Any problems in response, return NULL */
 	if (!read_len || !app_req) {
-		ESP_LOGE(TAG, "Invalid input parameter");
+		H_LOGE(TAG, "Invalid input parameter");
 		return NULL;
 	}
 
@@ -679,15 +689,15 @@ static ctrl_cmd_t * get_response(int *read_len, ctrl_cmd_t *app_req)
 	ret = wait_for_sync_response(app_req);
 	if (ret) {
 		if ((ret == RET_FAIL_TIMEOUT) || (errno == ETIMEDOUT))
-			ESP_LOGW(TAG, "Timeout waiting for Resp for [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
+			H_LOGW(TAG, "Timeout waiting for Resp for [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
 		else
-			ESP_LOGE(TAG, "ERR [%u] ret[%d] for [0x%x](%s)", errno, ret, app_req->msg_id, rpc_id_name(app_req->msg_id));
+			H_LOGE(TAG, "ERR [%u] ret[%d] for [0x%x](%s)", errno, ret, app_req->msg_id, rpc_id_name(app_req->msg_id));
 		return NULL;
 	}
 
 	/* Fetch response from `esp_queue` */
-	if (g_h.funcs->_h_dequeue_item(rpc_rx_q, &elem, HOSTED_BLOCK_MAX)) {
-		ESP_LOGE(TAG, "rpc Rx Q Failed to dequeue");
+	if (h_queue_recv(rpc_rx_q, &elem, H_BLOCK_MAX)) {
+		H_LOGE(TAG, "rpc Rx Q Failed to dequeue");
 		return NULL;
 	}
 
@@ -698,7 +708,7 @@ static ctrl_cmd_t * get_response(int *read_len, ctrl_cmd_t *app_req)
 		return (ctrl_cmd_t*)buf;
 
 	} else {
-		ESP_LOGE(TAG, "rpc Q empty or uninitialised");
+		H_LOGE(TAG, "rpc Q empty or uninitialised");
 		return NULL;
 	}
 
@@ -710,7 +720,7 @@ static int clear_async_resp_callback(async_rsp_t *async_rsp_item)
 	if (async_rsp_item->uid != 0) {
 
 		if (async_rsp_item->timer_hdl) {
-			g_h.funcs->_h_timer_stop(async_rsp_item->timer_hdl);
+			h_timer_stop(async_rsp_item->timer_hdl);
 			async_rsp_item->timer_hdl = NULL;
 		}
 
@@ -719,11 +729,11 @@ static int clear_async_resp_callback(async_rsp_t *async_rsp_item)
 
 		async_rsp_item->uid = 0;
 		async_rsp_item->cb = NULL;
-		return SUCCESS;
+		return H_OK;
 	} else {
-		ESP_LOGW(TAG, "async_rsp_item to be cleared already has uid 0");
+		H_LOGW(TAG, "async_rsp_item to be cleared already has uid 0");
 	}
-	return FAILURE;
+	return H_FAIL;
 }
 
 /* Check and call rpc response asynchronous callback if available
@@ -767,7 +777,7 @@ static int post_sync_resp_sem(ctrl_cmd_t *app_resp)
 
 	for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 		if (sync_rsp_table[i].uid == app_resp->uid) {
-			return g_h.funcs->_h_post_semaphore(sync_rsp_table[i].sem);
+			return h_sem_give(sync_rsp_table[i].sem);
 		}
 	}
 
@@ -802,7 +812,7 @@ static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb, vo
 
 	int exp_resp_msg_id = (app_req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base);
 	if (exp_resp_msg_id >= RPC_ID__Resp_Max) {
-		ESP_LOGW(TAG, "Not able to map new request to resp id");
+		H_LOGW(TAG, "Not able to map new request to resp id");
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
@@ -816,7 +826,7 @@ static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb, vo
 		}
 	}
 
-	ESP_LOGE(TAG, "Async cb not registered: out of buffer space");
+	H_LOGE(TAG, "Async cb not registered: out of buffer space");
 	return CALLBACK_NOT_REGISTERED;
 }
 
@@ -832,29 +842,33 @@ static int set_sync_resp_sem(ctrl_cmd_t *app_req)
 	int i;
 
 	if (app_req->rx_sem)
-		g_h.funcs->_h_destroy_semaphore(app_req->rx_sem);
+		h_sem_delete(app_req->rx_sem);
 
 	if (exp_resp_msg_id >= RPC_ID__Resp_Max) {
-		ESP_LOGW(TAG, "Not able to map new request to resp id");
+		H_LOGW(TAG, "Not able to map new request to resp id");
 		return MSG_ID_OUT_OF_ORDER;
 	} else if (!app_req->rpc_rsp_cb) {
 		/* For sync, set sem */
-		app_req->rx_sem = g_h.funcs->_h_create_semaphore(1);
-		g_h.funcs->_h_get_semaphore(app_req->rx_sem, 0);
+		int sem_ret = h_sem_create(1, 0, &app_req->rx_sem);
+		if (sem_ret != H_OK) {
+			H_LOGE(TAG, "Failed to create sync resp sem");
+			return CALLBACK_NOT_REGISTERED;
+		}
+		h_sem_take(app_req->rx_sem, 0);
 
 		for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 			if (!sync_rsp_table[i].uid) {
-				ESP_LOGD(TAG, "Register sync sem %p for uid %ld", app_req->rx_sem, app_req->uid);
+				H_LOGD(TAG, "Register sync sem %p for uid %ld", app_req->rx_sem, app_req->uid);
 				sync_rsp_table[i].uid = app_req->uid;
 				sync_rsp_table[i].sem = app_req->rx_sem;
 				return CALLBACK_SET_SUCCESS;
 			}
 		}
-		ESP_LOGE(TAG, "Symc sem not registered: out of buffer space");
+		H_LOGE(TAG, "Symc sem not registered: out of buffer space");
 		return CALLBACK_NOT_REGISTERED;
 	} else {
 		/* For async, nothing to be done */
-		ESP_LOGD(TAG, "NOT Register sync sem for resp[0x%x]", exp_resp_msg_id);
+		H_LOGD(TAG, "NOT Register sync sem for resp[0x%x]", exp_resp_msg_id);
 		return CALLBACK_NOT_REGISTERED;
 	}
 }
@@ -875,17 +889,17 @@ static int wait_for_sync_response(ctrl_cmd_t *app_req)
 	exp_resp_msg_id = (app_req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base);
 
 	if (exp_resp_msg_id >= RPC_ID__Resp_Max) {
-		ESP_LOGW(TAG, "Not able to map new request to resp id");
+		H_LOGW(TAG, "Not able to map new request to resp id");
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
-	ESP_LOGV(TAG, "Wait for sync resp for Req[0x%x] with timer of %u sec",
+	H_LOGV(TAG, "Wait for sync resp for Req[0x%x] with timer of %u sec",
 			app_req->msg_id, timeout_sec);
 	for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 		if (sync_rsp_table[i].uid == app_req->uid) {
-			ret = g_h.funcs->_h_get_semaphore(sync_rsp_table[i].sem, timeout_sec);
-			if (g_h.funcs->_h_destroy_semaphore(sync_rsp_table[i].sem)) {
-				ESP_LOGE(TAG, "read sem rx for resp[0x%x] destroy failed", exp_resp_msg_id);
+			ret = h_sem_take(sync_rsp_table[i].sem, timeout_sec);
+			if (h_sem_delete(sync_rsp_table[i].sem)) {
+				H_LOGE(TAG, "read sem rx for resp[0x%x] destroy failed", exp_resp_msg_id);
 			}
 			// clear table entry
 			sync_rsp_table[i].uid = 0;
@@ -893,7 +907,7 @@ static int wait_for_sync_response(ctrl_cmd_t *app_req)
 			return ret;
 		}
 	}
-	ESP_LOGW(TAG, "Not able to map new request to resp id");
+	H_LOGW(TAG, "Not able to map new request to resp id");
 	return MSG_ID_OUT_OF_ORDER;
 }
 
@@ -904,7 +918,7 @@ static int is_async_resp_callback_available(ctrl_cmd_t *app_resp)
 
 	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
 	if ((app_resp->msg_id < RPC_ID__Resp_Base) || (app_resp->msg_id >= RPC_ID__Resp_Max)) {
-		ESP_LOGE(TAG, "resp id[0x%x] out of range", app_resp->msg_id);
+		H_LOGE(TAG, "resp id[0x%x] out of range", app_resp->msg_id);
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
@@ -941,7 +955,7 @@ int set_event_callback(int event, rpc_rsp_cb_t event_cb)
 	int event_cb_tbl_idx = event - RPC_ID__Event_Base;
 
 	if ((event<=RPC_ID__Event_Base) || (event>=RPC_ID__Event_Max)) {
-		ESP_LOGW(TAG, "Could not identify event[0x%x]", event);
+		H_LOGW(TAG, "Could not identify event[0x%x]", event);
 		return MSG_ID_OUT_OF_ORDER;
 	}
 	rpc_evt_cb_table[event_cb_tbl_idx] = event_cb;
@@ -965,7 +979,7 @@ ctrl_cmd_t * rpc_wait_and_parse_sync_resp(ctrl_cmd_t *app_req)
 
 	rx_buf = get_response(&rx_buf_len, app_req);
 	if (!rx_buf || !rx_buf_len) {
-		ESP_LOGE(TAG, "Response not received for [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
+		H_LOGE(TAG, "Response not received for [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
 		if (rx_buf) {
 			HOSTED_FREE(rx_buf);
 		}
@@ -992,14 +1006,14 @@ static void rpc_async_timeout_handler(void *arg)
 
 	if (!app_req || !app_req->rpc_rsp_cb) {
 	  if (!app_req)
-		ESP_LOGE(TAG, "NULL app_req");
+		H_LOGE(TAG, "NULL app_req");
 
 	  if (!app_req->rpc_rsp_cb)
-		ESP_LOGE(TAG, "NULL app_req->resp_cb");
+		H_LOGE(TAG, "NULL app_req->resp_cb");
 	  return;
 	}
 
-	ESP_LOGW(TAG, "ASYNC Timeout for req [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
+	H_LOGW(TAG, "ASYNC Timeout for req [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
 	rpc_rsp_cb_t func = app_req->rpc_rsp_cb;
 	uint32_t req_uid = app_req->uid;
 	ctrl_cmd_t *app_resp = NULL;
@@ -1030,8 +1044,8 @@ free_buffers:
 int rpc_send_req(ctrl_cmd_t *app_req)
 {
 	if (!app_req) {
-		ESP_LOGE(TAG, "Invalid param in rpc_send_req");
-		return FAILURE;
+		H_LOGE(TAG, "Invalid param in rpc_send_req");
+		return H_FAIL;
 	}
 
 
@@ -1041,20 +1055,20 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 		uid++;
 	app_req->uid = uid;
 
-	ESP_LOGD(TAG, "app_req msgid[0x%x] with uid %" PRIu32, app_req->msg_id, app_req->uid);
+	H_LOGD(TAG, "app_req msgid[0x%x] with uid %" PRIu32, app_req->msg_id, app_req->uid);
 	if (!app_req->rpc_rsp_cb) {
 		/* sync proc only */
 		if (set_sync_resp_sem(app_req)) {
-			ESP_LOGE(TAG, "could not set sync resp sem for req[0x%x]",app_req->msg_id);
+			H_LOGE(TAG, "could not set sync resp sem for req[0x%x]",app_req->msg_id);
 			goto fail_req;
 		}
 	}
 
 	app_req->msg_type = RPC_TYPE__Req;
 
-	ESP_LOGV(TAG, "queueing rpc tx q with uid %" PRIu32, app_req->uid);
-	if (g_h.funcs->_h_queue_item(rpc_tx_q, &app_req, HOSTED_BLOCK_MAX)) {
-	  ESP_LOGE(TAG, "Failed to new app rpc req[0x%x] in tx queue", app_req->msg_id);
+	H_LOGV(TAG, "queueing rpc tx q with uid %" PRIu32, app_req->uid);
+	if (h_queue_send(rpc_tx_q, &app_req, H_BLOCK_MAX)) {
+	  H_LOGE(TAG, "Failed to new app rpc req[0x%x] in tx queue", app_req->msg_id);
 	  goto fail_req;
 	}
 
@@ -1063,23 +1077,23 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 	/* TODO : commenting, Review again to avoid duable free */
 	//H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
 
-	return SUCCESS;
+	return H_OK;
 
 fail_req:
 	if (app_req->rx_sem)
-		g_h.funcs->_h_destroy_semaphore(app_req->rx_sem);
+		h_sem_delete(app_req->rx_sem);
 
 	H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
 	HOSTED_FREE(app_req);
 
-	return FAILURE;
+	return H_FAIL;
 }
 
 static int cleanup_sync_async_timer_table(void)
 {
 	for (int i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 		if (async_rsp_table[i].timer_hdl) {
-			g_h.funcs->_h_timer_stop(async_rsp_table[i].timer_hdl);
+			h_timer_stop(async_rsp_table[i].timer_hdl);
 		}
 		/* Free any pending async request structures */
 		if (async_rsp_table[i].app_req) {
@@ -1093,20 +1107,20 @@ static int cleanup_sync_async_timer_table(void)
 
 	for (int i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 		if (sync_rsp_table[i].sem) {
-			g_h.funcs->_h_get_semaphore(sync_rsp_table[i].sem, 0);
-			g_h.funcs->_h_destroy_semaphore(sync_rsp_table[i].sem);
+			h_sem_take(sync_rsp_table[i].sem, 0);
+			h_sem_delete(sync_rsp_table[i].sem);
 		}
 		sync_rsp_table[i].uid = 0;
 		sync_rsp_table[i].sem = NULL;
 	}
 
-	return SUCCESS;
+	return H_OK;
 }
 
 /* De-init hosted rpc lib */
 int rpc_core_deinit(void)
 {
-	int ret = SUCCESS;
+	int ret = H_OK;
 
 	if (is_rpc_lib_inactive())
 		return ret;
@@ -1117,12 +1131,12 @@ int rpc_core_deinit(void)
 	if (rpc_rx_q) {
 		esp_queue_elem_t elem;
 		/* Flush all remaining items and free their buffers */
-		while (g_h.funcs->_h_dequeue_item(rpc_rx_q, &elem, 0) == 0) {
+		while (h_queue_recv(rpc_rx_q, &elem, 0) == 0) {
 			if (elem.buf) {
-				g_h.funcs->_h_free(elem.buf);
+				h_free(elem.buf);
 			}
 		}
-		g_h.funcs->_h_destroy_queue(rpc_rx_q);
+		h_queue_delete(rpc_rx_q);
 		rpc_rx_q = NULL;
 	}
 
@@ -1130,19 +1144,19 @@ int rpc_core_deinit(void)
 	if (rpc_tx_q) {
 		void *buf_ptr;
 		/* Flush all remaining items and free their buffers */
-		while (g_h.funcs->_h_dequeue_item(rpc_tx_q, &buf_ptr, 0) == 0) {
+		while (h_queue_recv(rpc_tx_q, &buf_ptr, 0) == 0) {
 			if (buf_ptr) {
-				g_h.funcs->_h_free(buf_ptr);
+				h_free(buf_ptr);
 			}
 		}
-		g_h.funcs->_h_destroy_queue(rpc_tx_q);
+		h_queue_delete(rpc_tx_q);
 		rpc_tx_q = NULL;
 	}
 
 	if (rpc_tx_sem) {
-		if (g_h.funcs->_h_destroy_semaphore(rpc_tx_sem)) {
-			ret = FAILURE;
-			ESP_LOGE(TAG, "read sem tx deinit failed");
+		if (h_sem_delete(rpc_tx_sem)) {
+			ret = H_FAIL;
+			H_LOGE(TAG, "read sem tx deinit failed");
 		}
 		rpc_tx_sem = NULL;
 	}
@@ -1150,13 +1164,13 @@ int rpc_core_deinit(void)
 	cleanup_sync_async_timer_table();
 
 	if (cancel_rpc_threads()) {
-		ret = FAILURE;
-		ESP_LOGE(TAG, "cancel rpc rx thread failed");
+		ret = H_FAIL;
+		H_LOGE(TAG, "cancel rpc rx thread failed");
 	}
 
 	if (serial_deinit()) {
-		ret = FAILURE;
-		ESP_LOGE(TAG, "Serial de-init failed");
+		ret = H_FAIL;
+		H_LOGE(TAG, "Serial de-init failed");
 	}
 	return ret;
 }
@@ -1164,32 +1178,33 @@ int rpc_core_deinit(void)
 /* Init hosted rpc lib */
 int rpc_core_init(void)
 {
-	int ret = SUCCESS;
+	int ret = H_OK;
 
 	/* semaphore init */
-	rpc_tx_sem = g_h.funcs->_h_create_semaphore(MAX_SYNC_RPC_TRANSACTIONS +
-			MAX_ASYNC_RPC_TRANSACTIONS);
-	if (!rpc_tx_sem) {
-		ESP_LOGE(TAG, "sem init failed, exiting");
+	int sem_ret = h_sem_create(MAX_SYNC_RPC_TRANSACTIONS +
+			MAX_ASYNC_RPC_TRANSACTIONS, 0, &rpc_tx_sem);
+	if (sem_ret != H_OK || !rpc_tx_sem) {
+		H_LOGE(TAG, "sem init failed, exiting");
 		goto free_bufs;
 	}
 
 	/* Get semaphore for first time */
-	g_h.funcs->_h_get_semaphore(rpc_tx_sem, 0);
+	h_sem_take(rpc_tx_sem, 0);
 
 	/* serial init */
 	if (serial_init()) {
-		ESP_LOGE(TAG, "Failed to serial_init");
+		H_LOGE(TAG, "Failed to serial_init");
 		goto free_bufs;
 	}
 
-	rpc_rx_q = g_h.funcs->_h_create_queue(RPC_RX_QUEUE_SIZE,
-			sizeof(esp_queue_elem_t));
-
-	rpc_tx_q = g_h.funcs->_h_create_queue(RPC_TX_QUEUE_SIZE,
-			sizeof(void *));
-	if (!rpc_rx_q || !rpc_tx_q) {
-		ESP_LOGE(TAG, "Failed to create app rpc msg Q");
+	int q_ret = h_queue_create(RPC_RX_QUEUE_SIZE,
+			sizeof(esp_queue_elem_t), &rpc_rx_q);
+	if (q_ret == H_OK) {
+		q_ret = h_queue_create(RPC_TX_QUEUE_SIZE,
+				sizeof(void *), &rpc_tx_q);
+	}
+	if (q_ret != H_OK || !rpc_rx_q || !rpc_tx_q) {
+		H_LOGE(TAG, "Failed to create app rpc msg Q");
 		goto free_bufs;
 	}
 
@@ -1203,21 +1218,21 @@ int rpc_core_init(void)
 
 free_bufs:
 	rpc_core_deinit();
-	return FAILURE;
+	return H_FAIL;
 }
 
 int rpc_core_start(void)
 {
 	set_rpc_lib_state(RPC_LIB_STATE_READY);
-	return SUCCESS;
+	return H_OK;
 }
 
 int rpc_core_stop(void)
 {
 	if (is_rpc_lib_inactive())
-		return SUCCESS;
+		return H_OK;
 	set_rpc_lib_state(RPC_LIB_STATE_INIT);
-	return SUCCESS;
+	return H_OK;
 }
 
 /* ── Phase 1: h_rpc_send_request ──
@@ -1238,14 +1253,14 @@ h_err_t h_rpc_send_request(uint8_t msg_type, const uint8_t *req, uint16_t req_le
 
 	ret = h_serial_if_send(req, req_len);
 	if (ret != H_OK) {
-		ESP_LOGE(TAG, "h_serial_if_send failed: %d", ret);
+		H_LOGE(TAG, "h_serial_if_send failed: %d", ret);
 		return ret;
 	}
 
 	if (rsp && rsp_len) {
 		ret = h_serial_if_recv(rsp, rsp_len, timeout_ms);
 		if (ret != H_OK) {
-			ESP_LOGW(TAG, "h_serial_if_recv failed: %d", ret);
+			H_LOGW(TAG, "h_serial_if_recv failed: %d", ret);
 			return ret;
 		}
 	}

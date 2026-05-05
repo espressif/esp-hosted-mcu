@@ -23,6 +23,10 @@
 #define h_malloc_align(sz, al)          (g_h_osal.malloc_align(sz, al))
 #define h_free_align(p)                 (g_h_osal.free_align(p))
 
+/* Raw function pointers for callback slots and config structs. */
+#define h_free_fn                       (g_h_osal.free)
+#define h_memset_fn                     (g_h_osal.memset)
+
 #define h_thread_create(n,pr,st,fn,a,o) (g_h_osal.thread_create(n,pr,st,fn,a,o))
 #define h_thread_delete(t)              (g_h_osal.thread_delete(t))
 
@@ -57,6 +61,30 @@
 #define h_usleep(us)                    (g_h_osal.usleep(us))
 #define h_blocking_delay(n)             (g_h_osal.blocking_delay(n))
 
+/* ── Blocking Semantics ── */
+#ifndef H_BLOCK_FOREVER
+#define H_BLOCK_FOREVER                 (-1)
+#endif
+#ifndef H_BLOCK_MAX
+#define H_BLOCK_MAX                     H_BLOCK_FOREVER
+#endif
+
+/* ── Log Tag ── */
+#ifndef DEFINE_LOG_TAG
+#define DEFINE_LOG_TAG(sTr) static const char TAG[] = #sTr
+#endif
+
+/* ── Memory Alignment ── */
+#ifndef HOSTED_MEM_ALIGNMENT_4
+#define HOSTED_MEM_ALIGNMENT_4  4
+#endif
+#ifndef HOSTED_MEM_ALIGNMENT_32
+#define HOSTED_MEM_ALIGNMENT_32 32
+#endif
+#ifndef HOSTED_MEM_ALIGNMENT_64
+#define HOSTED_MEM_ALIGNMENT_64 64
+#endif
+
 /* ── Log ── */
 typedef enum {
     H_LOG_NONE = 0,
@@ -73,10 +101,21 @@ typedef enum {
 #define H_LOGD(tag, fmt, ...)  g_h_osal.log_write(H_LOG_DEBUG, tag, fmt, ##__VA_ARGS__)
 #define H_LOGV(tag, fmt, ...)  g_h_osal.log_write(H_LOG_VERBOSE, tag, fmt, ##__VA_ARGS__)
 
+#ifndef H_HEXLOGD
+#define H_HEXLOGD(tag, data, len, width)                                \
+    do {                                                                \
+        (void)(tag);                                                    \
+        (void)(data);                                                   \
+        (void)(len);                                                    \
+        (void)(width);                                                  \
+    } while (0)
+#endif
+
 /* ── Event ── */
 #define h_event_register(b, i, cb, ctx)  (g_h_event.register_handler(b, i, cb, ctx))
 #define h_event_unregister(b, i, cb)     (g_h_event.unregister_handler(b, i, cb))
 #define h_event_post(b, i, d, l)         (g_h_event.post(b, i, d, l))
+#define h_event_wifi_post(i, d, l, t)    (g_h_event.wifi_post(i, d, l, t))
 
 /* ── Transport ── */
 #define h_transport_init(o)              (g_h_transport.init(o))
@@ -99,6 +138,16 @@ typedef enum {
 
 #define h_netif_create(t, n)             (g_h_transport.netif_create(t, n))
 #define h_netif_destroy(t, n)            (g_h_transport.netif_destroy(t, n))
+
+/* ── Platform-specific extensions (optional in h_osal_contract_t) ── */
+#define h_restart_host() \
+    H_VTABLE_CALL(&g_h_osal, restart_host)
+
+#define h_hosted_init_hook() \
+    do { if (g_h_osal.hosted_init_hook) g_h_osal.hosted_init_hook(); } while(0)
+
+#define h_spi_hd_set_data_lines(n) \
+    H_VTABLE_CALL(&g_h_osal, spi_hd_set_data_lines, n)
 
 /* ── Safe Callback (for optional vtable functions) ── */
 #define H_VTABLE_CALL(ops, func, ...) \

@@ -20,7 +20,18 @@
 #include <esp_timer.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_system.h>   /* esp_restart(), esp_unregister_shutdown_handler */
+#include <esp_wifi.h>     /* esp_wifi_stop */
 #include <stdarg.h>
+
+/* Weak fallback for SPI-HD extension — overridden by real implementation
+ * in port_esp_hosted_host_spi_hd.c when CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE
+ * is enabled.  In all other transport configs the linker resolves to this stub. */
+__attribute__((weak)) int hosted_spi_hd_set_data_lines(uint32_t data_lines)
+{
+    (void)data_lines;
+    return H_ERR_NOT_SUP;
+}
 
 /* ──  Helpers ── */
 
@@ -263,6 +274,27 @@ static void h_log_write_adapter(int level, const char *tag,
     va_end(args);
 }
 
+/* ──  Optional OSAL Extension Adapters ── */
+
+static int h_restart_host_adapter(void)
+{
+    /* Preserve legacy shutdown-cleanup behaviour from
+     * port_esp_hosted_host_os.c:hosted_restart_host() */
+    esp_unregister_shutdown_handler((shutdown_handler_t)esp_wifi_stop);
+    esp_restart();
+    return 0;  /* never reached */
+}
+
+static void h_hosted_init_hook_adapter(void)
+{
+    /* Intentionally empty — port-specific init done in h_port_init() */
+}
+
+static int h_spi_hd_set_data_lines_adapter(uint32_t data_lines)
+{
+    return hosted_spi_hd_set_data_lines(data_lines);
+}
+
 /* ──  Global OSAL Contract Instance ── */
 
 const h_osal_contract_t g_h_osal = {
@@ -319,4 +351,9 @@ const h_osal_contract_t g_h_osal = {
 
     /* Logging */
     .log_write         = h_log_write_adapter,
+
+    /* Optional extensions (bridged to legacy port during transition) */
+    .restart_host      = h_restart_host_adapter,
+    .hosted_init_hook  = h_hosted_init_hook_adapter,
+    .spi_hd_set_data_lines = h_spi_hd_set_data_lines_adapter,
 };

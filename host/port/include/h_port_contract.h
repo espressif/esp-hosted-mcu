@@ -75,6 +75,11 @@ typedef struct {
 
     /* Logging (required) */
     void (*log_write)(int level, const char *tag, const char *fmt, ...);
+
+    /* Platform-specific extensions (optional — port may leave NULL) */
+    int  (*restart_host)(void);
+    void (*hosted_init_hook)(void);
+    int  (*spi_hd_set_data_lines)(uint32_t data_lines);
 } h_osal_contract_t;
 
 /* ── Event Contract ── */
@@ -85,6 +90,12 @@ typedef struct {
                               h_event_handler_t handler);
     int (*post)(h_event_base_t base, int32_t event_id,
                 void *event_data, size_t event_data_size);
+
+    /* Convenience shortcut for Wi-Fi events (bridges to esp_event_post(WIFI_EVENT,…))
+     * timeout_ms < 0  → block forever (maps to portMAX_DELAY on FreeRTOS)
+     * timeout_ms >= 0 → milliseconds to wait                          */
+    int (*wifi_post)(int32_t event_id, void *event_data,
+                     size_t event_data_size, int32_t timeout_ms);
 } h_event_contract_t;
 
 /* ── Transport HAL Contract ──

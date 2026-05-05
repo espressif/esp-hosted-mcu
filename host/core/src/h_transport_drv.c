@@ -21,16 +21,17 @@
 #include "stats.h"
 #include "errno.h"
 #include "hci_drv.h"
-#include "port_esp_hosted_host_config.h"
-#include "port_esp_hosted_host_log.h"
+#include "h_config.h"
 #include "esp_hosted_power_save.h"
 
 #include "mempool.h"
 #include "transport_util.h"
 
 #include "esp_hosted_cli.h"
-#include "rpc_wrap.h"
 // Was: #include "h_priv_event.h" → see h_priv_event.h
+
+/* Avoid dragging legacy wifi-config headers into core just to start RPC. */
+int rpc_start(void);
 
 /**
  * @brief  Slave capabilities are parsed
@@ -68,7 +69,7 @@ static void *init_timeout_timer = NULL;
 static void init_timeout_cb(void *arg)
 {
 	H_LOGE(TAG, "Init event not received within timeout, Resetting myself");
-	g_h.funcs->_h_restart_host();
+	h_restart_host();
 }
 #endif
 
@@ -132,7 +133,7 @@ h_err_t teardown_transport(void)
 	#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and cleanup init timeout timer if still active */
 	if (init_timeout_timer) {
-		g_h.funcs->_h_timer_stop(init_timeout_timer);
+		h_timer_stop(init_timeout_timer);
 		init_timeout_timer = NULL;
 	}
 	#endif
@@ -152,7 +153,7 @@ h_err_t teardown_transport(void)
 
 h_err_t setup_transport(void(*esp_hosted_up_cb)(void))
 {
-	g_h.funcs->_h_hosted_init_hook();
+	h_hosted_init_hook();
 	transport_drv_init();
 	transport_esp_hosted_up_cb = esp_hosted_up_cb;
 
@@ -168,10 +169,15 @@ h_err_t transport_drv_reconfigure(void)
 #if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Start init timeout timer if not already started */
 	if (!init_timeout_timer) {
-		init_timeout_timer = g_h.funcs->_h_timer_start("slave_unresponsive_timer", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS, H_TIMER_TYPE_ONESHOT, init_timeout_cb, NULL);
-		if (!init_timeout_timer) {
+		int timer_ret = h_timer_create("slave_unresponsive_timer", &init_timeout_timer);
+		if (timer_ret != H_OK || !init_timeout_timer) {
 			H_LOGE(TAG, "Failed to create init timeout timer");
-			return ESP_FAIL;
+			return H_FAIL;
+		}
+		timer_ret = h_timer_start(init_timeout_timer, H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS, false, init_timeout_cb, NULL);
+		if (timer_ret != H_OK) {
+			H_LOGE(TAG, "Failed to start init timeout timer");
+			return H_FAIL;
 		}
 		H_LOGI(TAG, "Started host communication init timer of %u millisec", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS);
 	}
@@ -180,7 +186,7 @@ h_err_t transport_drv_reconfigure(void)
 	int retry_power_save_recover = 5;
 	if (esp_hosted_woke_from_power_save()) {
 		H_LOGI(TAG, "Waiting for power save to be off");
-		g_h.funcs->_h_msleep(700);
+		h_msleep(700);
 
 		while (retry_power_save_recover) {
 			if (is_transport_tx_ready()) {
@@ -195,7 +201,7 @@ h_err_t transport_drv_reconfigure(void)
 	if (!is_transport_tx_ready()) {
 		if (H_OK != ensure_slave_bus_ready(bus_handle)) {
 			H_LOGE(TAG, "ensure_slave_bus_ready failed");
-			return ESP_FAIL;
+			return H_FAIL;
 		}
 		transport_state = TRANSPORT_RX_ACTIVE;
 		H_LOGI(TAG, "Waiting for esp_hosted slave to be ready");
@@ -206,14 +212,14 @@ h_err_t transport_drv_reconfigure(void)
 					H_LOGI(TAG, "Not able to connect with ESP-Hosted slave device");
 					if (H_OK != ensure_slave_bus_ready(bus_handle)) {
 						H_LOGE(TAG, "ensure_slave_bus_ready failed");
-						return ESP_FAIL;
+						return H_FAIL;
 					}
 				}
 			} else {
 				H_LOGW(TAG, "Failed to get ESP_Hosted slave transport up");
-				return ESP_FAIL;
+				return H_FAIL;
 			}
-			g_h.funcs->_h_msleep(200);
+			h_msleep(200);
 		}
 	} else {
 		H_LOGI(TAG, "Transport is already up");
@@ -226,7 +232,7 @@ h_err_t transport_drv_reconfigure(void)
 h_err_t transport_drv_remove_channel(transport_channel_t *channel)
 {
 	if (!channel)
-		return ESP_FAIL;
+		return H_FAIL;
 
 	switch (channel->if_type) {
 	case ESP_AP_IF:
@@ -277,8 +283,8 @@ static hosted_mempool_t * transport_drv_common_mempool_create(void)
 			.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
 			.malloc = transport_util_malloc,
 			.calloc = transport_util_calloc,
-			.memset = g_h.funcs->_h_memset,
-			.free   = g_h.funcs->_h_free,
+				.memset = h_memset_fn,
+				.free   = h_free_fn,
 		};
 		mempool_common = hosted_mempool_create(&config);
 		assert(mempool_common);
@@ -364,7 +370,7 @@ static h_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 		return H_ERR_NO_MEM;
 #endif
 	}
-	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
+	h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
 	return esp_hosted_tx(ESP_STA_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, copy_buff, transport_sta_free_cb, 0);
 }
@@ -399,7 +405,7 @@ static h_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 		return H_ERR_NO_MEM;
 #endif
 	}
-	g_h.funcs->_h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
+	h_memcpy(copy_buff+H_ESP_PAYLOAD_HEADER_OFFSET, buffer, len);
 
 	return esp_hosted_tx(ESP_AP_IF, 0, copy_buff, len, H_BUFF_ZEROCOPY, copy_buff, transport_ap_free_cb, 0);
 }
@@ -450,7 +456,7 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 	}
 
 
-	chan_arr[if_type] = g_h.funcs->_h_calloc(sizeof(transport_channel_t), 1);
+	chan_arr[if_type] = h_calloc(sizeof(transport_channel_t), 1);
 	assert(chan_arr[if_type]);
 	channel = chan_arr[if_type];
 
@@ -635,7 +641,7 @@ static h_err_t get_chip_str_from_id(int chip_id, char* chip_str)
 	default:
 		H_LOGW(TAG, "Unsupported chip id: %u", chip_id);
 		strcpy(chip_str, "unsupported");
-		ret = ESP_FAIL;
+		ret = H_FAIL;
 		break;
 	}
 	return ret;
@@ -676,7 +682,7 @@ static void verify_host_config_for_slave(uint8_t chip_type)
 		char exp_str[20] = {0};
 		get_chip_str_from_id(exp_chip_id, exp_str);
 		H_LOGE(TAG, "Identified slave [%s] != Expected [%s]\n\t\trun 'idf.py menuconfig' at host to reselect the slave?\n\t\tAborting.. ", slave_str, exp_str);
-		g_h.funcs->_h_sleep(10);
+		h_msleep(10);
 		assert(0!=0);
 	} else {
 		H_LOGI(TAG, "Identified slave [%s]", slave_str);
@@ -729,7 +735,7 @@ h_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	uint16_t len = 0;
 	uint8_t *sendbuf = NULL;
 
-	sendbuf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(256, 64), MEMPOOL_ALIGNMENT_BYTES);
+	sendbuf = h_malloc_align(MEMPOOL_ALIGNED(256, 64), MEMPOOL_ALIGNMENT_BYTES);
 	assert(sendbuf);
 
 	/* Populate event data */
@@ -779,7 +785,7 @@ h_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	/* payload len = Event len + sizeof(event type) + sizeof(event len) */
 	len += 2;
 
-	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, sendbuf, g_h.funcs->_h_free, 0);
+	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, sendbuf, h_free_fn, 0);
 }
 
 static int transport_delayed_init(void)
@@ -806,12 +812,12 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	h_err_t ret;
 
 	if (!evt_buf)
-		return ESP_FAIL;
+		return H_FAIL;
 
 #if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and delete the init timeout timer since we received the init event */
 	if (init_timeout_timer) {
-		g_h.funcs->_h_timer_stop(init_timeout_timer);
+		h_timer_stop(init_timeout_timer);
 		init_timeout_timer = NULL;
 		H_LOGI(TAG, "Init event received within timeout, cleared timer");
 	}
@@ -914,22 +920,22 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 			if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_4_DATA_LINES) {
 				// slave configured to use 4 bits
 				H_LOGI(TAG, "configure SPI_HD interface to use 4 data lines");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_4_DATA_LINES);
+				h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_4_DATA_LINES);
 			} else {
 				// slave configured to use 2 bits
 				H_LOGI(TAG, "configure SPI_HD interface to use 2 data lines");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
+				h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
 			}
 		} else {
 			// SPI_HD on host is configured to use 2 data bits
 			if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_4_DATA_LINES) {
 				// slave configured to use 4 bits
 				H_LOGI(TAG, "SPI_HD on slave uses 4 data lines but Host is configure to use 2 data lines");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
+				h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
 			} else {
 				// slave configured to use 2 bits
 				H_LOGI(TAG, "configure SPI_HD interface to use 2 data lines");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
+				h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
 			}
 		}
 #endif

@@ -7,12 +7,11 @@
 #include "rpc_core.h"
 #include "rpc_slave_if.h"
 #include "esp_hosted_rpc.h"
-#include "port_esp_hosted_host_wifi_config.h"
+#include "h_config.h"
+#include "h_wrapper.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_bitmasks.h"
 // REMOVED: esp_idf_version.h
-#include "port_esp_hosted_host_log.h"
-#include "esp_hosted_os_abstraction.h"
 
 static const char *TAG = "rpc_req";
 
@@ -23,11 +22,11 @@ static const char *TAG = "rpc_req";
 
 #define RPC_ALLOC_ASSIGN(TyPe,MsG_StRuCt,InItFuNc)                            \
     TyPe *req_payload = (TyPe *)                                              \
-        g_h.funcs->_h_calloc(1, sizeof(TyPe));                                \
+        h_calloc(1, sizeof(TyPe));                                \
     if (!req_payload) {                                                       \
-        ESP_LOGE(TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
-        *failure_status = RPC_ERR_MEMORY_FAILURE;                              \
-		return FAILURE;                                                       \
+        H_LOGE(TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
+		*failure_status = RPC_ERR_MEMORY_FAILURE;                             \
+		return H_FAIL;                                                       \
     }                                                                         \
     req->MsG_StRuCt = req_payload;                                             \
 	InItFuNc(req_payload);                                                    \
@@ -35,11 +34,11 @@ static const char *TAG = "rpc_req";
 
 //TODO: How this is different in slave_control.c
 #define RPC_ALLOC_ELEMENT(TyPe,MsG_StRuCt,InIt_FuN) {                         \
-    TyPe *NeW_AllocN = (TyPe *) g_h.funcs->_h_calloc(1, sizeof(TyPe));        \
+    TyPe *NeW_AllocN = (TyPe *) h_calloc(1, sizeof(TyPe));        \
     if (!NeW_AllocN) {                                                        \
-        ESP_LOGE(TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
-        *failure_status = RPC_ERR_MEMORY_FAILURE;                              \
-		return FAILURE;                                                       \
+        H_LOGE(TAG, "Failed to allocate memory for req->%s\n",#MsG_StRuCt);     \
+		*failure_status = RPC_ERR_MEMORY_FAILURE;                             \
+		return H_FAIL;                                                       \
     }                                                                         \
     ADD_RPC_BUFF_TO_FREE_LATER((uint8_t*)NeW_AllocN);                         \
     MsG_StRuCt = NeW_AllocN;                                                  \
@@ -133,9 +132,9 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 				rpc__req__set_mode__init);
 
 		if ((p->mode < WIFI_MODE_NULL) || (p->mode >= WIFI_MODE_MAX)) {
-			ESP_LOGE(TAG, "Invalid wifi mode\n");
+			H_LOGE(TAG, "Invalid wifi mode\n");
 			*failure_status = RPC_ERR_INCORRECT_ARG;
-			return FAILURE;
+			return H_FAIL;
 		}
 		req_payload->mode = p->mode;
 		break;
@@ -152,9 +151,9 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 				rpc__req__otawrite__init);
 
 		if (!p->ota_data || (p->ota_data_len == 0)) {
-			ESP_LOGE(TAG, "Invalid parameter\n");
+			H_LOGE(TAG, "Invalid parameter\n");
 			*failure_status = RPC_ERR_INCORRECT_ARG;
-			return FAILURE;
+			return H_FAIL;
 		}
 
 		req_payload->ota_data.data = p->ota_data;
@@ -172,11 +171,11 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		req_payload->enable = app_req->u.e_heartbeat.enable;
 		req_payload->duration = app_req->u.e_heartbeat.duration;
 		if (req_payload->enable) {
-			ESP_LOGD(TAG, "Enable heartbeat with duration %ld", (long int)req_payload->duration);
+			H_LOGD(TAG, "Enable heartbeat with duration %ld", (long int)req_payload->duration);
 			if (CALLBACK_AVAILABLE != is_event_callback_registered(RPC_ID__Event_Heartbeat))
-				ESP_LOGD(TAG, "Note: ** Subscribe heartbeat event to get notification **");
+				H_LOGD(TAG, "Note: ** Subscribe heartbeat event to get notification **");
 		} else {
-			ESP_LOGD(TAG, "Disable Heartbeat");
+			H_LOGD(TAG, "Disable Heartbeat");
 		}
 		break;
 	} case RPC_ID__Req_WifiInit: {
@@ -392,7 +391,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 #endif
 			break;
         } default: {
-            ESP_LOGE(TAG, "unexpected wifi iface [%u]\n", p_a->iface);
+            H_LOGE(TAG, "unexpected wifi iface [%u]\n", p_a->iface);
 			break;
         }
 
@@ -412,7 +411,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 
 			RPC_ALLOC_ELEMENT(WifiScanTime , req_payload->config->scan_time, wifi_scan_time__init);
 			RPC_ALLOC_ELEMENT(WifiActiveScanTime, req_payload->config->scan_time->active, wifi_active_scan_time__init);
-			ESP_LOGD(TAG, "scan start4\n");
+			H_LOGD(TAG, "scan start4\n");
 
 			WifiScanConfig *p_c = req_payload->config;
 			WifiScanTime *p_c_st = NULL;
@@ -438,7 +437,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 
 			req_payload->config_set = 1;
 		}
-		ESP_LOGI(TAG, "Scan start Req\n");
+		H_LOGI(TAG, "Scan start Req\n");
 
 		break;
 
@@ -948,11 +947,11 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 #endif
 	} default: {
 		*failure_status = RPC_ERR_UNSUPPORTED_MSG;
-		ESP_LOGE(TAG, "Unsupported RPC Req[%u]",req->msg_id);
-		return FAILURE;
+		H_LOGE(TAG, "Unsupported RPC Req[%u]",req->msg_id);
+		return H_FAIL;
 		break;
 	}
 
 	} /* switch */
-	return SUCCESS;
+	return H_OK;
 }

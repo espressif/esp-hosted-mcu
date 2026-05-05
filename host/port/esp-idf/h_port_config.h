@@ -4,6 +4,8 @@
 #ifndef H_PORT_CONFIG_ESPIDF_H
 #define H_PORT_CONFIG_ESPIDF_H
 
+#include "esp_idf_version.h"
+
 /* ── Transport — selected by Kconfig at build time ── */
 #if defined(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
   #define H_TRANSPORT_IN_USE  H_TRANSPORT_SPI
@@ -42,5 +44,27 @@
 #define H_FEATURE_BLUETOOTH  0
 #define H_FEATURE_OTA        0
 #define H_FEATURE_NETSPLIT   0
+
+/* ── ESP-IDF version-gated Wi-Fi features (replacing
+ *   port_esp_hosted_host_wifi_config.h in core layer code) ── */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+  #define H_PRESENT_IN_ESP_IDF_5_4_0      1
+#else
+  #define H_PRESENT_IN_ESP_IDF_5_4_0      0
+#endif
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+  #define H_WIFI_NEW_RESERVED_FIELD_NAMES 1
+  #define H_PRESENT_IN_ESP_IDF_5_5_0      1
+#else
+  #define H_WIFI_NEW_RESERVED_FIELD_NAMES 0
+  #define H_PRESENT_IN_ESP_IDF_5_5_0      0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_DECODE_WIFI_RESERVED_FIELD
+  #define H_DECODE_WIFI_RESERVED_FIELD 1
+#else
+  #define H_DECODE_WIFI_RESERVED_FIELD 0
+#endif
 
 #endif /* H_PORT_CONFIG_ESPIDF_H */

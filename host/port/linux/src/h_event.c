@@ -70,10 +70,18 @@ static int linux_event_post(h_event_base_t base, int32_t event_id,
     return H_OK; /* No handler is not an error */
 }
 
+static int linux_event_wifi_post(int32_t event_id, void *event_data,
+                                 size_t event_data_size, int32_t timeout_ms)
+{
+    (void)timeout_ms; /* Linux mock has no real timeout semantics */
+    return linux_event_post(H_EVENT_WIFI, event_id, event_data, event_data_size);
+}
+
 const h_event_contract_t g_h_event = {
     .register_handler   = linux_event_register,
     .unregister_handler = linux_event_unregister,
     .post               = linux_event_post,
+    .wifi_post          = linux_event_wifi_post,
 };
 
 /* ── Port Init/Deinit ── */

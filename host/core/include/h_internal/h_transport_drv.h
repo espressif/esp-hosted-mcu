@@ -129,8 +129,6 @@ uint8_t is_transport_tx_ready(void);
 #define H_BUFF_NO_ZEROCOPY 0
 #define H_BUFF_ZEROCOPY 1
 
-#define H_DEFLT_FREE_FUNC g_h.funcs->_h_free
-
 #define MAX_RETRY_TRANSPORT_ACTIVE 100
 
 
