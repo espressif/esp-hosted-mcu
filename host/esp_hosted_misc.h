@@ -8,6 +8,7 @@
 #define __ESP_HOSTED_MISC_H__
 
 #include <stdbool.h>
+#include "esp_err.h"
 #include "esp_mac.h"
 
 #include "esp_hosted_misc_types.h"

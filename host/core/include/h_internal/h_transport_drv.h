@@ -5,8 +5,8 @@
  */
 
 /** prevent recursive inclusion **/
-#ifndef __TRANSPORT_DRV_H
-#define __TRANSPORT_DRV_H
+#ifndef H_TRANSPORT_DRV_H
+#define H_TRANSPORT_DRV_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +25,18 @@ extern "C" {
 
 /* ESP in sdkconfig has CONFIG_IDF_FIRMWARE_CHIP_ID entry.
  * supported values of CONFIG_IDF_FIRMWARE_CHIP_ID are - */
+
+#define ESP_PRIV_FIRMWARE_CHIP_UNRECOGNIZED (0xff)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32        (0x0)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32S2      (0x2)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32C3      (0x5)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32S3      (0x9)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32C2      (0xC)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32C6      (0xD)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32C5      (0x17)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32C61     (0x14)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32H2      (0x10)
+#define ESP_PRIV_FIRMWARE_CHIP_ESP32H4      (0x1C)
 
 #define MAX_SPI_BUFFER_SIZE               ESP_TRANSPORT_SPI_MAX_BUF_SIZE
 #define MAX_SDIO_BUFFER_SIZE              ESP_TRANSPORT_SDIO_MAX_BUF_SIZE
@@ -149,4 +161,4 @@ int bus_inform_slave_host_power_save_stop(void);
 }
 #endif
 
-#endif
+#endif /* H_TRANSPORT_DRV_H */

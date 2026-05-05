@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "rpc_core.h"
+#include "h_rpc_core.h"
 #include "rpc_slave_if.h"
 #include "esp_hosted_rpc.h"
 #include "h_config.h"

@@ -13,7 +13,9 @@ extern "C" {
 #endif
 
 /** includes **/
+#ifndef H_TRANSPORT_DRV_H
 #include "transport_drv.h"
+#endif
 #include "port_esp_hosted_host_os.h"
 
 struct serial_ll_operations;

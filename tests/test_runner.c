@@ -16,6 +16,21 @@ extern void test_event_register_and_post(void);
 extern void test_event_multiple_handlers(void);
 extern void test_transport_init_spi(void);
 extern void test_transport_mock_transfer(void);
+extern void test_transport_drv_state_ready(void);
+extern void test_teardown_transport_safe(void);
+extern void test_transport_drv_remove_channel_null(void);
+extern void test_process_priv_communication_null(void);
+/* RPC bridge tests */
+extern void test_rpc_parse_rsp_null(void);
+extern void test_rpc_parse_rsp_base(void);
+extern void test_rpc_parse_evt_null(void);
+extern void test_rpc_parse_evt_unknown(void);
+extern void test_compose_rpc_req_simple(void);
+extern void test_serial_drv_open_close(void);
+extern void test_serial_drv_null_args(void);
+extern void test_rpc_platform_deinit_safe(void);
+extern void test_rpc_init_start_stop_deinit(void);
+extern void test_rpc_copy_wifi_sta_config_basic(void);
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -41,5 +56,20 @@ int main(void)
     /* Transport tests */
     RUN_TEST(test_transport_init_spi);
     RUN_TEST(test_transport_mock_transfer);
+    RUN_TEST(test_transport_drv_state_ready);
+    RUN_TEST(test_teardown_transport_safe);
+    RUN_TEST(test_transport_drv_remove_channel_null);
+    RUN_TEST(test_process_priv_communication_null);
+    /* RPC bridge contract tests */
+    RUN_TEST(test_rpc_parse_rsp_null);
+    RUN_TEST(test_rpc_parse_rsp_base);
+    RUN_TEST(test_rpc_parse_evt_null);
+    RUN_TEST(test_rpc_parse_evt_unknown);
+    RUN_TEST(test_compose_rpc_req_simple);
+    RUN_TEST(test_serial_drv_open_close);
+    RUN_TEST(test_serial_drv_null_args);
+    RUN_TEST(test_rpc_platform_deinit_safe);
+    RUN_TEST(test_rpc_init_start_stop_deinit);
+    RUN_TEST(test_rpc_copy_wifi_sta_config_basic);
     return UNITY_END();
 }
