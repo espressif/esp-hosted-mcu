@@ -66,6 +66,7 @@ void h_wifi_adapt_init_config_to_native(const h_wifi_init_config_t *src, wifi_in
     dst->wifi_task_core_id  = src->wifi_task_core_id;
     dst->feature_caps       = src->feature_caps;    /* 矩阵:双向但有截断,uint32_t -> uint64_t 零扩展 */
     dst->magic              = src->magic;
+    dst->mgmt_sbuf_num      = src->sta_mgmt_buf;    /* 语义重命名:sta_mgmt_buf -> mgmt_sbuf_num */
     /* tx_buf_type / rx_mgmt_buf_type / rx_mgmt_buf_num / amsdu_tx_enable /
        beacon_max_len / sta_disconnected_pm / espnow_max_encrypt_num /
        tx_hetb_queue_num / dump_hesigb_enable — 矩阵:单向,已由 memset 补 0 */
@@ -89,6 +90,7 @@ void h_wifi_adapt_init_config_to_host(const wifi_init_config_t *src, h_wifi_init
     /* 矩阵:feature_caps 双向但有截断,native uint64_t -> portable uint32_t */
     dst->feature_caps       = (uint32_t)src->feature_caps;
     dst->magic              = src->magic;
+    dst->sta_mgmt_buf       = src->mgmt_sbuf_num;   /* 语义重命名:mgmt_sbuf_num -> sta_mgmt_buf */
     /* 缺失字段:已在 memset 中置 0,符合矩阵"单向丢弃"策略 */
 }
 
@@ -188,6 +190,7 @@ void h_wifi_adapt_ap_record_to_native(const h_wifi_ap_record_t *src, wifi_ap_rec
     dst->pairwise_cipher = h_wifi_adapt_cipher_to_native(src->pairwise_cipher);
     dst->group_cipher    = h_wifi_adapt_cipher_to_native(src->group_cipher);
     dst->beacon_interval = src->beacon_interval;
+    memcpy(dst->country.cc, src->country, sizeof(dst->country.cc));
     dst->phy_11b = src->phy_11b;
     dst->phy_11g = src->phy_11g;
     dst->phy_11n = src->phy_11n;
@@ -200,6 +203,7 @@ void h_wifi_adapt_ap_record_to_host(const wifi_ap_record_t *src, h_wifi_ap_recor
     memset(dst, 0, sizeof(*dst));
     memcpy(dst->bssid, src->bssid, sizeof(dst->bssid));
     memcpy(dst->ssid,  src->ssid,  sizeof(dst->ssid));
+    dst->ssid_len = strnlen((char*)src->ssid, sizeof(src->ssid) - 1);
     dst->primary_channel  = src->primary;
     dst->second_channel   = src->second;
     dst->rssi             = src->rssi;
@@ -207,6 +211,8 @@ void h_wifi_adapt_ap_record_to_host(const wifi_ap_record_t *src, h_wifi_ap_recor
     dst->pairwise_cipher  = h_wifi_adapt_cipher_to_host(src->pairwise_cipher);
     dst->group_cipher     = h_wifi_adapt_cipher_to_host(src->group_cipher);
     dst->beacon_interval  = src->beacon_interval;
+    memcpy(dst->country, src->country.cc, sizeof(dst->country));
+    dst->country_len = 2;  /* ISO 3166-1 alpha-2 */
     dst->phy_11b = src->phy_11b;
     dst->phy_11g = src->phy_11g;
     dst->phy_11n = src->phy_11n;
@@ -225,6 +231,7 @@ void h_wifi_adapt_sta_list_to_native(const h_wifi_sta_list_t *src, wifi_sta_list
         memcpy(dst->sta[i].mac, src->sta[i].mac, sizeof(dst->sta[i].mac));
         dst->sta[i].rssi = src->sta[i].rssi;
     }
+    dst->num = n;
 }
 
 void h_wifi_adapt_sta_list_to_host(const wifi_sta_list_t *src, h_wifi_sta_list_t *dst)
