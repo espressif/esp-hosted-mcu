@@ -7,9 +7,11 @@
 
 #include "h_port_contract.h"
 
+#include <freertos/FreeRTOS.h>  /* pdMS_TO_TICKS */
 #include <esp_event.h>
-#include <esp_wifi.h>      /* WIFI_EVENT */
-#include <esp_netif.h>     /* IP_EVENT */
+#include <esp_wifi.h>           /* WIFI_EVENT */
+#include <esp_netif.h>          /* IP_EVENT */
+#include "esp_hosted_event.h"
 
 /* ──  Helpers ── */
 
@@ -31,7 +33,7 @@ static esp_event_base_t h_base_to_esp(h_event_base_t base)
     switch (base) {
         case H_EVENT_WIFI:   return WIFI_EVENT;
         case H_EVENT_IP:     return IP_EVENT;
-        case H_EVENT_HOSTED: return ESP_EVENT_ANY_BASE; /* best-effort */
+        case H_EVENT_HOSTED: return ESP_HOSTED_EVENT;
         default:             return NULL;
     }
 }
@@ -92,10 +94,27 @@ static int h_event_post_adapter(h_event_base_t base, int32_t event_id,
     return esp_err_to_h_err(ret);
 }
 
+static int h_event_wifi_post_adapter(int32_t event_id, void *event_data,
+                                     size_t event_data_size,
+                                     int32_t timeout_ms)
+{
+    TickType_t ticks = (timeout_ms < 0)
+                           ? portMAX_DELAY
+                           : pdMS_TO_TICKS((uint32_t)timeout_ms);
+
+    esp_err_t ret = esp_event_post(
+        WIFI_EVENT, event_id,
+        event_data, event_data_size,
+        ticks);
+
+    return esp_err_to_h_err(ret);
+}
+
 /* ──  Global Event Contract Instance ── */
 
 const h_event_contract_t g_h_event = {
     .register_handler   = h_event_register_adapter,
     .unregister_handler = h_event_unregister_adapter,
     .post               = h_event_post_adapter,
+    .wifi_post          = h_event_wifi_post_adapter,
 };

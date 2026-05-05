@@ -100,8 +100,8 @@ esp_err_t rpc_bt_controller_deinit(bool mem_release);
 esp_err_t rpc_bt_controller_enable(void);
 esp_err_t rpc_bt_controller_disable(void);
 
-esp_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, esp_mac_type_t type);
-esp_err_t rpc_iface_mac_addr_len_get(size_t *len, esp_mac_type_t type);
+h_err_t rpc_iface_mac_addr_set_get(bool set, uint8_t *mac, size_t mac_len, uint32_t type);
+h_err_t rpc_iface_mac_addr_len_get(size_t *len, uint32_t type);
 
 esp_err_t rpc_iface_get_coprocessor_app_desc(esp_hosted_app_desc_t *app_desc);
 esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec);

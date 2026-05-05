@@ -952,7 +952,7 @@ size_t esp_hosted_iface_mac_addr_len_get(esp_mac_type_t type)
 	size_t len;
 
 	check_transport_up();
-	if (ESP_OK != rpc_iface_mac_addr_len_get(&len, type)) {
+	if (H_OK != rpc_iface_mac_addr_len_get(&len, type)) {
 		return 0;
 	} else {
 		return len;

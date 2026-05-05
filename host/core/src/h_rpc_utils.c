@@ -8,17 +8,14 @@
 #include "rpc_utils.h"
 #include "rpc_core.h"
 #include "esp_hosted_bitmasks.h"
-#include "esp_hosted_os_abstraction.h"
 
-#include "port_esp_hosted_host_wifi_config.h"
-#include "port_esp_hosted_host_log.h"
+#include "h_config.h"
 
-// REMOVED: esp_log.h
 static const char *TAG = "rpc_utils";
 
 #define RPC_UTILS_COPY_BYTES(dst,src) {                                         \
     if (src.data && src.len) {                                                \
-        g_h.funcs->_h_memcpy(dst, src.data, src.len);                         \
+        h_memcpy(dst, src.data, src.len);                                    \
     }                                                                         \
 }
 
@@ -27,7 +24,7 @@ h_err_t rpc_copy_wifi_sta_config(wifi_sta_config_t *dst, WifiStaConfig *src)
 	wifi_sta_config_t * p_a_sta = dst;
 	WifiStaConfig * p_c_sta = src;
 
-	ESP_LOGW(TAG, "Event: SSID %s", p_c_sta->ssid.data);
+	H_LOGW(TAG, "Event: SSID %s", p_c_sta->ssid.data);
 	RPC_UTILS_COPY_BYTES(p_a_sta->ssid, p_c_sta->ssid);
 	RPC_UTILS_COPY_BYTES(p_a_sta->password, p_c_sta->password);
 	p_a_sta->scan_method = p_c_sta->scan_method;

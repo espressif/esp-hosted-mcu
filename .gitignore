@@ -5,6 +5,10 @@ sdkconfig
 sdkconfig.old
 .worktrees/
 
+# Ad-hoc compilation artifacts
+*.o
+*.obj
+
 # macOS metadata
 .DS_Store
 .DS_Store?

@@ -6,15 +6,15 @@
 
 #include "h_wrapper.h"
 #include "esp_hosted_os_abstraction.h"
-#include "port_esp_hosted_host_os.h"
 #include "transport_util.h"
+#include <stdlib.h>
 
 void * transport_util_malloc(size_t size, hosted_mem_cap_t cap)
 {
 	if (cap == HOSTED_MEM_CAP_DMA) {
-		return g_h.funcs->_h_malloc_align(size, HOSTED_MEM_ALIGNMENT_64);
+		return h_malloc_align(size, HOSTED_MEM_ALIGNMENT_64);
 	} else {
-		return g_h.funcs->_h_malloc(size);
+		return h_malloc(size);
 	}
 }
 
