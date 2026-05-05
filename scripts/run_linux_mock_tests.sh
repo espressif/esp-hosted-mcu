@@ -35,6 +35,22 @@ TEST_SRCS="tests/test_runner.c tests/test_osal.c tests/test_event.c tests/test_t
 
 INC_FLAGS="-I host/core/include/h_public -I host/core/include/h_internal -I host/port/linux -I host/port/include -I tests/unity"
 
+# ── 编译前打印 testable 集合 ──
+echo "── testable 集合(host/core/src/ 总文件数 14)──"
+TESTABLE_CORE=(
+    host/core/src/h_init.c
+    host/core/src/h_event.c
+    host/core/src/h_serial_if.c
+    host/core/src/h_rpc_core.c   # H_BUILD_TESTS 测试专用分支,见头部说明
+)
+for f in "${TESTABLE_CORE[@]}"; do
+    echo "  ✓ $f"
+done
+echo "  编译覆盖率(含测试专用分支): ${#TESTABLE_CORE[@]}/14 = $(awk "BEGIN { printf \"%.0f%%\", ${#TESTABLE_CORE[@]} / 14 * 100 }")"
+echo "  真实生产路径覆盖率: ≤ 3/14(h_rpc_core.c 走测试专用分支不计入)"
+echo "(规范定义见 docs/felix/9.Host通用化实施总路线图.md §三个口径)"
+echo ""
+
 # ── Build test executable (ASAN + UBSAN) ──
 echo "=== Building test_runner (ASAN + UBSAN) ==="
 gcc -o build/test_runner \
