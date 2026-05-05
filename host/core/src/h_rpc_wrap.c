@@ -618,7 +618,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 		break;
 	} case RPC_ID__Resp_WifiScanGetApRecords: {
 		wifi_scan_ap_list_t * p_a = &app_resp->u.wifi_scan_ap_list;
-		h_wifi_ap_record_t *list = p_a->out_list;
+		wifi_ap_record_t *list = p_a->out_list;
 
 		if (!p_a->number) {
 			ESP_LOGV(TAG, "No AP info found");
@@ -1676,23 +1676,23 @@ int rpc_wifi_sta_get_ap_info(h_wifi_ap_record_t *ap_info)
 	return rpc_rsp_callback(resp);
 }
 
-int rpc_wifi_set_ps(wifi_ps_type_t type)
+int rpc_wifi_set_ps(h_wifi_ps_type_t type)
 {
-	if (type > WIFI_PS_MAX_MODEM)
+	if (type > H_WIFI_PS_MAX_MODEM)
 		return H_ERR_INVALID_ARG;
 
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
-	req->u.wifi_ps.ps_mode = type;
+	req->u.wifi_ps.ps_mode = (wifi_ps_type_t)type;
 
 	resp = rpc_slaveif_wifi_set_ps(req);
 
 	return rpc_rsp_callback(resp);
 }
 
-int rpc_wifi_get_ps(wifi_ps_type_t *type)
+int rpc_wifi_get_ps(h_wifi_ps_type_t *type)
 {
 	if (!type)
 		return H_ERR_INVALID_ARG;
@@ -1703,7 +1703,7 @@ int rpc_wifi_get_ps(wifi_ps_type_t *type)
 
 	resp = rpc_slaveif_wifi_get_ps(req);
 
-	*type = resp->u.wifi_ps.ps_mode;
+	*type = (h_wifi_ps_type_t)resp->u.wifi_ps.ps_mode;
 
 	return rpc_rsp_callback(resp);
 }
@@ -1719,19 +1719,19 @@ int rpc_wifi_set_storage(wifi_storage_t storage)
 	return rpc_rsp_callback(resp);
 }
 
-int rpc_wifi_set_bandwidth(h_wifi_interface_t ifx, wifi_bandwidth_t bw)
+int rpc_wifi_set_bandwidth(h_wifi_interface_t ifx, h_wifi_bandwidth_t bw)
 {
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
 	req->u.wifi_bandwidth.ifx = ifx;
-	req->u.wifi_bandwidth.bw = bw;
+	req->u.wifi_bandwidth.bw = (wifi_bandwidth_t)bw;
 	resp = rpc_slaveif_wifi_set_bandwidth(req);
 	return rpc_rsp_callback(resp);
 }
 
-int rpc_wifi_get_bandwidth(h_wifi_interface_t ifx, wifi_bandwidth_t *bw)
+int rpc_wifi_get_bandwidth(h_wifi_interface_t ifx, h_wifi_bandwidth_t *bw)
 {
 	if (!bw)
 		return H_ERR_INVALID_ARG;
@@ -1744,7 +1744,7 @@ int rpc_wifi_get_bandwidth(h_wifi_interface_t ifx, wifi_bandwidth_t *bw)
 	resp = rpc_slaveif_wifi_get_bandwidth(req);
 
 	if (resp && resp->resp_event_status == SUCCESS) {
-		*bw = resp->u.wifi_bandwidth.bw;
+		*bw = (h_wifi_bandwidth_t)resp->u.wifi_bandwidth.bw;
 	}
 	return rpc_rsp_callback(resp);
 }

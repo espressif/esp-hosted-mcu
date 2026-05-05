@@ -134,13 +134,13 @@ esp_err_t rpc_wifi_set_band(wifi_band_t band);
 esp_err_t rpc_wifi_get_band(wifi_band_t *band);
 esp_err_t rpc_wifi_set_band_mode(wifi_band_mode_t band_mode);
 esp_err_t rpc_wifi_get_band_mode(wifi_band_mode_t *band_mode);
-esp_err_t rpc_wifi_set_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols);
-esp_err_t rpc_wifi_get_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols);
-esp_err_t rpc_wifi_set_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw);
-esp_err_t rpc_wifi_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw);
+esp_err_t rpc_wifi_set_protocols(h_wifi_interface_t ifx, wifi_protocols_t *protocols);
+esp_err_t rpc_wifi_get_protocols(h_wifi_interface_t ifx, wifi_protocols_t *protocols);
+esp_err_t rpc_wifi_set_bandwidths(h_wifi_interface_t ifx, wifi_bandwidths_t *bw);
+esp_err_t rpc_wifi_get_bandwidths(h_wifi_interface_t ifx, wifi_bandwidths_t *bw);
 #endif
 
-esp_err_t rpc_set_dhcp_dns_status(wifi_interface_t interface, uint8_t link_up,
+esp_err_t rpc_set_dhcp_dns_status(h_wifi_interface_t interface, uint8_t link_up,
 		uint8_t dhcp_up, char *dhcp_ip, char *dhcp_nm, char *dhcp_gw,
 		uint8_t dns_up, char *dns_ip, uint8_t dns_type);
 

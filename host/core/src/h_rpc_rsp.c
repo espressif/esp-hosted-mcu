@@ -52,7 +52,7 @@ static const char *TAG = "rpc_rsp";
 }
 
 // copy the rpc record info to the wifi record info
-static int rpc_copy_ap_record(h_wifi_ap_record_t *ap_record, WifiApRecord *rpc_ap_record)
+static int rpc_copy_ap_record(wifi_ap_record_t *ap_record, WifiApRecord *rpc_ap_record)
 {
 	RPC_RSP_COPY_BYTES(ap_record->ssid, rpc_ap_record->ssid);
 	RPC_RSP_COPY_BYTES(ap_record->bssid, rpc_ap_record->bssid);
@@ -328,7 +328,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		break;
 	} case RPC_ID__Resp_WifiScanGetApRecords: {
 		wifi_scan_ap_list_t *p_a = &(app_resp->u.wifi_scan_ap_list);
-		h_wifi_ap_record_t *list = NULL;
+		wifi_ap_record_t *list = NULL;
 		WifiApRecord **p_c_list = NULL;
 
 		RPC_FAIL_ON_NULL(resp_wifi_scan_get_ap_records);
@@ -346,8 +346,8 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 
 		RPC_FAIL_ON_NULL(resp_wifi_scan_get_ap_records->ap_records);
 
-		list = (h_wifi_ap_record_t*)g_h.funcs->_h_calloc(p_a->number,
-				sizeof(h_wifi_ap_record_t));
+		list = (wifi_ap_record_t*)g_h.funcs->_h_calloc(p_a->number,
+				sizeof(wifi_ap_record_t));
 		p_a->out_list = list;
 
 		RPC_FAIL_ON_NULL_PRINT(list, "Malloc Failed");
@@ -362,7 +362,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		break;
 	} case RPC_ID__Resp_WifiStaGetApInfo: {
 		WifiApRecord *p_c = NULL;
-		h_wifi_ap_record_t *ap_info = NULL;
+		wifi_ap_record_t *ap_info = NULL;
 		wifi_scan_ap_list_t *p_a = &(app_resp->u.wifi_scan_ap_list);
 
 		RPC_FAIL_ON_NULL(resp_wifi_sta_get_ap_info);
@@ -373,8 +373,8 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 
 		RPC_FAIL_ON_NULL(resp_wifi_sta_get_ap_info->ap_record);
 
-		ap_info = (h_wifi_ap_record_t*)g_h.funcs->_h_calloc(p_a->number,
-				sizeof(h_wifi_ap_record_t));
+		ap_info = (wifi_ap_record_t*)g_h.funcs->_h_calloc(p_a->number,
+				sizeof(wifi_ap_record_t));
 		p_a->out_list = ap_info;
 
 		RPC_FAIL_ON_NULL_PRINT(ap_info, "Malloc Failed");
