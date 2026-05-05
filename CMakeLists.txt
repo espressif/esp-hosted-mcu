@@ -136,6 +136,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 		"${host_dir}/port/esp-idf/port_init.c"
 		"${host_dir}/port/esp-idf/h_osal.c"
 		"${host_dir}/port/esp-idf/h_event.c"
+		"${host_dir}/port/esp-idf/h_wifi_type_adapt.c"
 	)
 
 	if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
