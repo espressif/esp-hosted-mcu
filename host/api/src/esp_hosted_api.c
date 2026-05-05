@@ -22,6 +22,8 @@ extern "C" {
 #include "esp_log.h"
 #include "esp_hosted_event.h"
 #include "h_init.h"
+#include "h_wifi_type_adapt.h"
+#include <stdlib.h>
 
 #if H_DPP_SUPPORT
 #include "esp_dpp.h"
@@ -240,7 +242,9 @@ esp_err_t esp_wifi_remote_init(const wifi_init_config_t *arg)
 {
 	ESP_ERROR_CHECK_WITHOUT_ABORT(esp_hosted_reconfigure());
 	check_transport_up();
-	return rpc_wifi_init(arg);
+	h_wifi_init_config_t h_cfg;
+	h_wifi_adapt_init_config_to_host(arg, &h_cfg);
+	return rpc_wifi_init(&h_cfg);
 }
 
 esp_err_t esp_wifi_remote_deinit(void)
@@ -252,13 +256,18 @@ esp_err_t esp_wifi_remote_deinit(void)
 esp_err_t esp_wifi_remote_set_mode(wifi_mode_t mode)
 {
 	check_transport_up();
-	return rpc_wifi_set_mode(mode);
+	return rpc_wifi_set_mode(h_wifi_adapt_mode_to_host(mode));
 }
 
 esp_err_t esp_wifi_remote_get_mode(wifi_mode_t* mode)
 {
 	check_transport_up();
-	return rpc_wifi_get_mode(mode);
+	h_wifi_mode_t h_mode;
+	esp_err_t ret = rpc_wifi_get_mode(&h_mode);
+	if (ret == ESP_OK && mode) {
+		*mode = h_wifi_adapt_mode_to_native(h_mode);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_start(void)
@@ -289,31 +298,43 @@ esp_err_t esp_wifi_remote_disconnect(void)
 esp_err_t esp_wifi_remote_set_config(wifi_interface_t interface, wifi_config_t *conf)
 {
 	check_transport_up();
-	return rpc_wifi_set_config(interface, conf);
+	h_wifi_config_t h_cfg;
+	h_wifi_adapt_config_to_host(conf, &h_cfg);
+	return rpc_wifi_set_config(h_wifi_adapt_iface_to_host(interface), &h_cfg);
 }
 
 esp_err_t esp_wifi_remote_get_config(wifi_interface_t interface, wifi_config_t *conf)
 {
 	check_transport_up();
-	return rpc_wifi_get_config(interface, conf);
+	h_wifi_config_t h_cfg;
+	esp_err_t ret = rpc_wifi_get_config(h_wifi_adapt_iface_to_host(interface), &h_cfg);
+	if (ret == ESP_OK && conf) {
+		h_wifi_adapt_config_to_native(&h_cfg, conf);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_get_mac(wifi_interface_t mode, uint8_t mac[6])
 {
 	check_transport_up();
-	return rpc_wifi_get_mac(mode, mac);
+	return rpc_wifi_get_mac(h_wifi_adapt_iface_to_host(mode), mac);
 }
 
 esp_err_t esp_wifi_remote_set_mac(wifi_interface_t mode, const uint8_t mac[6])
 {
 	check_transport_up();
-	return rpc_wifi_set_mac(mode, mac);
+	return rpc_wifi_set_mac(h_wifi_adapt_iface_to_host(mode), mac);
 }
 
 esp_err_t esp_wifi_remote_scan_start(const wifi_scan_config_t *config, bool block)
 {
 	check_transport_up();
-	return rpc_wifi_scan_start(config, block);
+	if (!config) {
+		return rpc_wifi_scan_start(NULL, block);
+	}
+	h_wifi_scan_config_t h_cfg;
+	h_wifi_adapt_scan_config_to_host(config, &h_cfg);
+	return rpc_wifi_scan_start(&h_cfg, block);
 }
 
 esp_err_t esp_wifi_remote_set_scan_parameters(const wifi_scan_default_params_t *config)
@@ -343,13 +364,34 @@ esp_err_t esp_wifi_remote_scan_get_ap_num(uint16_t *number)
 esp_err_t esp_wifi_remote_scan_get_ap_record(wifi_ap_record_t *ap_record)
 {
 	check_transport_up();
-	return rpc_wifi_scan_get_ap_record(ap_record);
+	h_wifi_ap_record_t h_rec;
+	esp_err_t ret = rpc_wifi_scan_get_ap_record(&h_rec);
+	if (ret == ESP_OK && ap_record) {
+		h_wifi_adapt_ap_record_to_native(&h_rec, ap_record);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_scan_get_ap_records(uint16_t *number, wifi_ap_record_t *ap_records)
 {
 	check_transport_up();
-	return rpc_wifi_scan_get_ap_records(number, ap_records);
+	if (!number || !ap_records) {
+		return ESP_ERR_INVALID_ARG;
+	}
+	uint16_t req_num = *number;
+	h_wifi_ap_record_t *h_recs = calloc(req_num, sizeof(h_wifi_ap_record_t));
+	if (!h_recs) {
+		return ESP_ERR_NO_MEM;
+	}
+	esp_err_t ret = rpc_wifi_scan_get_ap_records(&req_num, h_recs);
+	if (ret == ESP_OK) {
+		*number = req_num;
+		for (int i = 0; i < req_num; i++) {
+			h_wifi_adapt_ap_record_to_native(&h_recs[i], &ap_records[i]);
+		}
+	}
+	free(h_recs);
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_clear_ap_list(void)
@@ -379,19 +421,29 @@ esp_err_t esp_wifi_remote_deauth_sta(uint16_t aid)
 esp_err_t esp_wifi_remote_sta_get_ap_info(wifi_ap_record_t *ap_info)
 {
 	check_transport_up();
-	return rpc_wifi_sta_get_ap_info(ap_info);
+	h_wifi_ap_record_t h_rec;
+	esp_err_t ret = rpc_wifi_sta_get_ap_info(&h_rec);
+	if (ret == ESP_OK && ap_info) {
+		h_wifi_adapt_ap_record_to_native(&h_rec, ap_info);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_set_ps(wifi_ps_type_t type)
 {
 	check_transport_up();
-	return rpc_wifi_set_ps(type);
+	return rpc_wifi_set_ps(h_wifi_adapt_ps_to_host(type));
 }
 
 esp_err_t esp_wifi_remote_get_ps(wifi_ps_type_t *type)
 {
 	check_transport_up();
-	return rpc_wifi_get_ps(type);
+	h_wifi_ps_type_t h_ps;
+	esp_err_t ret = rpc_wifi_get_ps(&h_ps);
+	if (ret == ESP_OK && type) {
+		*type = h_wifi_adapt_ps_to_native(h_ps);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_set_storage(wifi_storage_t storage)
@@ -403,13 +455,19 @@ esp_err_t esp_wifi_remote_set_storage(wifi_storage_t storage)
 esp_err_t esp_wifi_remote_set_bandwidth(wifi_interface_t ifx, wifi_bandwidth_t bw)
 {
 	check_transport_up();
-	return rpc_wifi_set_bandwidth(ifx, bw);
+	return rpc_wifi_set_bandwidth(h_wifi_adapt_iface_to_host(ifx),
+	                              h_wifi_adapt_bw_to_host(bw));
 }
 
 esp_err_t esp_wifi_remote_get_bandwidth(wifi_interface_t ifx, wifi_bandwidth_t *bw)
 {
 	check_transport_up();
-	return rpc_wifi_get_bandwidth(ifx, bw);
+	h_wifi_bandwidth_t h_bw;
+	esp_err_t ret = rpc_wifi_get_bandwidth(h_wifi_adapt_iface_to_host(ifx), &h_bw);
+	if (ret == ESP_OK && bw) {
+		*bw = h_wifi_adapt_bw_to_native(h_bw);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_set_channel(uint8_t primary, wifi_second_chan_t second)
@@ -439,19 +497,31 @@ esp_err_t esp_wifi_remote_get_country_code(char *country)
 esp_err_t esp_wifi_remote_set_country(const wifi_country_t *country)
 {
 	check_transport_up();
-	return rpc_wifi_set_country(country);
+	h_wifi_country_t h_country;
+	h_wifi_adapt_country_to_host(country, &h_country);
+	return rpc_wifi_set_country(&h_country);
 }
 
 esp_err_t esp_wifi_remote_get_country(wifi_country_t *country)
 {
 	check_transport_up();
-	return rpc_wifi_get_country(country);
+	h_wifi_country_t h_country;
+	esp_err_t ret = rpc_wifi_get_country(&h_country);
+	if (ret == ESP_OK && country) {
+		h_wifi_adapt_country_to_native(&h_country, country);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_ap_get_sta_list(wifi_sta_list_t *sta)
 {
 	check_transport_up();
-	return rpc_wifi_ap_get_sta_list(sta);
+	h_wifi_sta_list_t h_list;
+	esp_err_t ret = rpc_wifi_ap_get_sta_list(&h_list);
+	if (ret == ESP_OK && sta) {
+		h_wifi_adapt_sta_list_to_native(&h_list, sta);
+	}
+	return ret;
 }
 
 esp_err_t esp_wifi_remote_ap_get_sta_aid(const uint8_t mac[6], uint16_t *aid)
@@ -469,13 +539,13 @@ esp_err_t esp_wifi_remote_sta_get_rssi(int *rssi)
 esp_err_t esp_wifi_remote_set_protocol(wifi_interface_t ifx, uint8_t protocol_bitmap)
 {
 	check_transport_up();
-	return rpc_wifi_set_protocol(ifx, protocol_bitmap);
+	return rpc_wifi_set_protocol(h_wifi_adapt_iface_to_host(ifx), protocol_bitmap);
 }
 
 esp_err_t esp_wifi_remote_get_protocol(wifi_interface_t ifx, uint8_t *protocol_bitmap)
 {
 	check_transport_up();
-	return rpc_wifi_get_protocol(ifx, protocol_bitmap);
+	return rpc_wifi_get_protocol(h_wifi_adapt_iface_to_host(ifx), protocol_bitmap);
 }
 
 esp_err_t esp_wifi_remote_set_max_tx_power(int8_t power)
@@ -505,13 +575,13 @@ esp_err_t esp_wifi_remote_sta_get_aid(uint16_t *aid)
 esp_err_t esp_wifi_remote_set_inactive_time(wifi_interface_t ifx, uint16_t sec)
 {
 	check_transport_up();
-	return rpc_wifi_set_inactive_time(ifx, sec);
+	return rpc_wifi_set_inactive_time(h_wifi_adapt_iface_to_host(ifx), sec);
 }
 
 esp_err_t esp_wifi_remote_get_inactive_time(wifi_interface_t ifx, uint16_t *sec)
 {
 	check_transport_up();
-	return rpc_wifi_get_inactive_time(ifx, sec);
+	return rpc_wifi_get_inactive_time(h_wifi_adapt_iface_to_host(ifx), sec);
 }
 
 #if H_WIFI_HE_SUPPORT
