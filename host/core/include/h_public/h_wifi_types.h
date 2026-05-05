@@ -1,9 +1,10 @@
 /*
  * ESP-Hosted Host Core — Platform-Independent Wi-Fi Types
  *
- * Replaces all ESP-IDF wifi_* types with platform-independent equivalents.
- * Fields mirror ESP-IDF layout for zero-copy mapping on ESP-IDF port.
- * Phase 1: 10 core types covering STA and SoftAP modes.
+ * These structs provide a stable, platform-independent API surface
+ * for the host core layer. They are NOT binary-compatible with
+ * ESP-IDF native wifi_* types; port layers must use explicit field-
+ * level adapters (see host/port/esp-idf/h_wifi_type_adapt.c).
  */
 
 #ifndef H_WIFI_TYPES_H
@@ -11,38 +12,9 @@
 
 #include "h_types.h"
 #include <stdint.h>
+#include <stdbool.h>
 
-/* ── ESP-IDF Compatibility Mode ──
- * When building for ESP-IDF, typedef directly to native types.
- * This ensures zero-copy and field compatibility with the legacy
- * RPC/protobuf code path during Phase 1 transition.
- * When porting to non-ESP hosts, the portable struct definitions
- * below provide the canonical layout.
- */
-#ifdef ESP_PLATFORM
-  #include "esp_wifi.h"
-  typedef wifi_init_config_t    h_wifi_init_config_t;
-  typedef wifi_config_t         h_wifi_config_t;
-  typedef wifi_scan_config_t    h_wifi_scan_config_t;
-  typedef wifi_ap_record_t      h_wifi_ap_record_t;
-  typedef wifi_sta_list_t       h_wifi_sta_list_t;
-  typedef wifi_country_t        h_wifi_country_t;
-  typedef wifi_interface_t      h_wifi_interface_t;
-  typedef wifi_mode_t           h_wifi_mode_t;
-  typedef wifi_ps_type_t        h_wifi_ps_type_t;
-  typedef wifi_bandwidth_t      h_wifi_bandwidth_t;
-  typedef wifi_auth_mode_t      h_wifi_auth_mode_t;
-  typedef wifi_cipher_type_t    h_wifi_cipher_type_t;
-#else
-/* ── Portable Struct Definitions ──
- * These are used when building for non-ESP hosts.
- * The layout is kept as close as possible to ESP-IDF for
- * ease of mapping, but some nested structs are flattened.
- */
-
-/* ── Wi-Fi Initialization Config ──
- * Replaces wifi_init_config_t.
- * ESP-IDF port adapter maps this -> WIFI_INIT_CONFIG_DEFAULT() */
+/* ── Wi-Fi Initialization Config ── */
 typedef struct {
     void     *rx_ba_win;       /* STATIC_RX_BUFFER_NUM */
     void     *tx_ba_win;       /* STATIC_TX_BUFFER_NUM */
@@ -151,8 +123,7 @@ typedef struct {
     uint8_t policy;          /* country policy */
 } h_wifi_country_t;
 
-/* ── Interface / Mode / Policy Enums ──
- * Replaces the corresponding ESP-IDF enums in non-ESP builds. */
+/* ── Interface / Mode / Policy Enums ── */
 typedef enum {
     H_WIFI_IF_STA = 0,
     H_WIFI_IF_AP,
@@ -175,8 +146,8 @@ typedef enum {
 } h_wifi_ps_type_t;
 
 typedef enum {
-    H_WIFI_BW_HT20 = 0,
-    H_WIFI_BW_HT40,
+    H_WIFI_BW_HT20 = 1,
+    H_WIFI_BW_HT40 = 2,
 } h_wifi_bandwidth_t;
 
 /* ── Auth Mode ──
@@ -213,7 +184,5 @@ typedef enum {
     H_WIFI_CIPHER_TYPE_AES_GMAC256,
     H_WIFI_CIPHER_TYPE_UNKNOWN,
 } h_wifi_cipher_type_t;
-
-#endif /* ESP_PLATFORM */
 
 #endif /* H_WIFI_TYPES_H */
