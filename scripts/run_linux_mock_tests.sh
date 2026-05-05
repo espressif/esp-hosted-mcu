@@ -1,6 +1,21 @@
 #!/bin/bash
 # scripts/run_linux_mock_tests.sh
 # CI Tier 2 — Build and run all unit tests on Linux mock port.
+#
+# Definition of "testable"(canonical source: docs/felix/9.Host通用化实施总路线图.md
+# §"三个口径的明确定义"):
+#   被本脚本持续编译且测试用例真实执行其**生产代码路径**(不依赖 H_BUILD_TESTS
+#   测试专用分支)。
+#
+# Known discrepancy with check_core_isolation.sh portable set:
+#   - h_api.c       — portable but excluded here (depends on h_rpc_wrap.c which
+#                     is not yet portable). Will align after 门槛 3.
+#   - h_rpc_core.c  — included here, but currently exercises H_BUILD_TESTS
+#                     test-only branch instead of production path. Two-step
+#                     closure:
+#                       * 门槛 3        — make h_rpc_core.c portable.
+#                       * 门槛 4 WP 4.5 — drop H_BUILD_TESTS branch; mock then
+#                                          covers the real production path.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -10,6 +25,10 @@ cd "$ROOT_DIR"
 
 mkdir -p build
 
+# NOTE: h_rpc_core.c 当前在 H_BUILD_TESTS 下走测试专用分支,生产路径未在 mock
+# 验证。这一事实纳入"已验证生产路径"口径(见上方头部说明)。两步收口:
+#   - 门槛 3        — 让 h_rpc_core.c 满足 portable 口径(去 port_esp_hosted_host_* 依赖)
+#   - 门槛 4 WP 4.5 — 取消 H_BUILD_TESTS 测试专用分支,mock 直接覆盖生产路径
 CORE_SRCS="host/core/src/h_init.c host/core/src/h_rpc_core.c host/core/src/h_serial_if.c host/core/src/h_event.c"
 PORT_SRCS="host/port/linux/src/h_osal.c host/port/linux/src/h_event.c host/port/linux/src/h_transport_mock.c"
 TEST_SRCS="tests/test_runner.c tests/test_osal.c tests/test_event.c tests/test_transport.c tests/test_rpc_core.c tests/unity/unity.c"
