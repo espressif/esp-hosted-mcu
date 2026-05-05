@@ -35,19 +35,34 @@ TEST_SRCS="tests/test_runner.c tests/test_osal.c tests/test_event.c tests/test_t
 
 INC_FLAGS="-I host/core/include/h_public -I host/core/include/h_internal -I host/port/linux -I host/port/include -I tests/unity"
 
-# ── 编译前打印 testable 集合 ──
-echo "── testable 集合(host/core/src/ 总文件数 14)──"
+# ── 编译前打印两个口径下的集合 ──
+# 注:本脚本的"持续编译集合"包含 h_rpc_core.c,但它走 H_BUILD_TESTS 测试专用分支,
+# 因此不属 9 号文档定义下的 testable / 已验证生产路径口径。下面分别打印这两个集合,
+# 让脚本输出与 9 号 canonical 定义一致(避免"testable" 一词被赋多重含义)。
+echo "── mock 持续编译集合(host/core/src/ 总文件数 14)──"
+MOCK_BUILD_CORE=(
+    host/core/src/h_init.c
+    host/core/src/h_event.c
+    host/core/src/h_serial_if.c
+    host/core/src/h_rpc_core.c   # H_BUILD_TESTS 测试专用分支,不计入 testable
+)
+for f in "${MOCK_BUILD_CORE[@]}"; do
+    echo "  ✓ $f"
+done
+echo "  编译覆盖率: ${#MOCK_BUILD_CORE[@]}/14 = $(awk "BEGIN { printf \"%.0f%%\", ${#MOCK_BUILD_CORE[@]} / 14 * 100 }")"
+echo ""
+echo "── testable / 已验证生产路径(9 号文档规范口径)──"
 TESTABLE_CORE=(
     host/core/src/h_init.c
     host/core/src/h_event.c
     host/core/src/h_serial_if.c
-    host/core/src/h_rpc_core.c   # H_BUILD_TESTS 测试专用分支,见头部说明
 )
 for f in "${TESTABLE_CORE[@]}"; do
     echo "  ✓ $f"
 done
-echo "  编译覆盖率(含测试专用分支): ${#TESTABLE_CORE[@]}/14 = $(awk "BEGIN { printf \"%.0f%%\", ${#TESTABLE_CORE[@]} / 14 * 100 }")"
-echo "  真实生产路径覆盖率: ≤ 3/14(h_rpc_core.c 走测试专用分支不计入)"
+echo "  覆盖率: ${#TESTABLE_CORE[@]}/14 = $(awk "BEGIN { printf \"%.0f%%\", ${#TESTABLE_CORE[@]} / 14 * 100 }")"
+echo "  注:h_rpc_core.c 当前在 H_BUILD_TESTS 下走测试专用分支,不计入此集合"
+echo "       收口路径:门槛 3(portable 化)+ 门槛 4 WP 4.5(取消 H_BUILD_TESTS)"
 echo "(规范定义见 docs/felix/9.Host通用化实施总路线图.md §三个口径)"
 echo ""
 
