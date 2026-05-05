@@ -7,13 +7,11 @@
 #ifndef H_PORT_CONFIG_H
 #define H_PORT_CONFIG_H
 
-#ifdef H_BUILD_TESTS
-
-#include "../linux/h_port_config.h"
-
-#else
-
+/* When sdkconfig.h is available (ESP-IDF builds), use Kconfig-derived config.
+ * Otherwise fall back to the Linux mock port config. */
+#if __has_include("sdkconfig.h")
 #include <sdkconfig.h>
+#endif
 
 /* ── Transport selection from Kconfig ── */
 #if defined(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
@@ -24,9 +22,14 @@
 #define H_TRANSPORT_IN_USE  H_TRANSPORT_SDIO
 #elif defined(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)
 #define H_TRANSPORT_IN_USE  H_TRANSPORT_UART
-#else
-#error "No ESP-Hosted transport interface selected in sdkconfig"
+#elif !defined(H_TRANSPORT_IN_USE)
+/* No transport selected via Kconfig and H_TRANSPORT_IN_USE not yet defined.
+ * Fall back to Linux mock port config. */
+#include "../linux/h_port_config.h"
+#define H_PORT_USING_LINUX_FALLBACK
 #endif
+
+#ifndef H_PORT_USING_LINUX_FALLBACK
 
 /* Platform identity (for diagnostic logging) */
 #define H_PORT_NAME         "esp-idf"
@@ -45,6 +48,8 @@
 #define H_FEATURE_OTA        0
 #define H_FEATURE_NETSPLIT   0
 
-#endif
+#define H_HOST_USES_STATIC_NETIF 1
+
+#endif /* !H_PORT_USING_LINUX_FALLBACK */
 
 #endif /* H_PORT_CONFIG_H */

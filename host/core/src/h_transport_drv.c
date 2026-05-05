@@ -6,10 +6,11 @@
 
 /** Includes **/
 #include <inttypes.h>
+#include <assert.h>
 #include "h_wrapper.h"
 
 // REMOVED: esp_wifi.h
-#include "transport_drv.h"
+#include "h_transport_drv.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_transport_init.h"
 #include "esp_hosted_transport_config.h"
@@ -24,6 +25,14 @@
 #include "h_config.h"
 #include "esp_hosted_power_save.h"
 
+/* Legacy compatibility: g_h and config macros still referenced by
+ * transport_util.h macros (MEMPOOL_ALLOC / MEMPOOL_FREE) and
+ * h_transport_drv.c body.  Must be included BEFORE transport_util.h
+ * so that H_USE_MEMPOOL is visible when transport_util.h is parsed.
+ * These will be migrated to new framework symbols in WP 4.4. */
+#include "esp_hosted_os_abstraction.h"
+#include "port_esp_hosted_host_config.h"
+
 #include "mempool.h"
 #include "transport_util.h"
 
@@ -32,6 +41,9 @@
 
 /* Avoid dragging legacy wifi-config headers into core just to start RPC. */
 int rpc_start(void);
+
+/* Forward declaration for debug task helper */
+void create_debugging_tasks(void);
 
 /**
  * @brief  Slave capabilities are parsed
@@ -300,6 +312,7 @@ static hosted_mempool_t * transport_drv_common_mempool_create(void)
 #if H_USE_MEMPOOL
 static void transport_drv_common_mempool_destroy(hosted_mempool_t * param)
 {
+	(void)param;
 	// decrement ref count
 	ref_count_mempool--;
 	if (ref_count_mempool == 0) {
@@ -323,7 +336,7 @@ static void transport_serial_free_cb(void *buf)
 	MEMPOOL_FREE(chan_arr[ESP_SERIAL_IF]->memp, buf);
 }
 
-static inline void *mempool_alloc(hosted_mempool_t * mempool, size_t size, uint need_memset)
+static inline void *mempool_alloc(hosted_mempool_t * mempool, size_t size, unsigned int need_memset)
 {
 	MEMPOOL_ALLOC(mempool, size, need_memset);
 }

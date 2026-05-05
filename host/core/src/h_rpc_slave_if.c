@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <inttypes.h>
+#include <assert.h>
 #include "serial_if.h"
 #include "serial_ll_if.h"
 #include "h_wrapper.h"

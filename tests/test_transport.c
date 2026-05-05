@@ -3,6 +3,7 @@
 #include "h_port_contract.h"
 #include "h_wrapper.h"
 #include "h_types.h"
+#include "h_transport_drv.h"
 #include <stdint.h>
 
 /* SPI transfer context — not defined by core, defined here for testing.
@@ -46,4 +47,45 @@ void test_transport_mock_transfer(void)
     /* Verify transport deinit is idempotent */
     TEST_ASSERT_EQUAL(H_OK, h_transport_deinit(handle));
     TEST_ASSERT_EQUAL(H_OK, h_transport_deinit(handle)); /* second call — idempotent */
+}
+
+/* ── h_transport_drv.c: state machine & lifecycle ── */
+void test_transport_drv_state_ready(void)
+{
+    /* Initial state after link: TRANSPORT_INACTIVE */
+    TEST_ASSERT_EQUAL(0, is_transport_rx_ready());
+    TEST_ASSERT_EQUAL(0, is_transport_tx_ready());
+
+    /* RX_ACTIVE: RX ready, TX not ready */
+    set_transport_state(TRANSPORT_RX_ACTIVE);
+    TEST_ASSERT_EQUAL(1, is_transport_rx_ready());
+    TEST_ASSERT_EQUAL(0, is_transport_tx_ready());
+
+    /* TX_ACTIVE: both ready */
+    set_transport_state(TRANSPORT_TX_ACTIVE);
+    TEST_ASSERT_EQUAL(1, is_transport_rx_ready());
+    TEST_ASSERT_EQUAL(1, is_transport_tx_ready());
+
+    /* Reset to INACTIVE for next test */
+    set_transport_state(TRANSPORT_INACTIVE);
+}
+
+void test_teardown_transport_safe(void)
+{
+    /* teardown without prior init must be safe (bus_handle is NULL) */
+    h_err_t ret = teardown_transport();
+    TEST_ASSERT_EQUAL(H_OK, ret);
+}
+
+void test_transport_drv_remove_channel_null(void)
+{
+    h_err_t ret = transport_drv_remove_channel(NULL);
+    TEST_ASSERT_EQUAL(H_FAIL, ret);
+}
+
+void test_process_priv_communication_null(void)
+{
+    /* NULL input must not crash */
+    process_priv_communication(NULL);
+    /* No assertion — contract is "does not segfault" */
 }

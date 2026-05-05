@@ -7,7 +7,7 @@
  #include <inttypes.h>
 #include "h_wrapper.h"
 #include "h_wifi_types.h"
-#include "rpc_core.h"
+#include "h_rpc_core.h"
 #include "rpc_utils.h"
 #include "rpc_slave_if.h"
 #include "esp_hosted_transport.h"
@@ -462,7 +462,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 
 		WifiStaInfo ** p_c_sta_list = rpc_msg->resp_wifi_ap_get_sta_list->sta_list->sta;
 
-		for (int i = 0; i < num_stations; i++) {
+		for (uint32_t i = 0; i < num_stations; i++) {
 			wifi_sta_info_t * p_a_sta = &app_resp->u.wifi_ap_sta_list.sta[i];
 
 			RPC_RSP_COPY_BYTES(p_a_sta->mac, p_c_sta_list[i]->mac);

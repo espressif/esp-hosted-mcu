@@ -6,50 +6,10 @@
 
 #include "h_wrapper.h"
 
-#ifdef H_BUILD_TESTS
-
-#include "h_rpc_core.h"
-#include "h_serial_if.h"
-
-h_err_t h_rpc_send_request(uint8_t msg_type, const uint8_t *req, uint16_t req_len,
-						   uint8_t *rsp, uint16_t *rsp_len, int32_t timeout_ms)
-{
-	(void)msg_type;
-	h_err_t ret;
-
-	if (!req || !req_len) {
-		return H_ERR_INVALID_ARG;
-	}
-
-	ret = h_serial_if_send(req, req_len);
-	if (ret != H_OK) {
-		return ret;
-	}
-
-	if (rsp && rsp_len) {
-		ret = h_serial_if_recv(rsp, rsp_len, timeout_ms);
-		if (ret != H_OK) {
-			return ret;
-		}
-	}
-
-	return H_OK;
-}
-
-h_err_t h_rpc_register_handler(uint8_t msg_type,
-							   h_err_t (*handler)(const uint8_t *req, uint16_t req_len,
-												  uint8_t *rsp, uint16_t *rsp_len))
-{
-	(void)msg_type;
-	(void)handler;
-	return H_OK;
-}
-
-#else
-
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 #include "rpc_core.h"
 #include "esp_hosted_rpc.h"
 #include "serial_if.h"
@@ -389,6 +349,7 @@ fail_req2:
 /* Process RPC msg (response or event) received from ESP32 */
 static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 {
+	(void)rpc_rx_func;
 	esp_queue_elem_t elem = {0};
 	ctrl_cmd_t *app_resp = NULL;
 	ctrl_cmd_t *app_event = NULL;
@@ -568,6 +529,7 @@ free_bufs:
  * Sync thread will block for response (in its own context) after submission of ctrl_msg to rpc_tx_q */
 static void rpc_tx_thread(void *arg)
 {
+	(void)arg;
 	ctrl_cmd_t *app_req = NULL;
 
 	H_LOGD(TAG, "Starting tx thread");
@@ -1275,5 +1237,3 @@ h_err_t h_rpc_register_handler(uint8_t msg_type,
 	(void)msg_type; (void)handler;
 	return H_OK; /* Stub — no handlers registered in Phase 1 */
 }
-
-#endif

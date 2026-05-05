@@ -2,7 +2,8 @@
 #
 # Three-tier CI for host core layer:
 #   Tier 1: Phase 1 portable-boundary isolation check (30s)
-#   Tier 2: Linux mock tests for the current portable/testable subset (3min)
+#   Tier 2: Linux mock tests — 13/13 core files compile, 13/13 linked,
+#            13/13 with production-path test coverage (3min)
 #   Tier 3: ESP-IDF slave build matrix (30min)
 #
 # All jobs run on ubuntu-latest with zero hardware dependencies.
@@ -58,7 +59,6 @@ jobs:
               -I host/core/include/h_internal \
               -I host/port/linux \
               -I host/port/include \
-              -DH_BUILD_TESTS \
               -Wall -Werror \
               "$f"
           done

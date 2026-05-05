@@ -56,6 +56,10 @@ static int linux_thread_delete(h_thread_t thread)
 {
     thread_wrapper_t *w = (thread_wrapper_t *)thread;
     if (!w) return H_ERR_INVALID_ARG;
+    /* Cancel then join: production threads (rpc_rx/rpc_tx) are infinite loops
+     * that only exit when the serial read returns error. In mock builds we
+     * need a clean way to tear them down from rpc_core_deinit(). */
+    pthread_cancel(w->thread);
     pthread_join(w->thread, NULL);
     /* w was freed in thread_entry */
     return H_OK;
@@ -348,6 +352,12 @@ static void linux_log_write(int level, const char *tag, const char *fmt, ...)
     vfprintf(stderr, fmt, args);
     va_end(args);
     fprintf(stderr, "\n");
+}
+
+/* ── Debug task stub (noop in mock build) ── */
+void create_debugging_tasks(void)
+{
+    /* No debug tasks in Linux mock build */
 }
 
 /* ── Aligned Memory (Linux mock: no DMA alignment needed) ── */

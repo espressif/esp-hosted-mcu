@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <inttypes.h>
 #include "h_wrapper.h"
 #include "h_wifi_types.h"
 #include "h_wifi_type_adapt.h"
@@ -17,7 +18,11 @@
 // REMOVED: esp_log.h
 #include "h_config.h"
 #include "esp_hosted_transport.h"
-#include "transport_drv.h"
+/* SUCCESS/FAILURE compatibility — old transport_drv.h defined these as 0/-1.
+ * New framework uses H_OK/H_FAIL; keep local aliases to avoid churn. */
+#define SUCCESS H_OK
+#define FAILURE H_FAIL
+
 #include "esp_hosted_event.h"
 
 #if H_DPP_SUPPORT
@@ -509,7 +514,7 @@ int rpc_register_event_callbacks(void)
 #endif
 	};
 
-	for (evt=0; evt<sizeof(events)/sizeof(event_callback_table_t); evt++) {
+	for (evt=0; evt<(int)(sizeof(events)/sizeof(event_callback_table_t)); evt++) {
 		if (CALLBACK_SET_SUCCESS != set_event_callback(events[evt].event, events[evt].fun) ) {
 			H_LOGE(TAG, "event callback register failed for event[%u]", events[evt].event);
 			ret = FAILURE;
@@ -1918,6 +1923,7 @@ int rpc_wifi_set_protocol(h_wifi_interface_t ifx, uint8_t protocol_bitmap)
 
 int rpc_wifi_get_protocol(h_wifi_interface_t ifx, uint8_t *protocol_bitmap)
 {
+	(void)ifx;
 	if (!protocol_bitmap)
 		return H_ERR_INVALID_ARG;
 
