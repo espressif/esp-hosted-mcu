@@ -39,17 +39,13 @@ PHASE1_SCOPE=(
 
 # Helper: grep non-comment, non-REMOVED lines inside the current Phase 1 scope.
 #
-# NOTE: 函数末尾两条 `h_wifi_types.h` 豁免规则允许该头文件在 ESP_PLATFORM 下
-# 直通 ESP-IDF 类型 — 这是门槛 2(公共类型收口)的待办项(见
-# docs/felix/9.Host通用化实施总路线图.md §门槛 2,WP 2.5)。门槛 2 完成后,
-# 这两条豁免必须从 grepx() 内移除,届时该头文件应通过 isolation 检查。
+# NOTE: 本函数不再对任何文件做特殊豁免;所有在 PHASE1_SCOPE 中的文件
+# 都必须通过隔离检查。
 grepx() {
     grep -rn "$1" "${PHASE1_SCOPE[@]}" --include="*.c" --include="*.h" 2>/dev/null \
         | grep -v ':.*\* Replaces\|:.*\* @brief\|:.*\* Original\|:.*\* Map' \
         | grep -v ': *//\|: */\*\|:  \*' \
-        | grep -v ':.*// REMOVED:\|:.*// CHECK:' \
-        | grep -v 'host/core/include/h_public/h_wifi_types\.h:.*#include "esp_wifi\.h"' \
-        | grep -v 'host/core/include/h_public/h_wifi_types\.h:.*typedef wifi_.*_t' || true
+        | grep -v ':.*// REMOVED:\|:.*// CHECK:' || true
 }
 
 # ESP-IDF headers
