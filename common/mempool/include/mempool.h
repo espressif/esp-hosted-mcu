@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/queue.h>
+#include <stdint.h>
 
 #include "sdkconfig.h"
 

@@ -1,5 +1,6 @@
 # Unreleased - Main Branch
 
+- Common Mempool: fixed build error on ESP-IDF v6.x when using PicolibC with `CONFIG_LIBC_PICOLIBC_NEWLIB_COMPATIBILITY` disabled
 - Host: removed Unicode encoded characters in cmake file to prevent Windows build failure
 
 # Releases
