@@ -102,7 +102,7 @@ ESP-Hosted-MCU Solution is dependent on `ESP-IDF`, `esp_wifi_remote` and `protob
 ###### ESP-IDF
   - [`ESP-IDF`](https://github.com/espressif/esp-idf) is the development framework for Espressif SoCs supported on Windows, Linux and macOS
   - ESP-Hosted-MCU solution is based on ESP-IDF as base software. ESP chipsets as host and slave always tried to design such a way that ESP-IDF components are reused.
-  - Although, We totally understand, host MCUs in case of non-ESP chipset may not desire to be dependent on ESP-IDF. The port layer is written to avoid suc dependencies. Some crucial ESP-IDF components could also be just copy-pasted to fast-track the non-ESP host development.
+  - Although, We totally understand, host MCUs in case of non-ESP chipset may not desire to be dependent on ESP-IDF. The port layer is written to avoid such dependencies. Some crucial ESP-IDF components could also be just copy-pasted to fast-track the non-ESP host development.
 
 ###### Wi-Fi Remote
   - [`esp_wifi_remote`](https://components.espressif.com/components/espressif/esp_wifi_remote) i.e. 'Wi-Fi Remote' is very thin interface made up of ESP-IDF Wi-Fi APIs with empty weak definitions. Real definitions for these APIs are provided by ESP-Hosted-MCU
