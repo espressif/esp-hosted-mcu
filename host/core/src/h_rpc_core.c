@@ -108,7 +108,7 @@ static int post_sync_resp_sem(ctrl_cmd_t *app_resp);
  **/
 static int serial_init(void)
 {
-	if (transport_pserial_open()) {
+	if (h_serial_if_init() != H_OK) {
 		return H_FAIL;
 	}
 	return H_OK;
@@ -117,9 +117,7 @@ static int serial_init(void)
 /* close serial interface */
 static int serial_deinit(void)
 {
-	if (transport_pserial_close()) {
-		return H_FAIL;
-	}
+	h_serial_if_deinit();
 	return H_OK;
 }
 
@@ -241,7 +239,7 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 	/* 7. Pack in protobuf and send the request */
 	rpc__pack(&req, tx_data);
 	H_LOGD(TAG, "sending rpc req[%u]",req.msg_id);
-	if (transport_pserial_send(tx_data, tx_len)) {
+	if (h_serial_if_send(tx_data, tx_len) != H_OK) {
 		H_LOGE(TAG, "Send RPC req[0x%x] failed",req.msg_id);
 		failure_status = RPC_ERR_TRANSPORT_SEND;
 		goto fail_req;
@@ -465,7 +463,6 @@ free_buffers:
  * This is entry point for rpc messages received from ESP32 */
 static void rpc_rx_thread(void *arg)
 {
-	uint32_t buf_len = 0;
 
 	rpc_rx_ind_t rpc_rx_func;
 	rpc_rx_func = (rpc_rx_ind_t) arg;
@@ -485,7 +482,6 @@ static void rpc_rx_thread(void *arg)
 
 	/* Infinite loop to process incoming msg on serial interface */
 	while (1) {
-		uint8_t *buf = NULL;
 		Rpc *resp = NULL;
 
 		/* Block on read of protobuf encoded msg */
@@ -493,20 +489,20 @@ static void rpc_rx_thread(void *arg)
 			h_msleep(1);
 			continue;
 		}
-		buf = transport_pserial_read(&buf_len);
+		uint8_t recv_buf[ESP_TRANSPORT_MAX_BUF_SIZE];
+		uint16_t recv_len = ESP_TRANSPORT_MAX_BUF_SIZE;
+		h_err_t recv_err = h_serial_if_recv(recv_buf, &recv_len, HOSTED_BLOCK_MAX);
 
-		if (!buf_len || !buf) {
+		if (recv_err != H_OK || !recv_len) {
 			H_LOGE(TAG, "buf_len read = 0");
 			goto free_bufs;
 		}
 
 		/* Decode protobuf */
-		resp = rpc__unpack(NULL, buf_len, buf);
+		resp = rpc__unpack(NULL, recv_len, recv_buf);
 		if (!resp) {
 			goto free_bufs;
 		}
-		/* Free the read buffer */
-		HOSTED_FREE(buf);
 
 		/* Send for further processing as event or response */
 		H_LOGV(TAG, "Before process_rpc_rx_msg");
@@ -516,7 +512,6 @@ static void rpc_rx_thread(void *arg)
 
 		/* Failed - cleanup */
 free_bufs:
-		HOSTED_FREE(buf);
 		if (resp) {
 			rpc__free_unpacked(resp, NULL);
 			resp = NULL;
