@@ -26,10 +26,29 @@ static int mock_spi_transfer(void *h, void *ctx)
     return H_OK;
 }
 
+static int mock_gpio_config(uint32_t pin, uint32_t mode)
+{
+    (void)pin;
+    (void)mode;
+    return H_OK;
+}
+
+static int mock_gpio_set_intr(uint32_t pin, uint32_t intr_type,
+                              void (*isr)(void*), void *arg)
+{
+    (void)pin;
+    (void)intr_type;
+    (void)isr;
+    (void)arg;
+    return H_OK;
+}
+
 const h_transport_contract_t g_h_transport = {
     .init         = mock_init,
     .deinit       = mock_deinit,
     .spi_transfer = mock_spi_transfer,
+    .gpio_config  = mock_gpio_config,
+    .gpio_set_intr = mock_gpio_set_intr,
     /* All other fields NULL — unused in mock SPI transport */
 };
 

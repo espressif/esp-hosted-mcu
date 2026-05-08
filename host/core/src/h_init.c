@@ -36,7 +36,8 @@ h_err_t h_validate_contracts(void)
 
     /* Transport: validate the specific transport selected at compile time */
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
-    if (!g_h_transport.init || !g_h_transport.spi_transfer) {
+    if (!g_h_transport.init || !g_h_transport.spi_transfer ||
+        !g_h_transport.gpio_config || !g_h_transport.gpio_set_intr) {
         H_LOGE("INIT", "SPI transport contract missing required functions");
         return H_ERR_INVALID_ARG;
     }
