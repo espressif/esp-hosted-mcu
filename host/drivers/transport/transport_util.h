@@ -19,15 +19,14 @@
 #else // H_USE_MEMPOOL
 
   #define MEMPOOL_ALLOC(pool, nbytes, need_memset) do {        \
-    void *ptr = g_h.funcs->_h_malloc_align(nbytes,             \
-      HOSTED_MEM_ALIGNMENT_64);                                \
+    void *ptr = h_malloc_align(nbytes, HOSTED_MEM_ALIGNMENT_64);\
     if (ptr && need_memset)                                    \
-      g_h.funcs->_h_memset(ptr, 0, nbytes);                    \
+      h_memset(ptr, 0, nbytes);                                \
     return ptr;                                                \
   } while (0);
 
   #define MEMPOOL_FREE(pool, buf) do {                         \
-    if (buf) g_h.funcs->_h_free(buf);                          \
+    if (buf) h_free(buf);                                      \
   } while (0);
 
 #endif // H_USE_MEMPOOL
