@@ -21,6 +21,7 @@
 #include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_log.h"
 #include "port_esp_hosted_host_os.h"
+#include "h_wrapper.h"
 
 #include "mempool.h"
 #include "transport_util.h"
@@ -134,8 +135,8 @@ static inline void spi_mempool_create(int tx_q_size, int rx_q_size)
 		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
 		.malloc = transport_util_malloc,
 		.calloc = transport_util_calloc,
-		.memset = g_h.funcs->_h_memset,
-		.free   = g_h.funcs->_h_free,
+		.memset = h_memset_fn,
+		.free   = h_free_fn,
 	};
 	buf_mp_g = hosted_mempool_create(&config);
 	assert(buf_mp_g);
@@ -178,7 +179,7 @@ static void FAST_RAM_ATTR gpio_hs_isr_handler(void* arg)
 	}
 	lasthandshaketime_us = currtime_us;
 #endif
-	g_h.funcs->_h_post_semaphore_from_isr(spi_trans_ready_sem);
+	h_sem_give_from_isr(spi_trans_ready_sem);
 	ESP_EARLY_LOGV(TAG, "%s", __func__);
 }
 
@@ -187,7 +188,7 @@ This ISR is called when the handshake or data_ready line goes high.
 */
 static void FAST_RAM_ATTR gpio_dr_isr_handler(void* arg)
 {
-	g_h.funcs->_h_post_semaphore_from_isr(spi_trans_ready_sem);
+	h_sem_give_from_isr(spi_trans_ready_sem);
 	dr_isr_triggered = 1;
 	ESP_EARLY_LOGV(TAG, "%s", __func__);
 }
@@ -203,33 +204,33 @@ void bus_deinit_internal(void *bus_handle)
 
 	/* Disable interrupts first */
 	if (H_GPIO_HANDSHAKE_Pin != -1) {
-		g_h.funcs->_h_teardown_gpio_interrupt(H_GPIO_HANDSHAKE_Port, H_GPIO_HANDSHAKE_Pin);
+		h_gpio_clear_intr(H_GPIO_HANDSHAKE_Pin);
 	}
 
 	if (H_GPIO_DATA_READY_Pin != -1) {
-		g_h.funcs->_h_teardown_gpio_interrupt(H_GPIO_DATA_READY_Port, H_GPIO_DATA_READY_Pin);
+		h_gpio_clear_intr(H_GPIO_DATA_READY_Pin);
 	}
 
 	/* Delete threads */
 	if (spi_transaction_thread) {
-		g_h.funcs->_h_thread_cancel(spi_transaction_thread);
+		h_thread_delete(spi_transaction_thread);
 		spi_transaction_thread = NULL;
 	}
 
 	if (spi_rx_thread) {
-		g_h.funcs->_h_thread_cancel(spi_rx_thread);
+		h_thread_delete(spi_rx_thread);
 		spi_rx_thread = NULL;
 	}
 
 	/* Deinitialize SPI bus through platform-specific handler */
 	if (spi_handle) {
-		g_h.funcs->_h_bus_deinit(bus_handle);
+		h_transport_deinit(bus_handle);
 		spi_handle = NULL;
 	}
 
 	/* Delete semaphores */
 	if (spi_trans_ready_sem) {
-		g_h.funcs->_h_destroy_semaphore(spi_trans_ready_sem);
+		h_sem_delete(spi_trans_ready_sem);
 		spi_trans_ready_sem = NULL;
 	}
 
@@ -239,30 +240,30 @@ void bus_deinit_internal(void *bus_handle)
 	/* Delete queues */
 	for (uint8_t prio_q_idx = 0; prio_q_idx < MAX_PRIORITY_QUEUES; prio_q_idx++) {
 		if (from_slave_queue[prio_q_idx]) {
-			g_h.funcs->_h_destroy_queue(from_slave_queue[prio_q_idx]);
+			h_queue_delete(from_slave_queue[prio_q_idx]);
 			from_slave_queue[prio_q_idx] = NULL;
 		}
 
 		if (to_slave_queue[prio_q_idx]) {
-			g_h.funcs->_h_destroy_queue(to_slave_queue[prio_q_idx]);
+			h_queue_delete(to_slave_queue[prio_q_idx]);
 			to_slave_queue[prio_q_idx] = NULL;
 		}
 	}
 
 	/* Delete semaphores for queues */
 	if (sem_from_slave_queue) {
-		g_h.funcs->_h_destroy_semaphore(sem_from_slave_queue);
+		h_sem_delete(sem_from_slave_queue);
 		sem_from_slave_queue = NULL;
 	}
 
 	if (sem_to_slave_queue) {
-		g_h.funcs->_h_destroy_semaphore(sem_to_slave_queue);
+		h_sem_delete(sem_to_slave_queue);
 		sem_to_slave_queue = NULL;
 	}
 
 	/* Delete mutex */
 	if (spi_bus_lock) {
-		g_h.funcs->_h_destroy_mutex(spi_bus_lock);
+		h_mutex_delete(spi_bus_lock);
 		spi_bus_lock = NULL;
 	}
 
@@ -278,49 +279,44 @@ void *bus_init_internal(void)
 {
 	uint8_t prio_q_idx;
 
-	spi_bus_lock = g_h.funcs->_h_create_mutex();
-	assert(spi_bus_lock);
+	assert(h_mutex_create(&spi_bus_lock) == H_OK);
 
 
-	sem_to_slave_queue = g_h.funcs->_h_create_semaphore(TO_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES);
-	assert(sem_to_slave_queue);
-	g_h.funcs->_h_get_semaphore(sem_to_slave_queue, 0);
-	sem_from_slave_queue = g_h.funcs->_h_create_semaphore(FROM_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES);
-	assert(sem_from_slave_queue);
-	g_h.funcs->_h_get_semaphore(sem_from_slave_queue, 0);
+	assert(h_sem_create(TO_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES, 0, &sem_to_slave_queue) == H_OK);
+	h_sem_take(sem_to_slave_queue, 0);
+	assert(h_sem_create(FROM_SLAVE_QUEUE_SIZE*MAX_PRIORITY_QUEUES, 0, &sem_from_slave_queue) == H_OK);
+	h_sem_take(sem_from_slave_queue, 0);
 
 	for (prio_q_idx=0; prio_q_idx<MAX_PRIORITY_QUEUES;prio_q_idx++) {
 		/* Queue - rx */
-		from_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(FROM_SLAVE_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
-		assert(from_slave_queue[prio_q_idx]);
+		assert(h_queue_create(FROM_SLAVE_QUEUE_SIZE, sizeof(interface_buffer_handle_t),
+				&from_slave_queue[prio_q_idx]) == H_OK);
 
 		/* Queue - tx */
-		to_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(TO_SLAVE_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
-		assert(to_slave_queue[prio_q_idx]);
+		assert(h_queue_create(TO_SLAVE_QUEUE_SIZE, sizeof(interface_buffer_handle_t),
+				&to_slave_queue[prio_q_idx]) == H_OK);
 	}
 
 	spi_mempool_create(TO_SLAVE_QUEUE_SIZE, FROM_SLAVE_QUEUE_SIZE);
 
 	/* Creates & Give sem for next spi trans */
-	spi_trans_ready_sem = g_h.funcs->_h_create_semaphore(1);
-	assert(spi_trans_ready_sem);
-	g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, 0);
+	assert(h_sem_create(1, 0, &spi_trans_ready_sem) == H_OK);
+	h_sem_take(spi_trans_ready_sem, 0);
 
-	spi_handle = g_h.funcs->_h_bus_init();
-	if (!spi_handle) {
+	if (h_transport_init(&spi_handle) != H_OK || !spi_handle) {
 		ESP_LOGE(TAG, "could not create spi handle, exiting\n");
-		assert(spi_handle);
+		assert(0);
 	}
 
 	/* Task - SPI transaction (full duplex) */
-	spi_transaction_thread = g_h.funcs->_h_thread_create("spi_trans", DFLT_TASK_PRIO,
-			DFLT_TASK_STACK_SIZE, spi_transaction_task, NULL);
-	assert(spi_transaction_thread);
+	assert(h_thread_create("spi_trans", DFLT_TASK_PRIO,
+			DFLT_TASK_STACK_SIZE, spi_transaction_task, NULL,
+			&spi_transaction_thread) == H_OK);
 
 	/* Task - RX processing */
-	spi_rx_thread = g_h.funcs->_h_thread_create("spi_rx", DFLT_TASK_PRIO,
-			DFLT_TASK_STACK_SIZE, spi_process_rx_task, NULL);
-	assert(spi_rx_thread);
+	assert(h_thread_create("spi_rx", DFLT_TASK_PRIO,
+			DFLT_TASK_STACK_SIZE, spi_process_rx_task, NULL,
+			&spi_rx_thread) == H_OK);
 
 	return spi_handle;
 }
@@ -418,8 +414,8 @@ static int process_spi_rx_buf(uint8_t * rxbuff)
 				pkt_prio = PRIO_Q_BT;
 			/* else OTHERS by default */
 
-			g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
-			g_h.funcs->_h_post_semaphore(sem_from_slave_queue);
+			h_queue_send(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
+			h_sem_give(sem_from_slave_queue);
 
 		} else {
 			ESP_LOGI(TAG, "rcvd_crc[%u] != exp_crc[%u], drop pkt\n",checksum, rx_checksum);
@@ -457,15 +453,13 @@ static int check_and_execute_spi_transaction(void)
 	gpio_pin_state_t gpio_handshake = H_HS_VAL_INACTIVE;
 	gpio_pin_state_t gpio_rx_data_ready = H_DR_VAL_INACTIVE;
 
-	g_h.funcs->_h_lock_mutex(spi_bus_lock, HOSTED_BLOCK_MAX);
+	h_mutex_lock(spi_bus_lock, HOSTED_BLOCK_MAX);
 
 	/* handshake line SET -> slave ready for next transaction */
-	gpio_handshake = g_h.funcs->_h_read_gpio(H_GPIO_HANDSHAKE_Port,
-			H_GPIO_HANDSHAKE_Pin);
+	gpio_handshake = h_gpio_read(H_GPIO_HANDSHAKE_Pin);
 
 	/* data ready line SET -> slave wants to send something */
-	gpio_rx_data_ready = g_h.funcs->_h_read_gpio(H_GPIO_DATA_READY_Port,
-			H_GPIO_DATA_READY_Pin);
+	gpio_rx_data_ready = h_gpio_read(H_GPIO_DATA_READY_Pin);
 
 	uint8_t data_ready_active = (gpio_rx_data_ready == H_DR_VAL_ACTIVE) || dr_isr_triggered;
 
@@ -520,7 +514,7 @@ static int check_and_execute_spi_transaction(void)
 			 * a. A valid tx buffer to be transmitted towards slave
 			 * b. Slave wants to send something (Rx for host)
 			 */
-			ret = g_h.funcs->_h_do_bus_transfer(&spi_trans);
+			ret = h_spi_transfer(spi_handle, &spi_trans);
 
 			if (!ret)
 				process_spi_rx_buf(spi_trans.rx_buf);
@@ -537,9 +531,9 @@ static int check_and_execute_spi_transaction(void)
 		}
 	}
 	if ((gpio_handshake != H_HS_VAL_ACTIVE) || schedule_dummy_tx || schedule_dummy_rx)
-		g_h.funcs->_h_post_semaphore(spi_trans_ready_sem);
+		h_sem_give(spi_trans_ready_sem);
 
-	g_h.funcs->_h_unlock_mutex(spi_bus_lock);
+	h_mutex_unlock(spi_bus_lock);
 
 	return ret;
 }
@@ -573,7 +567,6 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		H_FREE_PTR_WITH_FUNC(free_func, buffer_to_free);
 		return -1;
 	}
-	//g_h.funcs->_h_memset(&buf_handle, 0, sizeof(buf_handle));
 	buf_handle.payload_zcopy = buff_zcopy;
 	buf_handle.if_type = iface_type;
 	buf_handle.if_num = iface_num;
@@ -591,15 +584,15 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
-	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
+	h_queue_send(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
+	h_sem_give(sem_to_slave_queue);
 
 #if ESP_PKT_STATS
 	if (buf_handle.if_type == ESP_STA_IF)
 		pkt_stats.sta_tx_in_pass++;
 #endif
 
-	g_h.funcs->_h_post_semaphore(spi_trans_ready_sem);
+	h_sem_give(spi_trans_ready_sem);
 
 	return 0;
 }
@@ -622,10 +615,10 @@ static void spi_transaction_task(void const* pvParameters)
 
 	ESP_LOGI(TAG, "Staring SPI task");
 
-	g_h.funcs->_h_config_gpio_as_interrupt(H_GPIO_HANDSHAKE_Port, H_GPIO_HANDSHAKE_Pin,
+	h_gpio_set_intr(H_GPIO_HANDSHAKE_Pin,
 			H_HS_INTR_EDGE, gpio_hs_isr_handler, NULL);
 
-	g_h.funcs->_h_config_gpio_as_interrupt(H_GPIO_DATA_READY_Port, H_GPIO_DATA_READY_Pin,
+	h_gpio_set_intr(H_GPIO_DATA_READY_Pin,
 			H_DR_INTR_EDGE, gpio_dr_isr_handler, NULL);
 
 #if !H_HANDSHAKE_ACTIVE_HIGH
@@ -641,7 +634,7 @@ static void spi_transaction_task(void const* pvParameters)
 
 		if ((!is_transport_rx_ready()) ||
 			(!spi_trans_ready_sem)) {
-			g_h.funcs->_h_msleep(100);
+			h_msleep(100);
 			continue;
 		}
 
@@ -650,7 +643,7 @@ static void spi_transaction_task(void const* pvParameters)
 		 * on Either Data ready and Handshake pin
 		 */
 
-		if (g_h.funcs->_h_get_semaphore(spi_trans_ready_sem, HOSTED_BLOCK_MAX) == SUCCESS) {
+		if (h_sem_take(spi_trans_ready_sem, HOSTED_BLOCK_MAX) == SUCCESS) {
 			check_and_execute_spi_transaction();
 		}
 	}
@@ -669,11 +662,11 @@ static void spi_process_rx_task(void const* pvParameters)
 
 	while (1) {
 
-		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, HOSTED_BLOCK_MAX);
+		h_sem_take(sem_from_slave_queue, HOSTED_BLOCK_MAX);
 
-		if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
-			if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))
-				if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_OTHERS], &buf_handle_l, 0)) {
+		if (h_queue_recv(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
+			if (h_queue_recv(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))
+				if (h_queue_recv(from_slave_queue[PRIO_Q_OTHERS], &buf_handle_l, 0)) {
 					ESP_LOGI(TAG, "No element in any queue found");
 					continue;
 				}
@@ -695,7 +688,7 @@ static void spi_process_rx_task(void const* pvParameters)
 #if 1
 			if (chan_arr[buf_handle->if_type] && chan_arr[buf_handle->if_type]->rx) {
 				/* TODO : Need to abstract heap_caps_malloc */
-				uint8_t * copy_payload = (uint8_t *)g_h.funcs->_h_malloc(buf_handle->payload_len);
+				uint8_t * copy_payload = (uint8_t *)h_malloc(buf_handle->payload_len);
 				assert(copy_payload);
 				memcpy(copy_payload, buf_handle->payload, buf_handle->payload_len);
 				H_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle, buf_handle->priv_buffer_handle);
@@ -792,12 +785,12 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 	 * length would be transmitted.
 	 */
 
-	if (!g_h.funcs->_h_get_semaphore(sem_to_slave_queue, 0)) {
+	if (!h_sem_take(sem_to_slave_queue, 0)) {
 
 		/* Tx msg is present as per sem */
-		if (g_h.funcs->_h_dequeue_item(to_slave_queue[PRIO_Q_SERIAL], &buf_handle, 0))
-			if (g_h.funcs->_h_dequeue_item(to_slave_queue[PRIO_Q_BT], &buf_handle, 0))
-				if (g_h.funcs->_h_dequeue_item(to_slave_queue[PRIO_Q_OTHERS], &buf_handle, 0)) {
+		if (h_queue_recv(to_slave_queue[PRIO_Q_SERIAL], &buf_handle, 0))
+			if (h_queue_recv(to_slave_queue[PRIO_Q_BT], &buf_handle, 0))
+				if (h_queue_recv(to_slave_queue[PRIO_Q_OTHERS], &buf_handle, 0)) {
 					tx_needed = 0; /* No Tx msg */
 				}
 
@@ -849,12 +842,12 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 				// adjust actual payload len
 				len -= 1;
 				payload_header->len = htole16(len);
-				g_h.funcs->_h_memcpy(payload, &buf_handle.payload[1], len);
+				h_memcpy(payload, &buf_handle.payload[1], len);
 			}
 		} else {
 			/* Non HCI packets */
 			if (!buf_handle.payload_zcopy && len)
-				g_h.funcs->_h_memcpy(payload, buf_handle.payload, H_MIN(len, MAX_PAYLOAD_SIZE));
+				h_memcpy(payload, buf_handle.payload, H_MIN(len, MAX_PAYLOAD_SIZE));
 		}
 
 		//TODO: checksum should be configurable from menuconfig
@@ -902,17 +895,17 @@ void check_if_max_freq_used(uint8_t chip_type)
 static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 {
 	ESP_LOGI(TAG, "Resetting slave on SPI bus with pin %d", reset_pin.pin);
-	g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-	g_h.funcs->_h_msleep(10);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-	g_h.funcs->_h_msleep(10);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	h_gpio_config(reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
+	h_gpio_write(reset_pin.pin, H_RESET_VAL_ACTIVE);
+	h_msleep(10);
+	h_gpio_write(reset_pin.pin, H_RESET_VAL_INACTIVE);
+	h_msleep(10);
+	h_gpio_write(reset_pin.pin, H_RESET_VAL_ACTIVE);
 	/* Delay for a short while to allow co-processor to take control
 	 * of GPIO signals after reset. Otherwise, we may false detect on
 	 * the GPIOs going high during the reset.
 	 */
-	g_h.funcs->_h_msleep(500);
+	h_msleep(500);
 	return ESP_OK;
 }
 
@@ -980,9 +973,9 @@ int bus_inform_slave_host_power_save_start(void)
 		spi_trans.rx_buf = rxbuff;
 
 		/* Execute direct SPI transaction - bypass all queues */
-		g_h.funcs->_h_lock_mutex(spi_bus_lock, HOSTED_BLOCK_MAX);
-		ret = g_h.funcs->_h_do_bus_transfer(&spi_trans);
-		g_h.funcs->_h_unlock_mutex(spi_bus_lock);
+		h_mutex_lock(spi_bus_lock, HOSTED_BLOCK_MAX);
+		ret = h_spi_transfer(spi_handle, &spi_trans);
+		h_mutex_unlock(spi_bus_lock);
 
 		/* Free buffers */
 		spi_buffer_free(txbuff);
@@ -1038,9 +1031,9 @@ int bus_inform_slave_host_power_save_stop(void)
 		spi_trans.rx_buf = rxbuff;
 
 		/* Execute direct SPI transaction - bypass all queues */
-		g_h.funcs->_h_lock_mutex(spi_bus_lock, HOSTED_BLOCK_MAX);
-		ret = g_h.funcs->_h_do_bus_transfer(&spi_trans);
-		g_h.funcs->_h_unlock_mutex(spi_bus_lock);
+		h_mutex_lock(spi_bus_lock, HOSTED_BLOCK_MAX);
+		ret = h_spi_transfer(spi_handle, &spi_trans);
+		h_mutex_unlock(spi_bus_lock);
 
 		/* Free buffers */
 		spi_buffer_free(txbuff);
