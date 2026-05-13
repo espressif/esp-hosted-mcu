@@ -123,6 +123,13 @@ typedef enum {
 
 #define h_spi_transfer(h, ctx)           (g_h_transport.spi_transfer(h, ctx))
 
+/* SPI-HD — optional transport extension, only present when SPI-HD selected */
+#define h_spi_hd_read_reg(h, r, d, p, l)    (g_h_transport.spi_hd_read_reg(h, r, d, p, l))
+#define h_spi_hd_write_reg(h, r, d, l)      (g_h_transport.spi_hd_write_reg(h, r, d, l))
+#define h_spi_hd_read_dma(h, d, s, l)       (g_h_transport.spi_hd_read_dma(h, d, s, l))
+#define h_spi_hd_write_dma(h, d, s, l)      (g_h_transport.spi_hd_write_dma(h, d, s, l))
+#define h_spi_hd_send_cmd9(h)               (g_h_transport.spi_hd_send_cmd9(h))
+
 #define h_sdio_read_block(h,r,d,s,l)     (g_h_transport.sdio_read_block(h,r,d,s,l))
 #define h_sdio_write_block(h,r,d,s,l)    (g_h_transport.sdio_write_block(h,r,d,s,l))
 #define h_sdio_wait_intr(h, to)          (g_h_transport.sdio_wait_intr(h, to))

@@ -36,6 +36,17 @@
 #include "mempool.h"
 #include "transport_util.h"
 
+/* Transport-specific buffer size definitions (needed for MAX_TRANSPORT_BUFFER_SIZE) */
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
+#include "port_esp_hosted_host_spi.h"
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
+#include "port_esp_hosted_host_sdio.h"
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
+#include "port_esp_hosted_host_spi_hd.h"
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_UART
+#include "port_esp_hosted_host_uart.h"
+#endif
+
 #include "esp_hosted_cli.h"
 // Was: #include "h_priv_event.h" → see h_priv_event.h
 

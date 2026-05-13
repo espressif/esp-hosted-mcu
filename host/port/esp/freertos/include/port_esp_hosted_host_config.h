@@ -126,8 +126,12 @@ enum {
   #define H_USE_MEMPOOL 0
 #endif
 
+#ifndef H_MAX_SYNC_RPC_REQUESTS
 #define H_MAX_SYNC_RPC_REQUESTS                      CONFIG_ESP_HOSTED_MAX_SIMULTANEOUS_SYNC_RPC_REQUESTS
+#endif
+#ifndef H_MAX_ASYNC_RPC_REQUESTS
 #define H_MAX_ASYNC_RPC_REQUESTS                     CONFIG_ESP_HOSTED_MAX_SIMULTANEOUS_ASYNC_RPC_REQUESTS
+#endif
 
 #undef H_TRANSPORT_IN_USE
 
@@ -660,7 +664,9 @@ enum {
 #endif
 
 
+#ifndef H_HOST_USES_STATIC_NETIF
 #define H_HOST_USES_STATIC_NETIF 0 /* yet unsupported */
+#endif
 
 esp_err_t esp_hosted_set_default_config(void);
 bool esp_hosted_is_config_valid(void);

@@ -17,6 +17,9 @@
 #include "stats.h"
 #include "transport_drv.h"
 
+#include "h_config.h"
+#include "h_wrapper.h"
+
 #include "spi_hd_drv.h"
 #include "port_esp_hosted_host_config.h"
 
@@ -69,15 +72,14 @@ static const char TAG[] = "H_SPI_HD_DRV";
 static void * spi_hd_bus_lock;
 
 #define SPI_HD_DRV_LOCK_CREATE() do {                   \
-		spi_hd_bus_lock = g_h.funcs->_h_create_mutex(); \
-		assert(spi_hd_bus_lock);                        \
+		assert(h_mutex_create(&spi_hd_bus_lock) == H_OK); \
 	} while (0);
 #define SPI_HD_DRV_LOCK_DESTROY() do {                  \
-		g_h.funcs->_h_destroy_mutex(spi_hd_bus_lock);   \
+		h_mutex_delete(spi_hd_bus_lock);                \
 	} while (0);
 
-#define SPI_HD_DRV_LOCK()   g_h.funcs->_h_lock_mutex(spi_hd_bus_lock, HOSTED_BLOCK_MAX);
-#define SPI_HD_DRV_UNLOCK() g_h.funcs->_h_unlock_mutex(spi_hd_bus_lock);
+#define SPI_HD_DRV_LOCK()   h_mutex_lock(spi_hd_bus_lock, HOSTED_BLOCK_MAX);
+#define SPI_HD_DRV_UNLOCK() h_mutex_unlock(spi_hd_bus_lock);
 
 #else
 #define SPI_HD_DRV_LOCK_CREATE()
@@ -105,11 +107,11 @@ static void * spi_hd_read_thread;
 static void * spi_hd_process_rx_thread;
 static void * spi_hd_write_thread;
 
-static queue_handle_t to_slave_queue[MAX_PRIORITY_QUEUES];
-static semaphore_handle_t sem_to_slave_queue;
-static queue_handle_t from_slave_queue[MAX_PRIORITY_QUEUES];
-static semaphore_handle_t sem_from_slave_queue;
-static semaphore_handle_t spi_hd_data_ready_sem;
+static h_queue_t to_slave_queue[MAX_PRIORITY_QUEUES];
+static h_semaphore_t sem_to_slave_queue;
+static h_queue_t from_slave_queue[MAX_PRIORITY_QUEUES];
+static h_semaphore_t sem_from_slave_queue;
+static h_semaphore_t spi_hd_data_ready_sem;
 
 /* Counter to hold the amount of buffers already sent to spi hd slave */
 static uint32_t spi_hd_tx_buf_count = 0;
@@ -120,9 +122,9 @@ static uint32_t spi_hd_rx_byte_count = 0;
 // one-time trigger to start write thread
 static bool spi_hd_start_write_thread = false;
 
-static void spi_hd_write_task(void const* pvParameters);
-static void spi_hd_read_task(void const* pvParameters);
-static void spi_hd_process_rx_task(void const* pvParameters);
+static void spi_hd_write_task(void *pvParameters);
+static void spi_hd_read_task(void *pvParameters);
+static void spi_hd_process_rx_task(void *pvParameters);
 static int update_flow_ctrl(uint8_t *rxbuff);
 
 static inline void spi_hd_mempool_create(int tx_q_size, int rx_q_size)
@@ -138,8 +140,8 @@ static inline void spi_hd_mempool_create(int tx_q_size, int rx_q_size)
 		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
 		.malloc = transport_util_malloc,
 		.calloc = transport_util_calloc,
-		.memset = g_h.funcs->_h_memset,
-		.free   = g_h.funcs->_h_free,
+		.memset = h_memset_fn,
+		.free   = h_free_fn,
 	};
 	buf_mp_g = hosted_mempool_create(&config);
 	assert(buf_mp_g);
@@ -170,7 +172,7 @@ static inline void spi_hd_buffer_free(void *buf)
 static void FAST_RAM_ATTR gpio_dr_isr_handler(void* arg)
 {
 	ESP_EARLY_LOGD(TAG, "gpio_dr_isr_handler");
-	g_h.funcs->_h_post_semaphore_from_isr(spi_hd_data_ready_sem);
+	h_sem_give_from_isr(spi_hd_data_ready_sem, NULL);
 }
 
 static int spi_hd_get_tx_buffer_num(uint32_t *tx_num, bool is_lock_needed)
@@ -178,7 +180,7 @@ static int spi_hd_get_tx_buffer_num(uint32_t *tx_num, bool is_lock_needed)
 	uint32_t len = 0;
 	int ret = 0;
 
-	ret = g_h.funcs->_h_spi_hd_read_reg(SPI_HD_REG_RX_BUF_LEN, &len, POLLING_READ, is_lock_needed);
+	ret = h_spi_hd_read_reg(spi_hd_handle, SPI_HD_REG_RX_BUF_LEN, &len, POLLING_READ, is_lock_needed);
 
 	if (ret) {
 		ESP_LOGE(TAG, "%s: err: %"PRIi16, __func__, ret);
@@ -206,7 +208,7 @@ static int spi_hd_is_write_buffer_available(uint32_t buf_needed)
 				retry--;
 
 				if (retry < MAX_WRITE_BUF_RETRIES)
-					g_h.funcs->_h_msleep(1);
+					h_msleep(1);
 
 				continue;
 			}
@@ -228,24 +230,24 @@ static int spi_hd_is_write_buffer_available(uint32_t buf_needed)
 /* Forward declaration */
 static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle);
 
-static void spi_hd_write_task(void const* pvParameters)
+static void spi_hd_write_task(void *pvParameters)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	uint8_t tx_needed = 1;
 
 	while (!spi_hd_start_write_thread)
-		g_h.funcs->_h_msleep(10);
+		h_msleep(10);
 
 	ESP_LOGD(TAG, "spi_hd_write_task: write thread started");
 
 	for (;;) {
 		/* Check if higher layers have anything to transmit */
-		g_h.funcs->_h_get_semaphore(sem_to_slave_queue, HOSTED_BLOCK_MAX);
+		h_sem_take(sem_to_slave_queue, HOSTED_BLOCK_MAX);
 
 		/* Tx msg is present as per sem */
-		if (g_h.funcs->_h_dequeue_item(to_slave_queue[PRIO_Q_SERIAL], &buf_handle, 0))
-			if (g_h.funcs->_h_dequeue_item(to_slave_queue[PRIO_Q_BT], &buf_handle, 0))
-				if (g_h.funcs->_h_dequeue_item(to_slave_queue[PRIO_Q_OTHERS], &buf_handle, 0)) {
+		if (h_queue_recv(to_slave_queue[PRIO_Q_SERIAL], &buf_handle, 0))
+			if (h_queue_recv(to_slave_queue[PRIO_Q_BT], &buf_handle, 0))
+				if (h_queue_recv(to_slave_queue[PRIO_Q_OTHERS], &buf_handle, 0)) {
 					tx_needed = 0; /* No Tx msg */
 				}
 
@@ -321,11 +323,11 @@ static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle)
 			// adjust actual payload len
 			len -= 1;
 			payload_header->len = htole16(len);
-			g_h.funcs->_h_memcpy(payload, &buf_handle->payload[1], len);
+			h_memcpy(payload, &buf_handle->payload[1], len);
 		}
 	} else {
 		if (!buf_handle->payload_zcopy) {
-			g_h.funcs->_h_memcpy(payload, buf_handle->payload, len);
+			h_memcpy(payload, buf_handle->payload, len);
 		}
 	}
 
@@ -350,7 +352,7 @@ static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle)
 
 	ESP_HEXLOGD("h_spi_hd_tx", sendbuf, data_left, 32);
 
-	ret = g_h.funcs->_h_spi_hd_write_dma(sendbuf, data_left, ACQUIRE_LOCK);
+	ret = h_spi_hd_write_dma(spi_hd_handle, sendbuf, data_left, ACQUIRE_LOCK);
 	if (ret) {
 		ESP_LOGE(TAG, "%s: Failed to send data", __func__);
 		result = ESP_FAIL;
@@ -470,8 +472,8 @@ static esp_err_t spi_hd_push_pkt_to_queue(uint8_t * rxbuff, uint16_t len, uint16
 		pkt_prio = PRIO_Q_BT;
 	/* else OTHERS by default */
 
-	g_h.funcs->_h_queue_item(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
-	g_h.funcs->_h_post_semaphore(sem_from_slave_queue);
+	h_queue_send(from_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
+	h_sem_give(sem_from_slave_queue);
 
 	return ESP_OK;
 }
@@ -510,7 +512,7 @@ static esp_err_t spi_hd_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 	return ESP_OK;
 }
 
-static void spi_hd_read_task(void const* pvParameters)
+static void spi_hd_read_task(void *pvParameters)
 {
 	int res;
 	uint8_t *rxbuff = NULL;
@@ -530,7 +532,7 @@ static void spi_hd_read_task(void const* pvParameters)
 
 	// check that slave is ready
 	while (true) {
-		res = g_h.funcs->_h_spi_hd_read_reg(SPI_HD_REG_SLAVE_READY, &data, POLLING_READ, ACQUIRE_LOCK);
+		res = h_spi_hd_read_reg(spi_hd_handle, SPI_HD_REG_SLAVE_READY, &data, POLLING_READ, ACQUIRE_LOCK);
 		if (res) {
 			ESP_LOGE(TAG, "Error reading slave register");
 		} else if (data == SPI_HD_STATE_SLAVE_READY) {
@@ -542,23 +544,23 @@ static void spi_hd_read_task(void const* pvParameters)
 
 	ESP_LOGD(TAG, "Open Data path");
 	// slave is ready: initialise Data Ready as interrupt input
-	g_h.funcs->_h_config_gpio_as_interrupt(H_SPI_HD_PORT_DATA_READY, H_SPI_HD_PIN_DATA_READY,
+	h_gpio_set_intr(H_SPI_HD_PIN_DATA_READY,
 			H_SPI_HD_DR_INTR_EDGE, gpio_dr_isr_handler, NULL);
 
 	// tell slave to open data path
 	data = SPI_HD_CTRL_DATAPATH_ON;
-	g_h.funcs->_h_spi_hd_write_reg(SPI_HD_REG_SLAVE_CTRL, &data, ACQUIRE_LOCK);
+	h_spi_hd_write_reg(spi_hd_handle, SPI_HD_REG_SLAVE_CTRL, &data, ACQUIRE_LOCK);
 
 	ESP_LOGD(TAG, "spi_hd_read_task: post open data path");
 	// we are now ready to receive data from slave
 	while (1) {
 		// wait for read semaphore to trigger
-		g_h.funcs->_h_get_semaphore(spi_hd_data_ready_sem, HOSTED_BLOCK_MAX);
+		h_sem_take(spi_hd_data_ready_sem, HOSTED_BLOCK_MAX);
 		ESP_LOGV(TAG, "spi_hd_read_task: data ready intr received");
 
 		SPI_HD_DRV_LOCK();
 
-		res = g_h.funcs->_h_spi_hd_read_reg(SPI_HD_REG_TX_BUF_LEN, &curr_rx_value, POLLING_READ, ACQUIRE_LOCK);
+		res = h_spi_hd_read_reg(spi_hd_handle, SPI_HD_REG_TX_BUF_LEN, &curr_rx_value, POLLING_READ, ACQUIRE_LOCK);
 		if (res) {
 			ESP_LOGE(TAG, "error reading slave SPI_HD_REG_TX_BUF_LEN register");
 			SPI_HD_DRV_UNLOCK();
@@ -566,7 +568,7 @@ static void spi_hd_read_task(void const* pvParameters)
 		}
 
 		// send cmd9 to clear the interrupts on the slave
-		g_h.funcs->_h_spi_hd_send_cmd9();
+		h_spi_hd_send_cmd9(spi_hd_handle);
 
 		ESP_LOGV(TAG, "spi_hd_read_task: sent cmd9");
 		// save the int mask
@@ -627,7 +629,7 @@ static void spi_hd_read_task(void const* pvParameters)
 				size_to_xfer, curr_rx_value & SPI_HD_TX_BUF_LEN_MASK, spi_hd_rx_byte_count);
 
 		// read data
-		res = g_h.funcs->_h_spi_hd_read_dma(rxbuff, size_to_xfer, ACQUIRE_LOCK);
+		res = h_spi_hd_read_dma(spi_hd_handle, rxbuff, size_to_xfer, ACQUIRE_LOCK);
 
 		// update count, taking into account the mask
 		spi_hd_rx_byte_count = (spi_hd_rx_byte_count + size_to_xfer) & SPI_HD_TX_BUF_LEN_MASK;
@@ -647,7 +649,7 @@ static void spi_hd_read_task(void const* pvParameters)
 	}
 }
 
-static void spi_hd_process_rx_task(void const* pvParameters)
+static void spi_hd_process_rx_task(void *pvParameters)
 {
 	interface_buffer_handle_t buf_handle_l = {0};
 	interface_buffer_handle_t *buf_handle = NULL;
@@ -666,11 +668,11 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 	ESP_LOGI(TAG, "spi_hd_process_rx_task: transport rx ready");
 
 	while (1) {
-		g_h.funcs->_h_get_semaphore(sem_from_slave_queue, HOSTED_BLOCK_MAX);
+		h_sem_take(sem_from_slave_queue, HOSTED_BLOCK_MAX);
 
-		if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
-			if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))
-				if (g_h.funcs->_h_dequeue_item(from_slave_queue[PRIO_Q_OTHERS], &buf_handle_l, 0)) {
+		if (h_queue_recv(from_slave_queue[PRIO_Q_SERIAL], &buf_handle_l, 0))
+			if (h_queue_recv(from_slave_queue[PRIO_Q_BT], &buf_handle_l, 0))
+				if (h_queue_recv(from_slave_queue[PRIO_Q_OTHERS], &buf_handle_l, 0)) {
 					ESP_LOGI(TAG, "No element in any queue found");
 					continue;
 				}
@@ -688,7 +690,7 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 #if 1
 			if (chan_arr[buf_handle->if_type] && chan_arr[buf_handle->if_type]->rx) {
 				/* TODO : Need to abstract heap_caps_malloc */
-				uint8_t * copy_payload = (uint8_t *)g_h.funcs->_h_malloc(buf_handle->payload_len);
+				uint8_t * copy_payload = (uint8_t *)h_malloc(buf_handle->payload_len);
 				assert(copy_payload);
 				assert(buf_handle->payload_len);
 				assert(buf_handle->payload);
@@ -760,44 +762,44 @@ void * bus_init_internal(void)
 
 	SPI_HD_DRV_LOCK_CREATE();
 
-	sem_to_slave_queue = g_h.funcs->_h_create_semaphore(H_SPI_HD_TX_QUEUE_SIZE * MAX_PRIORITY_QUEUES);
-	assert(sem_to_slave_queue);
-	g_h.funcs->_h_get_semaphore(sem_to_slave_queue, 0);
+	assert(h_sem_create(H_SPI_HD_TX_QUEUE_SIZE * MAX_PRIORITY_QUEUES, 0, &sem_to_slave_queue) == H_OK);
+	h_sem_take(sem_to_slave_queue, 0);
 
-	sem_from_slave_queue = g_h.funcs->_h_create_semaphore(H_SPI_HD_RX_QUEUE_SIZE * MAX_PRIORITY_QUEUES);
-	assert(sem_from_slave_queue);
-	g_h.funcs->_h_get_semaphore(sem_from_slave_queue, 0);
+	assert(h_sem_create(H_SPI_HD_RX_QUEUE_SIZE * MAX_PRIORITY_QUEUES, 0, &sem_from_slave_queue) == H_OK);
+	h_sem_take(sem_from_slave_queue, 0);
 
-	spi_hd_data_ready_sem = g_h.funcs->_h_create_semaphore(H_SPI_HD_RX_QUEUE_SIZE * MAX_PRIORITY_QUEUES);
-	assert(spi_hd_data_ready_sem);
-	g_h.funcs->_h_get_semaphore(spi_hd_data_ready_sem, 0);
+	assert(h_sem_create(H_SPI_HD_RX_QUEUE_SIZE * MAX_PRIORITY_QUEUES, 0, &spi_hd_data_ready_sem) == H_OK);
+	h_sem_take(spi_hd_data_ready_sem, 0);
 
 	/* cleanup the semaphores */
 	for (prio_q_idx = 0; prio_q_idx < MAX_PRIORITY_QUEUES; prio_q_idx++) {
 		/* Queue - rx */
-		from_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(H_SPI_HD_RX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
-		assert(from_slave_queue[prio_q_idx]);
+		/* Queue - rx */
+		assert(h_queue_create(H_SPI_HD_RX_QUEUE_SIZE, sizeof(interface_buffer_handle_t),
+							  &from_slave_queue[prio_q_idx]) == H_OK);
 
 		/* Queue - tx */
-		to_slave_queue[prio_q_idx] = g_h.funcs->_h_create_queue(H_SPI_HD_TX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
-		assert(to_slave_queue[prio_q_idx]);
+		assert(h_queue_create(H_SPI_HD_TX_QUEUE_SIZE, sizeof(interface_buffer_handle_t),
+							  &to_slave_queue[prio_q_idx]) == H_OK);
 	}
 
 	spi_hd_mempool_create(H_SPI_HD_TX_QUEUE_SIZE, H_SPI_HD_RX_QUEUE_SIZE);
 
-	spi_hd_read_thread = g_h.funcs->_h_thread_create("spi_hd_read",
-			DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, spi_hd_read_task, NULL);
+	assert(h_thread_create("spi_hd_read",
+			DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, spi_hd_read_task, NULL,
+			&spi_hd_read_thread) == H_OK);
 
-	spi_hd_process_rx_thread = g_h.funcs->_h_thread_create("spi_hd_process_rx",
-		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, spi_hd_process_rx_task, NULL);
+	assert(h_thread_create("spi_hd_process_rx",
+		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, spi_hd_process_rx_task, NULL,
+		&spi_hd_process_rx_thread) == H_OK);
 
-	spi_hd_write_thread = g_h.funcs->_h_thread_create("spi_hd_write",
-		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, spi_hd_write_task, NULL);
+	assert(h_thread_create("spi_hd_write",
+		DFLT_TASK_PRIO, DFLT_TASK_STACK_SIZE, spi_hd_write_task, NULL,
+		&spi_hd_write_thread) == H_OK);
 
-	spi_hd_handle = g_h.funcs->_h_bus_init();
-	if (!spi_hd_handle) {
+	if (h_transport_init(&spi_hd_handle) != H_OK || !spi_hd_handle) {
 		ESP_LOGE(TAG, "could not create spi_hd handle, exiting\n");
-		assert(spi_hd_handle);
+		assert(0);
 	}
 
 	ESP_LOGI(TAG, "Initialised SPI HD driver");
@@ -810,52 +812,52 @@ void bus_deinit_internal(void *bus_handle)
 
 	/* Stop threads */
 	if (spi_hd_read_thread) {
-		g_h.funcs->_h_thread_cancel(spi_hd_read_thread);
+		h_thread_delete(spi_hd_read_thread);
 		spi_hd_read_thread = NULL;
 	}
 
 	if (spi_hd_process_rx_thread) {
-		g_h.funcs->_h_thread_cancel(spi_hd_process_rx_thread);
+		h_thread_delete(spi_hd_process_rx_thread);
 		spi_hd_process_rx_thread = NULL;
 	}
 
 	if (spi_hd_write_thread) {
-		g_h.funcs->_h_thread_cancel(spi_hd_write_thread);
+		h_thread_delete(spi_hd_write_thread);
 		spi_hd_write_thread = NULL;
 	}
 
 	/* Clean up queues */
 	for (prio_q_idx = 0; prio_q_idx < MAX_PRIORITY_QUEUES; prio_q_idx++) {
 		if (from_slave_queue[prio_q_idx]) {
-			g_h.funcs->_h_destroy_queue(from_slave_queue[prio_q_idx]);
+			h_queue_delete(from_slave_queue[prio_q_idx]);
 			from_slave_queue[prio_q_idx] = NULL;
 		}
 
 		if (to_slave_queue[prio_q_idx]) {
-			g_h.funcs->_h_destroy_queue(to_slave_queue[prio_q_idx]);
+			h_queue_delete(to_slave_queue[prio_q_idx]);
 			to_slave_queue[prio_q_idx] = NULL;
 		}
 	}
 
 	/* Clean up semaphores */
 	if (sem_to_slave_queue) {
-		g_h.funcs->_h_destroy_semaphore(sem_to_slave_queue);
+		h_sem_delete(sem_to_slave_queue);
 		sem_to_slave_queue = NULL;
 	}
 
 	if (sem_from_slave_queue) {
-		g_h.funcs->_h_destroy_semaphore(sem_from_slave_queue);
+		h_sem_delete(sem_from_slave_queue);
 		sem_from_slave_queue = NULL;
 	}
 
 	if (spi_hd_data_ready_sem) {
-		g_h.funcs->_h_destroy_semaphore(spi_hd_data_ready_sem);
+		h_sem_delete(spi_hd_data_ready_sem);
 		spi_hd_data_ready_sem = NULL;
 	}
 
 	/* Deinitialize the SPI HD bus */
 	if (spi_hd_handle) {
-		g_h.funcs->_h_bus_deinit(bus_handle);
+		h_transport_deinit(bus_handle);
 		spi_hd_handle = NULL;
 	}
 
@@ -912,8 +914,8 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 	else if (buf_handle.if_type == ESP_HCI_IF)
 		pkt_prio = PRIO_Q_BT;
 
-	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
-	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
+	h_queue_send(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
+	h_sem_give(sem_to_slave_queue);
 
 #if ESP_PKT_STATS
 	if (buf_handle.if_type == ESP_STA_IF)
@@ -947,12 +949,12 @@ int ensure_slave_bus_ready(void *bus_handle)
 	if (!esp_hosted_woke_from_power_save()) {
 		/* Reset the slave */
 		ESP_LOGI(TAG, "Resetting slave on SPI HD bus with pin %d", reset_pin.pin);
-		g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
-		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-		g_h.funcs->_h_msleep(10);
-		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-		g_h.funcs->_h_msleep(10);
-		g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+		h_gpio_config(reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
+		h_gpio_write(reset_pin.pin, H_RESET_VAL_ACTIVE);
+		h_msleep(10);
+		h_gpio_write(reset_pin.pin, H_RESET_VAL_INACTIVE);
+		h_msleep(10);
+		h_gpio_write(reset_pin.pin, H_RESET_VAL_ACTIVE);
 	} else {
 		stop_host_power_save();
 	}
