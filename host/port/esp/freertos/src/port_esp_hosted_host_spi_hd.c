@@ -89,6 +89,16 @@ DRAM_DMA_ALIGNED_ATTR static uint8_t dma_data_buf[DMA_ALIGNED_BUF_LEN];
 // initially we start off using 2 data lines
 static uint32_t spi_hd_rx_tx_flags = SPI_DUAL_FLAGS;
 
+/* ── SPI-HD Protocol Semantics ──
+ * The following helpers encode SPI-HD protocol rules (command encoding,
+ * dummy-bit calculation, register access, DMA segmented transfer) into
+ * SPI transaction descriptors. They are ESP-IDF-specific in execution
+ * (via spi_device_transmit) but port-agnostic in protocol logic.
+ * When WP 4 defines the transport-contract extension for SPI-HD,
+ * the protocol semantics below should be separable from the ESP-IDF
+ * transmit calls and migratable to a shared protocol layer.
+ */
+
 // returns the spi command to send based on the provided mode flags
 static uint16_t spi_hd_get_hd_command(spi_command_t cmd_t, uint32_t flags)
 {
@@ -192,7 +202,7 @@ static esp_err_t spi_hd_rddma_seg(uint8_t *out_data, int seg_len, uint32_t flags
 #endif
 
 #if SPI_WORKAROUND
-	/* this ensures RX DMA data in cache is sync to memory */
+	/* ESP-IDF specific: cache sync for RX DMA (ESP32-P4 workaround) */
 	assert(ESP_OK == esp_cache_msync((void *)out_data, padded_len, ESP_CACHE_MSYNC_FLAG_DIR_C2M));
 #endif
 
@@ -306,6 +316,13 @@ static esp_err_t spi_hd_wrdma(const uint8_t *data, int len, int seg_len, uint32_
 	return spi_hd_wrdma_done(flags);
 }
 
+/* ── ESP-IDF Platform Binding ──
+ * Bus / device lifecycle, GPIO drive capability, and cache-sync operations.
+ * These calls are ESP-IDF-specific and must remain in the ESP-IDF port.
+ * WP 5 only partitions and documents them; any abstraction into a cross-port
+ * contract requires WP 4 to define the SPI-HD transport extension rules.
+ */
+
 void * hosted_spi_hd_init(void)
 {
 	// initialise bus and device in ctx
@@ -372,6 +389,7 @@ void * hosted_spi_hd_init(void)
 		goto err_add_device;
 	}
 
+	/* ESP-IDF specific: GPIO drive capability configuration */
 	gpio_set_drive_capability(H_SPI_HD_PIN_CS, GPIO_DRIVE_CAP_3);
 	gpio_set_drive_capability(H_SPI_HD_PIN_CLK, GPIO_DRIVE_CAP_3);
 
@@ -414,6 +432,15 @@ int hosted_spi_hd_deinit(void *ctx)
 	return ESP_OK;
 }
 
+/* ── SPI-HD Public Port API ──
+ * These functions are the entry points called by the SPI-HD driver
+ * (spi_hd_drv.c). They wrap the protocol helpers above with bus-locking
+ * and error-checking. They are part of the current legacy port contract
+ * (accessed via g_h.funcs->_h_spi_hd_*) and will be revisited when
+ * WP 4 defines how SPI-HD-specific operations are carried by the
+ * transport contract extension.
+ */
+
 int hosted_spi_hd_read_reg(uint32_t reg, uint32_t *data, int poll, bool lock_required)
 {
 	int res = 0;
@@ -426,7 +453,7 @@ int hosted_spi_hd_read_reg(uint32_t reg, uint32_t *data, int poll, bool lock_req
 	SPI_HD_LOCK(lock_required);
 
 #if SPI_WORKAROUND
-	/* this ensures RX DMA data in cache is sync to memory */
+	/* ESP-IDF specific: cache sync for RX DMA (ESP32-P4 workaround) */
 	assert(ESP_OK == esp_cache_msync((void *)dma_data_buf, DMA_ALIGNED_BUF_LEN, ESP_CACHE_MSYNC_FLAG_DIR_C2M));
 #endif
 
@@ -444,7 +471,7 @@ int hosted_spi_hd_read_reg(uint32_t reg, uint32_t *data, int poll, bool lock_req
 	// reread until value is stable
 	for (i = 0; i < poll; i++) {
 #if SPI_WORKAROUND
-		/* this ensures RX DMA data in cache is sync to memory */
+		/* ESP-IDF specific: cache sync for RX DMA (ESP32-P4 workaround) */
 		assert(ESP_OK == esp_cache_msync((void *)dma_data_buf, DMA_ALIGNED_BUF_LEN, ESP_CACHE_MSYNC_FLAG_DIR_C2M));
 #endif
 
@@ -524,6 +551,17 @@ int hosted_spi_hd_write_dma(uint8_t *data, uint16_t size, bool lock_required)
 	return res;
 }
 
+/* ── Transition Extension Anchor: hosted_spi_hd_set_data_lines ──
+ * 当前状态：OSAL contract 的 optional extension（h_osal_contract_t.spi_hd_set_data_lines）
+ * 冻结判定来源：17 号文档锚点 C + 18 号文档"暂时保留的过渡扩展锚点"
+ * 退场条件：
+ *   1. 若 18 号文档后续更新扩展承载规则，把 SPI-HD 专属操作统一迁入 transport contract
+ *      扩展段，则本函数可一并迁入，从 OSAL extension 移除；
+ *   2. 若专题验证证明数据线协商应保持为 OSAL extension，则长期保留；
+ *   3. 任何推翻当前判定的变更，必须先按 17 号文档变更流程回流（先更新 17 号，
+ *      再同步 18 号，最后更新 19 号）。
+ * 不由 20 号文档决定：20 号只负责第二平台 PoC 验证，不改 transport 状态定义。
+ */
 int hosted_spi_hd_set_data_lines(uint32_t data_lines)
 {
 	if (data_lines == H_SPI_HD_CONFIG_2_DATA_LINES) {

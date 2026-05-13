@@ -48,6 +48,7 @@
 #define H_FEATURE_OTA        0
 #define H_FEATURE_NETSPLIT   0
 
+#undef H_HOST_USES_STATIC_NETIF
 #define H_HOST_USES_STATIC_NETIF 1
 
 #endif /* !H_PORT_USING_LINUX_FALLBACK */

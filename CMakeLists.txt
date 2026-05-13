@@ -26,7 +26,9 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	set(priv_include
 		"${host_dir}/drivers/transport"
 		"${host_dir}/drivers/transport/spi"
+		"${host_dir}/drivers/transport/spi_hd"
 		"${host_dir}/drivers/transport/sdio"
+		"${host_dir}/drivers/transport/uart"
 		"${host_dir}/drivers/serial"
 		"${host_dir}/core/include/h_internal"
 		"${host_dir}/core/include/h_public"
@@ -142,7 +144,7 @@ if(CONFIG_ESP_HOSTED_ENABLED)
 	if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
 		list(APPEND srcs "${host_dir}/port/esp-idf/h_transport_sdio.c")
 	elseif(CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE)
-		# no SPI-HD portable port yet
+		list(APPEND srcs "${host_dir}/port/esp-idf/h_transport_spi_hd.c")
 	elseif(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
 		list(APPEND srcs "${host_dir}/port/esp-idf/h_transport_spi.c")
 	elseif(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)

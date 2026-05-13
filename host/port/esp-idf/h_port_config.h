@@ -9,6 +9,8 @@
 /* ── Transport — selected by Kconfig at build time ── */
 #if defined(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
   #define H_TRANSPORT_IN_USE  H_TRANSPORT_SPI
+#elif defined(CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE)
+  #define H_TRANSPORT_IN_USE  H_TRANSPORT_SPI_HD
 #elif defined(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
   #define H_TRANSPORT_IN_USE  H_TRANSPORT_SDIO
 #elif defined(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)
@@ -30,6 +32,7 @@
 #define H_IDF_VERSION_MINOR 3
 
 /* ESP-IDF uses static netif creation (esp_netif_create_default_wifi_*) */
+#undef H_HOST_USES_STATIC_NETIF
 #define H_HOST_USES_STATIC_NETIF 1
 
 /* ── Thread config from Kconfig ── */

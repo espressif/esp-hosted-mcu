@@ -107,8 +107,22 @@ typedef struct {
     int (*init)(void **out_handle);
     int (*deinit)(void *handle);
 
-    /* SPI */
+    /* SPI Full-Duplex */
     int (*spi_transfer)(void *handle, void *transfer_ctx);
+
+    /* SPI-HD — optional, only required when SPI-HD is selected.
+     * Ports that do not support SPI-HD may leave all slots NULL.
+     * The NULLs are guarded by compile-time transport selection
+     * (#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD). */
+    int (*spi_hd_read_reg)(void *handle, uint32_t reg, uint32_t *data,
+                           int poll, bool lock);
+    int (*spi_hd_write_reg)(void *handle, uint32_t reg, uint32_t *data,
+                            bool lock);
+    int (*spi_hd_read_dma)(void *handle, uint8_t *data, uint16_t size,
+                           bool lock);
+    int (*spi_hd_write_dma)(void *handle, uint8_t *data, uint16_t size,
+                            bool lock);
+    int (*spi_hd_send_cmd9)(void *handle);
 
     /* SDIO */
     int (*sdio_card_init)(void *handle, bool show_config);
