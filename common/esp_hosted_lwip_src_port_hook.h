@@ -8,7 +8,9 @@
 #ifndef __ESP_HOSTED_LWIP_SRC_PORT_HOOK_H__
 #define __ESP_HOSTED_LWIP_SRC_PORT_HOOK_H__
 
+#ifdef ESP_PLATFORM
 #include "sdkconfig.h"
+#endif
 
 #if defined(CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED)
 #include "lwip/opt.h"

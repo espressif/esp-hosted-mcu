@@ -10,7 +10,11 @@
 #include "sdkconfig.h"
 #include "esp_task.h"
 
+#ifdef ESP_PLATFORM
+#if __has_include("esp_wifi_remote.h")
 #include "esp_wifi_remote.h"
+#endif
+#endif
 
 #ifdef CONFIG_ESP_HOSTED_ENABLED
   #define H_ESP_HOSTED_HOST 1

@@ -35,28 +35,36 @@ h_err_t h_validate_contracts(void)
     }
 
     /* Transport: validate the specific transport selected at compile time */
+    /* Common Transport requirements */
+    if (!g_h_transport.init || !g_h_transport.deinit ||
+        !g_h_transport.bus_ready || !g_h_transport.transmit) {
+        H_LOGE("INIT", "Transport contract missing required base functions");
+        return H_ERR_INVALID_ARG;
+    }
+
+    /* Bus-specific requirements */
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
-    if (!g_h_transport.init || !g_h_transport.spi_transfer ||
+    if (!g_h_transport.spi_transfer ||
         !g_h_transport.gpio_config || !g_h_transport.gpio_set_intr) {
-        H_LOGE("INIT", "SPI transport contract missing required functions");
+        H_LOGE("INIT", "SPI transport contract missing bus-specific functions");
         return H_ERR_INVALID_ARG;
     }
 #elif H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
-    if (!g_h_transport.init || !g_h_transport.spi_hd_read_reg ||
+    if (!g_h_transport.spi_hd_read_reg ||
         !g_h_transport.spi_hd_write_reg || !g_h_transport.spi_hd_read_dma ||
         !g_h_transport.spi_hd_write_dma || !g_h_transport.spi_hd_send_cmd9 ||
         !g_h_transport.gpio_config || !g_h_transport.gpio_set_intr) {
-        H_LOGE("INIT", "SPI-HD transport contract missing required functions");
+        H_LOGE("INIT", "SPI-HD transport contract missing bus-specific functions");
         return H_ERR_INVALID_ARG;
     }
 #elif H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
-    if (!g_h_transport.init || !g_h_transport.sdio_read_block) {
-        H_LOGE("INIT", "SDIO transport contract missing required functions");
+    if (!g_h_transport.sdio_read_block) {
+        H_LOGE("INIT", "SDIO transport contract missing bus-specific functions");
         return H_ERR_INVALID_ARG;
     }
 #elif H_TRANSPORT_IN_USE == H_TRANSPORT_UART
-    if (!g_h_transport.init || !g_h_transport.uart_read) {
-        H_LOGE("INIT", "UART transport contract missing required functions");
+    if (!g_h_transport.uart_read) {
+        H_LOGE("INIT", "UART transport contract missing bus-specific functions");
         return H_ERR_INVALID_ARG;
     }
 #endif

@@ -89,7 +89,7 @@ else
         echo "  ○ $f"
     done
 fi
-echo "  待办: ${#COMPILE_ONLY_CORE[@]:-}/13 (编译通过, 待链接)"
+echo "  待办: ${#COMPILE_ONLY_CORE[@]}/13 (编译通过, 待链接)"
 echo ""
 
 echo "── 已链接但未覆盖生产路径测试 ──"
@@ -101,7 +101,7 @@ else
         echo "  ◐ $f"
     done
 fi
-echo "  已链接: ${#LINKED_BUT_NOT_TESTED[@]:-}/13 (编译+链接通过, 待生产路径测试覆盖)"
+echo "  已链接: ${#LINKED_BUT_NOT_TESTED[@]}/13 (编译+链接通过, 待生产路径测试覆盖)"
 echo ""
 
 

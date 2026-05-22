@@ -134,6 +134,10 @@ typedef enum {
 #define h_sdio_write_block(h,r,d,s,l)    (g_h_transport.sdio_write_block(h,r,d,s,l))
 #define h_sdio_wait_intr(h, to)          (g_h_transport.sdio_wait_intr(h, to))
 
+#define h_bus_ready(h)                   (g_h_transport.bus_ready(h))
+#define h_transmit(t, n, p, l, z, f, fn, fl) \
+    (g_h_transport.transmit(t, n, p, l, z, f, fn, fl))
+
 #define h_uart_read(h, d, s)             (g_h_transport.uart_read(h, d, s))
 #define h_uart_write(h, d, s)            (g_h_transport.uart_write(h, d, s))
 
@@ -152,6 +156,12 @@ typedef enum {
 
 #define h_hosted_init_hook() \
     do { if (g_h_osal.hosted_init_hook) g_h_osal.hosted_init_hook(); } while(0)
+
+#define h_woke_from_ps() \
+    (g_h_osal.woke_from_ps ? g_h_osal.woke_from_ps() : 0)
+
+#define h_ps_init() \
+    (g_h_osal.ps_init ? g_h_osal.ps_init() : H_OK)
 
 #define h_spi_hd_set_data_lines(n) \
     H_VTABLE_CALL(&g_h_osal, spi_hd_set_data_lines, n)

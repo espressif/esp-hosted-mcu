@@ -204,7 +204,7 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 	}
 
 	/* 4. Allocate protobuf msg */
-	HOSTED_CALLOC(uint8_t, tx_data, tx_len, fail_req0);
+	tx_data = h_calloc(1, tx_len); if (!tx_data) goto fail_req0;
 
 	/* 5. Assign response callback, if valid */
 	if (app_req->rpc_rsp_cb) {
@@ -252,7 +252,7 @@ static int process_rpc_tx_msg(ctrl_cmd_t *app_req)
 	H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
 
 	/* 9. Cleanup */
-	HOSTED_FREE(tx_data);
+	h_free(tx_data);
 	RPC_FREE_BUFFS();
 	return H_OK;
 fail_req0:
@@ -267,7 +267,7 @@ fail_req:
 		 **/
 		ctrl_cmd_t *app_resp = NULL;
 
-		HOSTED_CALLOC(ctrl_cmd_t, app_resp, sizeof(ctrl_cmd_t), fail_req2);
+		app_resp = h_calloc(1, sizeof(ctrl_cmd_t)); if (!app_resp) goto fail_req2;
 
 		app_resp->msg_type = RPC_TYPE__Resp;
 		app_resp->msg_id = (app_req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base);
@@ -288,7 +288,7 @@ fail_req:
 
 		ctrl_cmd_t *app_resp = NULL;
 
-		HOSTED_CALLOC(ctrl_cmd_t, app_resp, sizeof(ctrl_cmd_t), fail_req2);
+		app_resp = h_calloc(1, sizeof(ctrl_cmd_t)); if (!app_resp) goto fail_req2;
 
 		app_resp->msg_type = RPC_TYPE__Resp;
 		app_resp->msg_id = (app_req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base);
@@ -314,7 +314,7 @@ fail_req2:
 	/* 13. Cleanup */
 	H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
 
-	HOSTED_FREE(tx_data);
+	h_free(tx_data);
 	RPC_FREE_BUFFS();
 
 	/* app_req lifecycle on failure:
@@ -335,7 +335,7 @@ fail_req2:
 		}
 		if (!found) {
 			/* Not registered, free it here */
-			HOSTED_FREE(app_req);
+			h_free(app_req);
 		}
 		/* If found, it will be freed by timeout or cleanup */
 	}
@@ -374,7 +374,7 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 
 			/* Allocate app struct for event */
 
-			HOSTED_CALLOC(ctrl_cmd_t, app_event, sizeof(ctrl_cmd_t), free_buffers);
+			app_event = h_calloc(1, sizeof(ctrl_cmd_t)); if (!app_event) goto free_buffers;
 
 			/* Decode protobuf buffer of event and
 			 * copy into app structures */
@@ -395,7 +395,7 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 		 * asynchronpusly */
 
 		/* Allocate app struct for response */
-		HOSTED_CALLOC(ctrl_cmd_t, app_resp, sizeof(ctrl_cmd_t), free_buffers);
+		app_resp = h_calloc(1, sizeof(ctrl_cmd_t)); if (!app_resp) goto free_buffers;
 
 		/* Decode protobuf buffer of response and
 		 * copy into app structures */
@@ -454,8 +454,8 @@ static int process_rpc_rx_msg(Rpc * proto_msg, rpc_rx_ind_t rpc_rx_func)
 free_buffers:
 	rpc__free_unpacked(proto_msg, NULL);
 	proto_msg = NULL;
-	HOSTED_FREE(app_event);
-	HOSTED_FREE(app_resp);
+	h_free(app_event);
+	h_free(app_resp);
 	return RPC_ERR_PROTOBUF_DECODE;
 }
 
@@ -491,7 +491,7 @@ static void rpc_rx_thread(void *arg)
 		}
 		uint8_t recv_buf[ESP_TRANSPORT_MAX_BUF_SIZE];
 		uint16_t recv_len = ESP_TRANSPORT_MAX_BUF_SIZE;
-		h_err_t recv_err = h_serial_if_recv(recv_buf, &recv_len, HOSTED_BLOCK_MAX);
+		h_err_t recv_err = h_serial_if_recv(recv_buf, &recv_len, H_BLOCK_MAX);
 
 		if (recv_err != H_OK || !recv_len) {
 			H_LOGE(TAG, "buf_len read = 0");
@@ -682,7 +682,7 @@ static int clear_async_resp_callback(async_rsp_t *async_rsp_item)
 		}
 
 		/* Free the request structure that was allocated by RPC_DEFAULT_REQ */
-		HOSTED_FREE(async_rsp_item->app_req);
+		h_free(async_rsp_item->app_req);
 
 		async_rsp_item->uid = 0;
 		async_rsp_item->cb = NULL;
@@ -938,10 +938,10 @@ ctrl_cmd_t * rpc_wait_and_parse_sync_resp(ctrl_cmd_t *app_req)
 	if (!rx_buf || !rx_buf_len) {
 		H_LOGE(TAG, "Response not received for [0x%x](%s)", app_req->msg_id, rpc_id_name(app_req->msg_id));
 		if (rx_buf) {
-			HOSTED_FREE(rx_buf);
+			h_free(rx_buf);
 		}
 	}
-	HOSTED_FREE(app_req);
+	h_free(app_req);
 	return rx_buf;
 }
 
@@ -974,7 +974,7 @@ static void rpc_async_timeout_handler(void *arg)
 	rpc_rsp_cb_t func = app_req->rpc_rsp_cb;
 	uint32_t req_uid = app_req->uid;
 	ctrl_cmd_t *app_resp = NULL;
-	HOSTED_CALLOC(ctrl_cmd_t, app_resp, sizeof(ctrl_cmd_t), free_buffers);
+	app_resp = h_calloc(1, sizeof(ctrl_cmd_t)); if (!app_resp) goto free_buffers;
 	app_resp->msg_id = app_req->msg_id - RPC_ID__Req_Base + RPC_ID__Resp_Base;
 	app_resp->msg_type = RPC_TYPE__Resp;
 	app_resp->resp_event_status = RPC_ERR_REQUEST_TIMEOUT;
@@ -1041,7 +1041,7 @@ fail_req:
 		h_sem_delete(app_req->rx_sem);
 
 	H_FREE_PTR_WITH_FUNC(app_req->app_free_buff_func, app_req->app_free_buff_hdl);
-	HOSTED_FREE(app_req);
+	h_free(app_req);
 
 	return H_FAIL;
 }
@@ -1054,7 +1054,7 @@ static int cleanup_sync_async_timer_table(void)
 		}
 		/* Free any pending async request structures */
 		if (async_rsp_table[i].app_req) {
-			HOSTED_FREE(async_rsp_table[i].app_req);
+			h_free(async_rsp_table[i].app_req);
 		}
 		async_rsp_table[i].timer_hdl = NULL;
 		async_rsp_table[i].uid = 0;

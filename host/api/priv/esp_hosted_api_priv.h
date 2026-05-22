@@ -15,7 +15,11 @@ extern "C" {
 /* Includes */
 #include "stdbool.h"
 #include "esp_wifi.h"
+#ifdef ESP_PLATFORM
+#if __has_include("esp_wifi_remote.h")
 #include "esp_wifi_remote.h"
+#endif
+#endif
 #include "esp_hosted_api_types.h"
 #include "port_esp_hosted_host_wifi_config.h"
 

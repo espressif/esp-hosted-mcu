@@ -12,7 +12,11 @@ extern "C" {
 #endif
 
 #include "esp_hosted_interface.h"
+#ifdef ESP_PLATFORM
+#if __has_include("esp_wifi_remote.h")
 #include "esp_wifi_remote.h"
+#endif
+#endif
 #include "esp_wifi.h"
 
 struct esp_remote_channel_config {

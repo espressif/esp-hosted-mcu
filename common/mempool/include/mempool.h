@@ -12,7 +12,9 @@
 #include <sys/queue.h>
 #include <stdint.h>
 
+#ifdef ESP_PLATFORM
 #include "sdkconfig.h"
+#endif
 
 #define MEMPOOL_OK                       0
 #define MEMPOOL_FAIL                     -1

@@ -36,19 +36,19 @@
         app_msg->app_free_buff_hdl = NULL;                                    \
       }                                                                       \
     }                                                                         \
-    HOSTED_FREE(app_msg);                                                     \
+    h_free(app_msg);                                                          \
   }                                                                           \
 } while(0);
 
 #define RPC_FAIL_ON_NULL_PRINT(msGparaM, prinTmsG)                            \
     if (!msGparaM) {                                                          \
-        ESP_LOGE(TAG, prinTmsG"\n");                                          \
+        H_LOGE(TAG, prinTmsG"\n");                                            \
         goto fail_parse_rpc_msg;                                              \
     }
 
 #define RPC_FAIL_ON_NULL(msGparaM)                                            \
     if (!rpc_msg->msGparaM) {                                                 \
-        ESP_LOGE(TAG, "Failed to process rx data\n");                         \
+        H_LOGE(TAG, "Failed to process rx data\n");                         \
         goto fail_parse_rpc_msg;                                              \
     }
 
@@ -56,7 +56,7 @@
 #define RPC_FREE_BUFFS() {                                                    \
   uint8_t idx = 0;                                                            \
   for (idx=0;idx<app_req->n_rpc_free_buff_hdls; idx++)                        \
-    HOSTED_FREE(app_req->rpc_free_buff_hdls[idx]);                            \
+    h_free(app_req->rpc_free_buff_hdls[idx]);                                \
 }
 
 typedef struct q_element {

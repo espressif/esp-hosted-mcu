@@ -34,7 +34,7 @@ typedef struct {
 static void *thread_entry(void *arg) {
     thread_wrapper_t *w = (thread_wrapper_t *)arg;
     w->fn(w->arg);
-    free(w);
+
     return NULL;
 }
 
@@ -47,7 +47,7 @@ static int linux_thread_create(const char *name, uint32_t prio, uint32_t stack,
     w->fn = fn;
     w->arg = arg;
     int ret = pthread_create(&w->thread, NULL, thread_entry, w);
-    if (ret != 0) { free(w); return H_FAIL; }
+    if (ret != 0) {  return H_FAIL; }
     *out = (h_thread_t)w;
     return H_OK;
 }
@@ -60,7 +60,7 @@ static int linux_thread_delete(h_thread_t thread)
      * that only exit when the serial read returns error. In mock builds we
      * need a clean way to tear them down from rpc_core_deinit(). */
     pthread_cancel(w->thread);
-    pthread_join(w->thread, NULL);
+    pthread_join(w->thread, NULL); free(w);
     /* w was freed in thread_entry */
     return H_OK;
 }
@@ -417,6 +417,12 @@ const h_osal_contract_t g_h_osal = {
     .blocking_delay = linux_blocking_delay,
 
     .log_write      = linux_log_write,
+
+    .restart_host   = NULL,
+    .hosted_init_hook = NULL,
+    .woke_from_ps   = NULL,
+    .ps_init        = NULL,
+    .spi_hd_set_data_lines = NULL,
 };
 
 /* ── Port Init/Deinit Entry Points ── */

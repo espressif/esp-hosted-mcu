@@ -236,7 +236,7 @@ static int serial_ll_write(const serial_ll_handle_t * serial_ll_hdl,
 		else {
 			// FRAGMENTATION COMPLETED
 			buf_to_free = wbuffer;
-			free_func = H_DEFLT_FREE_FUNC;
+			free_func = h_free_fn;
 		}
 
 		int ret = esp_hosted_tx(serial_ll_hdl->if_type,
@@ -248,7 +248,7 @@ static int serial_ll_write(const serial_ll_handle_t * serial_ll_hdl,
 					flags);
 		if (ret != ESP_OK) {
 			if (flags & MORE_FRAGMENT) {
-				H_FREE_PTR_WITH_FUNC(H_DEFLT_FREE_FUNC, wbuffer);
+				H_FREE_PTR_WITH_FUNC(h_free_fn, wbuffer);
 			}
 			ESP_LOGE(TAG, "esp_hosted_tx failed at offset=%u len=%u", offset, frag_len);
 			return ret;

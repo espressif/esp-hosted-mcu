@@ -24,8 +24,8 @@ int is_event_callback_registered(int event);
 
 /* ── Helper macros for RPC parse/compose (new framework, no old port deps) ──
  *
- * These replace the old rpc_core.h macros that depended on ESP_LOGE and
- * HOSTED_FREE.  Consumers must ensure H_LOGE is available (via h_wrapper.h).
+ * These replace the old rpc_core.h macros that depended on legacy log and
+ * free.  Consumers must ensure H_LOGE is available (via h_wrapper.h).
  */
 
 #define RPC_FAIL_ON_NULL(msGparaM)                                            \

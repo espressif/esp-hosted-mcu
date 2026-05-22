@@ -7,7 +7,9 @@
 #ifndef _ESP_HOSTED_CLI_H_
 #define _ESP_HOSTED_CLI_H_
 
+#ifdef ESP_PLATFORM
 #include "sdkconfig.h"
+#endif
 
 /* host */
 #ifdef CONFIG_ESP_HOSTED_ENABLED

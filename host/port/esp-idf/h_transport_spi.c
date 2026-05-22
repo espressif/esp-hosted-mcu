@@ -20,6 +20,11 @@
 extern void *hosted_spi_init(void);
 extern int   hosted_spi_deinit(void *handle);
 extern int   hosted_do_spi_transfer(void *trans);
+extern int   ensure_slave_bus_ready(void *bus_handle);
+extern int   esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
+                           uint8_t *payload_buf, uint16_t payload_len,
+                           uint8_t buff_zerocopy, uint8_t *buffer_to_free,
+                           void (*free_buf_func)(void *ptr), uint8_t flags);
 
 extern int hosted_config_gpio(void *gpio_port, uint32_t gpio_num,
                               uint32_t mode);
@@ -90,6 +95,8 @@ static int h_gpio_write_adapter(uint32_t pin, uint32_t value)
 const h_transport_contract_t g_h_transport = {
     .init           = h_spi_init_adapter,
     .deinit         = h_spi_deinit_adapter,
+    .bus_ready      = ensure_slave_bus_ready,
+    .transmit       = esp_hosted_tx,
 
     /* SPI */
     .spi_transfer   = h_spi_transfer_adapter,

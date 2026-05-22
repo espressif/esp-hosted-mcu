@@ -6,7 +6,9 @@
 
 
 #include "esp_hosted_cli.h"
+#ifdef ESP_PLATFORM
 #include "sdkconfig.h"
+#endif
 #include "esp_idf_version.h"
 
 #include "esp_console.h"
@@ -20,7 +22,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#ifdef ESP_PLATFORM
 #include <esp_log.h>
+#endif
 #include <esp_err.h>
 #include <esp_heap_caps.h>
 

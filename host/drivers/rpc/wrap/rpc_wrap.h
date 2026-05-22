@@ -14,10 +14,16 @@ extern "C" {
 
 /** Includes **/
 #include "h_wifi_types.h"
+
+#if defined(ESP_PLATFORM) && (ESP_PLATFORM)
 #include "port_esp_hosted_host_wifi_config.h"
 #include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_openthread.h"
 #include "esp_mac.h"
+#else
+#include "port_esp_hosted_host_wifi_config.h"
+#endif
+
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_misc.h"
 #include "esp_hosted_misc_types.h"

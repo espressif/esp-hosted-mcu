@@ -43,9 +43,26 @@ static int mock_gpio_set_intr(uint32_t pin, uint32_t intr_type,
     return H_OK;
 }
 
+static int mock_bus_ready(void *h)
+{
+    (void)h;
+    return H_OK;
+}
+
+static int mock_transmit(uint8_t if_type, uint8_t if_num,
+                         uint8_t *payload, uint16_t len, uint8_t zcopy,
+                         void *to_free, void (*free_fn)(void *), uint8_t flags)
+{
+    (void)if_type; (void)if_num; (void)payload; (void)len; (void)zcopy; (void)flags;
+    if (free_fn && to_free) free_fn(to_free);
+    return H_OK;
+}
+
 const h_transport_contract_t g_h_transport = {
     .init         = mock_init,
     .deinit       = mock_deinit,
+    .bus_ready    = mock_bus_ready,
+    .transmit     = mock_transmit,
     .spi_transfer = mock_spi_transfer,
     .gpio_config  = mock_gpio_config,
     .gpio_set_intr = mock_gpio_set_intr,

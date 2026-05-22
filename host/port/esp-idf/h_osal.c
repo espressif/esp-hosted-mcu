@@ -297,6 +297,9 @@ static int h_spi_hd_set_data_lines_adapter(uint32_t data_lines)
 
 /* ──  Global OSAL Contract Instance ── */
 
+extern int esp_hosted_power_save_init(void);
+extern int esp_hosted_woke_from_power_save(void);
+
 const h_osal_contract_t g_h_osal = {
     /* Memory */
     .malloc            = malloc,
@@ -355,5 +358,7 @@ const h_osal_contract_t g_h_osal = {
     /* Optional extensions (bridged to legacy port during transition) */
     .restart_host      = h_restart_host_adapter,
     .hosted_init_hook  = h_hosted_init_hook_adapter,
+    .woke_from_ps      = esp_hosted_woke_from_power_save,
+    .ps_init           = esp_hosted_power_save_init,
     .spi_hd_set_data_lines = h_spi_hd_set_data_lines_adapter,
 };

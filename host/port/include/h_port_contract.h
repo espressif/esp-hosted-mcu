@@ -79,6 +79,8 @@ typedef struct {
     /* Platform-specific extensions (optional — port may leave NULL) */
     int  (*restart_host)(void);
     void (*hosted_init_hook)(void);
+    int  (*woke_from_ps)(void);
+    int  (*ps_init)(void);
     int  (*spi_hd_set_data_lines)(uint32_t data_lines);
 } h_osal_contract_t;
 
@@ -106,6 +108,12 @@ typedef struct {
     /* Bus lifecycle */
     int (*init)(void **out_handle);
     int (*deinit)(void *handle);
+    int (*bus_ready)(void *handle);
+
+    /* Transmit packet */
+    int (*transmit)(uint8_t if_type, uint8_t if_num,
+                    uint8_t *payload, uint16_t len, uint8_t zcopy,
+                    void *to_free, void (*free_fn)(void *), uint8_t flags);
 
     /* SPI Full-Duplex */
     int (*spi_transfer)(void *handle, void *transfer_ctx);
