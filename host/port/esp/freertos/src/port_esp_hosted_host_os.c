@@ -110,22 +110,19 @@ void hosted_free(void* ptr)
 
 void *hosted_realloc(void *mem, size_t newsize)
 {
-	void *p = NULL;
-
 	if (newsize == 0) {
 		HOSTED_FREE(mem);
 		return NULL;
 	}
 
-	p = hosted_malloc(newsize);
-	if (p) {
-		/* zero the memory */
-		if (mem != NULL) {
-			hosted_memcpy(p, mem, newsize);
-			HOSTED_FREE(mem);
-		}
-	}
-	return p;
+	/* Use libc realloc: it knows the old allocation size and copies only the
+	 * valid bytes. The previous malloc + memcpy(newsize) over-read `mem` by
+	 * the (newsize - oldsize) growth delta — `mem` only held oldsize bytes —
+	 * which faults when the old block sits at the top of RAM (the serial RX
+	 * reassembly buffer in serial_ll_if.c grows through this realloc).
+	 * hosted_malloc/HOSTED_FREE are plain malloc/free, so realloc is a safe
+	 * drop-in on the same heap. */
+	return realloc(mem, newsize);
 }
 
 void *hosted_malloc_align(size_t size, size_t align)

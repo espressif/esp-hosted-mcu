@@ -466,6 +466,19 @@ static int sdio_get_len_from_slave(uint32_t *rx_size, uint32_t reg_val, bool is_
 
 	len &= ESP_SLAVE_LEN_MASK;
 
+	/* A cumulative-length register read of all-ones (== ESP_SLAVE_LEN_MASK) is
+	 * the disconnected/errored SDIO bus signature: a floating bus reads back
+	 * 0xFF. It is NOT a real PKT_LEN. Streaming mode skips the upper-bound
+	 * check below, so without this guard the bogus value becomes a ~960 KB
+	 * read length ((0xFFFFF - consumed) wraps near ESP_RX_BYTE_MAX), the
+	 * RX-buffer alloc fails, and the host asserts/crashes. Treat it as a
+	 * transient bus error and drop this read — the next interrupt re-reads a
+	 * valid length. */
+	if (len == ESP_SLAVE_LEN_MASK) {
+		ESP_LOGW(TAG, "PKT_LEN reg all-ones (bus read error); dropping read");
+		return ESP_FAIL;
+	}
+
 	if (len >= sdio_rx_byte_count)
 		len = (len + ESP_RX_BYTE_MAX - sdio_rx_byte_count) % ESP_RX_BYTE_MAX;
 	else {
@@ -507,6 +520,19 @@ static int sdio_get_len_from_slave(uint32_t *rx_size, bool is_lock_needed)
 	}
 
 	len &= ESP_SLAVE_LEN_MASK;
+
+	/* A cumulative-length register read of all-ones (== ESP_SLAVE_LEN_MASK) is
+	 * the disconnected/errored SDIO bus signature: a floating bus reads back
+	 * 0xFF. It is NOT a real PKT_LEN. Streaming mode skips the upper-bound
+	 * check below, so without this guard the bogus value becomes a ~960 KB
+	 * read length ((0xFFFFF - consumed) wraps near ESP_RX_BYTE_MAX), the
+	 * RX-buffer alloc fails, and the host asserts/crashes. Treat it as a
+	 * transient bus error and drop this read — the next interrupt re-reads a
+	 * valid length. */
+	if (len == ESP_SLAVE_LEN_MASK) {
+		ESP_LOGW(TAG, "PKT_LEN reg all-ones (bus read error); dropping read");
+		return ESP_FAIL;
+	}
 
 	if (len >= sdio_rx_byte_count)
 		len = (len + ESP_RX_BYTE_MAX - sdio_rx_byte_count) % ESP_RX_BYTE_MAX;
@@ -951,12 +977,22 @@ static uint8_t * sdio_rx_get_buffer(uint32_t len)
 	uint8_t ** buf = &double_buf.buffer[index].buf;
 
 	if (len > double_buf.buffer[index].buf_size) {
+		/* Allocate the larger buffer BEFORE freeing the old one. On a transient
+		 * heap shortage we degrade gracefully — keep the old buffer, leave the
+		 * slot consistent, and return NULL so the caller drops this read (the
+		 * slave resends / the RPC retries). This mirrors the mempool OOM
+		 * handling in sdio_push_data_to_queue() and replaces a hard assert that
+		 * crashed the host on transient memory pressure. */
+		uint8_t *newbuf = (uint8_t *)g_h.funcs->_h_malloc_align(len, HOSTED_MEM_ALIGNMENT_64);
+		if (!newbuf) {
+			ESP_LOGW(TAG, "RX buffer alloc failed (len=%lu); dropping read", (unsigned long)len);
+			return NULL;
+		}
 		if (*buf) {
-			// free already allocated memory
+			// free the old (smaller) buffer now that the new one is secured
 			g_h.funcs->_h_free_align(*buf);
 		}
-		*buf = (uint8_t *)g_h.funcs->_h_malloc_align(len, HOSTED_MEM_ALIGNMENT_64);
-		assert(*buf);
+		*buf = newbuf;
 		double_buf.buffer[index].buf_size = len;
 		ESP_LOGD(TAG, "buf %d size: %ld", index, double_buf.buffer[index].buf_size);
 	}
@@ -1244,7 +1280,12 @@ static void sdio_read_task(void const* pvParameters)
 
 		/* Allocate rx buffer */
 		rxbuff = sdio_rx_get_buffer(len_from_slave);
-		assert(rxbuff);
+		if (!rxbuff) {
+			/* Transient RX-buffer alloc failure: drop this read and retry on
+			 * the next interrupt instead of asserting (crashing) the host. */
+			SDIO_DRV_UNLOCK();
+			continue;
+		}
 
 		data_left = len_from_slave;
 		pos = rxbuff;
