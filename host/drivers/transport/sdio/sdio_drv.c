@@ -360,18 +360,24 @@ void bus_deinit_internal(void *bus_handle)
 #endif
 
 	// free memory allocated in double buffering structs
+#if H_SDIO_HOST_RX_MODE != H_SDIO_HOST_STREAMING_MODE
+#  define H_DOUBLE_BUF_FREE(p)  sdio_buffer_free(p)
+#else
+#  define H_DOUBLE_BUF_FREE(p)  g_h.funcs->_h_free_align(p)
+#endif
 	if (double_buf.buffer[0].buf) {
 		ESP_LOGI(TAG, "free buffer[0] %p", double_buf.buffer[0].buf);
-		g_h.funcs->_h_free_align(double_buf.buffer[0].buf);
+		H_DOUBLE_BUF_FREE(double_buf.buffer[0].buf);
 		double_buf.buffer[0].buf = NULL;
 		double_buf.buffer[0].buf_size = 0;
 	}
 	if (double_buf.buffer[1].buf) {
 		ESP_LOGI(TAG, "free buffer[1] %p", double_buf.buffer[1].buf);
-		g_h.funcs->_h_free_align(double_buf.buffer[1].buf);
+		H_DOUBLE_BUF_FREE(double_buf.buffer[1].buf);
 		double_buf.buffer[1].buf = NULL;
 		double_buf.buffer[1].buf_size = 0;
 	}
+#undef H_DOUBLE_BUF_FREE
 	/* Reset double_buf state for clean reinitialization */
 	double_buf.read_index = -1;
 	double_buf.read_data_len = 0;
@@ -919,7 +925,7 @@ static esp_err_t sdio_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 		 * wrong header/bit packing?
 		 * */
 		ESP_LOGW(TAG, "Dropping packet");
-		HOSTED_FREE(buf);
+		sdio_buffer_free(buf);
 		return ESP_FAIL;
 	}
 
@@ -1046,6 +1052,9 @@ static void sdio_data_to_rx_buf_task(void const* pvParameters)
 		if (sdio_push_data_to_queue(buf, len))
 			ESP_LOGE(TAG, "Failed to push data to rx queue");
 
+#if H_SDIO_HOST_RX_MODE != H_SDIO_HOST_STREAMING_MODE
+		double_buf.buffer[double_buf.read_index].buf = NULL;
+#endif
 		// finished sending data: reset read_index
 		double_buf.read_index = -1;
 	}
