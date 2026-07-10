@@ -41,7 +41,7 @@ typedef struct {
 	int32_t tx_line;
 } esp_hosted_ext_coex_gpio_set_t;
 
-#if CONFIG_ESP_HOSTED_CP_EXT_COEX
+#if defined(CONFIG_ESP_HOSTED_CP_EXT_COEX) && CONFIG_ESP_HOSTED_CP_EXT_COEX
 
 /**
  * @brief Host-side API to set the work mode for external coexistence
@@ -65,7 +65,7 @@ esp_err_t esp_hosted_cp_ext_coex_set_work_mode(esp_hosted_ext_coex_work_mode_t w
 esp_err_t esp_hosted_cp_ext_coex_set_gpio_pin(uint32_t wire_type,
 		const esp_hosted_ext_coex_gpio_set_t *gpio_pins);
 
-#if CONFIG_ESP_HOSTED_CP_EXT_COEX_ADVANCE
+#if defined(CONFIG_ESP_HOSTED_CP_EXT_COEX_ADVANCE) && CONFIG_ESP_HOSTED_CP_EXT_COEX_ADVANCE
 /**
  * @brief Host-side API to set the grant delay for external coexistence
  *        on the co-processor connected to the host.
