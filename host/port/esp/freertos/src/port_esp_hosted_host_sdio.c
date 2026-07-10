@@ -303,7 +303,7 @@ int hosted_sdio_deinit(void* ctx)
 		sdio_bus_lock = NULL;
 	}
 
-	sdmmc_host_deinit();
+	sdmmc_host_deinit_slot(context->config.slot);
 
 	return ESP_OK;
 }
