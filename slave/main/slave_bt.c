@@ -43,6 +43,11 @@ static int host_rcv_pkt(uint8_t *data, uint16_t len)
 	interface_buffer_handle_t buf_handle;
 	uint8_t *buf = NULL;
 
+	if (!len) {
+		ESP_LOGE(TAG, "HCI Send packet: invalid length");
+		return ESP_FAIL;
+	}
+
 	buf = (uint8_t *) malloc(len);
 
 	if (!buf) {
@@ -136,6 +141,11 @@ void esp_vhci_host_send_packet(uint8_t *data, uint16_t len)
 			return;
 		}
 
+		if (len < 2 || (len - 1) > sizeof(struct ble_hci_cmd)) {
+			ESP_LOGE(TAG, "HCI command length invalid: %d", len);
+			ble_hci_trans_buf_free((uint8_t *)cmd);
+			return;
+		}
 		memcpy((uint8_t *)cmd, data + 1, len - 1);
 		ble_hci_trans_hs_cmd_tx((uint8_t *)cmd);
 	}
