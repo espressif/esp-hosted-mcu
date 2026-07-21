@@ -58,7 +58,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len);
 
 #if H_USE_MEMPOOL
 static hosted_mempool_t * transport_drv_common_mempool_create(void);
-static void transport_drv_common_mempool_destroy(hosted_mempool_t * param);
+static void transport_drv_common_mempool_deinit(void);
 #endif
 
 #if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
@@ -128,6 +128,12 @@ static void transport_drv_init(void)
 
 esp_err_t teardown_transport(void)
 {
+	/* Mark transport INACTIVE before freeing shared resources.
+	 * Rejects new TX; teardown assumes no TX is already in flight.
+	 */
+	transport_state = TRANSPORT_INACTIVE;
+	ESP_LOGI(TAG, "TRANSPORT_INACTIVE");
+
 	#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and cleanup init timeout timer if still active */
 	if (init_timeout_timer) {
@@ -144,8 +150,20 @@ esp_err_t teardown_transport(void)
 	if (bus_handle) {
 		bus_deinit_internal(bus_handle);
 	}
-	ESP_LOGI(TAG, "TRANSPORT_INACTIVE");
-	transport_state = TRANSPORT_INACTIVE;
+#if H_USE_MEMPOOL
+	/*
+	 * Free the shared channel mempool.
+	 * - Safe only after transport teardown: TX stopped, workers exited, queues drained.
+	 * - Channel removal leaves the pool alone; it may still back in-flight TX buffers.
+	 *
+	 * esp_hosted_deinit()
+	 * ├─ remove_esp_wifi_remote_channels()  // detach channels only
+	 * └─ teardown_transport()
+	 *    ├─ bus_deinit_internal()           // stop workers, drain TX/RX
+	 *    └─ common_mempool_deinit()         // free shared mempool
+	 */
+	transport_drv_common_mempool_deinit();
+#endif
 	return ESP_OK;
 }
 
@@ -242,9 +260,9 @@ esp_err_t transport_drv_remove_channel(transport_channel_t *channel)
 
 	assert(chan_arr[channel->if_type] == channel);
 
-#if H_USE_MEMPOOL
-	transport_drv_common_mempool_destroy(channel->memp);
-#endif
+	/* Shared channel mempool may still back in-flight TX buffers.
+	 * Free only during transport teardown.
+	 */
 	chan_arr[channel->if_type] = NULL;
 	HOSTED_FREE(channel);
 
@@ -260,14 +278,11 @@ esp_err_t transport_drv_remove_channel(transport_channel_t *channel)
  * for AP will be unused.
  */
 
-// reference count mempool allocations
-static int ref_count_mempool = 0;
 static hosted_mempool_t * mempool_common = NULL;
 
 static hosted_mempool_t * transport_drv_common_mempool_create(void)
 {
-	if (!ref_count_mempool) {
-		// create mempool once only
+	if (!mempool_common) {
 		hosted_mempool_config_t config = {
 			.pre_allocated_mem = NULL,
 			.pre_allocated_mem_size = 0,
@@ -283,20 +298,20 @@ static hosted_mempool_t * transport_drv_common_mempool_create(void)
 		assert(mempool_common);
 	}
 
-	// increment ref count
-	ref_count_mempool++;
-
 	return mempool_common;
 }
 #endif
 
 #if H_USE_MEMPOOL
-static void transport_drv_common_mempool_destroy(hosted_mempool_t * param)
+static void transport_drv_common_mempool_deinit(void)
 {
-	// decrement ref count
-	ref_count_mempool--;
-	if (ref_count_mempool == 0) {
-		// destroy the mempool
+	/*
+	 * Free the shared channel mempool.
+	 * - Only after transport teardown (workers stopped, TX/RX drained).
+	 */
+	if (mempool_common) {
+		hosted_mempool_destroy(mempool_common);
+		mempool_common = NULL;
 	}
 }
 #endif
@@ -439,11 +454,7 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 	if (chan_arr[if_type]) {
 		ESP_LOGW(TAG, "Channel [%u] already created, replacing with new callbacks", if_type);
 
-		if (chan_arr[if_type]->memp) {
-#if H_USE_MEMPOOL
-			transport_drv_common_mempool_destroy(chan_arr[if_type]->memp);
-#endif
-		}
+		/* Keep the shared mempool alive; free only during transport teardown. */
 		HOSTED_FREE(chan_arr[if_type]);
 		chan_arr[if_type] = NULL;
 	}
