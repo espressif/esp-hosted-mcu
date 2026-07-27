@@ -70,6 +70,10 @@ menu "Example Configuration"
 			bool "ESP32-P4-EYE Board with on-board C6"
 			depends on IDF_TARGET_ESP32C6
 
+		config ESP32P4_TAB5_C6_BOARD
+			bool "M5Stack Tab5 with on-board ESP32-C6"
+			depends on IDF_TARGET_ESP32C6
+
 		config ESP_HOST_DEV_BOARD_P4_C61_CORE
 			bool "ESP32-P4-C61 Core Board with on-board C61"
 			depends on IDF_TARGET_ESP32C61
@@ -171,6 +175,7 @@ menu "Example Configuration"
 					default 8 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 20 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 20 if ESP32P4_EYE_C6_BOARD
+					default 20 if ESP32P4_TAB5_C6_BOARD
 					default 27 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 8 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 13 if IDF_TARGET_ESP32
@@ -187,6 +192,7 @@ menu "Example Configuration"
 					default 7 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 21 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 21 if ESP32P4_EYE_C6_BOARD
+					default 21 if ESP32P4_TAB5_C6_BOARD
 					default 28 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 7 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 12 if IDF_TARGET_ESP32
@@ -203,6 +209,7 @@ menu "Example Configuration"
 					default 9 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 19 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 19 if ESP32P4_EYE_C6_BOARD
+					default 19 if ESP32P4_TAB5_C6_BOARD
 					default 26 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 9 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 3 if IDF_TARGET_ESP32C5
@@ -221,6 +228,7 @@ menu "Example Configuration"
 					default 10 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 18 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 18 if ESP32P4_EYE_C6_BOARD
+					default 18 if ESP32P4_TAB5_C6_BOARD
 					default 25 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 10 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 15 if IDF_TARGET_ESP32
@@ -285,6 +293,7 @@ menu "Example Configuration"
 					default 14 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 22 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 22 if ESP32P4_EYE_C6_BOARD
+					default 22 if ESP32P4_TAB5_C6_BOARD
 					default 22 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 14 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 4 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
@@ -305,6 +314,7 @@ menu "Example Configuration"
 					default 13 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 23 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 23 if ESP32P4_EYE_C6_BOARD
+					default 23 if ESP32P4_TAB5_C6_BOARD
 					default 23 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 13 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 1 if IDF_TARGET_ESP32C2 && C2_C5_MODULE_SUB_BOARD
@@ -558,6 +568,7 @@ menu "Example Configuration"
 					default 10 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 18 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 18 if ESP32P4_EYE_C6_BOARD
+					default 18 if ESP32P4_TAB5_C6_BOARD
 					default 25 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 10 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 8 if IDF_TARGET_ESP32C61
@@ -571,6 +582,7 @@ menu "Example Configuration"
 					default 9 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 19 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 19 if ESP32P4_EYE_C6_BOARD
+					default 19 if ESP32P4_TAB5_C6_BOARD
 					default 26 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 9 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 3 if IDF_TARGET_ESP32C5
@@ -585,6 +597,7 @@ menu "Example Configuration"
 					default 8 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 20 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 20 if ESP32P4_EYE_C6_BOARD
+					default 20 if ESP32P4_TAB5_C6_BOARD
 					default 27 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 8 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 7
@@ -598,6 +611,7 @@ menu "Example Configuration"
 					default 7 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 21 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 21 if ESP32P4_EYE_C6_BOARD
+					default 21 if ESP32P4_TAB5_C6_BOARD
 					default 28 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 7 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 2
@@ -611,6 +625,7 @@ menu "Example Configuration"
 					default 14 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 22 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 22 if ESP32P4_EYE_C6_BOARD
+					default 22 if ESP32P4_TAB5_C6_BOARD
 					default 22 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 14 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 4 if IDF_TARGET_ESP32C61
@@ -625,6 +640,7 @@ menu "Example Configuration"
 					default 13 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 					default 23 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 23 if ESP32P4_EYE_C6_BOARD
+					default 23 if ESP32P4_TAB5_C6_BOARD
 					default 23 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 13 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 3 if IDF_TARGET_ESP32C61
@@ -648,6 +664,7 @@ menu "Example Configuration"
 					default 9 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 					default 9 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 					default 9 if ESP32P4_EYE_C6_BOARD
+					default 9 if ESP32P4_TAB5_C6_BOARD
 					default 2 if ESP_HOST_DEV_BOARD_P4X_C5_FUNC_BOARD
 					default 0 if IDF_TARGET_ESP32C5
 					default 1 if IDF_TARGET_ESP32C2
@@ -716,6 +733,7 @@ menu "Example Configuration"
 				default 14 if IDF_TARGET_ESP32C5
 				default 23 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 				default 23 if ESP32P4_EYE_C6_BOARD
+				default 23 if ESP32P4_TAB5_C6_BOARD
 				default 23 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 				default 21 if IDF_TARGET_ESP32C6
 				default 23 if IDF_TARGET_ESP32C61
@@ -733,6 +751,7 @@ menu "Example Configuration"
 				default 13 if IDF_TARGET_ESP32C5
 				default 22 if ESP_HOST_DEV_BOARD_P4_C6_CORE
 				default 22 if ESP32P4_EYE_C6_BOARD
+				default 22 if ESP32P4_TAB5_C6_BOARD
 				default 22 if ESP_HOST_DEV_BOARD_P4_C61_CORE
 				default 20 if IDF_TARGET_ESP32C6
 				default 22 if IDF_TARGET_ESP32C61
@@ -1353,6 +1372,7 @@ menu "Example Configuration"
 				default 3 if ESP_HOST_DEV_BOARD_P4_C5_CORE
 				default -1 if (ESP_HOST_DEV_BOARD_P4_C6_CORE || ESP_HOST_DEV_BOARD_P4_C61_CORE) # /*C6 IO09 Connected to P4 IO53, unfit for wake-up at P4*/
 				default -1 if ESP32P4_EYE_C6_BOARD     # /*C6 IO09 Connected to P4 IO33, unfit for wake-up at P4*/
+				default 2 if ESP32P4_TAB5_C6_BOARD     # /*C6 IO2 wired to P4 G14 (host wakeup) on M5Stack Tab5*/
 				default 6 if C2_C5_MODULE_SUB_BOARD && IDF_TARGET_ESP32C2
 				default 1 if ESP_HOST_DEV_BOARD_NONE && IDF_TARGET_ESP32C3
 				default 25 if ESP_HOST_DEV_BOARD_NONE && IDF_TARGET_ESP32C5
