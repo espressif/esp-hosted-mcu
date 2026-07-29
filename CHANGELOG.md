@@ -1,5 +1,7 @@
 # Unreleased - Main Branch
 
+- removed memory leaks caused by mempool
+
 # Releases
 
 # $${\color{green} \text{2.12.11}}$$
