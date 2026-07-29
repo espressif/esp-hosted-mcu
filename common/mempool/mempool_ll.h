@@ -107,6 +107,8 @@ struct os_mempool {
     SLIST_HEAD(,os_memblock);
     /** Name for memory block */
     char *name;
+	/** Mutex to control access to pool */
+	SemaphoreHandle_t mutex;
 };
 
 /**

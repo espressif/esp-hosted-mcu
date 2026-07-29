@@ -19,14 +19,12 @@ void * transport_util_malloc(size_t size, hosted_mem_cap_t cap)
 
 void * transport_util_calloc(size_t num_elem, size_t size_elem, hosted_mem_cap_t cap)
 {
-	if (cap == HOSTED_MEM_CAP_NONE ) {
+	if (cap == HOSTED_MEM_CAP_NONE)
 		return calloc(num_elem, size_elem);
-	} else {
-		// malloc DMA capable memory, then clear it
-		size_t size = num_elem * size_elem;
-		void *ptr = heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
-		if (ptr)
-			memset(ptr, 0, size);
-		return ptr;
-	}
+
+	size_t size = num_elem * size_elem;
+	void *ptr = transport_util_malloc(size, cap);
+	if (ptr)
+		g_h.funcs->_h_memset(ptr, 0, size);
+	return ptr;
 }
