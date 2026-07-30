@@ -149,7 +149,12 @@ void hosted_free_align(void* ptr)
 
 void hosted_init_hook(void)
 {
-	/* This is hook to initialize port specific contexts, if any */
+#if defined(CONFIG_FREERTOS_HZ)
+	if (CONFIG_FREERTOS_HZ < H_EXPECTED_FREERTOS_HZ) {
+		ESP_EARLY_LOGW(TAG, "CONFIG_FREERTOS_HZ is %d, ESP-Hosted recommended %d, to avoid bus level jitters",
+				CONFIG_FREERTOS_HZ, H_EXPECTED_FREERTOS_HZ);
+	}
+#endif
 }
 
 

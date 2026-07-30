@@ -523,7 +523,7 @@ static void spi_hd_read_task(void const* pvParameters)
 
 	ESP_LOGV(TAG, "%s: waiting for transport to be in reset state", __func__);
 	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(100));
+		g_h.funcs->_h_msleep(100);
 		if (is_transport_rx_ready()) {
 			ESP_LOGI(TAG, "spi_hd_read_task: transport rx ready");
 			break;
@@ -539,7 +539,7 @@ static void spi_hd_read_task(void const* pvParameters)
 			ESP_LOGI(TAG, "Slave is ready");
 			break;
 		}
-		vTaskDelay(pdMS_TO_TICKS(100));
+		g_h.funcs->_h_msleep(100);
 	}
 
 	ESP_LOGD(TAG, "Open Data path");
@@ -673,7 +673,7 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 	struct esp_priv_event *event = NULL;
 
 	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(100));
+		g_h.funcs->_h_msleep(100);
 		if (is_transport_rx_ready()) {
 			ESP_LOGI(TAG, "transport rx not yet up");
 			break;
