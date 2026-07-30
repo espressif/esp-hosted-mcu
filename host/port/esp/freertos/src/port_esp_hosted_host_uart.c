@@ -112,9 +112,6 @@ esp_err_t hosted_uart_deinit(void *ctx)
 
 	pctx = (uart_ctx_t *)ctx;
 
-	ret = uart_flush_input(pctx->uart_port);
-	if (ret != ESP_OK)
-		ESP_LOGE(TAG, "%s: Failed to flush uart Rx", __func__);
 	ret = uart_wait_tx_done(pctx->uart_port, 100); // wait 100 RTOS ticks for Tx to be empty
 	if (ret != ESP_OK)
 		ESP_LOGE(TAG, "%s: Failed to flush uart Tx", __func__);

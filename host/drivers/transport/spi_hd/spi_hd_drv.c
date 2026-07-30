@@ -825,6 +825,11 @@ void bus_deinit_internal(void *bus_handle)
 {
 	uint8_t prio_q_idx = 0;
 
+#if H_SPI_HD_DATA_READY_ENABLED
+	/* Disable interrupt first */
+	g_h.funcs->_h_teardown_gpio_interrupt(H_SPI_HD_PORT_DATA_READY, H_SPI_HD_PIN_DATA_READY);
+#endif
+
 	/* Stop threads */
 	if (spi_hd_read_thread) {
 		g_h.funcs->_h_thread_cancel(spi_hd_read_thread);
@@ -879,6 +884,11 @@ void bus_deinit_internal(void *bus_handle)
 	SPI_HD_DRV_LOCK_DESTROY();
 
 	spi_hd_mempool_destroy();
+
+	spi_hd_tx_buf_count = 0;
+	spi_hd_rx_byte_count = 0;
+	spi_hd_start_write_thread = false;
+
 	ESP_LOGI(TAG, "Deinitialised SPI HD driver");
 }
 

@@ -22,6 +22,13 @@
     when: always
     expire_in: 4 days
   script:
+    - |
+      if [ ! -z "${OVERRIDE_IDF_CI_CONSTRAINTS}" ]; then
+        echo "Override idf-ci constraints in /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt"
+        mkdir -p /opt/esp
+        curl -L https://ci.espressif.cn:42348/cache/dl/esp-idf/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt -o /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+        sed -i '/^idf-ci/d' /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+      fi
     - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
@@ -49,6 +56,13 @@
     when: always
     expire_in: 4 days
   script:
+    - |
+      if [ ! -z "${OVERRIDE_IDF_CI_CONSTRAINTS}" ]; then
+        echo "Override idf-ci constraints in /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt"
+        mkdir -p /opt/esp
+        curl -L https://ci.espressif.cn:42348/cache/dl/esp-idf/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt -o /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+        sed -i '/^idf-ci/d' /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+      fi
     - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
@@ -109,6 +123,13 @@
     when: always
     expire_in: 4 days
   script:
+    - |
+      if [ ! -z "${OVERRIDE_IDF_CI_CONSTRAINTS}" ]; then
+        echo "Override idf-ci constraints in /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt"
+        mkdir -p /opt/esp
+        curl -L https://ci.espressif.cn:42348/cache/dl/esp-idf/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt -o /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+        sed -i '/^idf-ci/d' /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+      fi
     - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
@@ -186,6 +207,13 @@
     when: always
     expire_in: 4 days
   script:
+    - |
+      if [ ! -z "${OVERRIDE_IDF_CI_CONSTRAINTS}" ]; then
+        echo "Override idf-ci constraints in /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt"
+        mkdir -p /opt/esp
+        curl -L https://ci.espressif.cn:42348/cache/dl/esp-idf/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt -o /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+        sed -i '/^idf-ci/d' /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+      fi
     - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
@@ -254,6 +282,13 @@
     when: always
     expire_in: 4 days
   script:
+    - |
+      if [ ! -z "${OVERRIDE_IDF_CI_CONSTRAINTS}" ]; then
+        echo "Override idf-ci constraints in /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt"
+        mkdir -p /opt/esp
+        curl -L https://ci.espressif.cn:42348/cache/dl/esp-idf/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt -o /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+        sed -i '/^idf-ci/d' /opt/esp/espidf.constraints.${OVERRIDE_IDF_CI_CONSTRAINTS}.txt
+      fi
     - export IDF_PYTHON_CHECK_CONSTRAINTS=yes
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh

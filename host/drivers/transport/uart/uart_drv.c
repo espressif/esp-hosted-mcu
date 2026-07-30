@@ -695,6 +695,11 @@ void bus_deinit_internal(void *bus_handle)
 	}
 
 	h_uart_mempool_destroy();
+
+	if (uart_scratch_buf) {
+		g_h.funcs->_h_free(uart_scratch_buf);
+		uart_scratch_buf = NULL;
+	}
 }
 
 int ensure_slave_bus_ready(void *bus_handle)
