@@ -20,7 +20,7 @@ void * transport_util_malloc(size_t size, hosted_mem_cap_t cap)
 void * transport_util_calloc(size_t num_elem, size_t size_elem, hosted_mem_cap_t cap)
 {
 	if (cap == HOSTED_MEM_CAP_NONE)
-		return calloc(num_elem, size_elem);
+		return g_h.funcs->_h_calloc(num_elem, size_elem);
 
 	size_t size = num_elem * size_elem;
 	void *ptr = transport_util_malloc(size, cap);

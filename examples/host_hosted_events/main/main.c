@@ -57,6 +57,9 @@ static void init_cp_error_detection(void)
 
 	first_heartbeat = false;
 	prev_heartbeat = 0;
+
+	/* Clear any stale reset request from the previous cycle. */
+	xEventGroupClearBits(s_esp_hosted_event_group, ESP_HOSTED_RESET_BIT);
 }
 
 static void deinit_cp_error_detection(void)
@@ -282,11 +285,13 @@ void app_main(void)
 			}
 #endif
 
+			ESP_LOGI(TAG, "--> Waiting for Wi-Fi connection");
 			// connect to an AP
 			example_wifi_init_sta();
 
 			// here, you can start a thread to do data transfers with the AP
 
+			ESP_LOGI(TAG, "--> Starting the monitoring");
 			// we wait until we encounter an error and need to reset the transport
 			EventBits_t bits = xEventGroupWaitBits(s_esp_hosted_event_group,
 					ESP_HOSTED_RESET_BIT,
@@ -301,8 +306,8 @@ void app_main(void)
 			// here, you should tell the data transfer thread to abort data transfer
 
 		} else {
+			/* CP died before the first RPC; recover instead of exiting (fallthrough) */
 			ESP_LOGE(TAG, "Failed to start up ESP-Hosted");
-			return;
 		}
 
 		/**

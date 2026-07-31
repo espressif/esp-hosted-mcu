@@ -136,6 +136,9 @@ static const char TAG[] = "H_SDIO_DRV";
 // max number of time to try to read write buffer available reg
 #define MAX_WRITE_BUF_RETRIES             50
 
+/* Waiting on the double-buffer consumer to release a slot: sub-ms in practice. */
+#define SDIO_RX_ALLOC_RETRY_MS            1
+
 /* Actual data sdio_write max retry */
 #define MAX_SDIO_WRITE_RETRY              2
 
@@ -453,6 +456,16 @@ static int sdio_read_regs(uint8_t * buf)
 
 #if H_SDIO_HOST_RX_MODE != H_SDIO_ALWAYS_HOST_RX_MAX_TRANSPORT_SIZE
 
+static inline bool sdio_pkt_len_reg_is_bus_fault(uint32_t reg_val)
+{
+	if (reg_val != UINT32_MAX)
+		return false;
+
+	ESP_LOGE(TAG, "PKT_LEN reg reads 0x%08"PRIx32" (all 32 bits set): SDIO bus fault",
+			reg_val);
+	return true;
+}
+
 #if DO_COMBINED_REG_READ
 // get the length from the provided register value
 static int sdio_get_len_from_slave(uint32_t *rx_size, uint32_t reg_val, bool is_lock_needed)
@@ -464,20 +477,10 @@ static int sdio_get_len_from_slave(uint32_t *rx_size, uint32_t reg_val, bool is_
 		return ESP_FAIL;
 	*rx_size = 0;
 
-	len &= ESP_SLAVE_LEN_MASK;
+	if (sdio_pkt_len_reg_is_bus_fault(reg_val))
+		return ESP_ERR_INVALID_STATE;
 
-	/* A cumulative-length register read of all-ones (== ESP_SLAVE_LEN_MASK) is
-	 * the disconnected/errored SDIO bus signature: a floating bus reads back
-	 * 0xFF. It is NOT a real PKT_LEN. Streaming mode skips the upper-bound
-	 * check below, so without this guard the bogus value becomes a ~960 KB
-	 * read length ((0xFFFFF - consumed) wraps near ESP_RX_BYTE_MAX), the
-	 * RX-buffer alloc fails, and the host asserts/crashes. Treat it as a
-	 * transient bus error and drop this read — the next interrupt re-reads a
-	 * valid length. */
-	if (len == ESP_SLAVE_LEN_MASK) {
-		ESP_LOGW(TAG, "PKT_LEN reg all-ones (bus read error); dropping read");
-		return ESP_FAIL;
-	}
+	len &= ESP_SLAVE_LEN_MASK;
 
 	if (len >= sdio_rx_byte_count)
 		len = (len + ESP_RX_BYTE_MAX - sdio_rx_byte_count) % ESP_RX_BYTE_MAX;
@@ -519,20 +522,10 @@ static int sdio_get_len_from_slave(uint32_t *rx_size, bool is_lock_needed)
 		return ret;
 	}
 
-	len &= ESP_SLAVE_LEN_MASK;
+	if (sdio_pkt_len_reg_is_bus_fault(len))
+		return ESP_ERR_INVALID_STATE;
 
-	/* A cumulative-length register read of all-ones (== ESP_SLAVE_LEN_MASK) is
-	 * the disconnected/errored SDIO bus signature: a floating bus reads back
-	 * 0xFF. It is NOT a real PKT_LEN. Streaming mode skips the upper-bound
-	 * check below, so without this guard the bogus value becomes a ~960 KB
-	 * read length ((0xFFFFF - consumed) wraps near ESP_RX_BYTE_MAX), the
-	 * RX-buffer alloc fails, and the host asserts/crashes. Treat it as a
-	 * transient bus error and drop this read — the next interrupt re-reads a
-	 * valid length. */
-	if (len == ESP_SLAVE_LEN_MASK) {
-		ESP_LOGW(TAG, "PKT_LEN reg all-ones (bus read error); dropping read");
-		return ESP_FAIL;
-	}
+	len &= ESP_SLAVE_LEN_MASK;
 
 	if (len >= sdio_rx_byte_count)
 		len = (len + ESP_RX_BYTE_MAX - sdio_rx_byte_count) % ESP_RX_BYTE_MAX;
@@ -1149,6 +1142,7 @@ static void sdio_read_task(void const* pvParameters)
 	uint32_t len_to_read;
 	uint8_t *pos;
 	uint32_t interrupts;
+	bool pending = true;
 
 #if DO_COMBINED_REG_READ
 	uint32_t *intr_index = NULL;
@@ -1189,16 +1183,20 @@ static void sdio_read_task(void const* pvParameters)
 
 	for (;;) {
 
-		// wait for sdio interrupt from slave
-		/* call will block until there is an interrupt, timeout or error */
-		ESP_LOGD(TAG, "--- Wait for SDIO intr ---");
-		res = g_h.funcs->_h_sdio_wait_slave_intr(sdio_handle, HOSTED_BLOCK_MAX);
-		ESP_LOGD(TAG, "--- SDIO intr received ---");
+		if (!pending) {
+			// wait for sdio interrupt from slave
+			/* Always blocks: a finite wait is unusable here, as
+			 * sdmmc_host_io_int_wait() logs any non-OK at ERROR. */
+			ESP_LOGD(TAG, "--- Wait for SDIO intr ---");
+			res = g_h.funcs->_h_sdio_wait_slave_intr(sdio_handle, HOSTED_BLOCK_MAX);
+			ESP_LOGD(TAG, "--- SDIO intr received ---");
 
-		if (res != ESP_OK) {
-			ESP_LOGE(TAG, "wait_slave_intr error: %d", res);
-			continue;
+			if (res != ESP_OK) {
+				ESP_LOGE(TAG, "wait_slave_intr error: %d", res);
+				continue;
+			}
 		}
+		pending = false;
 
 		SDIO_DRV_LOCK();
 
@@ -1268,9 +1266,18 @@ static void sdio_read_task(void const* pvParameters)
 #else
 		ret = sdio_get_len_from_slave(&len_from_slave, ACQUIRE_LOCK);
 #endif
-		if (ret || !len_from_slave) {
-			ESP_LOGW(TAG, "invalid ret or len_from_slave: %d %ld", ret, len_from_slave);
+		if (ret == ESP_ERR_INVALID_STATE) {
+			SDIO_DRV_UNLOCK();
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+					ESP_HOSTED_EVENT_TRANSPORT_FAILURE,
+					NULL, 0, HOSTED_BLOCK_MAX);
+#if H_TRANSPORT_RESTART_ON_FAILURE
+			g_h.funcs->_h_restart_host();
+#endif
+			continue;
+		}
 
+		if (ret || !len_from_slave) {
 			SDIO_DRV_UNLOCK();
 			continue;
 		} else {
@@ -1281,9 +1288,9 @@ static void sdio_read_task(void const* pvParameters)
 		/* Allocate rx buffer */
 		rxbuff = sdio_rx_get_buffer(len_from_slave);
 		if (!rxbuff) {
-			/* Transient RX-buffer alloc failure: drop this read and retry on
-			 * the next interrupt instead of asserting (crashing) the host. */
+			pending = true;
 			SDIO_DRV_UNLOCK();
+			g_h.funcs->_h_msleep(SDIO_RX_ALLOC_RETRY_MS);
 			continue;
 		}
 
@@ -1324,6 +1331,10 @@ static void sdio_read_task(void const* pvParameters)
 		sdio_rx_byte_count += len_from_slave;
 		sdio_rx_byte_count = sdio_rx_byte_count % ESP_RX_BYTE_MAX;
 
+#if H_SDIO_HOST_RX_MODE != H_SDIO_ALWAYS_HOST_RX_MAX_TRANSPORT_SIZE
+		pending = true;
+#endif
+
 		if (unlikely(ret))
 			continue;
 
@@ -1351,7 +1362,7 @@ static void sdio_process_rx_task(void const* pvParameters)
 	struct esp_priv_event *event = NULL;
 
 	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(100));
+		g_h.funcs->_h_msleep(100);
 		if (is_transport_rx_ready()) {
 			break;
 		}

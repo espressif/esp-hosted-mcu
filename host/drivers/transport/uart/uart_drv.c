@@ -268,7 +268,7 @@ static void h_uart_process_rx_task(void const* pvParameters)
 	struct esp_priv_event *event = NULL;
 
 	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(100));
+		g_h.funcs->_h_msleep(100);
 		if (is_transport_rx_ready()) {
 			break;
 		}
@@ -460,7 +460,7 @@ static void h_uart_read_task(void const* pvParameters)
 
 	// wait for transport to be in ready
 	while (true) {
-		vTaskDelay(pdMS_TO_TICKS(100));
+		g_h.funcs->_h_msleep(100);
 		if (is_transport_rx_ready()) {
 			break;
 		}
@@ -469,7 +469,7 @@ static void h_uart_read_task(void const* pvParameters)
 	create_debugging_tasks();
 
 	if (!uart_scratch_buf) {
-		uart_scratch_buf = malloc(MAX_UART_BUFFER_SIZE);
+		uart_scratch_buf = g_h.funcs->_h_malloc(MAX_UART_BUFFER_SIZE);
 		assert(uart_scratch_buf);
 	}
 

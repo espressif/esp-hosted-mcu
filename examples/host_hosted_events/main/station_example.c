@@ -148,20 +148,43 @@ void example_wifi_deinit_sta(void)
 		sta_netif = NULL;
 	}
 
-	if (!instance_any_id) {
+	if (instance_any_id) {
 		ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT,
 				ESP_EVENT_ANY_ID,
 				instance_any_id));
 		instance_any_id = NULL;
 	}
-	if (!instance_got_ip) {
+	if (instance_got_ip) {
 		ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT,
-				ESP_EVENT_ANY_ID,
+				IP_EVENT_STA_GOT_IP,
 				instance_got_ip));
 		instance_got_ip = NULL;
 	}
 
-	vEventGroupDelete(s_wifi_event_group);
+	if (s_wifi_event_group) {
+		vEventGroupDelete(s_wifi_event_group);
+		s_wifi_event_group = NULL;
+	}
+}
+
+static void example_wifi_wait_task(void *pvParameters)
+{
+	EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+			WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+			pdFALSE,
+			pdFALSE,
+			portMAX_DELAY);
+
+	if (bits & WIFI_CONNECTED_BIT) {
+		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
+				EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+	} else if (bits & WIFI_FAIL_BIT) {
+		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
+				EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+	} else {
+		ESP_LOGE(TAG, "UNEXPECTED EVENT");
+	}
+	vTaskDelete(NULL);
 }
 
 void example_wifi_init_once(void)
@@ -171,7 +194,9 @@ void example_wifi_init_once(void)
 
 void example_wifi_init_sta(void)
 {
-	s_wifi_event_group = xEventGroupCreate();
+	if (!s_wifi_event_group) {
+		s_wifi_event_group = xEventGroupCreate();
+	}
 
 	if (!instance_any_id) {
 		ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
@@ -218,23 +243,5 @@ void example_wifi_init_sta(void)
 
 	ESP_LOGI(TAG, "wifi_init_sta finished.");
 
-	/* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-	 * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-	EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-			WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-			pdFALSE,
-			pdFALSE,
-			portMAX_DELAY);
-
-	/* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-	 * happened. */
-	if (bits & WIFI_CONNECTED_BIT) {
-		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-				EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-	} else if (bits & WIFI_FAIL_BIT) {
-		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-				EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-	} else {
-		ESP_LOGE(TAG, "UNEXPECTED EVENT");
-	}
+	xTaskCreate(example_wifi_wait_task, "wifi_wait_task", 4096, NULL, 5, NULL);
 }

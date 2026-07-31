@@ -992,6 +992,11 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 		return FAILURE;
 	}
 
+	if (!rpc_tx_q) {
+		ESP_LOGW(TAG, "RPC not initialized or transport down, failing fast");
+		return FAILURE;
+	}
+
 
 	uid++;
 	// handle rollover in uid value
