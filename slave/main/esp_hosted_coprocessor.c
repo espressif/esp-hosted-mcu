@@ -78,7 +78,6 @@ static const char *TAG = "co-pro-main";
 #define TO_HOST_QUEUE_SIZE               10
 
 #define ETH_DATA_LEN                     1500
-#define MAX_WIFI_STA_TX_RETRY            2
 
 volatile uint8_t datapath = 0;
 volatile uint8_t station_connected = 0;
@@ -681,15 +680,35 @@ static void process_priv_pkt(uint8_t *payload, uint16_t payload_len)
 	}
 }
 
+#ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
+static int wifi_sta_tx_with_retry(uint8_t *payload, uint16_t payload_len)
+{
+	int ret = ESP_OK;
+	int attempt;
+
+	for (attempt = 0; attempt < CONFIG_ESP_HOSTED_WIFI_TX_RETRY_COUNT;
+			attempt++) {
+		ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
+		if (ret != ESP_ERR_NO_MEM ||
+				attempt + 1 == CONFIG_ESP_HOSTED_WIFI_TX_RETRY_COUNT) {
+			break;
+		}
+#if ESP_PKT_STATS
+		pkt_stats.wifi_tx_retries++;
+#endif
+		vTaskDelay(pdMS_TO_TICKS(CONFIG_ESP_HOSTED_WIFI_TX_RETRY_DELAY_MS));
+	}
+
+	return ret;
+}
+#endif
+
 static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
 	struct esp_payload_header *header = NULL;
 	uint8_t *payload = NULL;
 	uint16_t payload_len = 0;
 	int ret = 0;
-#ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
-	int retry_wifi_tx = MAX_WIFI_STA_TX_RETRY;
-#endif
 
 	(void)ret;
 
@@ -704,14 +723,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 
 		/* Forward data to wlan driver */
 #ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
-		do {
-			ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
-			if (ret) {
-				vTaskDelay(pdMS_TO_TICKS(1));
-			}
-
-			retry_wifi_tx--;
-		} while (ret && retry_wifi_tx);
+		ret = wifi_sta_tx_with_retry(payload, payload_len);
 #else
 		ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
 #endif

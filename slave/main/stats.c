@@ -298,9 +298,10 @@ static void stats_timer_func(void* arg)
 	test_raw_tp_rx_len = test_raw_tp_tx_len = 0;
 #endif
 #if ESP_PKT_STATS
-	ESP_LOGI(TAG, "STA: flw_ctrl(on[%lu] off[%lu]) H2S(in[%lu] out[%lu] fail[%lu]) S2H(in[%lu] out[%lu]) Ctrl: (in[%lu] rsp[%lu] evt[%lu])",
+	ESP_LOGI(TAG, "STA: flw_ctrl(on[%lu] off[%lu]) H2S(in[%lu] out[%lu] fail[%lu] retry[%lu]) S2H(in[%lu] out[%lu]) Ctrl: (in[%lu] rsp[%lu] evt[%lu])",
 			pkt_stats.sta_flowctrl_on, pkt_stats.sta_flowctrl_off,
-			pkt_stats.hs_bus_sta_in,pkt_stats.hs_bus_sta_out, pkt_stats.hs_bus_sta_fail,
+			pkt_stats.hs_bus_sta_in, pkt_stats.hs_bus_sta_out,
+			pkt_stats.hs_bus_sta_fail, pkt_stats.wifi_tx_retries,
 			pkt_stats.sta_sh_in,pkt_stats.sta_sh_out,
 			pkt_stats.serial_rx, pkt_stats.serial_tx_total, pkt_stats.serial_tx_evt);
 	ESP_LOGI(TAG, "Lwip: in[%lu] slave_out[%lu] host_out[%lu] both_out[%lu]",
