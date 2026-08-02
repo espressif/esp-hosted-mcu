@@ -195,6 +195,7 @@ static int notify_slave_host_power_save_stop(void)
 int hold_slave_reset_gpio_pre_power_save(void)
 {
 #if H_HOST_PS_ALLOWED
+#ifndef CONFIG_ESP_HOSTED_RESET_SLAVE_USING_CALLBACK
 	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
@@ -209,12 +210,14 @@ int hold_slave_reset_gpio_pre_power_save(void)
 
 	return g_h.funcs->_h_hold_gpio(reset_pin.port, reset_pin.pin, H_ENABLE);
 #endif
+#endif
 	return 0;
 }
 
 int release_slave_reset_gpio_post_wakeup(void)
 {
 #if H_HOST_PS_ALLOWED
+#ifndef CONFIG_ESP_HOSTED_RESET_SLAVE_USING_CALLBACK
 	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
 
 	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
@@ -228,6 +231,7 @@ int release_slave_reset_gpio_post_wakeup(void)
 	}
 
 	return g_h.funcs->_h_hold_gpio(reset_pin.port, reset_pin.pin, H_DISABLE);
+#endif
 #endif
 	return 0;
 }

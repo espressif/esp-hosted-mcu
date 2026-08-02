@@ -899,15 +899,10 @@ void check_if_max_freq_used(uint8_t chip_type)
 		break;
 	}
 }
-static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
+static esp_err_t transport_gpio_reset(void)
 {
-	ESP_LOGI(TAG, "Resetting slave on SPI bus with pin %d", reset_pin.pin);
-	g_h.funcs->_h_config_gpio(reset_pin.port, reset_pin.pin, H_GPIO_MODE_DEF_OUTPUT);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
-	g_h.funcs->_h_msleep(10);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_INACTIVE);
-	g_h.funcs->_h_msleep(10);
-	g_h.funcs->_h_write_gpio(reset_pin.port, reset_pin.pin, H_RESET_VAL_ACTIVE);
+	ESP_LOGI(TAG, "Resetting slave on SPI bus");
+	g_h.funcs->_h_restart_slave();
 	/* Delay for a short while to allow co-processor to take control
 	 * of GPIO signals after reset. Otherwise, we may false detect on
 	 * the GPIOs going high during the reset.
@@ -919,14 +914,6 @@ static esp_err_t transport_gpio_reset(void *bus_handle, gpio_pin_t reset_pin)
 int ensure_slave_bus_ready(void *bus_handle)
 {
 	esp_err_t res = ESP_OK;
-	gpio_pin_t reset_pin = { .port = H_GPIO_PORT_RESET, .pin = H_GPIO_PIN_RESET };
-
-	if (ESP_TRANSPORT_OK != esp_hosted_transport_get_reset_config(&reset_pin)) {
-		ESP_LOGE(TAG, "Unable to get RESET config for transport");
-		return ESP_FAIL;
-	}
-
-	assert(reset_pin.pin != -1);
 
 	release_slave_reset_gpio_post_wakeup();
 
@@ -934,7 +921,7 @@ int ensure_slave_bus_ready(void *bus_handle)
 		stop_host_power_save();
 	} else {
 		ESP_LOGI(TAG, "Resetting slave");
-		transport_gpio_reset(bus_handle, reset_pin);
+		transport_gpio_reset();
 	}
 
 	return res;
