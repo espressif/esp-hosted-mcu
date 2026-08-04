@@ -1,5 +1,6 @@
 # Unreleased - Main Branch
 
+- fixed transport restart for SPI-HD and UART transports
 
 # Releases
 

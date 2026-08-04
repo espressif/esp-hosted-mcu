@@ -38,7 +38,21 @@ sanity_build_idf_v5.5_iperf:
   image: espressif/idf:${IDF_VER}
   parallel:
     matrix:
-      - IDF_VER: ["v5.5.4", "release-v5.5"]
+      - IDF_VER: ["release-v5.5"]
+        IDF_TARGET: ["esp32p4"]
+        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
+        IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
+
+sanity_build_idf_v5.5_iperf_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_VER: ["v5.5.5", "v5.5.4"]
         IDF_TARGET: ["esp32p4"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
@@ -66,7 +80,20 @@ sanity_build_coprocessor_idf_v5.5:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32c6", "esp32c5"]
-        IDF_VER: ["v5.5.4", "release-v5.5"]
+        IDF_VER: ["release-v5.5"]
+        SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
+
+sanity_build_coprocessor_idf_v5.5_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_coprocessor
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32c6", "esp32c5"]
+        IDF_VER: ["v5.5.5", "v5.5.4"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
 
 # verify co-processor targets with Wi-Fi + BT
@@ -101,7 +128,20 @@ sanity_build_coprocessor_rcp:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32c6", "esp32c5", "esp32h2"]
-        IDF_VER: ["latest", "v5.5.4"]
+        IDF_VER: ["latest"]
+        SLAVE_CI_FILE: ["openthread_rcp"]
+
+sanity_build_coprocessor_rcp_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_coprocessor
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32c6", "esp32c5", "esp32h2"]
+        IDF_VER: ["v5.5.5", "v5.5.4"]
         SLAVE_CI_FILE: ["openthread_rcp"]
 
 ###
@@ -116,14 +156,14 @@ sanity_build_nimble_examples:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4"]
-        IDF_VER: ["latest",
-        "v5.5.4", "release-v5.5"]
+        IDF_VER: ["latest", "release-v5.5"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32h2"]
         EXAMPLE_TO_BUILD: ["host_nimble_bleprph_host_only_vhci",
         "host_nimble_bleprph_host_only_uart_hci"]
 
-# verify host builds with co-processor target with BT only
 sanity_build_nimble_examples_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_example
@@ -131,8 +171,8 @@ sanity_build_nimble_examples_2:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4"]
-        IDF_VER: ["latest"]
-        IDF_SLAVE_TARGET: ["esp32h2"]
+        IDF_VER: ["v5.5.5", "v5.5.4"]
+        IDF_SLAVE_TARGET: ["esp32c6", "esp32h2"]
         EXAMPLE_TO_BUILD: ["host_nimble_bleprph_host_only_vhci",
         "host_nimble_bleprph_host_only_uart_hci"]
 
@@ -144,8 +184,24 @@ sanity_build_bluedroid_examples:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4"]
-        IDF_VER: ["latest",
-        "v5.5.4", "release-v5.5"]
+        IDF_VER: ["latest", "release-v5.5"]
+        IDF_SLAVE_TARGET: ["esp32"]
+        EXAMPLE_TO_BUILD: ["host_bluedroid_ble_compatibility_test",
+        "host_bluedroid_bt_hid_mouse_device",
+        "host_bluedroid_host_only",
+        "host_bt_controller_mac_addr"]
+
+sanity_build_bluedroid_examples_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_VER: ["v5.5.5", "v5.5.4"]
         IDF_SLAVE_TARGET: ["esp32"]
         EXAMPLE_TO_BUILD: ["host_bluedroid_ble_compatibility_test",
         "host_bluedroid_bt_hid_mouse_device",
@@ -160,8 +216,25 @@ sanity_build_wifi_examples:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4"]
-        IDF_VER: ["latest",
-        "v5.5.4", "release-v5.5"]
+        IDF_VER: ["latest", "release-v5.5"]
+        IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
+        EXAMPLE_TO_BUILD: ["host_wifi_easy_connect_dpp_enrollee",
+        "host_wifi_itwt",
+        "host_transport_config",
+        "host_network_split__power_save",
+        "host_performs_slave_ota"]
+
+sanity_build_wifi_examples_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_VER: ["v5.5.5", "v5.5.4"]
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         EXAMPLE_TO_BUILD: ["host_wifi_easy_connect_dpp_enrollee",
         "host_wifi_itwt",
@@ -179,8 +252,22 @@ sanity_build_transport_examples:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32p4"]
-        IDF_VER: ["latest",
-        "v5.5.4", "release-v5.5"]
+        IDF_VER: ["latest", "release-v5.5"]
+        IDF_SLAVE_TARGET: ["esp32c6"]
+        EXAMPLE_TO_BUILD: ["host_network_split__power_save"]
+        EXAMPLE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
+
+sanity_build_transport_examples_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  rules:
+    - !reference [.default_rules, rules]
+  extends: .build_template_example
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32p4"]
+        IDF_VER: ["v5.5.5", "v5.5.4"]
         IDF_SLAVE_TARGET: ["esp32c6"]
         EXAMPLE_TO_BUILD: ["host_network_split__power_save"]
         EXAMPLE_CI_FILE: ["sdio", "spi", "spi_hd", "uart"]
@@ -201,6 +288,8 @@ sanity_build_openthread_examples:
 
 # build Zigbee Host examples
 sanity_build_zigbee_examples:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
     - !reference [.default_rules, rules]
   extends: .build_template_example

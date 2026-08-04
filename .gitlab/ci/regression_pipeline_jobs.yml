@@ -61,7 +61,23 @@ regression_build_idf_v5.5_iperf:
   image: espressif/idf:${IDF_VER}
   parallel:
     matrix:
-      - IDF_VER: ["v5.5", "v5.5.1", "v5.5.2", "v5.5.3", "release-v5.5"]
+      - IDF_VER: ["release-v5.5"]
+        IDF_TARGET: ["esp32p4", "esp32h2"]
+        IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
+        IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
+
+regression_build_idf_v5.5_iperf_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  tags:
+    - build
+  rules:
+    - !reference [.staging_branch_rules, rules]
+  extends: .build_template
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_VER: ["v5.5", "v5.5.1", "v5.5.2", "v5.5.3"]
         IDF_TARGET: ["esp32p4", "esp32h2"]
         IDF_SLAVE_TARGET: ["esp32", "esp32c2", "esp32c3", "esp32s3" ]
         IDF_EXAMPLE_PATH: ["examples/wifi/iperf"]
@@ -173,7 +189,22 @@ regression_build_coprocessor_idf_v5.5:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32c2", "esp32c3", "esp32s3"]
-        IDF_VER: ["v5.5", "v5.5.1", "v5.5.2", "v5.5.3", "release-v5.5"]
+        IDF_VER: ["release-v5.5"]
+        SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
+
+regression_build_coprocessor_idf_v5.5_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  tags:
+    - build
+  rules:
+    - !reference [.staging_branch_rules, rules]
+  extends: .build_template_coprocessor
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32c2", "esp32c3", "esp32s3"]
+        IDF_VER: ["v5.5", "v5.5.1", "v5.5.2", "v5.5.3"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
 regression_build_coprocessor_idf_v5.5_esp32:
@@ -186,7 +217,22 @@ regression_build_coprocessor_idf_v5.5_esp32:
   parallel:
     matrix:
       - IDF_TARGET: ["esp32"]
-        IDF_VER: ["v5.5", "v5.5.1", "v5.5.2", "v5.5.3", "release-v5.5"]
+        IDF_VER: ["release-v5.5"]
+        SLAVE_CI_FILE: ["sdio", "spi", "uart"]
+
+regression_build_coprocessor_idf_v5.5_esp32_2:
+  variables:
+    OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
+  tags:
+    - build
+  rules:
+    - !reference [.staging_branch_rules, rules]
+  extends: .build_template_coprocessor
+  image: espressif/idf:${IDF_VER}
+  parallel:
+    matrix:
+      - IDF_TARGET: ["esp32"]
+        IDF_VER: ["v5.5", "v5.5.1", "v5.5.2", "v5.5.3"]
         SLAVE_CI_FILE: ["sdio", "spi", "uart"]
 
 regression_build_coprocessor_idf_master_all_features_enabled:
