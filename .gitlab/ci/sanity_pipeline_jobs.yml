@@ -307,6 +307,8 @@ sanity_build_zigbee_examples:
 
 promote_staging_to_main:
   stage: deploy
+  image: python:3.8
+  before_script: []
   dependencies: []
   rules:
     - if: $CI_COMMIT_BRANCH == "staging" && $CI_PIPELINE_SOURCE == "push"
