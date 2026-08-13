@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,12 +8,14 @@
 #include "esp_log.h"
 
 #include "driver/spi_master.h"
+#include "esp_memory_utils.h"
 
 #include "transport_drv.h"
 #include "port_esp_hosted_host_spi.h"
 #include "port_esp_hosted_host_os.h"
 #include "driver/gpio.h"
 #include "port_esp_hosted_host_log.h"
+#include "port_esp_hosted_host_config.h"
 
 #ifdef CONFIG_IDF_TARGET_ESP32P4
 /* Enable workaround if got SPI Read Errors on ESP32-P4 due to caching */
@@ -133,7 +135,12 @@ int hosted_do_spi_transfer(void *trans)
     t.length=spi_trans->tx_buf_size*8;
     t.tx_buffer=spi_trans->tx_buf;
     t.rx_buffer=spi_trans->rx_buf;
-    /* tell lower layer that we have manually aligned buffers for dma */
+    /* tell lower layer that we have manually aligned buffer for dma */
+#if H_MEMPOOL_PREFER_SPIRAM
+    if (esp_ptr_dma_ext_capable(t.tx_buffer) || esp_ptr_dma_ext_capable(t.rx_buffer)) {
+        t.flags |= SPI_TRANS_DMA_USE_PSRAM;
+    }
+#endif
     t.flags |= SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;
 
     return spi_device_transmit(*((spi_device_handle_t *)spi_handle), &t);

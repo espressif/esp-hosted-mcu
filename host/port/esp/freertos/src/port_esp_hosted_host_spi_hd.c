@@ -159,7 +159,10 @@ static esp_err_t spi_hd_read_reg(uint32_t addr, uint8_t *out_data, int len, uint
 
 #if USE_DMA_ALIGNED_BUF
 	/* tell lower layer that we have manually aligned buffer for dma */
-	t.base.flags |= SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;
+#if H_MEMPOOL_PREFER_SPIRAM
+	if (esp_ptr_dma_ext_capable(out_data)) t.base.flags |= (SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL | SPI_TRANS_DMA_USE_PSRAM);
+#endif
+	if (esp_ptr_dma_capable(out_data)) t.base.flags |= SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;
 #endif
 
 	return spi_device_transmit(ctx->handle, (spi_transaction_t *)&t);
@@ -187,6 +190,14 @@ static esp_err_t spi_hd_write_reg(const uint8_t *data, int addr, int len, uint32
 		},
 		.dummy_bits = spi_hd_get_hd_dummy_bits(flags),
 	};
+
+#if USE_DMA_ALIGNED_BUF
+	/* tell lower layer that we have manually aligned buffer for dma */
+#if H_MEMPOOL_PREFER_SPIRAM
+	if (esp_ptr_dma_ext_capable(data)) t.base.flags |= (SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL | SPI_TRANS_DMA_USE_PSRAM);
+#endif
+	if (esp_ptr_dma_capable(data)) t.base.flags |= SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;
+#endif
 
 	return spi_device_transmit(ctx->handle, (spi_transaction_t *)&t);
 }
@@ -236,9 +247,23 @@ static esp_err_t spi_hd_rddma_done(uint32_t flags)
 
 static esp_err_t spi_hd_rddma(uint8_t *out_data, int len, int seg_len, uint32_t flags)
 {
-	if (!esp_ptr_dma_capable(out_data) || ((intptr_t)out_data % 4) != 0) {
+	bool h_ptr_dma_ext_capable = false;
+	bool h_ptr_dma_capable = false;
+
+#if H_MEMPOOL_PREFER_SPIRAM
+	h_ptr_dma_ext_capable = esp_ptr_dma_ext_capable(out_data);
+#endif
+	h_ptr_dma_capable = esp_ptr_dma_capable(out_data);
+
+	if (unlikely(!(h_ptr_dma_ext_capable || h_ptr_dma_capable))) {
+		ESP_LOGE(TAG, "%s: buffer is not DMA capable", __func__);
 		return ESP_ERR_INVALID_ARG;
 	}
+
+#if H_MEMPOOL_PREFER_SPIRAM
+	if (h_ptr_dma_ext_capable) flags |= SPI_TRANS_DMA_USE_PSRAM;
+#endif
+
 	seg_len = (seg_len > 0) ? seg_len : len;
 
 	uint8_t *read_ptr = out_data;
@@ -296,9 +321,23 @@ static esp_err_t spi_hd_wrdma_done(uint32_t flags)
 
 static esp_err_t spi_hd_wrdma(const uint8_t *data, int len, int seg_len, uint32_t flags)
 {
-	if (!esp_ptr_dma_capable(data)) {
+	bool h_ptr_dma_ext_capable = false;
+	bool h_ptr_dma_capable = false;
+
+#if H_MEMPOOL_PREFER_SPIRAM
+	h_ptr_dma_ext_capable = esp_ptr_dma_ext_capable(data);
+#endif
+	h_ptr_dma_capable = esp_ptr_dma_capable(data);
+
+	if (unlikely(!(h_ptr_dma_ext_capable || h_ptr_dma_capable))) {
+		ESP_LOGE(TAG, "%s: buffer is not DMA capable", __func__);
 		return ESP_ERR_INVALID_ARG;
 	}
+
+#if H_MEMPOOL_PREFER_SPIRAM
+	if (h_ptr_dma_ext_capable) flags |= SPI_TRANS_DMA_USE_PSRAM;
+#endif
+
 	seg_len = (seg_len > 0) ? seg_len : len;
 
 	while (len > 0) {

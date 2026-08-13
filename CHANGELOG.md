@@ -1,5 +1,7 @@
 # Unreleased - Main Branch
 
+- fixed using PSRAM as mempool buffers for SPI-FD and SPI-HD transports
+- used queue sizes from Kconfig for tx/rx queues in SPI-FD driver
 - bugfix: changed `#ifdef H_PEER_DATA_TRANSFER` to `#if H_PEER_DATA_TRANSFER` to fix build errors when Peer Data Transfer feature is disabled.
 - fixed transport restart for SPI-HD and UART transports
 

@@ -16,8 +16,8 @@ extern "C" {
 #include "transport_drv.h"
 
 /** Constants/Macros **/
-#define TO_SLAVE_QUEUE_SIZE               20
-#define FROM_SLAVE_QUEUE_SIZE             20
+#define TO_SLAVE_QUEUE_SIZE               H_SPI_TX_Q // Host --> ESP
+#define FROM_SLAVE_QUEUE_SIZE             H_SPI_RX_Q // ESP  --> Host
 
 /** Exported Structures **/
 
