@@ -17,7 +17,7 @@
 
 DEFINE_LOG_TAG(rpc_evt);
 
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 #define MAX_CUSTOM_CALLBACKS H_MAX_CUSTOM_MSG_HANDLERS
 /* Callback slots (empty slot has callback = NULL, msg_id = -1 is invalid sentinel) */
 static struct {
@@ -450,7 +450,7 @@ int rpc_parse_evt(Rpc *rpc_msg, ctrl_cmd_t *app_ntfy)
 		p_a->failure_reason = p_c->reason;
 		break;
 #endif // H_WIFI_DPP_SUPPORT
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 	} case RPC_ID__Event_CustomRpc: {
 		RpcEventCustomRpc *p_c = rpc_msg->event_custom_rpc;
 		RPC_FAIL_ON_NULL(event_custom_rpc);

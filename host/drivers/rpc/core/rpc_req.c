@@ -901,7 +901,7 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 		break;
 #endif
 
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 	} case RPC_ID__Req_CustomRpc: {
 		RPC_ALLOC_ASSIGN(RpcReqCustomRpc, req_custom_rpc,
 				rpc__req__custom_rpc__init);

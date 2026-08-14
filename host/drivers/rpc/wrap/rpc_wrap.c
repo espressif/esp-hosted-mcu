@@ -379,7 +379,7 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_MEM_MONITOR,
 				p_e, sizeof(esp_hosted_event_mem_info_t), HOSTED_BLOCK_MAX);
 			break;
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 		} case RPC_ID__Event_CustomRpc: {
 			/* Custom RPC events are handled directly in rpc_evt.c via user callback */
 			break;
@@ -511,7 +511,7 @@ int rpc_register_event_callbacks(void)
 		{ RPC_ID__Event_WifiDppFail,               rpc_event_callback },
 #endif
 #endif
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 		{ RPC_ID__Event_CustomRpc,                 rpc_event_callback },
 #endif
 	};
@@ -738,7 +738,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_SuppDppStopListen:
 #endif
 
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 	case RPC_ID__Resp_CustomRpc:
 #endif
 
@@ -2641,7 +2641,7 @@ static esp_err_t rpc_iface_feature_control(rcp_feature_control_t *feature_contro
 	return rpc_rsp_callback(resp);
 }
 
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 
 esp_err_t esp_hosted_send_custom_data(uint32_t msg_id_to_send, const uint8_t *data_to_send, size_t data_len_to_send)
 {
