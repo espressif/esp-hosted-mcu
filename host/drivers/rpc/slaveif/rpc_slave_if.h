@@ -375,7 +375,7 @@ typedef struct {
 } rpc_eap_domain_name_t;
 #endif
 
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 typedef struct {
 	uint32_t custom_msg_id;     /* Not used - kept for struct compatibility */
 	uint8_t *data;              /* Pointer to raw data */
@@ -506,7 +506,7 @@ typedef struct Ctrl_cmd_t {
 		esp_hosted_curr_mem_info_t  curr_mem_info;
 #endif
 
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 		esp_hosted_rpc_data_t       custom_rpc;
 #endif
 
@@ -898,7 +898,7 @@ ctrl_cmd_t * rpc_slaveif_supp_dpp_start_listen(ctrl_cmd_t *req);
 ctrl_cmd_t * rpc_slaveif_supp_dpp_stop_listen(ctrl_cmd_t *req);
 #endif
 
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 ctrl_cmd_t * rpc_slaveif_custom_rpc(ctrl_cmd_t *req);
 int rpc_slaveif_register_custom_callback(uint32_t msg_id_exp,
 		void (*callback)(uint32_t msg_id_recvd, const uint8_t *data_recvd, size_t data_len_recvd, void *local_context),

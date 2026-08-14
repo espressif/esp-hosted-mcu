@@ -664,7 +664,7 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		RPC_FAIL_ON_NULL(resp_feature_control);
 		RPC_ERR_IN_RESP(resp_feature_control);
 		break;
-#ifdef H_PEER_DATA_TRANSFER
+#if H_PEER_DATA_TRANSFER
 	} case RPC_ID__Resp_CustomRpc: {
 		RPC_FAIL_ON_NULL(resp_custom_rpc);
 		RPC_ERR_IN_RESP(resp_custom_rpc);

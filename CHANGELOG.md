@@ -1,5 +1,6 @@
 # Unreleased - Main Branch
 
+- bugfix: changed `#ifdef H_PEER_DATA_TRANSFER` to `#if H_PEER_DATA_TRANSFER` to fix build errors when Peer Data Transfer feature is disabled.
 - fixed transport restart for SPI-HD and UART transports
 
 # Releases
