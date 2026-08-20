@@ -68,7 +68,7 @@ void * hosted_memcpy(void* dest, const void* src, uint32_t size)
 		if (!dest)
 			ESP_LOGE(TAG, "%s:%u dest is NULL\n", __func__, __LINE__);
 		if (!src)
-			ESP_LOGE(TAG, "%s:%u dest is NULL\n", __func__, __LINE__);
+			ESP_LOGE(TAG, "%s:%u src is NULL\n", __func__, __LINE__);
 
 		assert(dest);
 		assert(src);

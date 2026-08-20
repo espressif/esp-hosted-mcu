@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <inttypes.h>
 #include "rpc_slave_if.h"
 #include "string.h"
 #include "rpc_wrap.h"
@@ -1572,10 +1573,15 @@ int rpc_wifi_scan_get_ap_num(uint16_t *number)
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
+	*number = 0;
+
 	resp = rpc_slaveif_wifi_scan_get_ap_num(req);
 
 	if (resp && resp->resp_event_status == SUCCESS) {
 		*number = resp->u.wifi_scan_ap_list.number;
+	} else {
+		ESP_LOGE(TAG, "%s: failed, status [%"PRIi32"]", __func__,
+				resp ? resp->resp_event_status : (int32_t)FAILURE);
 	}
 	return rpc_rsp_callback(resp);
 }
@@ -1605,15 +1611,44 @@ int rpc_wifi_scan_get_ap_records(uint16_t *number, wifi_ap_record_t *ap_records)
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
 	ctrl_cmd_t *resp = NULL;
 
-	g_h.funcs->_h_memset(ap_records, 0, (*number)*sizeof(wifi_ap_record_t));
+	uint16_t requested = *number;
 
-	req->u.wifi_scan_ap_list.number = *number;
+	g_h.funcs->_h_memset(ap_records, 0, requested * sizeof(wifi_ap_record_t));
+
+	/* `number` carries the caller's capacity in and the returned count out,
+	 * so default it to zero and only raise it on a successful copy. */
+	*number = 0;
+
+	req->u.wifi_scan_ap_list.number = requested;
 	resp = rpc_slaveif_wifi_scan_get_ap_records(req);
 	if (resp && resp->resp_event_status == SUCCESS) {
-		ESP_LOGV(TAG, "num: %u",resp->u.wifi_scan_ap_list.number);
-		*number = resp->u.wifi_scan_ap_list.number;
-		g_h.funcs->_h_memcpy(ap_records, resp->u.wifi_scan_ap_list.out_list,
-				resp->u.wifi_scan_ap_list.number * sizeof(wifi_ap_record_t));
+		uint16_t got = resp->u.wifi_scan_ap_list.number;
+
+		ESP_LOGV(TAG, "num: %u", got);
+
+		/* ap_records only has room for the count the caller asked for. */
+		if (got > requested) {
+			ESP_LOGW(TAG, "%s: co-processor returned %u records, caller has room for %u",
+					__func__, got, requested);
+			got = requested;
+		}
+
+		if (got && !resp->u.wifi_scan_ap_list.out_list) {
+			ESP_LOGE(TAG, "%s: %u records reported but the list is absent",
+					__func__, got);
+			rpc_rsp_callback(resp);
+			return ESP_FAIL;
+		}
+
+		/* got == 0 is an empty scan, which is a valid result */
+		*number = got;
+		if (got)
+			g_h.funcs->_h_memcpy(ap_records, resp->u.wifi_scan_ap_list.out_list,
+					got * sizeof(wifi_ap_record_t));
+	} else {
+		ESP_LOGE(TAG, "%s: failed for %u requested records, status [%"PRIi32"]",
+				__func__, requested,
+				resp ? resp->resp_event_status : (int32_t)FAILURE);
 	}
 	return rpc_rsp_callback(resp);
 }
@@ -1674,6 +1709,9 @@ int rpc_wifi_sta_get_ap_info(wifi_ap_record_t *ap_info)
 	if (resp && resp->resp_event_status == SUCCESS) {
 		g_h.funcs->_h_memcpy(ap_info, resp->u.wifi_scan_ap_list.out_list,
 				sizeof(wifi_ap_record_t));
+	} else {
+		ESP_LOGE(TAG, "%s: failed, status [%"PRIi32"]", __func__,
+				resp ? resp->resp_event_status : (int32_t)FAILURE);
 	}
 	return rpc_rsp_callback(resp);
 }
