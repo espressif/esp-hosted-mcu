@@ -11,7 +11,7 @@
 void * transport_util_malloc(size_t size, hosted_mem_cap_t cap)
 {
 	if (cap == HOSTED_MEM_CAP_DMA) {
-		return g_h.funcs->_h_malloc_align(size, HOSTED_MEM_ALIGNMENT_64);
+		return g_h.funcs->_h_malloc_align(size, HOSTED_MEM_ALIGNMENT);
 	} else {
 		return g_h.funcs->_h_malloc(size);
 	}

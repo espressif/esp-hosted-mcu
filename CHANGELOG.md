@@ -1,5 +1,9 @@
 # Unreleased - Main Branch
 
+- added support for 128 byte L2 cache line size
+
+> [!WARNING]
+> Using 128 byte L2 cache line size requires changing the transport buffer size on both the host and co-processor. Both the host and co-processor firmware must be updated.
 
 # Releases
 

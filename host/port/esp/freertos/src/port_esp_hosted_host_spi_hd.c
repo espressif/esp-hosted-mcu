@@ -85,7 +85,7 @@ static void * spi_hd_bus_lock;
 #if USE_DMA_ALIGNED_BUF
 /* we use 64-bit DMA aligned buffer for reading register data */
 
-#define DMA_ALIGNED_BUF_LEN 64 // ESP32-P4 requires 64 byte aligned buffers
+#define DMA_ALIGNED_BUF_LEN HOSTED_MEM_ALIGNMENT
 DRAM_DMA_ALIGNED_ATTR static uint8_t dma_data_buf[DMA_ALIGNED_BUF_LEN];
 #endif
 

@@ -125,18 +125,23 @@ void *hosted_realloc(void *mem, size_t newsize)
 	return realloc(mem, newsize);
 }
 
+/* DMA memory requires the size to be a multiple of the alignment for
+ * proper operation */
 void *hosted_malloc_align(size_t size, size_t align)
 {
 	void *ptr = NULL;
 
+	// adjust size to match alignment
+	size_t actual_size = ((size + align - 1) / align) * align;
+
 #if CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM
 	/* On targets where GDMA can reach PSRAM through cache (e.g. ESP32-P4),
 	 * prefer DMA-capable SPIRAM to preserve scarce internal RAM. */
-	ptr = heap_caps_aligned_alloc(align, size,
+	ptr = heap_caps_aligned_alloc(align, actual_size,
 			MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
 #endif
 	if (!ptr) {
-		ptr = heap_caps_aligned_alloc(align, size,
+		ptr = heap_caps_aligned_alloc(align, actual_size,
 				MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT);
 	}
 	return ptr;

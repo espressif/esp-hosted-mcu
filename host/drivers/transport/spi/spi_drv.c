@@ -45,6 +45,9 @@ DEFINE_LOG_TAG(spi);
 #define MIN_MEMPOOL_REQ (MIN_MEMPOOL_BT_PACKETS + MIN_MEMPOOL_SERIAL_PACKETS + MIN_MEMPOOL_NET_PACKETS)
 #endif
 
+#define BLOCK_SIZE         MAX_SPI_BUFFER_SIZE
+#define ALIGNMENT_IN_BYTES HOSTED_MEM_ALIGNMENT
+
 void * spi_handle = NULL;
 semaphore_handle_t spi_trans_ready_sem;
 static volatile uint8_t dr_isr_triggered = 0;
@@ -72,6 +75,7 @@ semaphore_handle_t sem_from_slave_queue;
 
 static void * spi_rx_thread;
 
+static size_t curr_transfer_size = BLOCK_SIZE;
 
 /** function declaration **/
 /** Exported functions **/
@@ -124,14 +128,15 @@ static esp_err_t create_static_netif(void)
 static inline void spi_mempool_create(int tx_q_size, int rx_q_size)
 {
 	MEM_DUMP("spi_mempool_create");
+
 #if H_USE_MEMPOOL
 	hosted_mempool_config_t config = {
 		.pre_allocated_mem = NULL,
 		.pre_allocated_mem_size = 0,
 		// allocate enough blocks to handle full RX and possible peak tx requests
 		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
-		.block_size = MAX_SPI_BUFFER_SIZE,
-		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.block_size = BLOCK_SIZE,
+		.alignment_in_bytes = ALIGNMENT_IN_BYTES,
 		.malloc = transport_util_malloc,
 		.calloc = transport_util_calloc,
 		.memset = g_h.funcs->_h_memset,
@@ -146,6 +151,7 @@ static inline void spi_mempool_destroy(void)
 {
 #if H_USE_MEMPOOL
 	ESP_LOGD(TAG, "Destroying SPI mempool");
+
 	hosted_mempool_destroy(buf_mp_g);
 	buf_mp_g = NULL;
 #endif
@@ -153,7 +159,7 @@ static inline void spi_mempool_destroy(void)
 
 static inline void *spi_buffer_alloc(uint32_t need_memset)
 {
-	MEMPOOL_ALLOC(buf_mp_g, MAX_SPI_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_g, curr_transfer_size, need_memset);
 }
 
 static inline void spi_buffer_free(void *buf)
@@ -506,7 +512,7 @@ static int check_and_execute_spi_transaction(void)
 #endif
 
 			spi_trans.tx_buf = txbuff;
-			spi_trans.tx_buf_size = MAX_SPI_BUFFER_SIZE;
+			spi_trans.tx_buf_size = BLOCK_SIZE;
 			spi_trans.rx_buf = rxbuff;
 
 #if ESP_PKT_STATS
@@ -832,6 +838,12 @@ static uint8_t * get_next_tx_buffer(uint8_t *is_valid_tx_buf, void (**free_func)
 			goto done;
 		}
 
+		if (buf_handle.payload_len > BLOCK_SIZE - sizeof(struct esp_payload_header)) {
+			ESP_LOGE(TAG, "Pkt len [%u] > Max [%zu]. Drop",
+					buf_handle.payload_len, BLOCK_SIZE - sizeof(struct esp_payload_header));
+			goto done;
+		}
+
 		/* Form Tx header */
 		payload_header = (struct esp_payload_header *) sendbuf;
 		payload = sendbuf + sizeof(struct esp_payload_header);
@@ -976,7 +988,7 @@ int bus_inform_slave_host_power_save_start(void)
 
 		/* Set up SPI transaction */
 		spi_trans.tx_buf = txbuff;
-		spi_trans.tx_buf_size = MAX_SPI_BUFFER_SIZE;
+		spi_trans.tx_buf_size = BLOCK_SIZE;
 		spi_trans.rx_buf = rxbuff;
 
 		/* Execute direct SPI transaction - bypass all queues */
@@ -1034,7 +1046,7 @@ int bus_inform_slave_host_power_save_stop(void)
 
 		/* Set up SPI transaction */
 		spi_trans.tx_buf = txbuff;
-		spi_trans.tx_buf_size = MAX_SPI_BUFFER_SIZE;
+		spi_trans.tx_buf_size = BLOCK_SIZE;
 		spi_trans.rx_buf = rxbuff;
 
 		/* Execute direct SPI transaction - bypass all queues */

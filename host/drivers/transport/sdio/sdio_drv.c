@@ -162,6 +162,8 @@ static void * sdio_bus_lock;
 #define SDIO_DRV_UNLOCK()
 #endif
 
+#define SDIO_BLOCK_SIZE         MAX_SDIO_BUFFER_SIZE
+
 #if DO_COMBINED_REG_READ
 // read data from ESP_SLAVE_INT_RAW_REG to ESP_SLAVE_PACKET_LEN_REG
 // plus 4 for the len of the register
@@ -227,6 +229,8 @@ static double_buf_t double_buf = {
 	.read_index = -1,
 };
 
+static size_t curr_transfer_size = SDIO_BLOCK_SIZE;
+
 // sem to trigger sdio_data_to_rx_buf_task()
 static semaphore_handle_t sem_double_buf_xfer_data;
 
@@ -247,8 +251,8 @@ static inline void sdio_mempool_create(int tx_q_size, int rx_q_size)
 		.pre_allocated_mem_size = 0,
 		// allocate enough blocks to handle full RX and possible peak tx requests
 		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
-		.block_size = MAX_SDIO_BUFFER_SIZE,
-		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.block_size = SDIO_BLOCK_SIZE,
+		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT,
 		.malloc = transport_util_malloc,
 		.calloc = transport_util_calloc,
 		.memset = g_h.funcs->_h_memset,
@@ -270,7 +274,7 @@ static inline void sdio_mempool_destroy(void)
 
 static inline void *sdio_buffer_alloc(uint need_memset)
 {
-	MEMPOOL_ALLOC(buf_mp_g, MAX_SDIO_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_g, curr_transfer_size, need_memset);
 }
 
 static inline void sdio_buffer_free(void *buf)
@@ -682,9 +686,9 @@ static void sdio_write_task(void const* pvParameters)
 			mempool_oom_logged = false;
 		}
 
-		if (buf_handle.payload_len > MAX_SDIO_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
-			ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
-					buf_handle.payload_len, MAX_SDIO_BUFFER_SIZE - sizeof(struct esp_payload_header));
+		if (buf_handle.payload_len > curr_transfer_size - sizeof(struct esp_payload_header)) {
+			ESP_LOGE(TAG, "Pkt len [%u] > Max [%zu]. Drop",
+					buf_handle.payload_len, curr_transfer_size - sizeof(struct esp_payload_header));
 			goto done;
 		}
 
@@ -752,7 +756,6 @@ static void sdio_write_task(void const* pvParameters)
 			 * slave.
 			 */
 			uint32_t block_send_len = ((len_to_send + ESP_BLOCK_SIZE - 1) / ESP_BLOCK_SIZE) * ESP_BLOCK_SIZE;
-
 			ret = g_h.funcs->_h_sdio_write_block(sdio_handle, ESP_SLAVE_CMD53_END_ADDR - data_left,
 				pos, block_send_len, ACQUIRE_LOCK);
 #else
@@ -976,7 +979,7 @@ static uint8_t * sdio_rx_get_buffer(uint32_t len)
 		 * slave resends / the RPC retries). This mirrors the mempool OOM
 		 * handling in sdio_push_data_to_queue() and replaces a hard assert that
 		 * crashed the host on transient memory pressure. */
-		uint8_t *newbuf = (uint8_t *)g_h.funcs->_h_malloc_align(len, HOSTED_MEM_ALIGNMENT_64);
+		uint8_t *newbuf = (uint8_t *)g_h.funcs->_h_malloc_align(len, HOSTED_MEM_ALIGNMENT);
 		if (!newbuf) {
 			ESP_LOGW(TAG, "RX buffer alloc failed (len=%lu); dropping read", (unsigned long)len);
 			return NULL;
@@ -1164,7 +1167,7 @@ static void sdio_read_task(void const* pvParameters)
 
 #if DO_COMBINED_REG_READ
     if (!reg_buf) {
-	    reg_buf = g_h.funcs->_h_malloc_align(REG_BUF_LEN, HOSTED_MEM_ALIGNMENT_64);
+	    reg_buf = g_h.funcs->_h_malloc_align(REG_BUF_LEN, HOSTED_MEM_ALIGNMENT);
 	    assert(reg_buf);
     }
 #endif
@@ -1467,6 +1470,8 @@ void *bus_init_internal(void)
 {
 	uint8_t prio_q_idx = 0;
 
+	curr_transfer_size = SDIO_BLOCK_SIZE;
+
 	int tx_queue_size = DEFAULT_TO_SLAVE_QUEUE_SIZE;
 	int rx_queue_size = DEFAULT_FROM_SLAVE_QUEUE_SIZE;
 
@@ -1606,7 +1611,6 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
 
 	g_h.funcs->_h_queue_item(to_slave_queue[pkt_prio], &buf_handle, HOSTED_BLOCK_MAX);
 	g_h.funcs->_h_post_semaphore(sem_to_slave_queue);
-
 
 	return ESP_OK;
 }

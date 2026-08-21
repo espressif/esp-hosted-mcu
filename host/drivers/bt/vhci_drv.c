@@ -184,7 +184,7 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf *om)
 	uint8_t * data = NULL;
 	int res;
 
-	data = g_h.funcs->_h_malloc_align(data_len, HOSTED_MEM_ALIGNMENT_64);
+	data = g_h.funcs->_h_malloc_align(data_len, HOSTED_MEM_ALIGNMENT);
 	if (!data) {
 		ESP_LOGE(TAG, "Tx %s: malloc failed", __func__);
 		res = ESP_FAIL;
@@ -219,7 +219,7 @@ int ble_transport_to_ll_cmd_impl(void *buf)
 	uint8_t * data = NULL;
 	int res;
 
-	data = g_h.funcs->_h_malloc_align(buf_len, HOSTED_MEM_ALIGNMENT_64);
+	data = g_h.funcs->_h_malloc_align(buf_len, HOSTED_MEM_ALIGNMENT);
 	if (!data) {
 		ESP_LOGE(TAG, "Tx %s: malloc failed", __func__);
 		res =  ESP_FAIL;
@@ -282,7 +282,7 @@ void hosted_hci_bluedroid_send(uint8_t *data, uint16_t len)
 	int res;
 	uint8_t * ptr = NULL;
 
-	ptr = g_h.funcs->_h_malloc_align(len, HOSTED_MEM_ALIGNMENT_64);
+	ptr = g_h.funcs->_h_malloc_align(len, HOSTED_MEM_ALIGNMENT);
 	if (!ptr) {
 		ESP_LOGE(TAG, "%s: malloc failed", __func__);
 		return;

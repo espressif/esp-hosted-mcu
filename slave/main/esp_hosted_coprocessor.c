@@ -646,6 +646,23 @@ static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 			ESP_LOGI(TAG, "ESP<-Host wifi flow ctl clear thres [%u%%]",
 					slv_cfg_g.throttle_low_threshold);
 
+		} else if (*pos == SLV_CONFIG_SET_TRANSFER_SIZE) {
+			if (if_context && if_context->if_ops && if_context->if_ops->set_transfer_size) {
+				uint32_t transfer_size =
+					(uint32_t)(*(pos + 2)) +
+					((uint32_t)(*(pos + 3)) << 8) +
+					((uint32_t)(*(pos + 4)) << 16) +
+					((uint32_t)(*(pos + 5)) << 24);
+				if (if_context->if_ops->set_transfer_size(transfer_size) == ESP_OK) {
+					ESP_LOGI(TAG, "Transfer size set to %" PRIu32, transfer_size);
+				} else {
+					ESP_LOGW(TAG, "Failed to set transfer size to %" PRIu32, transfer_size);
+				}
+			} else {
+				// assume if_context && if_context->if_ops are valid (usual case)
+				ESP_LOGE(TAG, "Transport does not implement op: cannot set transfer size");
+			}
+
 		} else {
 
 			ESP_LOGD(TAG, "Unsupported H->S config: %2x", *pos);

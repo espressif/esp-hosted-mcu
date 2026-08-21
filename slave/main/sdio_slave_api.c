@@ -94,6 +94,7 @@ if_ops_t if_ops = {
 	.read = sdio_read,
 	.reset = sdio_reset,
 	.deinit = sdio_deinit,
+	.set_transfer_size = NULL,
 };
 
 static inline void sdio_mempool_create(void)
@@ -267,10 +268,8 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	/* TLV - Extended Capability */
 	*pos = ESP_PRIV_CAP_EXT;            pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
-	*pos = (ext_cap) & 0xFF;            pos++;len++;
-	*pos = (ext_cap >> 8) & 0xFF;       pos++;len++;
-	*pos = (ext_cap >> 16) & 0xFF;      pos++;len++;
-	*pos = (ext_cap >> 24) & 0xFF;      pos++;len++;
+	TLV_UINT32_TO_UINT8(ext_cap, pos);
+	len += LENGTH_4_BYTE;
 
 	*pos = ESP_PRIV_TEST_RAW_TP;        pos++;len++;
 	*pos = LENGTH_1_BYTE;               pos++;len++;
@@ -298,10 +297,15 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = ESP_PRIV_FIRMWARE_VERSION;   pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
 	// send fw_version as a little endian 32bit value
-	*pos = (fw_version & 0xff);         pos++;len++;
-	*pos = (fw_version >> 8) & 0xff;    pos++;len++;
-	*pos = (fw_version >> 16) & 0xff;   pos++;len++;
-	*pos = (fw_version >> 24) & 0xff;   pos++;len++;
+	TLV_UINT32_TO_UINT8(fw_version, pos);
+	len += LENGTH_4_BYTE;
+
+	// send current transfer size
+	*pos = ESP_PRIV_TRANSFER_SIZE;     pos++;len++;
+	*pos = LENGTH_4_BYTE;               pos++;len++;
+	// send transfer size as a little endian 32bit value
+	TLV_UINT32_TO_UINT8(SDIO_RX_BUFFER_SIZE, pos);
+	len += LENGTH_4_BYTE;
 
 	/* TLVs end */
 

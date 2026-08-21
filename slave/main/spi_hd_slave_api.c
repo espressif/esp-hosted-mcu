@@ -155,6 +155,7 @@ if_ops_t if_ops = {
 	.read = esp_spi_hd_read,
 	.reset = esp_spi_hd_reset,
 	.deinit = esp_spi_hd_deinit,
+	.set_transfer_size = NULL,
 };
 
 #if H_USE_MEMPOOL
@@ -520,8 +521,16 @@ static void spi_hd_rx_task(void* pvParameters)
 		header = (struct esp_payload_header *)buf_handle.payload;
 		len = le16toh(header->len);
 		offset = le16toh(header->offset);
-		flags = header->flags;
 
+		if (buf_handle.payload_len && (buf_handle.payload_len < len+offset)) {
+			ESP_LOGE(TAG, "%s: err: read_len[%u] < len[%u]+offset[%u]", __func__,
+					buf_handle.payload_len, len, offset);
+			// return the transaction back to the rx queue
+			spi_hd_read_done(ret_trans);
+			continue;
+		}
+
+		flags = header->flags;
 		ESP_LOGV(TAG, "Received flags: 0x%02x", flags);
 
 		if (flags & FLAG_POWER_SAVE_STARTED) {
@@ -536,14 +545,6 @@ static void spi_hd_rx_task(void* pvParameters)
 				context.event_handler(ESP_POWER_SAVE_OFF);
 			}
 		}
-		if (buf_handle.payload_len < len+offset) {
-			ESP_LOGE(TAG, "%s: err: read_len[%u] < len[%u]+offset[%u]", __func__,
-					buf_handle.payload_len, len, offset);
-			// return the transaction back to the rx queue
-			spi_hd_read_done(ret_trans);
-			continue;
-		}
-
 #if CONFIG_ESP_SPI_HD_CHECKSUM
 		rx_checksum = le16toh(header->checksum);
 		header->checksum = 0;
@@ -923,10 +924,8 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	/* TLV - Extended Capability */
 	*pos = ESP_PRIV_CAP_EXT;            pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
-	*pos = (ext_cap & 0xFF);            pos++;len++;
-	*pos = (ext_cap >> 8) & 0xFF;       pos++;len++;
-	*pos = (ext_cap >> 16) & 0xFF;      pos++;len++;
-	*pos = (ext_cap >> 24) & 0xFF;      pos++;len++;
+	TLV_UINT32_TO_UINT8(ext_cap, pos);
+	len += LENGTH_4_BYTE;
 
 	*pos = ESP_PRIV_TEST_RAW_TP;        pos++;len++;
 	*pos = LENGTH_1_BYTE;               pos++;len++;
@@ -949,10 +948,15 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = ESP_PRIV_FIRMWARE_VERSION;   pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
 	// send fw_version as a little endian 32bit value
-	*pos = (fw_version & 0xff);         pos++;len++;
-	*pos = (fw_version >> 8) & 0xff;    pos++;len++;
-	*pos = (fw_version >> 16) & 0xff;   pos++;len++;
-	*pos = (fw_version >> 24) & 0xff;   pos++;len++;
+	TLV_UINT32_TO_UINT8(fw_version, pos);
+	len += LENGTH_4_BYTE;
+
+	// send current transfer size
+	*pos = ESP_PRIV_TRANSFER_SIZE;      pos++;len++;
+	*pos = LENGTH_4_BYTE;               pos++;len++;
+	// send transfer size as a little endian 32bit value
+	TLV_UINT32_TO_UINT8(SPI_HD_BUFFER_SIZE, pos);
+	len += LENGTH_4_BYTE;
 
 	/* TLVs end */
 

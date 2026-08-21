@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -28,6 +28,14 @@ extern "C" {
 #ifdef CONFIG_ESP_SPI_HD_HOST_INTERFACE
 	#include "driver/spi_slave_hd.h"
 #endif
+
+/* Macro to split a uint32_t to little-endian uint8_t and store in consecutive locations */
+#define TLV_UINT32_TO_UINT8(value, pos) do {        \
+    *pos = ((uint32_t)value & 0xff);         pos++; \
+    *pos = ((uint32_t)value >> 8) & 0xff;    pos++; \
+    *pos = ((uint32_t)value >> 16) & 0xff;   pos++; \
+    *pos = ((uint32_t)value >> 24) & 0xff;   pos++; \
+} while (0)
 
 typedef enum {
 	LENGTH_1_BYTE  = 1,
@@ -101,6 +109,7 @@ typedef struct {
 	int (*read)(interface_handle_t *handle, interface_buffer_handle_t *buf_handle);
 	esp_err_t (*reset)(interface_handle_t *handle);
 	void (*deinit)(interface_handle_t *handle);
+	esp_err_t (*set_transfer_size)(size_t transfer_size);
 } if_ops_t;
 
 typedef struct {

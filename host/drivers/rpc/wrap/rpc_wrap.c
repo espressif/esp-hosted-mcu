@@ -39,7 +39,6 @@ uint8_t restart_after_slave_ota = 0;
 #define VENDOR_OUI_1                                      2
 #define VENDOR_OUI_2                                      3
 #define VENDOR_OUI_TYPE                                   22
-#define CHUNK_SIZE                                        1400
 
 #define OTA_BEGIN_RSP_TIMEOUT_SEC                         15
 #define WIFI_INIT_RSP_TIMEOUT_SEC                         10
