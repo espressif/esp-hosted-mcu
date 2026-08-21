@@ -6,6 +6,7 @@
 - bugfix: changed `#ifdef H_PEER_DATA_TRANSFER` to `#if H_PEER_DATA_TRANSFER` to fix build errors when Peer Data Transfer feature is disabled.
 - fixed transport restart for SPI-HD and UART transports
 - fixed RPC response parse failures being reported as success, which could crash the host in `esp_wifi_sta_get_ap_info()`
+- fixed RPC serial reassembly stalling the RX datapath when an RPC handler is slow
 
 # Releases
 
