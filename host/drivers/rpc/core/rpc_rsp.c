@@ -6,6 +6,7 @@
 
  #include <inttypes.h>
 #include "rpc_core.h"
+#include "esp_hosted_rpc.h"
 #include "rpc_utils.h"
 #include "rpc_slave_if.h"
 #include "esp_hosted_transport.h"
@@ -336,19 +337,30 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 		p_a->number = rpc_msg->resp_wifi_scan_get_ap_records->number;
 
 		if (!p_a->number) {
+			/* An empty scan result is a valid outcome, not a parse error.
+			 * resp_event_status is deliberately left at SUCCESS, and
+			 * out_list stays NULL with number == 0. */
 			ESP_LOGI(TAG, "No AP found");
 			goto fail_parse_rpc_msg;
 		}
 		ESP_LOGD(TAG, "Num AP records: %u",
 				app_resp->u.wifi_scan_ap_list.number);
 
-		RPC_FAIL_ON_NULL(resp_wifi_scan_get_ap_records->ap_records);
+		if (!rpc_msg->resp_wifi_scan_get_ap_records->ap_records) {
+			ESP_LOGE(TAG, "AP records missing while number is %u", p_a->number);
+			app_resp->resp_event_status = RPC_ERR_PROTOBUF_DECODE;
+			goto fail_parse_rpc_msg;
+		}
 
 		list = (wifi_ap_record_t*)g_h.funcs->_h_calloc(p_a->number,
 				sizeof(wifi_ap_record_t));
+		if (!list) {
+			ESP_LOGE(TAG, "Malloc Failed");
+			app_resp->resp_event_status = RPC_ERR_MEMORY_FAILURE;
+			goto fail_parse_rpc_msg;
+		}
+		/* published only once it is known good */
 		p_a->out_list = list;
-
-		RPC_FAIL_ON_NULL_PRINT(list, "Malloc Failed");
 
 		app_resp->app_free_buff_func = g_h.funcs->_h_free;
 		app_resp->app_free_buff_hdl = list;
@@ -369,13 +381,23 @@ int rpc_parse_rsp(Rpc *rpc_msg, ctrl_cmd_t *app_resp)
 
 		p_a->number = 1;
 
-		RPC_FAIL_ON_NULL(resp_wifi_sta_get_ap_info->ap_record);
+		if (!rpc_msg->resp_wifi_sta_get_ap_info->ap_record) {
+			/* e.g. STA not associated. Must not read as success: the caller
+			 * copies sizeof(wifi_ap_record_t) out of out_list. */
+			ESP_LOGE(TAG, "No AP record in response");
+			app_resp->resp_event_status = RPC_ERR_PROTOBUF_DECODE;
+			goto fail_parse_rpc_msg;
+		}
 
 		ap_info = (wifi_ap_record_t*)g_h.funcs->_h_calloc(p_a->number,
 				sizeof(wifi_ap_record_t));
+		if (!ap_info) {
+			ESP_LOGE(TAG, "Malloc Failed");
+			app_resp->resp_event_status = RPC_ERR_MEMORY_FAILURE;
+			goto fail_parse_rpc_msg;
+		}
+		/* published only once it is known good */
 		p_a->out_list = ap_info;
-
-		RPC_FAIL_ON_NULL_PRINT(ap_info, "Malloc Failed");
 
 		app_resp->app_free_buff_func = g_h.funcs->_h_free;
 		app_resp->app_free_buff_hdl = ap_info;
