@@ -5,6 +5,7 @@
 - used queue sizes from Kconfig for tx/rx queues in SPI-FD driver
 - bugfix: changed `#ifdef H_PEER_DATA_TRANSFER` to `#if H_PEER_DATA_TRANSFER` to fix build errors when Peer Data Transfer feature is disabled.
 - fixed transport restart for SPI-HD and UART transports
+- fixed RPC serial reassembly stalling the RX datapath when an RPC handler is slow
 
 # Releases
 

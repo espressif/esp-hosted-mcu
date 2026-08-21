@@ -100,7 +100,6 @@ static protocomm_t *pc_pserial;
 SemaphoreHandle_t host_reset_sem;
 
 static struct rx_data {
-	uint8_t valid;
 	uint16_t cur_seq_no;
 	int len;
 	uint8_t data[8192];
@@ -536,13 +535,6 @@ static void process_serial_rx_pkt(uint8_t *buf)
 
 	ESP_HEXLOGV("serial_rx", payload, payload_len, 32);
 
-	while (r.valid)
-	{
-		ESP_LOGI(TAG,"More segment: %u curr seq: %u header seq: %u\n",
-			header->flags & MORE_FRAGMENT, r.cur_seq_no, header->seq_num);
-		vTaskDelay(10);
-	}
-
 	if (!r.len) {
 		/* New Buffer */
 		r.cur_seq_no = le16toh(header->seq_num);
@@ -550,9 +542,9 @@ static void process_serial_rx_pkt(uint8_t *buf)
 
 	if (header->seq_num != r.cur_seq_no) {
 		/* Sequence number mismatch */
-		r.valid = 1;
-		ESP_LOGV(TAG, "Final Frag: r.valid=1");
 		parse_protobuf_req();
+		r.len = 0;
+		r.cur_seq_no = 0;
 		return;
 	}
 
@@ -560,10 +552,10 @@ static void process_serial_rx_pkt(uint8_t *buf)
 	r.len += min(payload_len, rem_buff_size);
 
 	if (!(header->flags & MORE_FRAGMENT)) {
-		/* Received complete buffer */
-		r.valid = 1;
-		ESP_LOGV(TAG, "no frag case: r.valid=1");
+		/* Complete buffer: the enqueue copies it, so `r` is reusable on return. */
 		parse_protobuf_req();
+		r.len = 0;
+		r.cur_seq_no = 0;
 	}
 }
 
@@ -781,17 +773,10 @@ static void recv_task(void* pvParameters)
 	}
 }
 
+/* Request already copied into the queue entry; `r` belongs to recv_task. */
 static ssize_t serial_read_data(uint8_t *data, ssize_t len)
 {
-	len = min(len, r.len);
-	if (r.valid) {
-		memcpy(data, r.data, len);
-		r.valid = 0;
-		r.len = 0;
-		r.cur_seq_no = 0;
-	} else {
-		ESP_LOGI(TAG,"No data to be read, len %d", len);
-	}
+	(void)data;
 	return len;
 }
 
