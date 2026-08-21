@@ -647,18 +647,18 @@ ESP32XX_SPI_CLK_FREQ_RANGE_MAX := 40
 			"Optimize SPI CLK by increasing till host practically can support"
 
 		config ESP_HOSTED_SPI_TX_Q_SIZE
-			int "ESP to Host SPI queue size"
-			default 7 if ESP_HOSTED_HOST_OT_ENABLE
-			default 15
-			help
-				Very small tx queue will lower ESP -- SPI --> Host data rate
-
-		config ESP_HOSTED_SPI_RX_Q_SIZE
 			int "Host to ESP SPI queue size"
 			default 7 if ESP_HOSTED_HOST_OT_ENABLE
 			default 15
 			help
-				Very small RX queue will lower ESP <-- SPI -- Host data rate
+				Very small tx queue will lower Host --> SPI --> ESP data rate
+
+		config ESP_HOSTED_SPI_RX_Q_SIZE
+			int "ESP to Host SPI queue size"
+			default 7 if ESP_HOSTED_HOST_OT_ENABLE
+			default 15
+			help
+				Very small RX queue will lower ESP --> SPI --> Host data rate
 
 	endmenu
 

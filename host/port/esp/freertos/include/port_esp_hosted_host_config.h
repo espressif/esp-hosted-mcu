@@ -9,7 +9,6 @@
 
 #include "sdkconfig.h"
 #include "esp_task.h"
-#include "esp_idf_version.h"
 
 #include "esp_idf_version.h"
 #include "esp_wifi_remote.h"
@@ -27,6 +26,22 @@
     #define H_DFLT_TASK_FROM_SPIRAM (1)
 #else
     #define H_DFLT_TASK_FROM_SPIRAM (0)
+#endif
+
+// checks for mempool from SPIRAM
+#ifdef CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM
+// SPI-FD/HD interface can only transfer data to/from SPIRAM from IDF v5.5.3 and above
+#if defined(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE) || defined(CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE)
+  #if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5,5,3))
+    #error "SPI only supports DMA transfers from SPIRAM for IDF v5.5.3 or greater"
+  #endif
+#endif
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM
+    #define H_MEMPOOL_PREFER_SPIRAM (1)
+#else
+    #define H_MEMPOOL_PREFER_SPIRAM (0)
 #endif
 
 // to allow external code to override Hosted Functions if required
@@ -141,7 +156,6 @@ enum {
   /*  Pins in use. The SPI Master can use the GPIO mux,
       so feel free to change these if needed.
   */
-
 
   /* SPI config */
 
