@@ -1,5 +1,6 @@
 # Unreleased - Main Branch
 
+- bugfix: check that sync semaphore is valid before attempting to destroy it
 - added `app_update` component to build co-processor with master branch
 - fixed using PSRAM as mempool buffers for SPI-FD and SPI-HD transports
 - used queue sizes from Kconfig for tx/rx queues in SPI-FD driver
