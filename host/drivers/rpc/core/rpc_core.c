@@ -842,8 +842,10 @@ static int wait_for_sync_response(ctrl_cmd_t *app_req)
 	for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 		if (sync_rsp_table[i].uid == app_req->uid) {
 			ret = g_h.funcs->_h_get_semaphore(sync_rsp_table[i].sem, SEC_TO_MILLISEC(timeout_sec));
-			if (g_h.funcs->_h_destroy_semaphore(sync_rsp_table[i].sem)) {
-				ESP_LOGE(TAG, "read sem rx for resp[0x%x] destroy failed", exp_resp_msg_id);
+			if (sync_rsp_table[i].sem) {
+				if (g_h.funcs->_h_destroy_semaphore(sync_rsp_table[i].sem)) {
+					ESP_LOGE(TAG, "read sem rx for resp[0x%x] destroy failed", exp_resp_msg_id);
+				}
 			}
 			// clear table entry
 			sync_rsp_table[i].uid = 0;
