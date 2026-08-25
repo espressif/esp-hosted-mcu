@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -42,6 +42,13 @@
 #include "esp_hosted_log.h"
 static const char TAG[] = "vhci_drv";
 
+#if H_BT_HOST_ESP_BLUEDROID || H_BT_ENABLE_LL_INIT
+static bool s_ble_host_up = false;
+#else
+// for older ESP-IDF, no choice but to indicate the BLE is up
+static bool s_ble_host_up = true;
+#endif
+
 #if H_BT_HOST_ESP_NIMBLE
 #define BLE_HCI_EVENT_HDR_LEN               (2)
 #define BLE_HCI_CMD_HDR_LEN                 (3)
@@ -64,6 +71,11 @@ void hci_drv_show_configuration(void)
  */
 H_WEAK_REF int hci_rx_handler(uint8_t *buf, size_t buf_len)
 {
+	if (!s_ble_host_up) {
+		ESP_LOGW(TAG, "Rx: NimBLE host not up yet, dropping %u bytes", (unsigned)buf_len);
+		return ESP_FAIL;
+	}
+
 	uint8_t * data = buf;
 	uint32_t len_total_read = buf_len;
 
@@ -152,10 +164,12 @@ H_WEAK_REF int hci_rx_handler(uint8_t *buf, size_t buf_len)
 void ble_transport_ll_init(void)
 {
 	ESP_ERROR_CHECK(transport_drv_reconfigure());
+	s_ble_host_up = true;
 }
 
 void ble_transport_ll_deinit(void)
 {
+	s_ble_host_up = false;
 	// transport may still be in used for other data (serial, Wi-Fi, ...)
 }
 #endif
@@ -229,6 +243,11 @@ static esp_bluedroid_hci_driver_callbacks_t s_callback = { 0 };
 
 H_WEAK_REF int hci_rx_handler(uint8_t *buf, size_t buf_len)
 {
+	if (!s_ble_host_up) {
+		ESP_LOGW(TAG, "Rx: Bluedroid host not up yet, dropping %u bytes", (unsigned)buf_len);
+		return ESP_FAIL;
+	}
+
 	uint8_t * data = buf;
 	uint32_t len_total_read = buf_len;
 
@@ -242,10 +261,12 @@ H_WEAK_REF int hci_rx_handler(uint8_t *buf, size_t buf_len)
 void hosted_hci_bluedroid_open(void)
 {
 	ESP_ERROR_CHECK(transport_drv_reconfigure());
+	s_ble_host_up = true;
 }
 
 void hosted_hci_bluedroid_close(void)
 {
+	s_ble_host_up = false;
 }
 
 esp_err_t hosted_hci_bluedroid_register_host_callback(const esp_bluedroid_hci_driver_callbacks_t *callback)

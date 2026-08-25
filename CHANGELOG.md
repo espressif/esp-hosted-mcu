@@ -1,5 +1,8 @@
 # Unreleased - Main Branch
 
+- make co-processor BT controller `init()` and `enable()` idempotent
+- bugfix: drop received HCI packet if host BT stack is not yet ready
+  - this can happen when host is in deep sleep, and co-processor receives a HCI packet
 - added extern "C" linkage guards around public headers
 - bugfix: check that sync semaphore is valid before attempting to destroy it
 - added `app_update` component to build co-processor with master branch

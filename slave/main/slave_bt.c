@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -25,6 +25,10 @@
 #include "esp_mac.h"
 
 static const char *TAG = "h_bt";
+
+// make bt init and enable idempotent
+static bool bt_inited = false;
+static bool bt_enabled = false;
 
 #if BLUETOOTH_HCI
 /* ***** HCI specific part ***** */
@@ -191,6 +195,11 @@ esp_err_t init_bluetooth(void)
 	esp_err_t ret = ESP_FAIL;
 
 #if CONFIG_BT_ENABLED
+	if (bt_inited) {
+		ESP_LOGI(TAG, "%s: already inited", __func__);
+		return ESP_OK;
+	}
+
 	uint8_t mac[BSSID_BYTES_SIZE] = {0};
 	esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
 
@@ -212,12 +221,15 @@ esp_err_t init_bluetooth(void)
 	vhci_send_sem = xSemaphoreCreateBinary();
 	if (vhci_send_sem == NULL) {
 		ESP_LOGE(TAG, "Failed to create VHCI send sem");
+		esp_bt_controller_deinit();
 		return ESP_ERR_NO_MEM;
 	}
 
 	xSemaphoreGive(vhci_send_sem);
 #endif
-#endif
+	bt_inited = true;
+	bt_enabled = false;
+#endif // CONFIG_BT_ENABLED
 
 	return ret;
 }
@@ -227,6 +239,11 @@ esp_err_t deinit_bluetooth(bool mem_release)
 	esp_err_t result = ESP_FAIL;
 
 #ifdef CONFIG_BT_ENABLED
+	if (!bt_inited) {
+		ESP_LOGI(TAG, "%s: already deinited", __func__);
+		return ESP_OK;
+	}
+
 #if BLUETOOTH_HCI
 	if (vhci_send_sem) {
 		/* Dummy take and give sema before deleting it */
@@ -242,6 +259,9 @@ esp_err_t deinit_bluetooth(bool mem_release)
 		return result;
 	}
 
+	bt_enabled = false;
+	bt_inited = false;
+
 	if (mem_release) {
 		result = ESP_OK;
 #if BLUETOOTH_BLE
@@ -256,7 +276,8 @@ esp_err_t deinit_bluetooth(bool mem_release)
 			return result;
 		}
 	}
-#endif
+#endif // CONFIG_BT_ENABLED
+
 	return result;
 }
 
@@ -265,6 +286,11 @@ esp_err_t enable_bluetooth(void)
 	esp_err_t ret = ESP_FAIL;
 
 #ifdef CONFIG_BT_ENABLED
+	if (bt_enabled) {
+		ESP_LOGI(TAG, "%s: already enabled", __func__);
+		return ESP_OK;
+	}
+
 #if BLUETOOTH_BLE
 	ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
 #elif BLUETOOTH_BT
@@ -290,6 +316,7 @@ esp_err_t enable_bluetooth(void)
 	}
 #endif
 #endif // BLUETOOTH_HCI
+	bt_enabled = true;
 #endif // CONFIG_BT_ENABLED
 
 	return ret;
@@ -298,6 +325,11 @@ esp_err_t enable_bluetooth(void)
 esp_err_t disable_bluetooth(void)
 {
 #ifdef CONFIG_BT_ENABLED
+	if (!bt_enabled) {
+		ESP_LOGI(TAG, "%s: already disabled", __func__);
+		return ESP_OK;
+	}
+
 #if BLUETOOTH_HCI
 // unregister callback functions
 #if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0))
@@ -310,7 +342,11 @@ esp_err_t disable_bluetooth(void)
 #endif
 #endif
 
-	return esp_bt_controller_disable();
+	esp_err_t ret = esp_bt_controller_disable();
+	if (ret == ESP_OK) {
+		bt_enabled = false;
+	}
+	return ret;
 #else
 	return ESP_FAIL;
 #endif
