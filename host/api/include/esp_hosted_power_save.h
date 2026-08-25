@@ -1,11 +1,15 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #ifndef ESP_HOSTED_POWER_SAVE_API_H
 #define ESP_HOSTED_POWER_SAVE_API_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
     HOSTED_WAKEUP_UNDEFINED = 0,
@@ -78,5 +82,8 @@ int esp_hosted_power_save_timer_start(uint32_t time_ms);
  */
 int esp_hosted_power_save_timer_stop(void);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

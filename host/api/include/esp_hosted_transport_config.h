@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,10 @@
 #include <stdbool.h>
 
 #include "esp_err.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
 	ESP_TRANSPORT_OK = ESP_OK,
@@ -167,5 +171,9 @@ esp_hosted_transport_err_t esp_hosted_spi_set_config(struct esp_hosted_spi_confi
 /* UART functions */
 esp_hosted_transport_err_t esp_hosted_uart_get_config(struct esp_hosted_uart_config **config);
 esp_hosted_transport_err_t esp_hosted_uart_set_config(struct esp_hosted_uart_config *config) __attribute__((warn_unused_result));
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __ESP_HOSTED_TRANSPORT_CONFIG_H__ */

@@ -7,6 +7,10 @@
 #ifndef __ESP_HOSTED_MISC_TYPES_H__
 #define __ESP_HOSTED_MISC_TYPES_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
 	ESP_HOSTED_MEMMONITOR_NO_CHANGE = 0, // don't change the monitor configuration. Used to query current heap values
 	ESP_HOSTED_MEMMONITOR_DISABLE = 1,   // disable the monitor
@@ -57,5 +61,9 @@ typedef struct {
 	esp_hosted_cap_info_t curr_internal; /*!< current internal heap sizes */
 	esp_hosted_cap_info_t curr_external; /*!< current external heap sizes */
 } esp_hosted_event_mem_info_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

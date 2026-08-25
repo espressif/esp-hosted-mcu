@@ -7,6 +7,10 @@
 #ifndef __ESP_HOSTED_OPENTHREAD_H__
 #define __ESP_HOSTED_OPENTHREAD_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
 	HOSTED_OPENTHREAD_TRANSPORT_UART,
 	HOSTED_OPENTHREAD_TRANSPORT_MAX,
@@ -58,4 +62,9 @@ int esp_hosted_openthread_rcp_stop(void);
 
 // query the RCP on its state: configured, inited, enabled or ready
 int esp_hosted_openthread_rcp_query(esp_hosted_openthread_query_t query);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

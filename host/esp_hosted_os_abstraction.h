@@ -10,6 +10,10 @@
 #include <stddef.h>
 #include "esp_event_base.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
           /* Memory */
 /* 1 */   void*  (*_h_memcpy)(void* dest, const void* src, uint32_t size);
@@ -127,5 +131,9 @@ extern hosted_osi_funcs_t g_hosted_osi_funcs;
 }
 
 extern struct hosted_config_t g_h;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
