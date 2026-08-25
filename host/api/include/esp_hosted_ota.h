@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
 *
 * SPDX-License-Identifier: Apache-2.0
 */
@@ -29,6 +29,10 @@
 #define __ESP_HOSTED_OTA_H__
 
 #include "esp_err.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum {
     ESP_HOSTED_SLAVE_OTA_ACTIVATED,
@@ -78,5 +82,8 @@ esp_err_t esp_hosted_slave_ota_end(void);
  */
 esp_err_t esp_hosted_slave_ota_activate(void);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /*__ESP_HOSTED_OTA_H__*/

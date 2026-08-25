@@ -7,10 +7,6 @@
 #ifndef __ESP_HOSTED_H__
 #define __ESP_HOSTED_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "esp_hosted_os_abstraction.h"
 #include "esp_hosted_api_types.h"
 #include "esp_hosted_host_fw_ver.h"
@@ -19,6 +15,10 @@ extern "C" {
 #include "esp_hosted_event.h"
 #include "esp_hosted_cp_gpio.h"
 #include "esp_hosted_cp_ext_coex.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct esp_hosted_transport_config esp_hosted_config_t;
 

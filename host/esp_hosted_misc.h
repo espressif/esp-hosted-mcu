@@ -12,6 +12,10 @@
 
 #include "esp_hosted_misc_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define ESP_HOSTED_APP_DESC_MAGIC_WORD (0xABCD5432)  /*!< The magic word for the esp_hosted_app_desc structure */
 
 /**
@@ -175,5 +179,9 @@ esp_err_t esp_hosted_configure_heartbeat(bool enable, int duration_sec);
   *          - set required threshold values in `internal_mem` and/or `external_mem`
   */
 esp_err_t esp_hosted_set_mem_monitor(esp_hosted_config_mem_monitor_t *config, esp_hosted_curr_mem_info_t *curr_mem_info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

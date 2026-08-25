@@ -10,6 +10,10 @@
 
 #include "esp_err.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct
 {
 	uint64_t pin_bit_mask;   /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
@@ -47,5 +51,9 @@ esp_err_t esp_hosted_cp_gpio_get_level(uint32_t gpio_num, int *level);
 esp_err_t esp_hosted_cp_gpio_set_direction(uint32_t gpio_num, uint32_t mode);
 esp_err_t esp_hosted_cp_gpio_input_enable(uint32_t gpio_num);
 esp_err_t esp_hosted_cp_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /*__ESP_HOSTED_CP_GPIO_H__*/

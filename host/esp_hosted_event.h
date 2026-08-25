@@ -10,6 +10,10 @@
 #include "esp_event.h"
 #include "esp_system.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ESP_EVENT_DECLARE_BASE(ESP_HOSTED_EVENT);
 
 /**
@@ -38,5 +42,9 @@ typedef struct {
 typedef struct {
 	uint32_t heartbeat; /**< Current co-processor heartbeat number */
 } esp_hosted_event_heartbeat_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __ESP_HOSTED_EVENT_H__ */
