@@ -139,9 +139,14 @@ extern struct dbg_stats_t dbg_stats;
 struct pkt_stats_t {
 	uint32_t sta_sh_in;
 	uint32_t sta_sh_out;
+	uint32_t ap_sh_in;
+	uint32_t ap_sh_out;
 	uint32_t hs_bus_sta_in;
 	uint32_t hs_bus_sta_out;
 	uint32_t hs_bus_sta_fail;
+	uint32_t hs_bus_ap_in;
+	uint32_t hs_bus_ap_out;
+	uint32_t hs_bus_ap_fail;
 	uint32_t serial_rx;
 	uint32_t serial_tx_total;
 	uint32_t serial_tx_evt;

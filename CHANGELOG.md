@@ -1,5 +1,7 @@
 # Unreleased - Main Branch
 
+- co-processor: added Tx retry and statistic counters for AP interface. Corrected STA interface to only retry on `ESP_ERR_NO_MEM`.
+- co-processor: added Kconfig setting for number of Tx retries, default changed from 1 retry to 5.
 - make co-processor BT controller `init()` and `enable()` idempotent
 - bugfix: drop received HCI packet if host BT stack is not yet ready
   - this can happen when host is in deep sleep, and co-processor receives a HCI packet
