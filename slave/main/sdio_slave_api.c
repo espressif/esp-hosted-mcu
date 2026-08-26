@@ -586,6 +586,8 @@ static int32_t sdio_write(interface_handle_t *handle, interface_buffer_handle_t 
 #if ESP_PKT_STATS
 	if (buf_handle->if_type == ESP_STA_IF)
 		pkt_stats.sta_sh_out++;
+	else if (buf_handle->if_type == ESP_AP_IF)
+		pkt_stats.ap_sh_out++;
 	else if (buf_handle->if_type == ESP_SERIAL_IF)
 		pkt_stats.serial_tx_total++;
 #endif
@@ -704,6 +706,8 @@ static void sdio_rx_task(void* pvParameters)
   #if ESP_PKT_STATS
 		if (header->if_type == ESP_STA_IF)
 			pkt_stats.hs_bus_sta_in++;
+		else if (header->if_type == ESP_AP_IF)
+			pkt_stats.hs_bus_ap_in++;
   #endif
 		start_rx_data_throttling_if_needed();
 
@@ -788,6 +792,8 @@ static int sdio_read(interface_handle_t *if_handle, interface_buffer_handle_t *b
   #if ESP_PKT_STATS
 	if (header->if_type == ESP_STA_IF)
 		pkt_stats.hs_bus_sta_in++;
+	else if (header->if_type == ESP_AP_IF)
+		pkt_stats.hs_bus_ap_in++;
   #endif
 
 	buf_handle->if_type = header->if_type;

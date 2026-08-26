@@ -303,6 +303,9 @@ static void stats_timer_func(void* arg)
 			pkt_stats.hs_bus_sta_in,pkt_stats.hs_bus_sta_out, pkt_stats.hs_bus_sta_fail,
 			pkt_stats.sta_sh_in,pkt_stats.sta_sh_out,
 			pkt_stats.serial_rx, pkt_stats.serial_tx_total, pkt_stats.serial_tx_evt);
+	ESP_LOGI(TAG, "AP: H2S(in[%lu] out[%lu] fail[%lu] S2H(in[%lu] out[%lu]))",
+			 pkt_stats.hs_bus_ap_in,pkt_stats.hs_bus_ap_out, pkt_stats.hs_bus_ap_fail,
+			 pkt_stats.ap_sh_in,pkt_stats.ap_sh_out);
 	ESP_LOGI(TAG, "Lwip: in[%lu] slave_out[%lu] host_out[%lu] both_out[%lu]",
 			pkt_stats.sta_lwip_in, pkt_stats.sta_slave_lwip_out,
 			pkt_stats.sta_host_lwip_out, pkt_stats.sta_both_lwip_out);

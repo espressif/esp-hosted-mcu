@@ -356,6 +356,8 @@ static void uart_rx_task(void* pvParameters)
 #if ESP_PKT_STATS
 		if (header->if_type == ESP_STA_IF)
 			pkt_stats.hs_bus_sta_in++;
+		else if (header->if_type == ESP_AP_IF)
+			pkt_stats.hs_bus_ap_in++;
 #endif
 		if (header->if_type == ESP_SERIAL_IF) {
 			xQueueSend(uart_rx_queue[PRIO_Q_SERIAL], &buf_handle, portMAX_DELAY);
@@ -460,6 +462,8 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 #if ESP_PKT_STATS
 	if (header->if_type == ESP_STA_IF)
 		pkt_stats.sta_sh_out++;
+	else if (header->if_type == ESP_AP_IF)
+		pkt_stats.ap_sh_out++;
 	else if (header->if_type == ESP_SERIAL_IF)
 		pkt_stats.serial_tx_total++;
 #endif

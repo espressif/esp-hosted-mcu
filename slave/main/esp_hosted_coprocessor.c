@@ -78,7 +78,12 @@ static const char *TAG = "co-pro-main";
 #define TO_HOST_QUEUE_SIZE               10
 
 #define ETH_DATA_LEN                     1500
-#define MAX_WIFI_STA_TX_RETRY            2
+
+#if defined(CONFIG_ESP_HOSTED_WIFI_TX_NUM_RETRY)
+#define MAX_WIFI_TX_RETRY                CONFIG_ESP_HOSTED_WIFI_TX_NUM_RETRY
+#else
+#define MAX_WIFI_TX_RETRY                5
+#endif
 
 volatile uint8_t datapath = 0;
 volatile uint8_t station_connected = 0;
@@ -270,6 +275,10 @@ esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb)
 
 	if (send_to_host_queue(&buf_handle, PRIO_Q_OTHERS))
 		goto DONE;
+
+#if ESP_PKT_STATS
+	pkt_stats.ap_sh_in++;
+#endif
 
 	return ESP_OK;
 
@@ -673,15 +682,38 @@ static void process_priv_pkt(uint8_t *payload, uint16_t payload_len)
 	}
 }
 
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI
+static inline int wifi_tx_with_retry(wifi_interface_t wifi_if, uint8_t *payload,
+		uint16_t payload_len)
+{
+	int ret = 0;
+
+#ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
+	uint16_t retry = 0;
+
+	do {
+		ret = esp_wifi_internal_tx(wifi_if, payload, payload_len);
+		// only retry if err is ESP_ERR_NO_MEM. Other errors are not Tx related
+		if (ret != ESP_ERR_NO_MEM) {
+			break;
+		}
+		vTaskDelay(pdMS_TO_TICKS(1));
+	} while (++retry <= MAX_WIFI_TX_RETRY);
+
+#else // CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
+	ret = esp_wifi_internal_tx(wifi_if, payload, payload_len);
+#endif // CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
+
+	return ret;
+}
+#endif
+
 static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
 	struct esp_payload_header *header = NULL;
 	uint8_t *payload = NULL;
 	uint16_t payload_len = 0;
 	int ret = 0;
-#ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
-	int retry_wifi_tx = MAX_WIFI_STA_TX_RETRY;
-#endif
 
 	(void)ret;
 
@@ -695,19 +727,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	if (buf_handle->if_type == ESP_STA_IF && station_connected) {
 
 		/* Forward data to wlan driver */
-#ifdef CONFIG_ESP_HOSTED_WIFI_TX_RETRY_ENABLED
-		do {
-			ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
-			if (ret) {
-				vTaskDelay(pdMS_TO_TICKS(1));
-			}
-
-			retry_wifi_tx--;
-		} while (ret && retry_wifi_tx);
-#else
-		ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
-#endif
-
+		ret = wifi_tx_with_retry(WIFI_IF_STA, payload, payload_len);
 		ESP_HEXLOGV("STA_Put", payload, payload_len, 32);
 #if ESP_PKT_STATS
 		if (ret)
@@ -717,8 +737,14 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 #endif
 	} else if (buf_handle->if_type == ESP_AP_IF && softap_started) {
 		/* Forward data to wlan driver */
-		esp_wifi_internal_tx(WIFI_IF_AP, payload, payload_len);
+		ret = wifi_tx_with_retry(WIFI_IF_AP, payload, payload_len);
 		ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
+#if ESP_PKT_STATS
+		if (ret)
+			pkt_stats.hs_bus_ap_fail++;
+		else
+			pkt_stats.hs_bus_ap_out++;
+#endif
 	} else
 #endif // CONFIG_ESP_HOSTED_CP_WIFI
 	if (buf_handle->if_type == ESP_SERIAL_IF) {
