@@ -76,6 +76,10 @@ typedef struct {
 static sync_rsp_t sync_rsp_table[MAX_SYNC_RPC_TRANSACTIONS] = { 0 };
 static async_rsp_t async_rsp_table[MAX_ASYNC_RPC_TRANSACTIONS] = { 0 };
 
+static void * sync_rsp_table_mutex = NULL;
+static void * async_rsp_table_mutex = NULL;
+static void * uid_mutex = NULL;
+
 /* rpc event callbacks
  * These will be updated when user registers event callback
  * using `set_event_callback` API
@@ -91,7 +95,6 @@ static rpc_evt_cb_t rpc_evt_cb_table[RPC_ID__Event_Max - RPC_ID__Event_Base] = {
 static int call_event_callback(ctrl_cmd_t *app_event);
 static int is_async_resp_callback_available(ctrl_cmd_t *app_resp);
 static int is_sync_resp_sem_available(uint32_t uid);
-static int clear_async_resp_callback(async_rsp_t *async_rsp_item);
 static int call_async_resp_callback(ctrl_cmd_t *app_resp);
 static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb, void *timer_hdl);
 static int set_sync_resp_sem(ctrl_cmd_t *app_req);
@@ -320,12 +323,16 @@ fail_req2:
 	if (app_req->rpc_rsp_cb) {
 		/* Async request - check if it was registered */
 		int found = 0;
+
+		g_h.funcs->_h_lock_mutex(async_rsp_table_mutex, HOSTED_BLOCK_MAX);
 		for (int i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 			if (async_rsp_table[i].uid == app_req->uid) {
 				found = 1;
 				break;
 			}
 		}
+		g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
+
 		if (!found) {
 			/* Not registered, free it here */
 			HOSTED_FREE(app_req);
@@ -608,10 +615,10 @@ static int cancel_rpc_threads(void)
 
 static const char *rpc_id_name(int id)
 {
-    const ProtobufCEnumValue *v =
-        protobuf_c_enum_descriptor_get_value(&rpc_id__descriptor, id);
+	const ProtobufCEnumValue *v =
+		protobuf_c_enum_descriptor_get_value(&rpc_id__descriptor, id);
 
-    return v ? v->name : "UNKNOWN";
+	return v ? v->name : "UNKNOWN";
 }
 
 
@@ -663,27 +670,6 @@ static ctrl_cmd_t * get_response(int *read_len, ctrl_cmd_t *app_req)
 	return NULL;
 }
 
-static int clear_async_resp_callback(async_rsp_t *async_rsp_item)
-{
-	if (async_rsp_item->uid != 0) {
-
-		if (async_rsp_item->timer_hdl) {
-			g_h.funcs->_h_timer_stop(async_rsp_item->timer_hdl);
-			async_rsp_item->timer_hdl = NULL;
-		}
-
-		/* Free the request structure that was allocated by RPC_DEFAULT_REQ */
-		HOSTED_FREE(async_rsp_item->app_req);
-
-		async_rsp_item->uid = 0;
-		async_rsp_item->cb = NULL;
-		return SUCCESS;
-	} else {
-		ESP_LOGW(TAG, "async_rsp_item to be cleared already has uid 0");
-	}
-	return FAILURE;
-}
-
 /* Check and call rpc response asynchronous callback if available
  * else flag error
  *     MSG_ID_OUT_OF_ORDER - if response id is not understandable
@@ -692,24 +678,41 @@ static int clear_async_resp_callback(async_rsp_t *async_rsp_item)
 static int call_async_resp_callback(ctrl_cmd_t *app_resp)
 {
 	int i;
-
 	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
 	if ((app_resp->msg_id < RPC_ID__Resp_Base) ||
-	    (app_resp->msg_id >= RPC_ID__Resp_Max)) {
+		(app_resp->msg_id >= RPC_ID__Resp_Max)) {
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
+	/* Copy what we need and clear the entry in critical section. */
+	rpc_rsp_cb_t  local_cb  = NULL;
+	void         *timer_hdl = NULL;
+	ctrl_cmd_t   *local_req = NULL;
+
+	g_h.funcs->_h_lock_mutex(async_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 		if (async_rsp_table[i].uid == app_resp->uid) {
-			int ret = async_rsp_table[i].cb(app_resp);
-
-			clear_async_resp_callback(&async_rsp_table[i]);
-
-			return ret;
+			local_cb = async_rsp_table[i].cb;
+			timer_hdl = async_rsp_table[i].timer_hdl;
+			local_req = async_rsp_table[i].app_req;
+			async_rsp_table[i].uid       = 0;
+			async_rsp_table[i].cb        = NULL;
+			async_rsp_table[i].timer_hdl = NULL;
+			async_rsp_table[i].app_req   = NULL;
+			break;
 		}
 	}
+	g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
 
-	return CALLBACK_NOT_REGISTERED;
+	if (timer_hdl)
+		g_h.funcs->_h_timer_stop(timer_hdl);
+
+	HOSTED_FREE(local_req);
+
+	if (!local_cb)
+		return CALLBACK_NOT_REGISTERED;
+
+	return local_cb(app_resp);
 }
 
 
@@ -719,15 +722,19 @@ static int post_sync_resp_sem(ctrl_cmd_t *app_resp)
 
 	// msg_id of RPC_ID__Resp_Base now means Invalid RPC Request
 	if ((app_resp->msg_id < RPC_ID__Resp_Base) ||
-	    (app_resp->msg_id >= RPC_ID__Resp_Max)) {
+		(app_resp->msg_id >= RPC_ID__Resp_Max)) {
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
+	g_h.funcs->_h_lock_mutex(sync_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
-		if (sync_rsp_table[i].uid == app_resp->uid) {
-			return g_h.funcs->_h_post_semaphore(sync_rsp_table[i].sem);
+		if (sync_rsp_table[i].uid == app_resp->uid && sync_rsp_table[i].sem) {
+			int ret = g_h.funcs->_h_post_semaphore(sync_rsp_table[i].sem);
+			g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
+			return ret;
 		}
 	}
+	g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
 
 	return CALLBACK_NOT_REGISTERED;
 }
@@ -741,7 +748,7 @@ static int post_sync_resp_sem(ctrl_cmd_t *app_resp)
 static int call_event_callback(ctrl_cmd_t *app_event)
 {
 	if ((app_event->msg_id <= RPC_ID__Event_Base) ||
-	    (app_event->msg_id >= RPC_ID__Event_Max)) {
+		(app_event->msg_id >= RPC_ID__Event_Max)) {
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
@@ -764,15 +771,18 @@ static int set_async_resp_callback(ctrl_cmd_t *app_req, rpc_rsp_cb_t resp_cb, vo
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
+	g_h.funcs->_h_lock_mutex(async_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 		if (!async_rsp_table[i].uid) {
 			async_rsp_table[i].uid = app_req->uid;
 			async_rsp_table[i].cb = resp_cb;
 			async_rsp_table[i].timer_hdl = timer_hdl;
 			async_rsp_table[i].app_req = app_req;  /* Store request for later cleanup */
+			g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
 			return CALLBACK_SET_SUCCESS;
 		}
 	}
+	g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
 
 	ESP_LOGE(TAG, "Async cb not registered: out of buffer space");
 	return CALLBACK_NOT_REGISTERED;
@@ -798,23 +808,50 @@ static int set_sync_resp_sem(ctrl_cmd_t *app_req)
 	} else if (!app_req->rpc_rsp_cb) {
 		/* For sync, set sem */
 		app_req->rx_sem = g_h.funcs->_h_create_semaphore(1);
+		if (!app_req->rx_sem) {
+			ESP_LOGE(TAG, "Failed to create sync sem");
+			return CALLBACK_NOT_REGISTERED;
+		}
 		g_h.funcs->_h_get_semaphore(app_req->rx_sem, 0);
 
+		g_h.funcs->_h_lock_mutex(sync_rsp_table_mutex, HOSTED_BLOCK_MAX);
 		for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 			if (!sync_rsp_table[i].uid) {
-				ESP_LOGD(TAG, "Register sync sem %p for uid %ld", app_req->rx_sem, app_req->uid);
 				sync_rsp_table[i].uid = app_req->uid;
 				sync_rsp_table[i].sem = app_req->rx_sem;
+				g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
+				ESP_LOGD(TAG, "Register sync sem %p for uid %ld", app_req->rx_sem, app_req->uid);
 				return CALLBACK_SET_SUCCESS;
 			}
 		}
-		ESP_LOGE(TAG, "Symc sem not registered: out of buffer space");
+		g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
+
+		// failed to add to sync_rsp_table: destroy the sem
+		g_h.funcs->_h_destroy_semaphore(app_req->rx_sem);
+		app_req->rx_sem = NULL;
+		ESP_LOGE(TAG, "Sync sem not registered: out of buffer space");
 		return CALLBACK_NOT_REGISTERED;
 	} else {
 		/* For async, nothing to be done */
 		ESP_LOGD(TAG, "NOT Register sync sem for resp[0x%x]", exp_resp_msg_id);
 		return CALLBACK_NOT_REGISTERED;
 	}
+}
+
+// cleanup the sync table entry based on uid
+static void cleanup_sync_table_entry(uint32_t cleanup_uid)
+{
+	int i;
+
+	g_h.funcs->_h_lock_mutex(sync_rsp_table_mutex, HOSTED_BLOCK_MAX);
+	for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
+		if (sync_rsp_table[i].uid == cleanup_uid) {
+			sync_rsp_table[i].uid = 0;
+			sync_rsp_table[i].sem = NULL;
+			break;
+		}
+	}
+	g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
 }
 
 static int wait_for_sync_response(ctrl_cmd_t *app_req)
@@ -839,19 +876,37 @@ static int wait_for_sync_response(ctrl_cmd_t *app_req)
 
 	ESP_LOGV(TAG, "Wait for sync resp for Req[0x%x] with timer of %u sec",
 			app_req->msg_id, timeout_sec);
+
+	void *local_sem = NULL;
+	g_h.funcs->_h_lock_mutex(sync_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 		if (sync_rsp_table[i].uid == app_req->uid) {
-			ret = g_h.funcs->_h_get_semaphore(sync_rsp_table[i].sem, SEC_TO_MILLISEC(timeout_sec));
-			if (sync_rsp_table[i].sem) {
-				if (g_h.funcs->_h_destroy_semaphore(sync_rsp_table[i].sem)) {
-					ESP_LOGE(TAG, "read sem rx for resp[0x%x] destroy failed", exp_resp_msg_id);
-				}
-			}
-			// clear table entry
-			sync_rsp_table[i].uid = 0;
-			sync_rsp_table[i].sem = NULL;
-			return ret;
+			local_sem = sync_rsp_table[i].sem;
+			break;
 		}
+	}
+	g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
+
+	if (local_sem) {
+		bool entry_cleared = false;
+
+		ret = g_h.funcs->_h_get_semaphore(local_sem, SEC_TO_MILLISEC(timeout_sec));
+		g_h.funcs->_h_lock_mutex(sync_rsp_table_mutex, HOSTED_BLOCK_MAX);
+		// search the table again to make sure we clear the correct entry
+		for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
+			if (sync_rsp_table[i].uid == app_req->uid) {
+				// clear table entry
+				sync_rsp_table[i].uid = 0;
+				sync_rsp_table[i].sem = NULL;
+				entry_cleared = true;
+				break;
+			}
+		}
+		g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
+		if (entry_cleared && g_h.funcs->_h_destroy_semaphore(local_sem)) {
+			ESP_LOGE(TAG, "read sem rx for resp[0x%x] destroy failed", exp_resp_msg_id);
+		}
+		return ret;
 	}
 	ESP_LOGW(TAG, "Not able to map new request to resp id");
 	return MSG_ID_OUT_OF_ORDER;
@@ -868,11 +923,14 @@ static int is_async_resp_callback_available(ctrl_cmd_t *app_resp)
 		return MSG_ID_OUT_OF_ORDER;
 	}
 
+	g_h.funcs->_h_lock_mutex(async_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 		if (async_rsp_table[i].uid == app_resp->uid) {
+			g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
 			return CALLBACK_AVAILABLE;
 		}
 	}
+	g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
 
 	return CALLBACK_NOT_REGISTERED;
 }
@@ -881,11 +939,14 @@ static int is_sync_resp_sem_available(uint32_t uid)
 {
 	int i;
 
+	g_h.funcs->_h_lock_mutex(sync_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 		if (sync_rsp_table[i].uid == uid) {
+			g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
 			return CALLBACK_AVAILABLE;
 		}
 	}
+	g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
 	return CALLBACK_NOT_REGISTERED;
 }
 
@@ -968,13 +1029,30 @@ static void rpc_async_timeout_handler(void *arg)
 	app_resp->msg_type = RPC_TYPE__Resp;
 	app_resp->resp_event_status = RPC_ERR_REQUEST_TIMEOUT;
 
-	/* Clear the async callback table entry (this frees app_req) */
+	/* Clear the async callback table entry
+	 * actual content cleared after the critical section */
+	void *local_timer_hdl = NULL;
+	ctrl_cmd_t * local_app_req = NULL;
+	g_h.funcs->_h_lock_mutex(async_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (int i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 		if (async_rsp_table[i].uid == req_uid) {
-			clear_async_resp_callback(&async_rsp_table[i]);
+			local_timer_hdl = async_rsp_table[i].timer_hdl;
+			local_app_req = async_rsp_table[i].app_req;
+
+			async_rsp_table[i].uid = 0;
+			async_rsp_table[i].cb = NULL;
+			async_rsp_table[i].timer_hdl = NULL;
+			async_rsp_table[i].app_req = NULL;
+
 			break;
 		}
 	}
+	g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
+	// now clear timer and app req
+	if (local_timer_hdl)
+		g_h.funcs->_h_timer_stop(local_timer_hdl);
+	if (local_app_req)
+		HOSTED_FREE(local_app_req);
 
 	/* call func pointer to notify failure */
 	func(app_resp);
@@ -1000,11 +1078,13 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 	}
 
 
+	g_h.funcs->_h_lock_mutex(uid_mutex, HOSTED_BLOCK_MAX);
 	uid++;
 	// handle rollover in uid value
 	if (!uid)
 		uid++;
 	app_req->uid = uid;
+	g_h.funcs->_h_unlock_mutex(uid_mutex);
 
 	ESP_LOGD(TAG, "app_req msgid[0x%x] with uid %" PRIu32, app_req->msg_id, app_req->uid);
 	if (!app_req->rpc_rsp_cb) {
@@ -1031,6 +1111,9 @@ int rpc_send_req(ctrl_cmd_t *app_req)
 	return SUCCESS;
 
 fail_req:
+	if (!app_req->rpc_rsp_cb) {
+		cleanup_sync_table_entry(app_req->uid);
+	}
 	if (app_req->rx_sem)
 		g_h.funcs->_h_destroy_semaphore(app_req->rx_sem);
 
@@ -1042,20 +1125,38 @@ fail_req:
 
 static int cleanup_sync_async_timer_table(void)
 {
-	for (int i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
+	int timer_index = 0;
+	int app_req_index = 0;
+	void *timer_hdls[MAX_ASYNC_RPC_TRANSACTIONS] = { 0 };
+	ctrl_cmd_t *app_reqs[MAX_ASYNC_RPC_TRANSACTIONS] = { 0 };
+	int i;
+
+	// collect timer handles and app reqs first, cleanup after releasing mutex lock
+	g_h.funcs->_h_lock_mutex(async_rsp_table_mutex, HOSTED_BLOCK_MAX);
+	for (i = 0; i < MAX_ASYNC_RPC_TRANSACTIONS; i++) {
 		if (async_rsp_table[i].timer_hdl) {
-			g_h.funcs->_h_timer_stop(async_rsp_table[i].timer_hdl);
+			timer_hdls[timer_index++] = async_rsp_table[i].timer_hdl;
 		}
-		/* Free any pending async request structures */
 		if (async_rsp_table[i].app_req) {
-			HOSTED_FREE(async_rsp_table[i].app_req);
+			app_reqs[app_req_index++] = async_rsp_table[i].app_req;
 		}
 		async_rsp_table[i].timer_hdl = NULL;
 		async_rsp_table[i].uid = 0;
 		async_rsp_table[i].cb = NULL;
 		async_rsp_table[i].app_req = NULL;
 	}
+	g_h.funcs->_h_unlock_mutex(async_rsp_table_mutex);
 
+	for (i = 0; i < timer_index; i++) {
+		if (timer_hdls[i])
+			g_h.funcs->_h_timer_stop(timer_hdls[i]);
+	}
+	for (i = 0; i < app_req_index; i++) {
+		if (app_reqs[i])
+			HOSTED_FREE(app_reqs[i]);
+	}
+
+	g_h.funcs->_h_lock_mutex(sync_rsp_table_mutex, HOSTED_BLOCK_MAX);
 	for (int i = 0; i < MAX_SYNC_RPC_TRANSACTIONS; i++) {
 		if (sync_rsp_table[i].sem) {
 			g_h.funcs->_h_get_semaphore(sync_rsp_table[i].sem, 0);
@@ -1064,6 +1165,7 @@ static int cleanup_sync_async_timer_table(void)
 		sync_rsp_table[i].uid = 0;
 		sync_rsp_table[i].sem = NULL;
 	}
+	g_h.funcs->_h_unlock_mutex(sync_rsp_table_mutex);
 
 	return SUCCESS;
 }
@@ -1112,17 +1214,28 @@ int rpc_core_deinit(void)
 		rpc_tx_sem = NULL;
 	}
 
-	cleanup_sync_async_timer_table();
-
 	if (cancel_rpc_threads()) {
 		ret = FAILURE;
 		ESP_LOGE(TAG, "cancel rpc rx thread failed");
 	}
 
+	cleanup_sync_async_timer_table();
+
 	if (serial_deinit()) {
 		ret = FAILURE;
 		ESP_LOGE(TAG, "Serial de-init failed");
 	}
+
+	if (sync_rsp_table_mutex)
+		g_h.funcs->_h_destroy_mutex(sync_rsp_table_mutex);
+	if (async_rsp_table_mutex)
+		g_h.funcs->_h_destroy_mutex(async_rsp_table_mutex);
+	if (uid_mutex)
+		g_h.funcs->_h_destroy_mutex(uid_mutex);
+	sync_rsp_table_mutex  = NULL;
+	async_rsp_table_mutex = NULL;
+	uid_mutex             = NULL;
+
 	return ret;
 }
 
@@ -1130,6 +1243,15 @@ int rpc_core_deinit(void)
 int rpc_core_init(void)
 {
 	int ret = SUCCESS;
+
+	/* mutex init */
+	sync_rsp_table_mutex = g_h.funcs->_h_create_mutex();
+	async_rsp_table_mutex = g_h.funcs->_h_create_mutex();
+	uid_mutex = g_h.funcs->_h_create_mutex();
+	if (!sync_rsp_table_mutex || !async_rsp_table_mutex || !uid_mutex) {
+		ESP_LOGE(TAG, "mutex init failed, exiting");
+		goto free_bufs;
+	}
 
 	/* semaphore init */
 	rpc_tx_sem = g_h.funcs->_h_create_semaphore(MAX_SYNC_RPC_TRANSACTIONS +
@@ -1167,6 +1289,24 @@ int rpc_core_init(void)
 	return ret;
 
 free_bufs:
+	if (sync_rsp_table_mutex)
+		g_h.funcs->_h_destroy_mutex(sync_rsp_table_mutex);
+	if (async_rsp_table_mutex)
+		g_h.funcs->_h_destroy_mutex(async_rsp_table_mutex);
+	if (uid_mutex)
+		g_h.funcs->_h_destroy_mutex(uid_mutex);
+	if (rpc_tx_sem)
+		g_h.funcs->_h_destroy_semaphore(rpc_tx_sem);
+	if (rpc_rx_q)
+		g_h.funcs->_h_destroy_queue(rpc_rx_q);
+	if (rpc_tx_q)
+		g_h.funcs->_h_destroy_queue(rpc_tx_q);
+	sync_rsp_table_mutex  = NULL;
+	async_rsp_table_mutex = NULL;
+	uid_mutex             = NULL;
+	rpc_tx_sem            = NULL;
+	rpc_rx_q              = NULL;
+	rpc_tx_q              = NULL;
 	rpc_core_deinit();
 	return FAILURE;
 }
