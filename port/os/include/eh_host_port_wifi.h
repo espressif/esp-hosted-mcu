@@ -96,6 +96,14 @@
   #define EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 0
 #endif
 
+/* wifi_ap_record_t::akm_dpp: IDF v6.0.3+. release/v5.5 has it too, but no 5.5
+ * tag does, so the field stays absent there rather than guess a patch number. */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 3)
+  #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP       1
+#else
+  #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP       0
+#endif
+
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
   #define EH_HOST_PRESENT_IN_ESP_IDF_6_0_0      1
 #else

@@ -32,10 +32,11 @@ enum {
     EH_HOST_WIFI_SCAN_AP_REC_ftm_initiator_BIT = 7,
     EH_HOST_WIFI_SCAN_AP_REC_phy_11a_BIT       = 8,
     EH_HOST_WIFI_SCAN_AP_REC_phy_11ac_BIT      = 9,
-    EH_HOST_WIFI_SCAN_AP_REC_MAX_USED_BIT      = 10,
+    EH_HOST_WIFI_SCAN_AP_REC_akm_dpp_BIT       = 10,
+    EH_HOST_WIFI_SCAN_AP_REC_MAX_USED_BIT      = 11,
 };
 
-#define EH_HOST_WIFI_SCAN_AP_RESERVED_BITMASK             0xFC00u
+#define EH_HOST_WIFI_SCAN_AP_RESERVED_BITMASK             0xFFFFF800u
 
 #define EH_HOST_WIFI_SCAN_AP_GET_RESERVED_VAL(num)                              \
     (((num) & EH_HOST_WIFI_SCAN_AP_RESERVED_BITMASK)                            \

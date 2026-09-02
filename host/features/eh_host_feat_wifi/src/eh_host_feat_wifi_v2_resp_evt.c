@@ -39,6 +39,7 @@ static void copy_wifi_ap_record(eh_rpc_wifi_ap_record_t *dst,
     dst->wps           = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_wps_BIT,           src->bitmask);
     dst->ftm_responder = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_ftm_responder_BIT, src->bitmask);
     dst->ftm_initiator = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_ftm_initiator_BIT, src->bitmask);
+    dst->akm_dpp       = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_akm_dpp_BIT,      src->bitmask);
     dst->reserved      = EH_HOST_WIFI_SCAN_AP_GET_RESERVED_VAL(src->bitmask);
     if (src->country) {
         size_t cn = src->country->cc.len < EH_RPC_COUNTRY_CC_LEN
@@ -248,12 +249,7 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
         const RpcRespWifiStaGetApInfo *r = rpc->resp_wifi_sta_get_ap_info;
         c->resp_event_status = r->resp;
         if (r->ap_record) {
-            const WifiApRecord *ap = r->ap_record;
-            EH_RPC_COPY_BIN(c->u.wifi_cfg.ssid,  EH_RPC_SSID_LEN, &ap->ssid);
-            EH_RPC_COPY_BIN(c->u.wifi_cfg.bssid, EH_RPC_MAC_LEN,  &ap->bssid);
-            c->u.wifi_cfg.bssid_set = true;
-            c->u.wifi_cfg.channel   = ap->primary;
-            c->u.wifi_cfg.authmode  = ap->authmode;
+            copy_wifi_ap_record(&c->u.ap_record, r->ap_record);
         }
         return 0;
     }

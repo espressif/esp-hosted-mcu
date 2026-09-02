@@ -33,6 +33,14 @@
 #  define EH_CP_SOC_WIFI_HE                      0
 #endif
 
+/* wifi_ap_record_t::akm_dpp: IDF v6.0.3+. release/v5.5 has it too, but no 5.5
+ * tag does, so the field stays absent there rather than guess a patch number. */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 3)
+#  define EH_CP_WIFI_GOT_AP_REC_AKM_DPP          1
+#else
+#  define EH_CP_WIFI_GOT_AP_REC_AKM_DPP          0
+#endif
+
 /* HE API changed after IDF v5.3 */
 #if EH_CP_SOC_WIFI_HE && (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 0))
 #  define EH_CP_WIFI_HE_GT_IDF_5_3              1

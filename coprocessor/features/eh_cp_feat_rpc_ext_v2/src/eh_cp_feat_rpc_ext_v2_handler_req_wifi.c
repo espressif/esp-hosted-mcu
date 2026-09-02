@@ -1152,6 +1152,11 @@ static int copy_ap_record_to_rpc_struct(WifiApRecord *rpc, wifi_ap_record_t *sca
 	if (scan->ftm_initiator)
 		EH_CP_SET_BIT(WIFI_SCAN_AP_REC_ftm_initiator_BIT,rpc->bitmask);
 
+#if EH_CP_WIFI_GOT_AP_REC_AKM_DPP
+	if (scan->akm_dpp)
+		EH_CP_SET_BIT(WIFI_SCAN_AP_REC_akm_dpp_BIT,rpc->bitmask);
+#endif
+
 	WIFI_SCAN_AP_SET_RESERVED_VAL(scan->reserved, rpc->bitmask);
 
 	/* country */

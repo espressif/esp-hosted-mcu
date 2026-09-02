@@ -287,6 +287,7 @@ typedef struct {
     bool     wps;
     bool     ftm_responder;
     bool     ftm_initiator;
+    bool     akm_dpp;
     uint32_t reserved;
     eh_rpc_wifi_country_full_t country;
     uint32_t bss_color;             /* 6 bits semantically */
@@ -558,6 +559,7 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_wifi_twt_config_t   wifi_twt_config;
         eh_rpc_sta_list_t          sta_list;
         eh_rpc_ap_records_t        ap_records;
+        eh_rpc_wifi_ap_record_t    ap_record;
         eh_rpc_mem_monitor_t       mem_monitor;
         eh_rpc_gpio_cfg_t          gpio_cfg;
         eh_rpc_gpio_level_t        gpio_level;
