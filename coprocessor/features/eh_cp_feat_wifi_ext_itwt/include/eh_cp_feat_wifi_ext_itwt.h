@@ -6,6 +6,14 @@
 
 #include "esp_err.h"
 
+#ifdef CONFIG_SOC_WIFI_HE_SUPPORT
+#include "esp_wifi_he_types.h"
+_Static_assert(sizeof(((wifi_event_sta_itwt_suspend_t *)0)->actual_suspend_time_ms)
+               / sizeof(uint32_t) == 8,
+               "IDF changed actual_suspend_time_ms[]; update"
+               " EH_RPC_ITWT_MAX_FLOWS and EH_HOST_ITWT_MAX_FLOWS to match");
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

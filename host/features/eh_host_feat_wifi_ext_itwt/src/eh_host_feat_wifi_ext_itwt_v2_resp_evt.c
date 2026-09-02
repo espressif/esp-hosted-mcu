@@ -78,6 +78,13 @@ int rpc_ext_v2_parse_event_wifi_ext_itwt(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
         c->resp_event_status                = p->resp;
         c->u.e_itwt_suspend.status          = p->status;
         c->u.e_itwt_suspend.flow_id_bitmap  = p->flow_id_bitmap;
+        size_t n = p->n_actual_suspend_time_ms;
+        if (n > EH_RPC_ITWT_MAX_FLOWS) n = EH_RPC_ITWT_MAX_FLOWS;
+        for (size_t i = 0; i < n; ++i) {
+            c->u.e_itwt_suspend.actual_suspend_time_ms[i] =
+                p->actual_suspend_time_ms[i];
+        }
+        c->u.e_itwt_suspend.n_actual_suspend_time_ms = (uint32_t)n;
         return 0;
     }
 

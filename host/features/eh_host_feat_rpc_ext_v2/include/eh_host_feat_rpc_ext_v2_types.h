@@ -23,6 +23,7 @@ extern "C" {
 #define EH_RPC_OTA_CHUNK_MAX            1536u
 #define EH_RPC_IDF_TARGET_LEN           32u   /* e.g. "esp32c6" */
 #define EH_RPC_SAE_H2E_IDENTIFIER_LEN   32u
+#define EH_RPC_ITWT_MAX_FLOWS           8u    /* wifi_event_sta_itwt_suspend_t */
 
 typedef struct {
     uint8_t mac[EH_RPC_MAC_LEN];
@@ -461,9 +462,12 @@ typedef struct {
     uint32_t  status;
 } eh_rpc_itwt_teardown_evt_t;
 
+/* actual_suspend_time_ms is indexed by flow id. */
 typedef struct {
     int32_t   status;
     uint32_t  flow_id_bitmap;
+    uint32_t  actual_suspend_time_ms[EH_RPC_ITWT_MAX_FLOWS];
+    uint32_t  n_actual_suspend_time_ms;
 } eh_rpc_itwt_suspend_evt_t;
 
 typedef struct {
