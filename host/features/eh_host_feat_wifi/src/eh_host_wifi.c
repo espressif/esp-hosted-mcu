@@ -137,7 +137,11 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
 
     /* wifi_config_t is a union; pick fields per iface. Wire is flat. */
     if (iface == WIFI_IF_AP) {
-        size_t slen = strnlen((const char *)cfg->ap.ssid, sizeof(cfg->ap.ssid));
+        /* IDF: ssid_len 0 means NUL-terminated, else it is the length. */
+        size_t slen = cfg->ap.ssid_len
+                      ? cfg->ap.ssid_len
+                      : strnlen((const char *)cfg->ap.ssid, sizeof(cfg->ap.ssid));
+        if (slen > sizeof(cfg->ap.ssid)) slen = sizeof(cfg->ap.ssid);
         memcpy(req->u.wifi_cfg.ssid, cfg->ap.ssid, slen);
         req->u.wifi_cfg.ssid[slen] = '\0';
         req->u.wifi_cfg.ssid_len = (uint32_t)slen;
