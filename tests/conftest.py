@@ -195,6 +195,45 @@ def wifi_ap(substrate):
     return None
 
 
+@pytest.fixture
+def bench_gpio(substrate):
+    """GPIO pins the bench lets a test touch: 'pin' is free for the expander
+    round-trip, 'reserved' is one the transport owns and the CP must refuse.
+    Per-board facts — GPIO 14 is free on a P4-C6 but is SDIO D2 on a C5. With
+    no 'pin' declared the test skips rather than drive unknown hardware."""
+    if substrate == "emu":
+        return {"pin": 14}
+    import json
+    from infra import lab
+    for f in ("lab.local.json", "env.json"):
+        try:
+            g = json.loads((lab._REPO / "tests" / f).read_text()).get("gpio")
+        except (OSError, ValueError):
+            g = None
+        if g:
+            return g
+    return {}
+
+
+@pytest.fixture
+def sta_ap(substrate, wifi_ap):
+    """The AP a STA should associate to. 'wifi_ap_5g' wins over 'wifi_ap' where
+    declared, for a coprocessor that cannot reach the 2.4 GHz AP. The emu
+    always uses its own modeled SoftAP."""
+    if substrate == "emu":
+        return wifi_ap
+    import json
+    from infra import lab
+    for f in ("lab.local.json", "env.json"):
+        try:
+            ap = json.loads((lab._REPO / "tests" / f).read_text()).get("wifi_ap_5g")
+        except (OSError, ValueError):
+            ap = None
+        if ap and ap.get("ssid"):
+            return ap
+    return wifi_ap
+
+
 @pytest.fixture(scope="session")
 def tap_available():
     """True if this process can create a TAP interface (needs CAP_NET_ADMIN).

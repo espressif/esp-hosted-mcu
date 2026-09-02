@@ -177,8 +177,28 @@ def bench_config():
     # env.json default. host_extra/cp_extra layer any further per-bench Kconfig on top.
     host_extra = local.get("host_extra", []) or []
     cp_extra = local.get("cp_extra", []) or []
-    host_board = local.get("host_board_sdkconfig") or build_json.get("host_board_sdkconfig", []) or []
-    cp_board = local.get("cp_board_sdkconfig") or build_json.get("slave_board_sdkconfig", []) or []
+    # Board config, lowest precedence first; each level REPLACES the one below:
+    # env.json -> tests/boards/<board>.json -> lab.local.json explicit list ->
+    # EH_{HOST,CP}_BOARD_SDKCONFIG. host_extra/cp_extra stay additive on top.
+    host_board = build_json.get("host_board_sdkconfig", []) or []
+    cp_board = build_json.get("slave_board_sdkconfig", []) or []
+    board_name = env.get("EH_BOARD") or local.get("board")
+    if board_name:
+        bj = _read_json(lab._REPO / "tests" / "boards" / f"{board_name}.json")
+        if not bj:
+            raise RuntimeError(
+                f"unknown board '{board_name}': no tests/boards/{board_name}.json")
+        host_board = bj.get("host", []) or []
+        cp_board = bj.get("cp", []) or []
+    host_board = local.get("host_board_sdkconfig") or host_board
+    cp_board = local.get("cp_board_sdkconfig") or cp_board
+
+    def _env_lines(name):
+        v = env.get(name)
+        return [x.strip() for x in v.split(",") if x.strip()] if v else None
+
+    host_board = _env_lines("EH_HOST_BOARD_SDKCONFIG") or host_board
+    cp_board = _env_lines("EH_CP_BOARD_SDKCONFIG") or cp_board
     host_board_ovl = host_board + host_extra + opt
     cp_board_ovl = cp_board + cp_extra + opt
     return _Bench(host_port, cp_port, host_target, cp_target, flash_baud,
