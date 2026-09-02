@@ -1245,17 +1245,26 @@ esp_err_t req_wifi_scan_get_ap_records(Rpc *req, Rpc *resp, void *priv_data)
 	EH_ASSIGN_NARROW(number, req->req_wifi_scan_get_ap_records->number);
 	ESP_LOGD(TAG,"n_elem_scan_list predicted: %u\n", number);
 
-	p_a_ap_list = (wifi_ap_record_t *)calloc(number, sizeof(wifi_ap_record_t));
-	RPC_RET_FAIL_IF(!p_a_ap_list);
-
+	/* number is host-supplied. Ask the radio how many records exist and
+	 * allocate the smaller of the two, so a wrong or hostile count cannot
+	 * turn into a multi-megabyte request on the coprocessor. */
 	ret = esp_wifi_scan_get_ap_num(&ap_count);
 	if (ret || !ap_count) {
 		ESP_LOGE(TAG,"esp_wifi_scan_get_ap_num: ret: %d num_ap_scanned:%u", ret, number);
 		goto err;
 	}
-	if (number < ap_count) {
-		ESP_LOGI(TAG,"n_elem_scan_list wants to return: %u Limit to %u\n", ap_count, number);
+	if (number > ap_count) {
+		ESP_LOGD(TAG,"n_elem_scan_list asked %u, only %u scanned", number, ap_count);
+		number = ap_count;
 	}
+	if (!number) {
+		/* Host asked for none: answer SUCCESS with an empty list. */
+		ESP_LOGD(TAG,"n_elem_scan_list asked 0 records");
+		goto err;
+	}
+
+	p_a_ap_list = (wifi_ap_record_t *)calloc(number, sizeof(wifi_ap_record_t));
+	RPC_RET_FAIL_IF(!p_a_ap_list);
 
 	ret = esp_wifi_scan_get_ap_records(&number, p_a_ap_list);
 	if(ret) {
