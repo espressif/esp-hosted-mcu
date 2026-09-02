@@ -254,6 +254,34 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
         return 0;
     }
 
+    case RPC_ID__Resp_WifiStaGetRssi:
+        if (!rpc->resp_wifi_sta_get_rssi) return -1;
+        c->resp_event_status = rpc->resp_wifi_sta_get_rssi->resp;
+        c->u.sta_query.rssi  = rpc->resp_wifi_sta_get_rssi->rssi;
+        return 0;
+
+    case RPC_ID__Resp_WifiStaGetAid:
+        if (!rpc->resp_wifi_sta_get_aid) return -1;
+        c->resp_event_status = rpc->resp_wifi_sta_get_aid->resp;
+        c->u.sta_query.aid   = rpc->resp_wifi_sta_get_aid->aid;
+        return 0;
+
+    case RPC_ID__Resp_WifiStaGetNegotiatedPhymode:
+        if (!rpc->resp_wifi_sta_get_negotiated_phymode) return -1;
+        c->resp_event_status   = rpc->resp_wifi_sta_get_negotiated_phymode->resp;
+        c->u.sta_query.phymode = rpc->resp_wifi_sta_get_negotiated_phymode->phymode;
+        return 0;
+
+    case RPC_ID__Resp_WifiClearFastConnect:
+        if (!rpc->resp_wifi_clear_fast_connect) return -1;
+        c->resp_event_status = rpc->resp_wifi_clear_fast_connect->resp;
+        return 0;
+
+    case RPC_ID__Resp_WifiSetOkcSupport:
+        if (!rpc->resp_wifi_set_okc_support) return -1;
+        c->resp_event_status = rpc->resp_wifi_set_okc_support->resp;
+        return 0;
+
     case RPC_ID__Resp_WifiSetCountryCode:
         if (!rpc->resp_wifi_set_country_code) return -1;
         c->resp_event_status = rpc->resp_wifi_set_country_code->resp;

@@ -51,5 +51,10 @@
     case RPC_ID__Req_WifiGetBandMode:
     case RPC_ID__Req_WifiScanGetApRecord:
     case RPC_ID__Req_WifiApGetStaAid:
+    case RPC_ID__Req_WifiStaGetRssi:
+    case RPC_ID__Req_WifiStaGetAid:
+    case RPC_ID__Req_WifiStaGetNegotiatedPhymode:
+    case RPC_ID__Req_WifiClearFastConnect:
+    case RPC_ID__Req_WifiSetOkcSupport:
         return rpc_ext_v2_pick_req_wifi(msg_id);
 #endif

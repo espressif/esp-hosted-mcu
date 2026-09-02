@@ -982,7 +982,7 @@ esp_err_t eh_host_wifi_sta_get_aid(uint16_t *aid)
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiStaGetAid, req,
                                          (void **)&r) != 0) return ESP_FAIL;
     int rc = r->resp_event_status;
-    if (rc == 0) *aid = (uint16_t)r->u.wifi_mode.mode;
+    if (rc == 0) *aid = (uint16_t)r->u.sta_query.aid;
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
 }
@@ -996,7 +996,7 @@ esp_err_t eh_host_wifi_sta_get_rssi(int *rssi)
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiStaGetRssi, req,
                                          (void **)&r) != 0) return ESP_FAIL;
     int rc = r->resp_event_status;
-    if (rc == 0) *rssi = (int)r->u.wifi_mode.mode;
+    if (rc == 0) *rssi = (int)r->u.sta_query.rssi;
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
 }
@@ -1010,7 +1010,7 @@ esp_err_t eh_host_wifi_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode)
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiStaGetNegotiatedPhymode, req,
                                          (void **)&r) != 0) return ESP_FAIL;
     int rc = r->resp_event_status;
-    if (rc == 0) *phymode = (wifi_phy_mode_t)r->u.wifi_mode.mode;
+    if (rc == 0) *phymode = (wifi_phy_mode_t)r->u.sta_query.phymode;
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
 }

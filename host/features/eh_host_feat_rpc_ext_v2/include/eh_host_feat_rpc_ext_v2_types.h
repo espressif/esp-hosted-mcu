@@ -299,6 +299,13 @@ typedef struct {
     uint32_t vht_ch_freq2;
 } eh_rpc_wifi_ap_record_t;
 
+/* Scalar STA queries, one field each. rssi stays signed end to end. */
+typedef struct {
+    int32_t  rssi;
+    uint32_t aid;
+    uint32_t phymode;
+} eh_rpc_wifi_sta_query_t;
+
 /* Resp_WifiScanGetApRecords: heap-owned array (Resp only). */
 typedef struct {
     eh_rpc_wifi_ap_record_t *records;
@@ -560,6 +567,7 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_sta_list_t          sta_list;
         eh_rpc_ap_records_t        ap_records;
         eh_rpc_wifi_ap_record_t    ap_record;
+        eh_rpc_wifi_sta_query_t    sta_query;
         eh_rpc_mem_monitor_t       mem_monitor;
         eh_rpc_gpio_cfg_t          gpio_cfg;
         eh_rpc_gpio_level_t        gpio_level;
