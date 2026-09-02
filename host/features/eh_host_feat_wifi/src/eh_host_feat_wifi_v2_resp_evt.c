@@ -327,6 +327,10 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
         c->resp_event_status = r->resp;
         if (r->sta_list && r->sta_list->n_sta && r->sta_list->sta) {
             size_t n = r->sta_list->n_sta;
+            if (r->sta_list->num >= 0 && (size_t)r->sta_list->num < n) {
+                n = (size_t)r->sta_list->num;
+            }
+            if (!n) return 0;
             eh_rpc_wifi_sta_info_t *arr = (eh_rpc_wifi_sta_info_t *)
                 calloc(n, sizeof(*arr));
             if (!arr) return -1;
@@ -340,6 +344,8 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
                 arr[i].phy_11n       = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11n_BIT,       src->bitmask);
                 arr[i].phy_lr        = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_lr_BIT,        src->bitmask);
                 arr[i].phy_11ax      = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11ax_BIT,      src->bitmask);
+                arr[i].phy_11a       = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11a_BIT,       src->bitmask);
+                arr[i].phy_11ac      = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11ac_BIT,      src->bitmask);
                 arr[i].is_mesh_child = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_is_mesh_child_BIT, src->bitmask);
                 arr[i].reserved      = EH_HOST_WIFI_STA_INFO_GET_RESERVED_VAL(src->bitmask);
             }

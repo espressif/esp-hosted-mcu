@@ -1507,13 +1507,28 @@ esp_err_t req_wifi_ap_get_sta_list(Rpc *req, Rpc *resp, void *priv_data)
 	RPC_ALLOC_ELEMENT(WifiStaList, resp_payload->sta_list, wifi_sta_list__init);
 	p_c_sta_list = resp_payload->sta_list;
 
-	resp_payload->sta_list->sta = (WifiStaInfo**)calloc(ESP_WIFI_MAX_CONN_NUM, sizeof(WifiStaInfo *));
-	if (!resp_payload->sta_list->sta) {
-		ESP_LOGE(TAG,"resp: malloc failed for resp_payload->sta_list->sta");
+	/* wifi_sta_list_t holds at most ESP_WIFI_MAX_CONN_NUM and entries past
+	 * num are invalid. Anything else is a broken list, not a short one. */
+	if (sta.num < 0 || sta.num > ESP_WIFI_MAX_CONN_NUM) {
+		ESP_LOGE(TAG,"esp_wifi_ap_get_sta_list returned num=%d, outside 0..%d",
+			sta.num, ESP_WIFI_MAX_CONN_NUM);
+		resp_payload->resp = ESP_ERR_INVALID_SIZE;
 		goto err;
 	}
 
-	for (int i = 0; i < ESP_WIFI_MAX_CONN_NUM; i++) {
+	if (sta.num) {
+		resp_payload->sta_list->sta = (WifiStaInfo**)calloc(sta.num, sizeof(WifiStaInfo *));
+		if (!resp_payload->sta_list->sta) {
+			ESP_LOGE(TAG,"resp: malloc failed for resp_payload->sta_list->sta");
+			resp_payload->resp = RPC_ERR_MEMORY_FAILURE;
+			goto err;
+		}
+		/* Set before filling: the free path walks n_sta, and calloc leaves
+		 * unfilled entries NULL, which free_unpacked skips. */
+		p_c_sta_list->n_sta = sta.num;
+	}
+
+	for (int i = 0; i < sta.num; i++) {
 		RPC_ALLOC_ELEMENT(WifiStaInfo, p_c_sta_list->sta[i], wifi_sta_info__init);
 		WifiStaInfo * p_c_sta_info = p_c_sta_list->sta[i];
 
@@ -1535,14 +1550,17 @@ esp_err_t req_wifi_ap_get_sta_list(Rpc *req, Rpc *resp, void *priv_data)
 		if (sta.sta[i].phy_11ax)
 			EH_CP_SET_BIT(WIFI_STA_INFO_phy_11ax_BIT, p_c_sta_info->bitmask);
 
+		if (sta.sta[i].phy_11a)
+			EH_CP_SET_BIT(WIFI_STA_INFO_phy_11a_BIT, p_c_sta_info->bitmask);
+
+		if (sta.sta[i].phy_11ac)
+			EH_CP_SET_BIT(WIFI_STA_INFO_phy_11ac_BIT, p_c_sta_info->bitmask);
+
 		if (sta.sta[i].is_mesh_child)
 			EH_CP_SET_BIT(WIFI_STA_INFO_is_mesh_child_BIT, p_c_sta_info->bitmask);
 
 		WIFI_STA_INFO_SET_RESERVED_VAL(sta.sta[i].reserved, p_c_sta_info->bitmask);
 	}
-	// number of sta records in the list
-	resp_payload->sta_list->n_sta = ESP_WIFI_MAX_CONN_NUM;
-
 	p_c_sta_list->num = sta.num;
 
 err:

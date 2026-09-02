@@ -43,10 +43,12 @@ enum {
 	WIFI_STA_INFO_phy_lr_BIT        = 3,
 	WIFI_STA_INFO_phy_11ax_BIT      = 4,
 	WIFI_STA_INFO_is_mesh_child_BIT = 5,
-	WIFI_STA_INFO_MAX_USED_BIT      = 6,
+	WIFI_STA_INFO_phy_11a_BIT       = 6,
+	WIFI_STA_INFO_phy_11ac_BIT      = 7,
+	WIFI_STA_INFO_MAX_USED_BIT      = 8,
 };
 
-#define WIFI_STA_INFO_RESERVED_BITMASK             0xFFC0
+#define WIFI_STA_INFO_RESERVED_BITMASK             0xFF00
 
 #define WIFI_STA_INFO_GET_RESERVED_VAL(num)                                      \
     ((num & WIFI_STA_INFO_RESERVED_BITMASK) >> WIFI_STA_INFO_MAX_USED_BIT)

@@ -254,6 +254,8 @@ typedef struct {
     bool     phy_11g;
     bool     phy_11n;
     bool     phy_lr;
+    bool     phy_11a;
+    bool     phy_11ac;
     bool     phy_11ax;
     bool     is_mesh_child;
     uint32_t reserved;

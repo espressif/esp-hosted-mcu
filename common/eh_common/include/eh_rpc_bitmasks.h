@@ -52,10 +52,12 @@ enum {
     EH_HOST_WIFI_STA_INFO_phy_lr_BIT        = 3,
     EH_HOST_WIFI_STA_INFO_phy_11ax_BIT      = 4,
     EH_HOST_WIFI_STA_INFO_is_mesh_child_BIT = 5,
-    EH_HOST_WIFI_STA_INFO_MAX_USED_BIT      = 6,
+    EH_HOST_WIFI_STA_INFO_phy_11a_BIT       = 6,
+    EH_HOST_WIFI_STA_INFO_phy_11ac_BIT      = 7,
+    EH_HOST_WIFI_STA_INFO_MAX_USED_BIT      = 8,
 };
 
-#define EH_HOST_WIFI_STA_INFO_RESERVED_BITMASK             0xFFC0u
+#define EH_HOST_WIFI_STA_INFO_RESERVED_BITMASK             0xFF00u
 
 #define EH_HOST_WIFI_STA_INFO_GET_RESERVED_VAL(num)                              \
     (((num) & EH_HOST_WIFI_STA_INFO_RESERVED_BITMASK)                            \

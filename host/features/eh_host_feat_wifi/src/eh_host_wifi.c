@@ -964,6 +964,8 @@ esp_err_t eh_host_wifi_ap_get_sta_list(wifi_sta_list_t *sta)
             sta->sta[i].phy_11g       = src->phy_11g;
             sta->sta[i].phy_11n       = src->phy_11n;
             sta->sta[i].phy_lr        = src->phy_lr;
+            sta->sta[i].phy_11a       = src->phy_11a;
+            sta->sta[i].phy_11ac      = src->phy_11ac;
             sta->sta[i].phy_11ax      = src->phy_11ax;
             sta->sta[i].is_mesh_child = src->is_mesh_child;
         }
