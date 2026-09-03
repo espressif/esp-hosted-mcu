@@ -631,10 +631,12 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		WifiStaConfig * p_c_sta = req_payload->cfg->sta;
 		RPC_RET_FAIL_IF(!req_payload->cfg->sta);
 		RPC_REQ_COPY_STR(p_a_sta->ssid, p_c_sta->ssid, SSID_LENGTH);
-		if (strlen((char*)p_a_sta->ssid))
-			ESP_LOGI(TAG, "STA set config: SSID:%s", p_a_sta->ssid);
+		/* password[64] follows ssid[32], which is unterminated when full. */
+		size_t sta_slen = strnlen((char *)p_a_sta->ssid, sizeof(p_a_sta->ssid));
+		if (sta_slen)
+			ESP_LOGI(TAG, "STA set config: SSID:%.*s", (int)sta_slen, p_a_sta->ssid);
 		RPC_REQ_COPY_STR(p_a_sta->password, p_c_sta->password, PASSWORD_LENGTH);
-		if (strlen((char*)p_a_sta->password))
+		if (strnlen((char *)p_a_sta->password, sizeof(p_a_sta->password)))
 			ESP_LOGD(TAG, "STA: password:xxxxxxxx");
 		p_a_sta->scan_method = p_c_sta->scan_method;
 		p_a_sta->bssid_set = p_c_sta->bssid_set;

@@ -26,12 +26,14 @@ esp_err_t eh_example_softap_start(const char *ssid,
     }
 
     wifi_config_t wcfg = { 0 };
-    strncpy((char *)wcfg.ap.ssid, ssid, sizeof(wcfg.ap.ssid) - 1);
-    wcfg.ap.ssid_len = strlen((char *)wcfg.ap.ssid);
+    /* Full width: IDF reads these bounded, so no terminator is reserved. */
+    wcfg.ap.ssid_len = strnlen(ssid, sizeof(wcfg.ap.ssid));
+    memcpy(wcfg.ap.ssid, ssid, wcfg.ap.ssid_len);
     wcfg.ap.channel  = channel ? channel : 1;
     wcfg.ap.max_connection = 4;
     if (password && password[0]) {
-        strncpy((char *)wcfg.ap.password, password, sizeof(wcfg.ap.password) - 1);
+        memcpy(wcfg.ap.password, password,
+               strnlen(password, sizeof(wcfg.ap.password)));
         wcfg.ap.authmode = WIFI_AUTH_WPA2_PSK;
     } else {
         wcfg.ap.authmode = WIFI_AUTH_OPEN;

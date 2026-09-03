@@ -164,7 +164,7 @@ esp_err_t eh_cp_feat_wifi_request_connect(void)
 		ESP_LOGE(TAG, "Failed to get WiFi config");
 		return ESP_ERR_WIFI_NOT_INIT;
 	}
-	if (strlen((char *)cfg.sta.ssid) == 0) {
+	if (strnlen((char *)cfg.sta.ssid, sizeof(cfg.sta.ssid)) == 0) {
 		ESP_LOGE(TAG, "No SSID configured, cannot connect");
 		return ESP_ERR_WIFI_SSID;
 	}
@@ -378,7 +378,9 @@ static void station_event_handler(void *arg, esp_event_base_t event_base,
 
 		esp_wifi_internal_reg_rxcb(WIFI_IF_STA, (wifi_rxcb_t)eh_cp_rx_get(ESP_STA_IF));
 		station_connected = true;
-		ESP_LOGI(TAG, "--- Station connected %s ---", connected_event->ssid);
+		size_t cl = connected_event->ssid_len;
+		if (cl > sizeof(connected_event->ssid)) cl = sizeof(connected_event->ssid);
+		ESP_LOGI(TAG, "--- Station connected %.*s ---", (int)cl, connected_event->ssid);
 
 	} else if (event_id == WIFI_EVENT_STA_START) {
 		s_wifi_started = true;

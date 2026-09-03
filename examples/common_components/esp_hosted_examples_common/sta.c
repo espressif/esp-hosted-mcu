@@ -235,9 +235,11 @@ esp_err_t eh_example_sta_start(const char *ssid, const char *password)
     }
 
     wifi_config_t wcfg = { 0 };
-    strncpy((char *)wcfg.sta.ssid, ssid, sizeof(wcfg.sta.ssid) - 1);
+    /* Full width: IDF reads these bounded, so no terminator is reserved. */
+    memcpy(wcfg.sta.ssid, ssid, strnlen(ssid, sizeof(wcfg.sta.ssid)));
     if (password && password[0]) {
-        strncpy((char *)wcfg.sta.password, password, sizeof(wcfg.sta.password) - 1);
+        memcpy(wcfg.sta.password, password,
+               strnlen(password, sizeof(wcfg.sta.password)));
         wcfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
     } else {
         wcfg.sta.threshold.authmode = WIFI_AUTH_OPEN;

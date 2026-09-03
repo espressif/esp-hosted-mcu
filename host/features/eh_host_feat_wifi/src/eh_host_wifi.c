@@ -637,11 +637,11 @@ static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
 
     wifi_event_sta_connected_t evt;
     memset(&evt, 0, sizeof(evt));
-    size_t n = sizeof(c->u.e_sta_connected.ssid);
+    /* ssid_len wins: a 32-byte SSID fills the field, unterminated. */
+    size_t n = c->u.e_sta_connected.ssid_len;
     if (n > sizeof(evt.ssid)) n = sizeof(evt.ssid);
-    memcpy(evt.ssid, c->u.e_sta_connected.ssid, n - 1);
-    evt.ssid[sizeof(evt.ssid) - 1] = '\0';
-    evt.ssid_len = (uint8_t)strnlen((const char *)evt.ssid, sizeof(evt.ssid));
+    memcpy(evt.ssid, c->u.e_sta_connected.ssid, n);
+    evt.ssid_len = (uint8_t)n;
     memcpy(evt.bssid, c->u.e_sta_connected.bssid, 6);
     EH_ASSIGN_NARROW(evt.channel, c->u.e_sta_connected.channel);
     evt.authmode = c->u.e_sta_connected.authmode;
@@ -672,11 +672,11 @@ static void wifi_sta_disconnected_handler(const void *ctrl_cmd, void *ctx)
 
     wifi_event_sta_disconnected_t evt;
     memset(&evt, 0, sizeof(evt));
-    size_t n = sizeof(c->u.e_sta_disconnected.ssid);
+    /* ssid_len wins: a 32-byte SSID fills the field, unterminated. */
+    size_t n = c->u.e_sta_disconnected.ssid_len;
     if (n > sizeof(evt.ssid)) n = sizeof(evt.ssid);
-    memcpy(evt.ssid, c->u.e_sta_disconnected.ssid, n - 1);
-    evt.ssid[sizeof(evt.ssid) - 1] = '\0';
-    evt.ssid_len = (uint8_t)strnlen((const char *)evt.ssid, sizeof(evt.ssid));
+    memcpy(evt.ssid, c->u.e_sta_disconnected.ssid, n);
+    evt.ssid_len = (uint8_t)n;
     memcpy(evt.bssid, c->u.e_sta_disconnected.bssid, 6);
     EH_ASSIGN_NARROW(evt.reason, c->u.e_sta_disconnected.reason);
     EH_ASSIGN_NARROW(evt.rssi, c->u.e_sta_disconnected.rssi);
@@ -770,9 +770,11 @@ static void wifi_dpp_cfg_recvd_handler(const void *ctrl_cmd, void *ctx)
     if (n > sizeof(evt.wifi_cfg.sta.ssid))
         n = sizeof(evt.wifi_cfg.sta.ssid);
     memcpy(evt.wifi_cfg.sta.ssid, c->u.e_wifi_dpp_cfg_recvd.ssid, n);
+    /* password[64] carries no length; a 64-byte PSK leaves no terminator. */
+    size_t plen = strnlen((const char *)c->u.e_wifi_dpp_cfg_recvd.password,
+                          sizeof(evt.wifi_cfg.sta.password));
     memcpy(evt.wifi_cfg.sta.password,
-           c->u.e_wifi_dpp_cfg_recvd.password,
-           sizeof(evt.wifi_cfg.sta.password) - 1);
+           c->u.e_wifi_dpp_cfg_recvd.password, plen);
     if (c->u.e_wifi_dpp_cfg_recvd.bssid_set) {
         memcpy(evt.wifi_cfg.sta.bssid,
                c->u.e_wifi_dpp_cfg_recvd.bssid,
