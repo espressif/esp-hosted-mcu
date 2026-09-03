@@ -41,6 +41,27 @@
 #  define EH_CP_WIFI_GOT_AP_REC_AKM_DPP          0
 #endif
 
+/* wifi_country_t::wifi_5g_channel_mask: SoC capability, not an IDF version */
+#ifdef CONFIG_SOC_WIFI_SUPPORT_5G
+#  define EH_CP_WIFI_GOT_5G_CHANNEL_MASK        1
+#else
+#  define EH_CP_WIFI_GOT_5G_CHANNEL_MASK        0
+#endif
+
+/* wifi_ap_config_t::wpa3_compatible_mode: IDF v6.0+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#  define EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE 1
+#else
+#  define EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE 0
+#endif
+
+/* wifi_sta_config_t::disable_wpa3_compatible_mode: IDF v6.0+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#  define EH_CP_WIFI_GOT_WPA3_COMPATIBLE_MODE   1
+#else
+#  define EH_CP_WIFI_GOT_WPA3_COMPATIBLE_MODE   0
+#endif
+
 /* HE API changed after IDF v5.3 */
 #if EH_CP_SOC_WIFI_HE && (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 0))
 #  define EH_CP_WIFI_HE_GT_IDF_5_3              1

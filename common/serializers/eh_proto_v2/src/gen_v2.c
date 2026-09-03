@@ -13844,7 +13844,7 @@ const ProtobufCMessageDescriptor wifi_init_config__descriptor =
   (ProtobufCMessageInit) wifi_init_config__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_country__field_descriptors[5] =
+static const ProtobufCFieldDescriptor wifi_country__field_descriptors[6] =
 {
   {
     "cc",
@@ -13906,6 +13906,18 @@ static const ProtobufCFieldDescriptor wifi_country__field_descriptors[5] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "wifi_5g_channel_mask",
+    6,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiCountry, wifi_5g_channel_mask),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_country__field_indices_by_name[] = {
   0,   /* field[0] = cc */
@@ -13913,11 +13925,12 @@ static const unsigned wifi_country__field_indices_by_name[] = {
   2,   /* field[2] = nchan */
   4,   /* field[4] = policy */
   1,   /* field[1] = schan */
+  5,   /* field[5] = wifi_5g_channel_mask */
 };
 static const ProtobufCIntRange wifi_country__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 5 }
+  { 0, 6 }
 };
 const ProtobufCMessageDescriptor wifi_country__descriptor =
 {
@@ -13927,7 +13940,7 @@ const ProtobufCMessageDescriptor wifi_country__descriptor =
   "WifiCountry",
   "",
   sizeof(WifiCountry),
-  5,
+  6,
   wifi_country__field_descriptors,
   wifi_country__field_indices_by_name,
   1,  wifi_country__number_ranges,
@@ -14087,7 +14100,7 @@ const ProtobufCMessageDescriptor wifi_scan_channel_bitmap__descriptor =
   (ProtobufCMessageInit) wifi_scan_channel_bitmap__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_scan_config__field_descriptors[8] =
+static const ProtobufCFieldDescriptor wifi_scan_config__field_descriptors[9] =
 {
   {
     "ssid",
@@ -14185,11 +14198,24 @@ static const ProtobufCFieldDescriptor wifi_scan_config__field_descriptors[8] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "coex_background_scan",
+    9,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(WifiScanConfig, coex_background_scan),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_scan_config__field_indices_by_name[] = {
   1,   /* field[1] = bssid */
   2,   /* field[2] = channel */
   7,   /* field[7] = channel_bitmap */
+  8,   /* field[8] = coex_background_scan */
   6,   /* field[6] = home_chan_dwell_time */
   5,   /* field[5] = scan_time */
   4,   /* field[4] = scan_type */
@@ -14199,7 +14225,7 @@ static const unsigned wifi_scan_config__field_indices_by_name[] = {
 static const ProtobufCIntRange wifi_scan_config__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 8 }
+  { 0, 9 }
 };
 const ProtobufCMessageDescriptor wifi_scan_config__descriptor =
 {
@@ -14209,7 +14235,7 @@ const ProtobufCMessageDescriptor wifi_scan_config__descriptor =
   "WifiScanConfig",
   "",
   sizeof(WifiScanConfig),
-  8,
+  9,
   wifi_scan_config__field_descriptors,
   wifi_scan_config__field_indices_by_name,
   1,  wifi_scan_config__number_ranges,
@@ -14704,7 +14730,7 @@ const ProtobufCMessageDescriptor wifi_bss_max_idle_config__descriptor =
   (ProtobufCMessageInit) wifi_bss_max_idle_config__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_ap_config__field_descriptors[18] =
+static const ProtobufCFieldDescriptor wifi_ap_config__field_descriptors[19] =
 {
   {
     "ssid",
@@ -14922,6 +14948,18 @@ static const ProtobufCFieldDescriptor wifi_ap_config__field_descriptors[18] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "wpa3_compatible_mode",
+    19,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiApConfig, wpa3_compatible_mode),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_ap_config__field_indices_by_name[] = {
   4,   /* field[4] = authmode */
@@ -14942,11 +14980,12 @@ static const unsigned wifi_ap_config__field_indices_by_name[] = {
   5,   /* field[5] = ssid_hidden */
   2,   /* field[2] = ssid_len */
   14,   /* field[14] = transition_disable */
+  18,   /* field[18] = wpa3_compatible_mode */
 };
 static const ProtobufCIntRange wifi_ap_config__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 18 }
+  { 0, 19 }
 };
 const ProtobufCMessageDescriptor wifi_ap_config__descriptor =
 {
@@ -14956,7 +14995,7 @@ const ProtobufCMessageDescriptor wifi_ap_config__descriptor =
   "WifiApConfig",
   "",
   sizeof(WifiApConfig),
-  18,
+  19,
   wifi_ap_config__field_descriptors,
   wifi_ap_config__field_indices_by_name,
   1,  wifi_ap_config__number_ranges,

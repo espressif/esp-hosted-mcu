@@ -51,6 +51,7 @@ static void copy_wifi_ap_record(eh_rpc_wifi_ap_record_t *dst,
         dst->country.schan        = src->country->schan;
         dst->country.nchan        = src->country->nchan;
         dst->country.max_tx_power = src->country->max_tx_power;
+        dst->country.wifi_5g_channel_mask = src->country->wifi_5g_channel_mask;
         dst->country.policy       = src->country->policy;
     }
     if (src->he_ap) {
@@ -206,6 +207,7 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
             c->u.wifi_cfg.sae_ext = ap->sae_ext;
+            c->u.wifi_cfg.wpa3_compatible_mode = ap->wpa3_compatible_mode;
             if (ap->bss_max_idle_cfg) {
                 c->u.wifi_cfg.bss_max_idle_period =
                     ap->bss_max_idle_cfg->period;
@@ -316,6 +318,7 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
             c->u.wifi_country.schan        = cc->schan;
             c->u.wifi_country.nchan        = cc->nchan;
             c->u.wifi_country.max_tx_power = cc->max_tx_power;
+            c->u.wifi_country.wifi_5g_channel_mask = cc->wifi_5g_channel_mask;
             c->u.wifi_country.policy       = cc->policy;
         }
         return 0;

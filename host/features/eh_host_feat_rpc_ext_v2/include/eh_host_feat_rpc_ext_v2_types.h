@@ -90,6 +90,7 @@ typedef struct {
     uint32_t dtim_period;
     uint32_t transition_disable;
     uint32_t sae_ext;
+    uint32_t wpa3_compatible_mode;
     uint32_t bss_max_idle_period;
     bool     bss_max_idle_protected_keep_alive;
     uint32_t gtk_rekey_interval;
@@ -143,6 +144,7 @@ typedef struct {
     uint32_t home_chan_dwell_time;
     uint32_t ghz_2_channels;                  /* channel_bitmap.*        */
     uint32_t ghz_5_channels;
+    bool     coex_background_scan;
 } eh_rpc_wifi_scan_cfg_t;
 
 /* Req/Resp_WifiScanParams — mirrors wifi_scan_default_params_t. */
@@ -225,6 +227,7 @@ typedef struct {
     uint32_t nchan;
     int32_t  max_tx_power;
     int32_t  policy;
+    uint32_t wifi_5g_channel_mask;
 } eh_rpc_wifi_country_full_t;
 
 /* wifi_protocols mirror; ghz_2g/5g widened to uint32 for wire. */

@@ -76,10 +76,11 @@ enum {
 	WIFI_STA_CONFIG_1_ft_enabled = 3,
 	WIFI_STA_CONFIG_1_owe_enabled = 4,
 	WIFI_STA_CONFIG_1_transition_disable = 5,
-	WIFI_STA_CONFIG_1_MAX_USED_BIT = 6,
+	WIFI_STA_CONFIG_1_disable_wpa3_compat = 6,
+	WIFI_STA_CONFIG_1_MAX_USED_BIT = 7,
 };
 
-#define WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFFC0
+#define WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFF80
 
 #define WIFI_STA_CONFIG_1_GET_RESERVED_VAL(num)                                   \
     ((num & WIFI_STA_CONFIG_1_RESERVED_BITMASK) >> WIFI_STA_CONFIG_1_MAX_USED_BIT)

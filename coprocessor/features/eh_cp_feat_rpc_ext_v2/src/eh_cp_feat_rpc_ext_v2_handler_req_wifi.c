@@ -666,6 +666,10 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->ft_enabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_1_ft_enabled, p_c_sta->bitmask);
 		p_a_sta->owe_enabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_1_owe_enabled, p_c_sta->bitmask);
 		p_a_sta->transition_disable = EH_CP_GET_BIT(WIFI_STA_CONFIG_1_transition_disable, p_c_sta->bitmask);
+#if EH_CP_WIFI_GOT_WPA3_COMPATIBLE_MODE
+		p_a_sta->disable_wpa3_compatible_mode =
+			EH_CP_GET_BIT(WIFI_STA_CONFIG_1_disable_wpa3_compat, p_c_sta->bitmask);
+#endif
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
 #if EH_CP_WIFI_NEW_RESERVED_FIELDS
 		p_a_sta->reserved1 = WIFI_STA_CONFIG_1_GET_RESERVED_VAL(p_c_sta->bitmask);
@@ -739,6 +743,9 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 #if EH_CP_IDF_GE_5_5
 		p_a_ap->sae_ext = (p_c_ap->sae_ext);
+#if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
+		p_a_ap->wpa3_compatible_mode = (p_c_ap->wpa3_compatible_mode) & 1u;
+#endif
 		if (p_c_ap->bss_max_idle_cfg) {
 			EH_ASSIGN_NARROW(p_a_ap->bss_max_idle_cfg.period, p_c_ap->bss_max_idle_cfg->period);
 			p_a_ap->bss_max_idle_cfg.protected_keep_alive = p_c_ap->bss_max_idle_cfg->protected_keep_alive;
@@ -812,6 +819,10 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 
 		if (p_a_sta->transition_disable)
 			EH_CP_SET_BIT(WIFI_STA_CONFIG_1_transition_disable, p_c_sta->bitmask);
+#if EH_CP_WIFI_GOT_WPA3_COMPATIBLE_MODE
+		if (p_a_sta->disable_wpa3_compatible_mode)
+			EH_CP_SET_BIT(WIFI_STA_CONFIG_1_disable_wpa3_compat, p_c_sta->bitmask);
+#endif
 
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
 #if EH_CP_WIFI_NEW_RESERVED_FIELDS
@@ -902,6 +913,9 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 #if EH_CP_IDF_GE_5_5
 		p_c_ap->sae_ext = p_a_ap->sae_ext;
+#if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
+		p_c_ap->wpa3_compatible_mode = p_a_ap->wpa3_compatible_mode;
+#endif
 		RPC_ALLOC_ELEMENT(WifiBssMaxIdleConfig, p_c_ap->bss_max_idle_cfg, wifi_bss_max_idle_config__init);
 		p_c_ap->bss_max_idle_cfg->period = p_a_ap->bss_max_idle_cfg.period;
 		p_c_ap->bss_max_idle_cfg->protected_keep_alive = p_a_ap->bss_max_idle_cfg.protected_keep_alive;
@@ -973,6 +987,9 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 #if EH_CP_IDF_GE_5_5
 		p_c_ap->sae_ext = p_a_ap->sae_ext;
+#if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
+		p_c_ap->wpa3_compatible_mode = p_a_ap->wpa3_compatible_mode;
+#endif
 		RPC_ALLOC_ELEMENT(WifiBssMaxIdleConfig, p_c_ap->bss_max_idle_cfg, wifi_bss_max_idle_config__init);
 		p_c_ap->bss_max_idle_cfg->period = p_a_ap->bss_max_idle_cfg.period;
 		p_c_ap->bss_max_idle_cfg->protected_keep_alive = p_a_ap->bss_max_idle_cfg.protected_keep_alive;
@@ -1016,6 +1033,9 @@ esp_err_t req_wifi_scan_start(Rpc *req, Rpc *resp, void *priv_data)
 
 		EH_ASSIGN_NARROW(p_a->channel, p_c->channel);
 		p_a->show_hidden = p_c->show_hidden;
+#if EH_CP_IDF_GE_5_4
+		p_a->coex_background_scan = p_c->coex_background_scan;
+#endif
 		p_a->scan_type = p_c->scan_type;
 
 		p_c_st = p_c->scan_time;
@@ -1166,6 +1186,9 @@ static int copy_ap_record_to_rpc_struct(WifiApRecord *rpc, wifi_ap_record_t *sca
 	rpc->country->schan        = scan->country.schan;
 	rpc->country->nchan        = scan->country.nchan;
 	rpc->country->max_tx_power = scan->country.max_tx_power;
+#if EH_CP_WIFI_GOT_5G_CHANNEL_MASK
+	rpc->country->wifi_5g_channel_mask = scan->country.wifi_5g_channel_mask;
+#endif
 	rpc->country->policy       = scan->country.policy;
 
 	ESP_LOGD(TAG, "Country cc:%c%c schan: %u nchan: %u max_tx_pow: %d policy: %u",
@@ -1476,6 +1499,9 @@ esp_err_t req_wifi_set_country(Rpc *req, Rpc *resp, void *priv_data)
 	EH_ASSIGN_NARROW(country.schan, p_c_country->schan);
 	EH_ASSIGN_NARROW(country.nchan, p_c_country->nchan);
 	EH_ASSIGN_NARROW(country.max_tx_power, p_c_country->max_tx_power);
+#if EH_CP_WIFI_GOT_5G_CHANNEL_MASK
+	country.wifi_5g_channel_mask = p_c_country->wifi_5g_channel_mask;
+#endif
 	country.policy       = p_c_country->policy;
 
 	RPC_RET_FAIL_IF(esp_wifi_set_country(&country));
@@ -1499,6 +1525,9 @@ esp_err_t req_wifi_get_country(Rpc *req, Rpc *resp, void *priv_data)
 	p_c_country->schan        = country.schan;
 	p_c_country->nchan        = country.nchan;
 	p_c_country->max_tx_power = country.max_tx_power;
+#if EH_CP_WIFI_GOT_5G_CHANNEL_MASK
+	p_c_country->wifi_5g_channel_mask = country.wifi_5g_channel_mask;
+#endif
 	p_c_country->policy       = country.policy;
 
 err:

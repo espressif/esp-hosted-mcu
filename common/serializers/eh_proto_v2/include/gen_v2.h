@@ -1408,10 +1408,16 @@ struct  WifiCountry
    **< country policy 
    */
   int32_t policy;
+  /*
+   **< A bitmask representing the allowed 5GHz Wi-Fi channels.
+   *0 allows them according to local regulatory rules.
+   *Takes effect only when policy is manual. 
+   */
+  uint32_t wifi_5g_channel_mask;
 };
 #define WIFI_COUNTRY__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_country__descriptor) \
-, {0,NULL}, 0, 0, 0, 0 }
+, {0,NULL}, 0, 0, 0, 0, 0 }
 
 
 struct  WifiActiveScanTime
@@ -1504,10 +1510,14 @@ struct  WifiScanConfig
    *Also, note that only allowed channels configured by wifi_country_t can be scanned. 
    */
   WifiScanChannelBitmap *channel_bitmap;
+  /*
+   **< Enable it to scan return home channel under coexist 
+   */
+  protobuf_c_boolean coex_background_scan;
 };
 #define WIFI_SCAN_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_scan_config__descriptor) \
-, {0,NULL}, {0,NULL}, 0, 0, 0, NULL, 0, NULL }
+, {0,NULL}, {0,NULL}, 0, 0, 0, NULL, 0, NULL, 0 }
 
 
 struct  WifiScanDefaultParams
@@ -1765,10 +1775,18 @@ struct  WifiApConfig
    **< GTK rekeying interval in seconds. If set to 0, GTK rekeying is disabled. Range: 60 ~ 65535 including 0. 
    */
   uint32_t gtk_rekey_interval;
+  /*
+   **< Enable WPA3 compatible authmode feature. Note: Enabling this will
+   *override the AP configuration's authmode and pairwise_cipher. The AP will
+   *operate as a WPA2 access point for all stations except for those that
+   *support WPA3 compatible mode. Only WPA3 compatibility mode stations will
+   *be able to use WPA3-SAE 
+   */
+  uint32_t wpa3_compatible_mode;
 };
 #define WIFI_AP_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_ap_config__descriptor) \
-, {0,NULL}, {0,NULL}, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 0, 0, 0, 0, NULL, 0 }
+, {0,NULL}, {0,NULL}, 0, 0, 0, 0, 0, 0, 0, 0, NULL, 0, 0, 0, 0, 0, NULL, 0, 0 }
 
 
 struct  WifiStaConfig

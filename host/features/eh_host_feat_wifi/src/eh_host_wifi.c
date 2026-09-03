@@ -167,6 +167,9 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
         req->u.wifi_cfg.sae_ext                            = cfg->ap.sae_ext;
+#if EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE
+        req->u.wifi_cfg.wpa3_compatible_mode               = cfg->ap.wpa3_compatible_mode;
+#endif
         req->u.wifi_cfg.bss_max_idle_period                = cfg->ap.bss_max_idle_cfg.period;
         req->u.wifi_cfg.bss_max_idle_protected_keep_alive  = cfg->ap.bss_max_idle_cfg.protected_keep_alive;
         req->u.wifi_cfg.gtk_rekey_interval                 = cfg->ap.gtk_rekey_interval;
@@ -219,6 +222,10 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_1_owe_enabled, bm);
         if (cfg->sta.transition_disable)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_1_transition_disable, bm);
+#if EH_HOST_GOT_WPA3_COMPATIBLE_MODE
+        if (cfg->sta.disable_wpa3_compatible_mode)
+            EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_1_disable_wpa3_compat, bm);
+#endif
         req->u.wifi_cfg.bitmask = bm;
 
         uint32_t hbm = 0;
@@ -297,6 +304,9 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
             out->ap.sae_ext = (r->u.wifi_cfg.sae_ext);
+#if EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE
+            out->ap.wpa3_compatible_mode = (r->u.wifi_cfg.wpa3_compatible_mode) & 1u;
+#endif
             EH_ASSIGN_NARROW(out->ap.bss_max_idle_cfg.period, r->u.wifi_cfg.bss_max_idle_period);
             out->ap.bss_max_idle_cfg.protected_keep_alive = r->u.wifi_cfg.bss_max_idle_protected_keep_alive;
             EH_ASSIGN_NARROW(out->ap.gtk_rekey_interval, r->u.wifi_cfg.gtk_rekey_interval);
@@ -334,6 +344,10 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
             out->sta.ft_enabled         = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_ft_enabled, bm);
             out->sta.owe_enabled        = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_owe_enabled, bm);
             out->sta.transition_disable = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_transition_disable, bm);
+#if EH_HOST_GOT_WPA3_COMPATIBLE_MODE
+            out->sta.disable_wpa3_compatible_mode =
+                EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_disable_wpa3_compat, bm);
+#endif
 #if EH_HOST_DECODE_WIFI_RESERVED_FIELD
 #  if EH_HOST_WIFI_NEW_RESERVED_FIELD_NAMES
             out->sta.reserved1 = EH_HOST_WIFI_STA_CONFIG_1_GET_RESERVED_VAL(bm);
@@ -416,6 +430,9 @@ static void ap_record_to_idf(wifi_ap_record_t *dst,
     dst->country.schan        = (uint8_t)src->country.schan;
     dst->country.nchan        = (uint8_t)src->country.nchan;
     dst->country.max_tx_power = (int8_t)src->country.max_tx_power;
+#if EH_HOST_WIFI_GOT_5G_CHANNEL_MASK
+    dst->country.wifi_5g_channel_mask = src->country.wifi_5g_channel_mask;
+#endif
     dst->country.policy       = (wifi_country_policy_t)src->country.policy;
     dst->he_ap.bss_color           = (src->bss_color) & 0x3Fu;
     dst->he_ap.partial_bss_color   = src->partial_bss_color;
@@ -468,6 +485,9 @@ esp_err_t eh_host_wifi_scan_start(const wifi_scan_config_t *cfg, bool block)
         }
         p->channel              = cfg->channel;
         p->show_hidden          = cfg->show_hidden;
+#if EH_HOST_PRESENT_IN_ESP_IDF_5_4_0
+        p->coex_background_scan = cfg->coex_background_scan;
+#endif
         p->scan_type            = (int32_t)cfg->scan_type;
         p->passive              = cfg->scan_time.passive;
         p->active_min           = cfg->scan_time.active.min;
@@ -1178,6 +1198,9 @@ esp_err_t eh_host_wifi_set_country(const wifi_country_t *country)
     req->u.wifi_country.schan        = country->schan;
     req->u.wifi_country.nchan        = country->nchan;
     req->u.wifi_country.max_tx_power = country->max_tx_power;
+#if EH_HOST_WIFI_GOT_5G_CHANNEL_MASK
+    req->u.wifi_country.wifi_5g_channel_mask = country->wifi_5g_channel_mask;
+#endif
     req->u.wifi_country.policy       = (int32_t)country->policy;
     eh_rpc_ctrl_cmd_t *r = NULL;
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiSetCountry, req,
@@ -1204,6 +1227,9 @@ esp_err_t eh_host_wifi_get_country(wifi_country_t *country)
         country->schan        = (uint8_t)r->u.wifi_country.schan;
         country->nchan        = (uint8_t)r->u.wifi_country.nchan;
         country->max_tx_power = (int8_t)r->u.wifi_country.max_tx_power;
+#if EH_HOST_WIFI_GOT_5G_CHANNEL_MASK
+        country->wifi_5g_channel_mask = r->u.wifi_country.wifi_5g_channel_mask;
+#endif
         country->policy       = (wifi_country_policy_t)r->u.wifi_country.policy;
     }
     eh_rpc_ctrl_cmd_free(r);

@@ -228,6 +228,7 @@ static int compose_req_wifi_set_config(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
         ap->sae_ext = cfg->sae_ext;
+        ap->wpa3_compatible_mode = cfg->wpa3_compatible_mode;
         /* nested wifi_bss_max_idle_config */
         WifiBssMaxIdleConfig *bmi = (WifiBssMaxIdleConfig *)
             rpc_ext_v2_tracked_calloc(trk, sizeof(*bmi));
@@ -304,6 +305,7 @@ static int compose_req_wifi_scan_start(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
 
     cfg->channel              = sc->channel;
     cfg->show_hidden          = sc->show_hidden;
+    cfg->coex_background_scan = sc->coex_background_scan;
     cfg->scan_type            = sc->scan_type;
     cfg->home_chan_dwell_time = sc->home_chan_dwell_time;
 
@@ -371,6 +373,7 @@ static int compose_req_set_country(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
     cc->nchan         = c->u.wifi_country.nchan;
     cc->max_tx_power  = c->u.wifi_country.max_tx_power;
     cc->policy        = c->u.wifi_country.policy;
+    cc->wifi_5g_channel_mask = c->u.wifi_country.wifi_5g_channel_mask;
     p->country = cc;
     return 0;
 }

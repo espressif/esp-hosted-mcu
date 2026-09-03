@@ -86,10 +86,11 @@ enum {
     EH_HOST_WIFI_STA_CONFIG_1_ft_enabled         = 3,
     EH_HOST_WIFI_STA_CONFIG_1_owe_enabled        = 4,
     EH_HOST_WIFI_STA_CONFIG_1_transition_disable = 5,
-    EH_HOST_WIFI_STA_CONFIG_1_MAX_USED_BIT       = 6,
+    EH_HOST_WIFI_STA_CONFIG_1_disable_wpa3_compat = 6,
+    EH_HOST_WIFI_STA_CONFIG_1_MAX_USED_BIT       = 7,
 };
 
-#define EH_HOST_WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFFC0u
+#define EH_HOST_WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFF80u
 
 #define EH_HOST_WIFI_STA_CONFIG_1_GET_RESERVED_VAL(num)                          \
     (((num) & EH_HOST_WIFI_STA_CONFIG_1_RESERVED_BITMASK)                        \
