@@ -9,12 +9,19 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "release/v2.x"
 
 # release branch rule
-# used for running regression jobs on release/v2.x after a merge
+# Regression gates the MERGE, not the push. The GitHub push mirror fires on the
+# push event and cannot be sequenced after a pipeline, so a job that runs only
+# after the merge can report a failure but cannot stop publication. Running the
+# regression suite on the merge request, with
+# only_allow_merge_if_pipeline_succeeds enabled, is what keeps a failing build
+# off release/v2.x and therefore off GitHub.
+#
+# Stage order gives early failure: build (host + unpinned idf_master canaries)
+# -> build_coprocessor -> build_example (heavy matrix), so a broken tree dies in
+# the cheap stage instead of after the full matrix.
 .release_branch_rules:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "release/v2.x"
 
 # no build rule to disable jobs temporarily
 # while testing new build rules
