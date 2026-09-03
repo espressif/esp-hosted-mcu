@@ -328,16 +328,28 @@ static int cmd_wifi_cfg_reset(int argc, char **argv)
     return 0;
 }
 
+/* Full width: IDF reads these bounded, so no terminator is reserved. */
+static uint8_t stage_str(uint8_t *dst, size_t cap, const char *v)
+{
+    size_t n = strnlen(v, cap);
+    memset(dst, 0, cap);
+    memcpy(dst, v, n);
+    return (uint8_t)n;
+}
+
 static int cmd_wifi_cfg_set(int argc, char **argv)
 {
     if (argc < 3) { eh_out("wifi_cfg_set", -1, "err=USAGE"); return 0; }
     const char *k = argv[1], *v = argv[2];
-    if      (!strcmp(k, "sta_ssid"))     strncpy((char *)s_cfg.sta.ssid, v, sizeof(s_cfg.sta.ssid) - 1);
-    else if (!strcmp(k, "sta_password")) strncpy((char *)s_cfg.sta.password, v, sizeof(s_cfg.sta.password) - 1);
+    if      (!strcmp(k, "sta_ssid"))     stage_str(s_cfg.sta.ssid, sizeof(s_cfg.sta.ssid), v);
+    else if (!strcmp(k, "sta_password")) stage_str(s_cfg.sta.password, sizeof(s_cfg.sta.password), v);
     else if (!strcmp(k, "sta_channel"))  s_cfg.sta.channel = (uint8_t)atoi(v);
     else if (!strcmp(k, "sta_scan_all")) s_cfg.sta.scan_method = atoi(v) ? WIFI_ALL_CHANNEL_SCAN : WIFI_FAST_SCAN;
-    else if (!strcmp(k, "ap_ssid"))      strncpy((char *)s_cfg.ap.ssid, v, sizeof(s_cfg.ap.ssid) - 1);
-    else if (!strcmp(k, "ap_password"))  strncpy((char *)s_cfg.ap.password, v, sizeof(s_cfg.ap.password) - 1);
+    else if (!strcmp(k, "ap_ssid")) {
+        /* ssid_len too: a full-width SSID has no room for a terminator. */
+        s_cfg.ap.ssid_len = stage_str(s_cfg.ap.ssid, sizeof(s_cfg.ap.ssid), v);
+    }
+    else if (!strcmp(k, "ap_password"))  stage_str(s_cfg.ap.password, sizeof(s_cfg.ap.password), v);
     else if (!strcmp(k, "ap_channel"))   s_cfg.ap.channel = (uint8_t)atoi(v);
     else if (!strcmp(k, "ap_authmode"))  s_cfg.ap.authmode = (wifi_auth_mode_t)atoi(v);
     else if (!strcmp(k, "ap_max_conn"))  s_cfg.ap.max_connection = (uint8_t)atoi(v);
@@ -370,10 +382,14 @@ static int cmd_wifi_get_config(int argc, char **argv)
     if (e != ESP_OK) { eh_out_rc("wifi_get_config", e); return 0; }
     char f[96];
     if (ifx == WIFI_IF_STA) {
-        snprintf(f, sizeof(f), "ssid=%s channel=%u",
-                 (char *)out.sta.ssid, (unsigned)out.sta.channel);
+        snprintf(f, sizeof(f), "ssid=%.*s channel=%u pwlen=%u",
+                 (int)strnlen((char *)out.sta.ssid, sizeof(out.sta.ssid)),
+                 (char *)out.sta.ssid, (unsigned)out.sta.channel,
+                 (unsigned)strnlen((char *)out.sta.password,
+                                   sizeof(out.sta.password)));
     } else {
-        snprintf(f, sizeof(f), "ssid=%s channel=%u authmode=%d max_conn=%u hidden=%u",
+        snprintf(f, sizeof(f), "ssid=%.*s channel=%u authmode=%d max_conn=%u hidden=%u",
+                 (int)strnlen((char *)out.ap.ssid, sizeof(out.ap.ssid)),
                  (char *)out.ap.ssid, (unsigned)out.ap.channel, (int)out.ap.authmode,
                  (unsigned)out.ap.max_connection, (unsigned)out.ap.ssid_hidden);
     }

@@ -41,7 +41,10 @@ _RESET_GPIO = "54"   # host→CP reset line (OP_RESET)
 
 # The emulator's C6 wifi model advertises a fixed WPA2-PSK SoftAP; STA-connect
 # tests on the emu associate to this (real benches use lab.local.json wifi_ap).
-EMU_SOFTAP = {"ssid": "myssid", "password": "mypassword"}
+# EH_EMU_WIFI_SSID renames the modeled SoftAP (emu --wifi-ssid), so a test can
+# exercise a maximum-length SSID. The password is fixed in the emulator.
+EMU_SOFTAP = {"ssid": os.environ.get("EH_EMU_WIFI_SSID", "myssid"),
+              "password": "mypassword"}
 
 # ESP-Hosted SPI transport GPIOs, P4-C6 Function-EV board (both sides FUNC_BOARD).
 # handshake (FD only) + data-ready are slave→host, forwarded out-of-band as bridge
@@ -293,6 +296,8 @@ class EmuTarget(BenchProvider):
             spinel_host = ["--hosted-uart", f"bridge:host:{spin_sock}"]
         _ts_cp = os.environ.get("EH_THREAD_SIM_CP")
         thread_arg = ["--thread-sim", _ts_cp] if _ts_cp else []
+        _emu_ssid = os.environ.get("EH_EMU_WIFI_SSID")
+        ssid_arg = ["--wifi-ssid", _emu_ssid] if _emu_ssid else []
         # Firmware is built and bridges are resolved; the DUTs are about to launch.
         # Run the test's pre_launch hook HERE so an external peer (e.g. Bumble)
         # opens its connect window now — after the (possibly cold-cache, minutes-
@@ -302,7 +307,7 @@ class EmuTarget(BenchProvider):
             pre_launch()
         cp = EmuDut("cp", [str(emu), "--chip", spec.cp_target, "--firmware", cp_flash,
                            "--elf", cp_fw["elf"], *cp_bridge, *spinel_cp, *thread_arg,
-                           *ble_arg, *net_arg, "--timeout", timeout],
+                           *ble_arg, *net_arg, *ssid_arg, "--timeout", timeout],
                     lab_tmp / f"cp_{spec.transport}.log")
         # Deterministic ordering: wait for the slave socket before the host connects
         # (polls; returns the instant it appears — no fixed sleep).
