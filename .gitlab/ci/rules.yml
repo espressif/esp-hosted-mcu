@@ -1,20 +1,20 @@
 # Holds rules for running jobs
 
 # default rule
-# used for running jobs on a merge request to staging
+# used for running jobs on a merge request to release/v2.x
 .default_rules:
   rules:
-    - if: $CI_COMMIT_BRANCH == "staging" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
       when: never
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "staging"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "release/v2.x"
 
-# staging branch rule
-# used for running regression jobs on staging branch
-.staging_branch_rules:
+# release branch rule
+# used for running regression jobs on release/v2.x after a merge
+.release_branch_rules:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: never
-    - if: $CI_COMMIT_BRANCH == "staging" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
 
 # no build rule to disable jobs temporarily
 # while testing new build rules
@@ -22,5 +22,5 @@
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: never
-    - if: $CI_COMMIT_BRANCH == "staging" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
       when: never
