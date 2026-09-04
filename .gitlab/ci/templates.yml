@@ -67,7 +67,17 @@
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
-    - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
+    - |
+      # esp_hosted_mcu is a symlink when a 3.x job ran on this runner first;
+      # renaming it then would point it at itself.
+      cd ..
+      if [ -L esp_hosted_mcu ]; then
+        rm -f esp_hosted_mcu
+      else
+        rm -rf esp_hosted
+        mv esp_hosted_mcu esp_hosted
+      fi
+      cd esp_hosted
     # Create components directory and link esp_hosted component
     - export OVERRIDE_PATH=`pwd`
     - cd examples/${EXAMPLE_TO_BUILD}
@@ -134,7 +144,17 @@
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
-    - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
+    - |
+      # esp_hosted_mcu is a symlink when a 3.x job ran on this runner first;
+      # renaming it then would point it at itself.
+      cd ..
+      if [ -L esp_hosted_mcu ]; then
+        rm -f esp_hosted_mcu
+      else
+        rm -rf esp_hosted
+        mv esp_hosted_mcu esp_hosted
+      fi
+      cd esp_hosted
     - export OVERRIDE_PATH=`pwd`
     # get path to mqtt example to build
     - |
@@ -218,7 +238,17 @@
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
-    - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
+    - |
+      # esp_hosted_mcu is a symlink when a 3.x job ran on this runner first;
+      # renaming it then would point it at itself.
+      cd ..
+      if [ -L esp_hosted_mcu ]; then
+        rm -f esp_hosted_mcu
+      else
+        rm -rf esp_hosted
+        mv esp_hosted_mcu esp_hosted
+      fi
+      cd esp_hosted
     - export OVERRIDE_PATH=`pwd`
     # get the example from Component Registry
     - echo "Checking out example ${IDF_REGISTRY_COMPONENT}:${IDF_REGISTRY_COMPONENT_EXAMPLE}"
@@ -293,7 +323,17 @@
     - ${IDF_PATH}/install.sh --enable-ci
     - source ${IDF_PATH}/export.sh
     # Need to rename the cloned "esp_hosted_mcu" directory since the injected component name is "esp_hosted"
-    - cd .. && rm -rf esp_hosted && mv esp_hosted_mcu esp_hosted && cd esp_hosted
+    - |
+      # esp_hosted_mcu is a symlink when a 3.x job ran on this runner first;
+      # renaming it then would point it at itself.
+      cd ..
+      if [ -L esp_hosted_mcu ]; then
+        rm -f esp_hosted_mcu
+      else
+        rm -rf esp_hosted
+        mv esp_hosted_mcu esp_hosted
+      fi
+      cd esp_hosted
     # Replaces esp_hosted component in example's deps with the one from the current repository
     - export OVERRIDE_PATH=`pwd`
     - cd ${IDF_PATH}/${IDF_EXAMPLE_PATH}
