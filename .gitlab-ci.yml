@@ -115,6 +115,24 @@ pipeline_rules_test:
     # eh_build gate fails a job only for warnings whose file is in the checkout.
     - |
       eh_setup() {
+        # IDF names a component after its directory basename, and every
+        # example's main does REQUIRES esp_hosted. The checkout is named after
+        # the project, esp_hosted_mcu, so give the real directory the component
+        # name and leave a symlink at the old one: GitLab's after_script, cache
+        # archiving and cleanup all cd into $CI_PROJECT_DIR and would otherwise
+        # fail the job after a successful build.
+        cd "$(dirname "$CI_PROJECT_DIR")"
+        eh_name="$(basename "$CI_PROJECT_DIR")"
+        # A symlink here would survive into the next job on this runner, and the
+        # 2.x line renames the same two names, which turns it self-referential.
+        if [ -L "$eh_name" ]; then
+          rm -f "$eh_name"
+        else
+          rm -rf esp_hosted
+          mv "$eh_name" esp_hosted
+        fi
+        mkdir -p "$eh_name"
+        cd esp_hosted
         ${IDF_PATH}/install.sh --enable-ci
         . ${IDF_PATH}/export.sh
         export ESP_HOSTED_CI_PEDANTIC=1
