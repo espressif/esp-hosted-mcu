@@ -6,8 +6,8 @@
 Guards the pipeline *design* documented in docs/design/pipeline_design.md so an
 edit can't silently break routing. It:
 
-  1. asserts structure (jobs exist; PRE vs POST rules; deploy is branch-only;
-     regression is off MRs; PRE CP build covers all four transports),
+  1. asserts structure (jobs exist; PRE vs POST rules; PRE CP build covers all
+     four transports),
   2. asserts every build job wires the change-scope gate: it calls
      `decide_build.sh <cp|host>` for the correct side and then `eh_setup`,
   3. runs decide_build.sh on representative diffs (via EH_TEST_FILES) and checks
@@ -142,7 +142,7 @@ def main():
     check("decide_build.sh exists", DECIDE.exists())
 
     for j in [*CP_JOBS, *HOST_JOBS, "premerge_check", "pre_commit",
-              "pipeline_rules_test", "regression", "deploy_master_github"]:
+              "pipeline_rules_test"]:
         check(f"job exists: {j}", j in d, f"missing {j}")
 
     # --- every build job wires the gate for the right side, then eh_setup ---
@@ -161,13 +161,6 @@ def main():
     for j in [*CP_JOBS, *HOST_JOBS]:
         if j not in PRE_JOBS:
             check(f"{j} is POST (no MR rule)", not is_mr_rule(d[j]))
-
-    # --- deploy branch-only; regression off MRs ---
-    dep = str(d["deploy_master_github"].get("rules", []))
-    check("deploy: not on MRs", "merge_request_event" not in dep)
-    check("deploy: master + unified_release", "master" in dep and "unified_release" in dep)
-    check("deploy: not on release/*", "^release" not in dep)  # 'unified_release' contains 'release'
-    check("regression: off MRs", not is_mr_rule(d["regression"]))
 
     # --- PRE CP build covers all four transports ---
     buses = {c.get("BUS", "") for c in d["build_cp_super"]["parallel"]["matrix"]}

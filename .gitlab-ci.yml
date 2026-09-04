@@ -1,8 +1,6 @@
 stages:
   - pre
   - build
-  - regression
-  - deploy
 
 variables:
   # Build needs the vendored protobuf-c submodule (msg_codec compiles it); the
@@ -24,8 +22,7 @@ variables:
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
   - if: '$CI_COMMIT_BRANCH =~ /^release/'
 .rules_post: &rules_post
-  - if: '$CI_COMMIT_BRANCH == "master"'
-  - if: '$CI_COMMIT_BRANCH == "unified_release"'
+  - if: '$CI_COMMIT_BRANCH == "main"'
   - if: '$CI_COMMIT_BRANCH =~ /^release/'
 
 # Change-scoping (which SIDE to build for a given diff) is decided at run time by
@@ -40,7 +37,7 @@ variables:
 premerge_check:
   stage: pre
   image: espressif/idf:${IDF_VER}
-  tags: [build_fw]
+  tags: [build]
   rules: *rules_pre
   script:
     - python3 tools/check_fw_versions.py
@@ -51,7 +48,7 @@ premerge_check:
 pre_commit:
   stage: pre
   image: espressif/idf:${IDF_VER}
-  tags: [build_fw]
+  tags: [build]
   rules: *rules_pre
   variables:
     GIT_DEPTH: 0
@@ -78,7 +75,7 @@ pre_commit:
 pipeline_rules_test:
   stage: pre
   image: espressif/idf:${IDF_VER}
-  tags: [build_fw]
+  tags: [build]
   variables:
     GIT_SUBMODULE_STRATEGY: none
   rules:
@@ -102,7 +99,7 @@ pipeline_rules_test:
 .build:
   stage: build
   image: espressif/idf:${IDF_IMAGE}
-  tags: [build_fw]
+  tags: [build]
   # rules are set per concrete job — the pre/post split lives on the jobs below.
   cache:
     key: eh-build-${IDF_IMAGE}
@@ -277,74 +274,3 @@ build_host_v551_p4:           # [POST] power_save + transport_config + api_exerc
         -p examples/power_save/host/network_split__host_deep_sleep/esp_host \
            examples/system/mcu_transport_config/mcu_host \
            examples/system/api_exerciser/mcu_host
-
-# ───────────────────────── regression (emu) ─────────────────────────
-.emu_test:
-  image: espressif/idf:${IDF_VER}
-  tags:
-    - build_fw
-  cache:
-    key: eh-emu-${IDF_VER}
-    when: always
-    paths:
-      - .deps/esp-emu/
-      - .ccache/
-  before_script:
-    - git config --global url."https://oauth2:${CI_HOSTED_PAT_EMU}@gitlab.espressif.cn:6688/".insteadOf "ssh://git@gitlab.espressif.cn:27227/"
-    - ./install.sh --full --with-emu --skip-idf -y
-    - . ./export.sh
-  after_script:
-    - |
-      if [ "$CI_JOB_STATUS" != "success" ]; then
-        echo "########## BUILD-FAILURE DIAGNOSTICS ##########"
-        for f in $(find tests/.work -name build.log 2>/dev/null); do
-          echo ""
-          echo ">>>>>>>>>> BEGIN $f"
-          tail -30 "$f"
-          echo "<<<<<<<<<< END   $f"
-        done
-        echo "########## END DIAGNOSTICS ##########"
-      fi
-
-regression:
-  extends: .emu_test
-  stage: regression
-  timeout: 5h
-  script:
-    # - eh.py test emu --auto-apply-idf-patches --timeout=18000
-    - 'true'
-  # [POST] the heavy emu run belongs on the target branch, not on every MR
-  # (a pre-merge emu-sanity subset can be added later if we want faster signal).
-  rules: *rules_post
-
-deploy_master_github:
-  stage: deploy
-  image: $CI_DOCKER_REGISTRY/esp32-ci-env
-  tags:
-    - deploy
-  needs:
-    - regression
-  variables:
-    # Don't use the reused/dirtied CI working checkout at all. We push GitHub a
-    # PRISTINE full clone of the GitLab commit, so what lands there is an exact
-    # replica of GitLab — never build artifacts, managed_components, or submodule
-    # working trees. A full clone also structurally avoids the shallow-clone
-    # thin-pack failure. No submodule fetch: a superproject mirror pushes gitlinks.
-    GIT_STRATEGY: none
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
-    - if: '$CI_COMMIT_BRANCH == "unified_release"'
-  script:
-    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - echo -n "$GH_KEY" > ~/.ssh/id_rsa_base64
-    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
-    - chmod 600 ~/.ssh/id_rsa
-    - echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-    # Pristine copy: fresh full clone of the GitLab repo (job-token auth), push the
-    # exact commit to the mirror, then discard. No --force — a divergent GitHub
-    # branch must be a deliberate decision, not a silent overwrite.
-    - rm -rf /tmp/eh_mirror
-    - git clone "$CI_REPOSITORY_URL" /tmp/eh_mirror
-    - git -C /tmp/eh_mirror remote add github git@github.com:espressif/esp-hosted.git
-    - git -C /tmp/eh_mirror push github "${CI_COMMIT_SHA}:refs/heads/${CI_COMMIT_REF_NAME}"
-    - rm -rf /tmp/eh_mirror

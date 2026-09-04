@@ -13,18 +13,16 @@ lists exactly what exists.
 
 ```mermaid
 flowchart LR
-    P[pre] --> B[build] --> R[regression] --> D[deploy]
+    P[pre] --> B[build]
 ```
 
 | stage | purpose |
 |-------|---------|
 | `pre` | cheap gates — fw-version/changelog/structure checks, pre-commit, and the change-scope announcer |
 | `build` | compile coverage: `cp_super` (all CP features in one binary) + grouped host examples |
-| `regression` | emu runtime tests (currently a stub) |
-| `deploy` | mirror GitLab → public GitHub (registry publish stays on GitHub) |
 
-A stage starts only if the previous stage fully succeeded, so a red `build`
-never reaches `regression`/`deploy` — nothing dirty is published.
+A stage starts only if the previous stage fully succeeded, so a red `pre` never
+reaches `build`.
 
 ## Two forks
 
@@ -44,16 +42,15 @@ flowchart TD
     T([Pipeline triggered]) --> Q{Trigger}
 
     Q -->|merge_request_event| MR[["MR pipeline — PRE, change-scoped"]]
-    Q -->|"branch = master / unified_release"| BR[["Branch pipeline — POST, full"]]
+    Q -->|"branch = main"| BR[["Branch pipeline — POST, full"]]
     Q -->|"branch =~ /^release/"| RE[["Release branch — PRE + POST = full"]]
 
     MR --> MRp["pre: premerge_check · pre_commit · pipeline_rules_test"]
     MR --> MRb["build: only the affected side (Fork 2)"]
 
     BR --> BRb["build: cp_super_ext · cp_specials · host_latest/v60/v551"]
-    BR --> BRr["regression → deploy (mirror to GitHub)"]
 
-    RE --> REa["every pre + every build cell + regression<br/>(no deploy — deploy is master/unified_release only)"]
+    RE --> REa["every pre + every build cell"]
 ```
 
 ### Fork 2 — change scope (`tools/ci/decide_build.sh`)
@@ -98,17 +95,14 @@ flowchart TD
 
 # POST: target-branch breadth sweep
 .rules_post: &rules_post
-  - if: '$CI_COMMIT_BRANCH == "master"'
-  - if: '$CI_COMMIT_BRANCH == "unified_release"'
+  - if: '$CI_COMMIT_BRANCH == "main"'
   - if: '$CI_COMMIT_BRANCH =~ /^release/'
 ```
 
 In words:
 
 - **`.rules_pre`** — run on any MR, and on any `release/*` branch push.
-- **`.rules_post`** — run on `master`, `unified_release`, and `release/*`.
-- **deploy** uses its own inline rule: `master` or `unified_release` only (never
-  mirrors a `release/*` branch).
+- **`.rules_post`** — run on `main` and `release/*`.
 
 `rules` decide only whether a build job is *created* (Fork 1). *Which side*
 actually compiles (Fork 2) is decided at run time by `decide_build.sh`, which
@@ -134,8 +128,6 @@ nothing.
 | `build_host_latest_p4` | build | `.rules_post` | POST | 1 | self-skip: `host` |
 | `build_host_v60_p4` | build | `.rules_post` | POST | 1 | self-skip: `host` |
 | `build_host_v551_p4` | build | `.rules_post` | POST | 1 | self-skip: `host` |
-| `regression` | regression | `.rules_post` | POST | 1 | — |
-| `deploy_master_github` | deploy | `master`/`unified_release` | POST | 1 | — |
 
 ("self-skip: X" = the job is created by its rule, then exits early via
 `decide_build.sh X` when side X isn't affected — before the IDF install.)
@@ -164,24 +156,23 @@ relay branch, since cp_super pins VHCI), the other IDF versions (latest / 6.0 /
 5.5.1 — version drift), and the rest of the host examples (iperf, nw_split,
 openthread, ota, sdmmc, api_exerciser, transport_config, nimble-coex).
 
-## Publishing (deploy stage)
+## Publishing
 
-- **GitHub mirror** (`deploy_master_github`): pushes a **pristine full clone**
-  of the GitLab commit (`GIT_STRATEGY: none` + fresh `git clone` → push →
-  discard), so GitHub receives an exact replica — never build artifacts or
-  submodule working trees. No `--force`: a divergent GitHub branch is a
-  deliberate decision, not a silent overwrite.
-- **Component registry**: stays on GitHub (`.github/workflows/upload_component.yml`),
-  triggered by the mirror push. GitHub's ephemeral checkout means its
-  publish-time mutations (component bundling, manifest strip, README/changelog
-  staging) run on a throwaway and never flow back into the source.
+- **GitHub mirror**: the project's GitLab push mirror replicates protected
+  branches and tags to `espressif/esp-hosted-mcu`. It is a repository setting,
+  not a CI job, so it fires on ref update regardless of pipeline status.
+- **Component registry**: stays on GitHub
+  (`.github/workflows/upload_component.yml`), triggered by the mirrored push to
+  `main`. GitHub's ephemeral checkout means its publish-time mutations
+  (component bundling, manifest strip, README/changelog staging) run on a
+  throwaway and never flow back into the source.
 
 ## Testing the pipeline design
 
 `tools/ci/test_pipeline_rules.py` is a **design test** (not a code test): it
 parses `.gitlab-ci.yml` and asserts the structural invariants (jobs exist; PRE
-vs POST rules; deploy is branch-only; regression is off MRs; PRE covers all four
-transports; every build job wires `decide_build.sh <side>` then `eh_setup`), and
+vs POST rules; PRE covers all four transports; every build job wires
+`decide_build.sh <side>` then `eh_setup`), and
 it **runs `decide_build.sh`** on representative diffs — CP-only, host-only,
 shared, host-example, and **version-header + docs only** — checking it BUILDs or
 SKIPs correctly. The `pipeline_rules_test` job runs it whenever `.gitlab-ci.yml`,

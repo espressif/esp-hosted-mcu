@@ -7,9 +7,7 @@ on:
   workflow_dispatch:   # manual only
   # push:
   #   branches:
-  #     - master
-  #     - unified_release
-  #     - ci/example-build-matrix-experiment
+  #     - main
   # pull_request:
   #   types: [opened, synchronize, reopened, labeled]
   # schedule:
