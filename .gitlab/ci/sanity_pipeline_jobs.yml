@@ -107,7 +107,11 @@ sanity_build_coprocessor_idf_master:
       - IDF_TARGET: ["esp32c6", "esp32c5", "esp32c61"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
       - IDF_TARGET: ["esp32"]
-        SLAVE_CI_FILE: ["sdio", "spi", "uart"]
+        SLAVE_CI_FILE: ["sdio", "uart"]
+      # esp32 + spi overflows iram0_0_seg on IDF master; this gate is link coverage
+      - IDF_TARGET: ["esp32"]
+        SLAVE_CI_FILE: ["spi"]
+        CONFIG_OVERRIDE: "CONFIG_ESP_WIFI_IRAM_OPT=n"
       - IDF_TARGET: ["esp32c2", "esp32c3", "esp32s3"]
         SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
