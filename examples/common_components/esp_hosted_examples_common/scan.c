@@ -26,7 +26,8 @@ esp_err_t eh_example_scan(uint8_t channel,
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-#if CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G
+/* Handle for CP and Host both */
+#if defined(CONFIG_SOC_WIFI_SUPPORT_5G) || defined(CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G)
     /* Dual-band CP (e.g. ESP32-C5): pick the band before scan (default 2G).
      * Host-driven, gated on the slave's 5 GHz capability; after esp_wifi_start(). */
     ESP_ERROR_CHECK(esp_wifi_set_band_mode(EH_EXAMPLE_WIFI_BAND_MODE));
