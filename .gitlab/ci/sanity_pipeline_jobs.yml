@@ -322,7 +322,7 @@ create_release_tag:
     - |
       set -e
       VER=$(python3 -c "import re,sys;print(re.search(r'^version:\s*\"?([^\"\s]+)\"?', open('idf_component.yml').read(), re.M).group(1))")
-      test -n "$VER"
+      test -n "${VER}"
       git remote set-url origin "https://oauth2:${GITLAB_TOKEN_STAGING_TO_MAIN}@gitlab.espressif.cn:6688/app-frameworks/esp_hosted_mcu.git"
       # tags are not fetched at the default git depth, so ask the remote
       if git ls-remote --tags --exit-code origin "refs/tags/v${VER}" >/dev/null 2>&1; then
