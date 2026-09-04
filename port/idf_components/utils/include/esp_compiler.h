@@ -11,7 +11,7 @@
 /*
  * The likely and unlikely macro pairs:
  * These macros are useful to place when application
- * knows the majority ocurrence of a decision paths,
+ * knows the majority occurrence of a decision paths,
  * placing one of these macros can hint the compiler
  * to reorder instructions producing more optimized
  * code.

@@ -51,7 +51,7 @@ extern "C" {
  * - __GET_NTH_ARG__() takes args >= N (64) but only expand to Nth one (64th)
  * - __RSEQ_N__() is reverse sequential to N to add padding to have Nth
  *   position is the same as the number of arguments
- * - ##__VA_ARGS__ is used to deal with 0 paramerter (swallows comma)
+ * - ##__VA_ARGS__ is used to deal with 0 parameter (swallows comma)
  */
 #ifndef __VA_NARG__
 # define __VA_NARG__(...)   __NARG__(_0, ##__VA_ARGS__, __RSEQ_N__())

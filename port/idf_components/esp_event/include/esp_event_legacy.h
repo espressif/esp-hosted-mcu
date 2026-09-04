@@ -170,7 +170,7 @@ esp_err_t esp_event_send(system_event_t *event) __attribute__ ((deprecated));
   *
   * @param[in] event_base the event base that identifies the event
   * @param[in] event_id the event id that identifies the event
-  * @param[in] event_data the data, specific to the event occurence, that gets passed to the handler
+  * @param[in] event_data the data, specific to the event occurrence, that gets passed to the handler
   * @param[in] event_data_size the size of the event data
   * @param[in] ticks_to_wait number of ticks to block on a full event queue
   *

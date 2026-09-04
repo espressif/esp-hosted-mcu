@@ -22,7 +22,7 @@ if ESP_HOSTED_CP_FEAT_CLI
 			Disable to manually call eh_cp_feat_cli_start() from app code.
 
 	config ESP_HOSTED_CP_CLI_NEW_INSTANCE
-		bool "Create new instance & do not re-use existing session if any"
+		bool "Create new instance & do not reuse existing session if any"
 		default y
 
 endif # ESP_HOSTED_CP_FEAT_CLI

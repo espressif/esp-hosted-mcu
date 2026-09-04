@@ -1,6 +1,6 @@
 # `host/wifi_remote_glue/`
 
-esp-hosted's **implementor side** of the `esp_wifi_remote_*` hook
+esp-hosted's **implementer side** of the `esp_wifi_remote_*` hook
 contract.  Defines the strong bodies that override the upstream
 `esp_wifi_remote` library's WEAK fallbacks (which return
 `ESP_ERR_NOT_SUPPORTED` and would silently break every Wi-Fi call),

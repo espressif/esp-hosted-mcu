@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Strong-body implementor for the esp_wifi_remote_* hook contract.
+# Strong-body implementer for the esp_wifi_remote_* hook contract.
 # Archive gated on FEAT_WIFI_READY at host/CMakeLists.txt.
 
 add_library(esp_wifi_remote_glue STATIC

@@ -6,10 +6,7 @@
 # Patterns have no leading ./ so they also match the relative paths pre-commit
 # passes.
 skip = build,.deps,managed_components,vendor,tmp_registry_readmes,*.drawio,*.svg,*.pdf,*.jpg,*.jpeg,*.png,*eh_common_fw_version.h,*common/serializers/third_party*,*common/serializers/eh_proto_v2/src/proto*,*tools/vendor*,*port/idf_components/esp_wifi_remote*,*port/idf_components/lwip*,*port/idf_components/esp_netif/lwip*,*examples/bluetooth/esp_hosted_nimble/bleprph_wifi_coex*
-# runn        'runN', a run-counter identifier in tools/esplab/frontend
-# implementor a valid spelling, and the deliberate wording in wifi_remote_glue
-# emac        Ethernet MAC, a hardware acronym; 'EMACS' is not a correction
-# sems        binary semaphores, in a port/os/idf comment
-# inout       Doxygen direction marker, @param[inout]
-ignore-words-list = rsource,INDX,ans,aNULL,aci,DEACTIVE,OT,ot,ser,runn,implementor,emac,sems,inout
+# emac   Ethernet MAC, a hardware acronym; 'EMACS' is not a correction
+# inout  Doxygen direction marker, @param[inout]
+ignore-words-list = rsource,INDX,ans,aNULL,aci,DEACTIVE,OT,ot,ser,emac,inout
 write-changes = true

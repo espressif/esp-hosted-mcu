@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* IDF mutex/cond/sem on FreeRTOS. cond synthesised via linked list of bin sems. */
+/* IDF mutex/cond/sem on FreeRTOS. cond synthesised via linked list of binary semaphores. */
 /* timeout_ms: 0=portMAX_DELAY, >0=pdMS_TO_TICKS, expiry=ERR_TIMEOUT. */
 
 #include "eh_host_port_config.h"

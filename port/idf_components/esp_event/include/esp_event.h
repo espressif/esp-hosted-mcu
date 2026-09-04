@@ -89,11 +89,11 @@ esp_err_t esp_event_loop_delete_default(void);
  * in event_loop_args argument during loop creation. This function includes an argument to limit the amount of time
  * it runs, returning control to the caller when that time expires (or some time afterwards). There is no guarantee
  * that a call to this function will exit at exactly the time of expiry. There is also no guarantee that events have
- * been dispatched during the call, as the function might have spent all of the alloted time waiting on the event queue.
+ * been dispatched during the call, as the function might have spent all of the allotted time waiting on the event queue.
  * Once an event has been unqueued, however, it is guaranteed to be dispatched. This guarantee contributes to not being
  * able to exit exactly at time of expiry as (1) blocking on internal mutexes is necessary for dispatching the unqueued
  * event, and (2) during  dispatch of the unqueued event there is no way to control the time occupied by handler code
- * execution. The guaranteed time of exit is therefore the alloted time + amount of time required to dispatch
+ * execution. The guaranteed time of exit is therefore the allotted time + amount of time required to dispatch
  * the last unqueued event.
  *
  * In cases where waiting on the queue times out, ESP_OK is returned and not ESP_ERR_TIMEOUT, since it is
@@ -357,11 +357,11 @@ esp_err_t esp_event_handler_instance_unregister(esp_event_base_t event_base,
 /**
  * @brief Posts an event to the system default event loop. The event loop library keeps a copy of event_data and manages
  * the copy's lifetime automatically (allocation + deletion); this ensures that the data the
- * handler recieves is always valid.
+ * handler receives is always valid.
  *
  * @param[in] event_base the event base that identifies the event
  * @param[in] event_id the event id that identifies the event
- * @param[in] event_data the data, specific to the event occurence, that gets passed to the handler
+ * @param[in] event_data the data, specific to the event occurrence, that gets passed to the handler
  * @param[in] event_data_size the size of the event data
  * @param[in] ticks_to_wait number of ticks to block on a full event queue
  *
@@ -381,7 +381,7 @@ esp_err_t esp_event_post(esp_event_base_t event_base,
 /**
  * @brief Posts an event to the specified event loop. The event loop library keeps a copy of event_data and manages
  * the copy's lifetime automatically (allocation + deletion); this ensures that the data the
- * handler recieves is always valid.
+ * handler receives is always valid.
  *
  * This function behaves in the same manner as esp_event_post_to, except the additional specification of the event loop
  * to post the event to.
@@ -389,7 +389,7 @@ esp_err_t esp_event_post(esp_event_base_t event_base,
  * @param[in] event_loop the event loop to post to, must not be NULL
  * @param[in] event_base the event base that identifies the event
  * @param[in] event_id the event id that identifies the event
- * @param[in] event_data the data, specific to the event occurence, that gets passed to the handler
+ * @param[in] event_data the data, specific to the event occurrence, that gets passed to the handler
  * @param[in] event_data_size the size of the event data
  * @param[in] ticks_to_wait number of ticks to block on a full event queue
  *
@@ -413,7 +413,7 @@ esp_err_t esp_event_post_to(esp_event_loop_handle_t event_loop,
  *
  * @param[in] event_base the event base that identifies the event
  * @param[in] event_id the event id that identifies the event
- * @param[in] event_data the data, specific to the event occurence, that gets passed to the handler
+ * @param[in] event_data the data, specific to the event occurrence, that gets passed to the handler
  * @param[in] event_data_size the size of the event data; max is 4 bytes
  * @param[out] task_unblocked an optional parameter (can be NULL) which indicates that an event task with
  *                            higher priority than currently running task has been unblocked by the posted event;
@@ -442,7 +442,7 @@ esp_err_t esp_event_isr_post(esp_event_base_t event_base,
  * @param[in] event_loop the event loop to post to, must not be NULL
  * @param[in] event_base the event base that identifies the event
  * @param[in] event_id the event id that identifies the event
- * @param[in] event_data the data, specific to the event occurence, that gets passed to the handler
+ * @param[in] event_data the data, specific to the event occurrence, that gets passed to the handler
  * @param[in] event_data_size the size of the event data
  * @param[out] task_unblocked an optional parameter (can be NULL) which indicates that an event task with
  *                            higher priority than currently running task has been unblocked by the posted event;

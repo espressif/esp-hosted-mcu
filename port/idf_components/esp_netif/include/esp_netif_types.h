@@ -37,7 +37,7 @@ extern "C" {
 
 
 /**
- * @brief Definition of ESP-NETIF bridge controll
+ * @brief Definition of ESP-NETIF bridge control
  */
 #define ESP_NETIF_BR_FLOOD      -1
 #define ESP_NETIF_BR_DROP        0
@@ -127,7 +127,7 @@ typedef struct {
  */
 typedef struct {
     esp_netif_t *esp_netif;          /*!< Pointer to corresponding esp-netif object */
-    esp_netif_ip_info_t ip_info;     /*!< IP address, netmask, gatway IP address */
+    esp_netif_ip_info_t ip_info;     /*!< IP address, netmask, gateway IP address */
     bool ip_changed;                 /*!< Whether the assigned IP has changed or not */
 } ip_event_got_ip_t;
 

@@ -18,7 +18,7 @@ cd /path/to/esp_hosted
 - `export.sh` — adds `eh.py` (at `tools/eh.py`) to your `PATH` for the current shell.
 
 > [!NOTE]
-> `eh.py set-idf-path <dir>` can be used to re-use a pre-existing ESP-IDF setup.
+> `eh.py set-idf-path <dir>` can be used to reuse a pre-existing ESP-IDF setup.
 
 ## Common commands
 

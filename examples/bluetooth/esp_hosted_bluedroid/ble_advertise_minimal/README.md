@@ -74,7 +74,7 @@ Component config
                └── SDIO Configuration               ← clock, GPIOs, checksum (defaults OK)
 ```
 
-The Bluetooth profile is pre-selected by `sdkconfig.defaults`; confirm it under
+The Bluetooth profile is preselected by `sdkconfig.defaults`; confirm it under
 **Features**:
 
 ```text

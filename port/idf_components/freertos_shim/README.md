@@ -58,5 +58,5 @@ reintroduce the dependency we explicitly broke.
 - `queue.h`    — opaque `QueueHandle_t` typedef.
 
 Add only what's referenced by an actual vendored header.  Don't
-pre-emptively stub `task.h` / `semphr.h` / `event_groups.h` until
+preemptively stub `task.h` / `semphr.h` / `event_groups.h` until
 something needs them.

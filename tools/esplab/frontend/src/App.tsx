@@ -78,7 +78,7 @@ export default function App() {
   const [viewId, setViewId] = useState<string | null>(null)   // report being replayed in the main pane
   const [savedJson, setSavedJson] = useState(JSON.stringify(INITIAL_PLAN))
   const [toast, setToast] = useState<string | null>(null)
-  const runN = useRef(0)
+  const runNum = useRef(0)
   const runStart = useRef<Date | null>(null)
   const drawerRef = useRef<ImperativePanelHandle>(null)
   const planRef = useRef<ImperativePanelHandle>(null)
@@ -168,7 +168,7 @@ export default function App() {
       if (d.status === 'done' || d.status === 'stopped') {
         const startDate = runStart.current ?? new Date(), endDate = new Date()
         setReports(prev => [{
-          id: `run-${runN.current}`, start: fmt(startDate), end: fmt(endDate), durMs: endDate.getTime() - startDate.getTime(),
+          id: `run-${runNum.current}`, start: fmt(startDate), end: fmt(endDate), durMs: endDate.getTime() - startDate.getTime(),
           results: (d.scenarios || []).map((sc: any) => ({
             id: sc.id, label: lbl(sc.id),
             status: (sc.status === 'pass' ? 'pass' : sc.status === 'fail' ? 'fail' : 'skip') as RunResult['status'],
@@ -222,7 +222,7 @@ export default function App() {
   const resetSel = () => setPlan(p => ({ ...p, selected: catalog ? [...catalog.supportedIds] : [...DEFAULT_SELECTED] }))
   const start = (mode: 'run' | 'flash') => {
     if (!plan.selected.length) return
-    runN.current++; runStart.current = new Date()
+    runNum.current++; runStart.current = new Date()
     setViewId(null)   // a new run shows the live diagram
     setLog({ build: [], host: [], cp: [] }); setLiveRun(null)
     const idle: Record<string, CaseStatus> = {}; plan.selected.forEach(id => (idle[id] = 'idle')); setCaseStatus(idle)

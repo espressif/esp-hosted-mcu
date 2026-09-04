@@ -830,7 +830,7 @@ esp_err_t req_start_softap_handler (const CtrlMsg *req,
 			wifi_config->ap.ssid,
 			wifi_config->ap.authmode, wifi_config->ap.ssid_hidden,
 			wifi_config->ap.max_connection,wifi_config->ap.channel);
-	ESP_LOGI(TAG,"ESP32 SoftAP is avaliable ");
+	ESP_LOGI(TAG,"ESP32 SoftAP is available ");
 #if WIFI_DUALBAND_SUPPORT
 	resp_payload->band_mode = band_mode;
 #endif
@@ -1096,11 +1096,11 @@ esp_err_t req_get_connected_sta_list_handler (const CtrlMsg *req,
 	}
 
 	if ((mode == WIFI_MODE_STA) || (mode == WIFI_MODE_NULL)) {
-		ESP_LOGE(TAG,"Currnet mode is %d", mode);
+		ESP_LOGE(TAG,"Current mode is %d", mode);
 		goto err;
 	}
 	if (!eh_cp_feat_wifi_is_softap_started()) {
-		ESP_LOGE(TAG,"softap is not started, cant get connected stations List");
+		ESP_LOGE(TAG,"softap is not started, can't get connected stations List");
 		goto err;
 	}
 
