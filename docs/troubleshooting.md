@@ -1,24 +1,26 @@
-# Troubleshooting ESP-Hosted
+# Troubleshooting
+
+[Home](../README.md) · [Getting Started: Linux](getting-started-linux.md) · [Getting Started: MCU](getting-started-mcu.md) · **Troubleshooting**
+
+When something breaks, debug **bottom-up**: wiring → transport → handshake → feature. The playbook below follows that order — resolve each numbered item before moving to the next.
 
 **Table of Contents**
 
-- [1. ESP host to evaluate already has Native Wi-Fi](#1-esp-host-to-evaluate-already-has-native-wi-fi)
-- [2. Raw Throughput Testing](#2-raw-throughput-testing)
-- [3. Make sure Hosted code is in sync for Master and Slave](#3-make-sure-hosted-code-is-in-sync-for-master-and-slave)
-- [4. Make sure GPIOs match on both the Host and Slave](#4-make-sure-gpios-match-on-both-the-host-and-slave)
-- [5. ESP-Hosted Master Not Connecting to Slave](#5-esp-hosted-master-not-connecting-to-slave)
-- [6. Getting `Drop Packet` Errors](#6-getting-drop-packet-errors)
+- [1. ESP host already has native Wi-Fi](#1-esp-host-already-has-native-wi-fi)
+- [2. Raw throughput testing](#2-raw-throughput-testing)
+- [3. Keep host and slave code in sync](#3-keep-host-and-slave-code-in-sync)
+- [4. Make GPIOs match on both ends](#4-make-gpios-match-on-both-ends)
+- [5. Master not connecting to slave](#5-master-not-connecting-to-slave)
+- [6. `Drop Packet` errors](#6-drop-packet-errors)
 - [7. References](#7-references)
 
-## 1 ESP host to evaluate already has Native Wi-Fi
+---
 
-Sometimes users have two ESPs, but both having Wi-Fi native capability.
-This section explains how to run ESP-Hosted-MCU on ESP host chipsets that already have native Wi-Fi support. To run ESP-Hosted-MCU on such hosts, native Wi-Fi support needs to be disabled from base ESP-IDF in use. There are alternatives to do this:
+## 1. ESP host already has native Wi-Fi
 
-##### 1.1 Different ESP chipset types for host and slave
-If host and slave not the same ESP chipset types, Wi-Fi capability can be disabled for host ESP chipset alone. Edit the ESP-IDF file
-`components/soc/<soc>/include/soc/Kconfig.soc_caps.in` and change
-all `WIFI` related configs to `n`. For example:
+Sometimes you have two ESPs but **both** have native Wi-Fi. To run ESP-Hosted on an ESP host chipset that already supports Wi-Fi natively, disable native Wi-Fi in the ESP-IDF you build against.
+
+**1.1 — Host and slave are different ESP chipsets.** Disable Wi-Fi for the host chipset alone. Edit `components/soc/<soc>/include/soc/Kconfig.soc_caps.in` in ESP-IDF and set every `WIFI`-related config to `n`:
 
 ```
 config SOC_WIFI_SUPPORTED
@@ -27,123 +29,110 @@ config SOC_WIFI_SUPPORTED
     default n
 ```
 
-This should be done for all `SOC_WIFI_xxx` configs found in the file.
+Do this for **all** `SOC_WIFI_xxx` configs in the file. Chipsets without native Wi-Fi already have these set to `n`.
 
-For ESP Chipsets without native Wi-FI, `SOC_WIFI_xxx` configs will be
-`n` by default.
+**1.2 — Host and slave are the same ESP chipset** (e.g. two ESP32-C3). This is a two-step build: build for the host with the changes from 1.1 applied, flash and monitor it, then **revert all the changes** and flash the slave chipset.
 
+---
 
-##### 1.2 Same ESP chipset types for host and slave
-There is possibility that you have two chipsets to evaluate, but both are exactly same chipset type. For example, two ESP32-C3. In this case, it is a two step build, first for host and second for slave.
-While building for host ESP chipset, follow above (1) and flash, monitor. Once host is flashed fine, revert all the changes and flash the slave ESP chipset.
+## 2. Raw throughput testing
 
-## 2 Raw Throughput Testing
+When chasing performance — and when checking correctness — you need to know the transport's bottleneck. **Raw throughput (RawTP)** is transport-level testing: dummy data streams from one end to the other with **no** Wi-Fi, Bluetooth, or other code involved. It runs three ways:
 
-While aiming the high performance and even while assessing the solution correctness, It is crucial to understand the bottlenecks in the system.
-'Raw throughput testing' is simple transport level testing, which would showcase the maximum throughput that the transport is able to achieve, right now in current set-up.
-In this test, dummy data is sent from one transport end to other continuously, without involving Wi-Fi, Bluetooth or any other code legs. This test can be performed in following ways:
-- Host to slave (Half duplex) : dummy data to be sent from host to slave continuously
-- Slave to Host (Half duplex) : dummy data to be sent from slave to host continuously
-- Full duplex bi-directional : dummy data to be sent from both the directions simultaneously
+- **Host → slave** (half duplex): dummy data host-to-slave, continuously.
+- **Slave → host** (half duplex): dummy data slave-to-host, continuously.
+- **Bidirectional** (full duplex): both directions simultaneously.
 
-This can verify hardware signal integrity and address porting issues. It also helps to assess the achievable throughput of the Hosted solution. It can be further optionally used for transport throughput fine-tuning.
+This verifies hardware signal integrity, surfaces porting issues, and reveals the achievable throughput of the solution — and can be used for transport fine-tuning.
 
 > [!IMPORTANT]
-> Use Raw throughput test to verify that Hosted hardware and software are
-> working as expected before involving other software layers like
-> networking.
+> Use the raw throughput test to verify that the Hosted hardware and software work as expected **before** involving other software layers like networking.
 
-To enable the Raw Throughput Option on Slave, enter `Menuconfig` and
-enable **Example Configuration** ---> **Hosted Debugging** --->
-**RawTP**.
+**Enable RawTP on the slave:** `Menuconfig` → **Example Configuration** → **Hosted Debugging** → **RawTP**.
 
-To enable the Raw Throughput Option and set Raw Throughput direction
-on Host, enter `Menuconfig` and enable **Component config** --->
-**ESP-Hosted config** ---> **Debug Settings** ---> **RawTP**. Set
-the data transfer direction: **Host to Slave**, **Slave to Host** or
-**Bidirectional**.
+**Enable RawTP and set direction on the host:** `Menuconfig` → **Component config** → **ESP-Hosted config** → **Debug Settings** → **RawTP**. Set the direction: **Host to Slave**, **Slave to Host**, or **Bidirectional**.
 
-## 3 Make sure Hosted code is in sync for Master and Slave
+---
 
-The [README](../README.md) instructions will always fetch the latest
-version of ESP-Hosted from the Component Registry. Generally, this
-should be fine. But you can also fetch ESP-Hosted code based on a
-revision to get a fixed version of the code:
+## 3. Keep host and slave code in sync
 
-For example, to fetch version 0.0.9 of ESP-Hosted Master:
+The README instructions fetch the latest ESP-Hosted from the Component Registry, which is usually fine. To pin a fixed version instead, fetch by revision.
+
+Fetch version 0.0.9 of the ESP-Hosted **master**:
 
 ```
 idf.py add-dependency "espressif/esp_hosted^0.0.9"
 ```
 
-To fetch version 0.0.9 of the ESP-Hosted Slave:
+Fetch version 0.0.9 of the ESP-Hosted **slave**:
 
 ```
 idf.py create-project-from-example "espressif/esp_hosted^0.0.9:slave"
 ```
 
-This will ensure that both the Master and Slave code are fixed and in
-sync for your project. Please ensure you use latest versions for bug-fixes
+This keeps master and slave fixed and in sync. Prefer the latest versions for bug fixes.
 
 > [!NOTE]
-> When you switch Hosted versions, make sure you use the same version
-> of the Master and Slave code. There may be changes to the Hosted
-> implementation that may make different versions of Hosted Master and
-> Slave incompatible.
+> When switching Hosted versions, use the **same** version for master and slave. Implementation changes can make mismatched master/slave versions incompatible.
 
-## 4 Make sure GPIOs match on both the Host and Slave
+---
 
-- Check that the GPIOs you use on the Host and Slave are correct and are connected together as expected
-- Verify that the GPIO values you set in `menuconfig` match the hardware GPIOs you are actually using
-- Ensure that you are not using incompatible GPIOs:
-  - on the ESP32, some GPIOs are input only and cannot be used for output
-  - on the ESP32 and ESP32-C6, the GPIOs used for SDIO are fixed and cannot be changed
+## 4. Make GPIOs match on both ends
 
-## 5 ESP-Hosted Master Not Connecting to Slave
+- Check that the GPIOs on host and slave are correct and physically connected together as expected.
+- Verify that the GPIO values set in `menuconfig` match the hardware GPIOs you are actually using.
+- Avoid incompatible GPIOs:
+  - on the ESP32, some GPIOs are input-only and cannot be used for output;
+  - on the ESP32 and ESP32-C6, the GPIOs used for SDIO are **fixed** and cannot be changed.
 
-If you see the following error on the ESP-Hosted Master console using the SPI Interface:
+---
+
+## 5. Master not connecting to slave
+
+Over **SPI**, if the master console shows:
 
 ```
 E (10645) transport: Not able to connect with ESP-Hosted slave device
 ```
 
-or this error on the ESP-Hosted Master console using the SDIO Interface:
+or over **SDIO**:
 
 ```
 E (1735) sdmmc_common: sdmmc_init_ocr: send_op_cond (1) returned 0x107
 ```
 
-It means that something is wrong with the SPI or SDIO connection and
-the Host cannot communicate with the slave.
+then something is wrong with the SPI/SDIO connection and the host cannot talk to the slave.
 
-- Check your physical GPIO signals and verify that they are connected
-- Ensure that you have selected the same transports for the slave and
-  host (both are using the same SPI or SDIO interface).
-  - It is expected that slave and host uses exact same codebase (git commit)
-  - Transport configured at slave matches to that of host
-  - Firmware configured with incompatible configurations also would result in issues.
-- Verify that the physical GPIO signals is the same as those assigned to the system using `Menuconfig` on both the Host and Slave
-- If you selected SDIO as the interface and your host is a classic ESP32, there may be conflict with the GPIO used to bootstrap the ESP32 and used in SDIO. See "Conflicts Between Bootstrap and SDIO on DAT2" in
-  [References](#7-references) for more information
-- for SDIO, verify that pull-ups and other signalling requirements (short, shielded connections) are also met. See the [SDIO interface](sdio.md) page for more information on SDIO requirements
-- If your transport allows on jumper cables, cross-check max length of jumper cables allowed
+- Check the physical GPIO signals and verify they are connected.
+- Ensure host and slave selected the **same** transport (both SPI, or both SDIO):
+  - slave and host should use the exact same codebase (git commit);
+  - the transport configured on the slave must match the host;
+  - incompatible firmware configurations also cause this.
+- Verify the physical GPIO signals match those assigned in `Menuconfig` on **both** host and slave.
+- For SDIO on a classic **ESP32** host, watch for a conflict between the GPIO used to bootstrap the ESP32 and the one used by SDIO — see [References](#7-references).
+- For SDIO, confirm pull-ups and signalling requirements (short, shielded connections) are met — see the [SDIO](getting-started-mcu.md#1-sdio) page.
+- If your transport tolerates jumper cables, cross-check the maximum allowed jumper length in the [Getting Started: MCU](getting-started-mcu.md).
 
-## 6 Getting `Drop Packet` Errors
+---
 
-For the SPI interface, if you see an error similar to this:
+## 6. `Drop Packet` errors
+
+Over **SPI**, an error like:
 
 ```
 I (478522) spi: rcvd_crc[30224] != exp_crc[36043], drop pkt
 ```
 
-Your SPI interface is facing signal integrity errors.
+means the SPI interface is hitting signal-integrity errors.
 
-- try reducing the SPI `CLK` frequency (using `Menuconfig`). If the
-  problem goes away, it indicates that there is an issue with the
-  physical SPI signals
-- use an oscilloscope to check the physical signals on the SPI
-  interface for noise, ringing, etc. that may affect the signals
+- **Lower the SPI `CLK` frequency** (via `Menuconfig`) first. If the problem disappears, the physical SPI signals are the issue.
+- Scope the SPI lines with an oscilloscope for noise, ringing, and other artifacts.
 
-## 7 References
+---
+
+## 7. References
 
 - [Conflicts Between Bootstrap and SDIO on DAT2](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/sd_pullup_requirements.html#conflicts-between-bootstrap-and-sdio-on-dat2)
+- [Getting Started: MCU](getting-started-mcu.md) — wiring rules and jumper limits.
+- [SDIO](getting-started-mcu.md#1-sdio) · [SPI Full-Duplex](getting-started-mcu.md#2-spi-full-duplex) — per-bus pin maps and requirements.
+- [Testing](testing.md) — RawTP fits under the smoke-test layer.

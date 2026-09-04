@@ -1,20 +1,66 @@
-include:
-  - project: 'ci/actions/common'
-    file: 'templates/stable/default-workflow.yml'
-
 stages:
-  - pre
-  - build
-  - build_coprocessor
-  - build_example
+  - regression
   - deploy
 
-before_script:
-  - git submodule update --init --recursive
+variables:
+  GIT_SUBMODULE_STRATEGY: none
+  IDF_VER: "v5.5.4"
+  CCACHE_DIR: "$CI_PROJECT_DIR/.ccache"
 
-include:
-  - '.gitlab/ci/templates.yml'
-  - '.gitlab/ci/rules.yml'
-  - '.gitlab/ci/regression_pipeline_jobs.yml'
-  - '.gitlab/ci/sanity_pipeline_jobs.yml'
-  - '.gitlab/ci/pre_commit.yml'
+.emu_test:
+  image: espressif/idf:${IDF_VER}
+  tags:
+    - build_fw
+  cache:
+    key: eh-emu-${IDF_VER}
+    when: always
+    paths:
+      - .deps/esp-emu/
+      - .ccache/
+  before_script:
+    - git config --global url."https://oauth2:${CI_HOSTED_PAT_EMU}@gitlab.espressif.cn:6688/".insteadOf "ssh://git@gitlab.espressif.cn:27227/"
+    - ./install.sh --full --with-emu --skip-idf -y
+    - . ./export.sh
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" != "success" ]; then
+        echo "########## BUILD-FAILURE DIAGNOSTICS ##########"
+        for f in $(find tests/.work -name build.log 2>/dev/null); do
+          echo ""
+          echo ">>>>>>>>>> BEGIN $f"
+          tail -30 "$f"
+          echo "<<<<<<<<<< END   $f"
+        done
+        echo "########## END DIAGNOSTICS ##########"
+      fi
+
+regression:
+  extends: .emu_test
+  stage: regression
+  script:
+    - eh.py test emu --auto-apply-idf-patches
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "unified_release"'
+
+deploy_master_github:
+  stage: deploy
+  image: $CI_DOCKER_REGISTRY/esp32-ci-env
+  tags:
+    - deploy
+  needs:
+    - regression
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "unified_release"'
+  script:
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -n $GH_KEY > ~/.ssh/id_rsa_base64
+    - base64 --decode --ignore-garbage ~/.ssh/id_rsa_base64 > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+    - git remote remove github &>/dev/null || true
+    - git remote add github git@github.com:espressif/esp-hosted.git
+    - git push github "${CI_COMMIT_SHA}:refs/heads/${CI_COMMIT_REF_NAME}"

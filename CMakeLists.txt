@@ -1,184 +1,107 @@
-if(CONFIG_ESP_HOSTED_ENABLED)
-	message(STATUS "Using Hosted Wi-Fi")
-	set(FG_root_dir ".")
-	set(host_dir "${FG_root_dir}/host")
+cmake_minimum_required(VERSION 3.16)
 
-	set(srcs
-		"${host_dir}/api/src/esp_wifi_weak.c"
-		"${host_dir}/api/src/esp_hosted_api.c"
-		"${host_dir}/api/src/esp_hosted_transport_config.c"
-		"${host_dir}/api/src/esp_hosted_ota_api.c"
-		"${host_dir}/drivers/transport/transport_drv.c"
-		"${host_dir}/drivers/transport/transport_util.c"
-		"${host_dir}/drivers/serial/serial_ll_if.c"
-		"${host_dir}/utils/stats.c"
-		"${host_dir}/drivers/serial/serial_drv.c")
-
-	# only these directories are public. Others are private
-	set(pub_include
-		"${host_dir}"
-		"${host_dir}/api/include")
-
-	set(priv_include
-		"${host_dir}/drivers/transport"
-		"${host_dir}/drivers/transport/spi"
-		"${host_dir}/drivers/transport/sdio"
-		"${host_dir}/drivers/serial"
-		"${host_dir}/utils"
-		"${host_dir}/api/priv")
-
-	# rpc files - wrap -> slaveif -> core
-	set(rpc_dir "${host_dir}/drivers/rpc")
-	set(rpc_core_dir "${rpc_dir}/core")
-	set(rpc_slaveif_dir "${rpc_dir}/slaveif")
-	set(rpc_wrap_dir "${rpc_dir}/wrap")
-
-	list(APPEND srcs
-		"${rpc_core_dir}/rpc_core.c"
-		"${rpc_core_dir}/rpc_req.c"
-		"${rpc_core_dir}/rpc_rsp.c"
-		"${rpc_core_dir}/rpc_evt.c"
-		"${rpc_core_dir}/rpc_utils.c"
-		"${rpc_slaveif_dir}/rpc_slave_if.c"
-		"${rpc_wrap_dir}/rpc_wrap.c")
-
-	list(APPEND priv_include
-		"${rpc_core_dir}"
-		"${rpc_slaveif_dir}"
-		"${rpc_wrap_dir}")
-
-	# virtual serial
-	set(virt_serial_dir "${host_dir}/drivers/virtual_serial_if")
-	list(APPEND srcs  "${virt_serial_dir}/serial_if.c")
-	list(APPEND priv_include "${virt_serial_dir}")
-
-	# slave and host common files
-	set(common_dir "${FG_root_dir}/common")
-
-	list(APPEND srcs
-		"${common_dir}/protobuf-c/protobuf-c/protobuf-c.c"
-		"${common_dir}/proto/esp_hosted_rpc.pb-c.c" )
-
-	list(APPEND priv_include
-		"${common_dir}"
-		"${common_dir}/log"
-		"${common_dir}/rpc"
-		"${common_dir}/transport"
-		"${common_dir}/protobuf-c"
-		"${common_dir}/proto" )
-
-	# mempool
-	if (CONFIG_ESP_HOSTED_USE_MEMPOOL)
-		list(APPEND srcs "${common_dir}/mempool/mempool_ll.c"
-			"${common_dir}/mempool/mempool.c")
-	endif()
-	list(APPEND priv_include "${common_dir}/mempool/include" )
-
-	# cli
-	list(APPEND srcs "${common_dir}/utils/esp_hosted_cli.c")
-	list(APPEND priv_include "${common_dir}/utils")
-
-	# bt (NimBLE)
-	### TODO config for HCI over UART
-	list(APPEND priv_include "${host_dir}/drivers/bt")
-
-	if(CONFIG_ESP_HOSTED_NIMBLE_HCI_VHCI OR CONFIG_ESP_HOSTED_BLUEDROID_HCI_VHCI)
-		list(APPEND srcs "${host_dir}/drivers/bt/vhci_drv.c")
-	else()
-		list(APPEND srcs "${host_dir}/drivers/bt/hci_stub_drv.c")
-	endif()
-
-	# power save
-	list(APPEND priv_include "${host_dir}/drivers/power_save")
-	list(APPEND srcs "${host_dir}/drivers/power_save/power_save_drv.c")
-
-	# transport files
-	if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/drivers/transport/sdio/sdio_drv.c")
-	elseif(CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/drivers/transport/spi_hd/spi_hd_drv.c")
-	elseif(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/drivers/transport/spi/spi_drv.c")
-	elseif(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/drivers/transport/uart/uart_drv.c")
-	endif()
-
-	# port files
-	list(APPEND priv_include "${host_dir}/port/esp/freertos/include")
-
-	list(APPEND srcs
-		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_init.c"
-		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_os.c"
-		#"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ota.c"
-		"${host_dir}/port/esp/freertos/src/port_esp_hosted_host_transport_defaults.c"
-	)
-
-	if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_sdio.c")
-	elseif(CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_spi_hd.c")
-	elseif(CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_spi.c")
-	elseif(CONFIG_ESP_HOSTED_UART_HOST_INTERFACE)
-		list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_uart.c")
-	endif()
-
-	# OpenThread utility functions
-	if(CONFIG_ESP_HOSTED_HOST_OT_ENABLE)
-		list(APPEND srcs "${host_dir}/port/esp/freertos/src/port_esp_hosted_host_ot_util.c")
-	endif()
+if(NOT CMAKE_SCRIPT_MODE_FILE AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    message(FATAL_ERROR
+        "Do not run cmake/idf.py from the repo root.\n"
+        "Build from examples/<feature>/<scenario>/{cp,mcu_host,esp_host}.")
 endif()
 
-if(EXISTS "${IDF_PATH}/components/esp_driver_sdio")
-    message(STATUS "Using new driver components (IDF >= 5.0)")
-    list(APPEND driver_requires esp_driver_sdmmc esp_driver_spi esp_driver_uart esp_driver_gpio)
+set(EH_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
+if(NOT ESP_PLATFORM)
+    set(_eh_cfg "${CMAKE_BINARY_DIR}/config")
+    if(NOT EXISTS "${_eh_cfg}/sdkconfig.cmake")
+        message(FATAL_ERROR
+            "${_eh_cfg}/sdkconfig.cmake is missing.\n"
+            "hosted_project.cmake runs first-pass kconfgen at "
+            "`project()` time before this file is processed; if you "
+            "are reaching this file from another driver, that driver "
+            "must emit sdkconfig.cmake at ${_eh_cfg}/ first.\n"
+            "No fallback to other build dirs is performed by design.")
+    endif()
+    include("${_eh_cfg}/sdkconfig.cmake")
+endif()
+
+# Public `esp_hosted` surface (IDF component + Linux INTERFACE wrap).
+if(ESP_PLATFORM)
+    file(GLOB _eh_feat_incs LIST_DIRECTORIES true RELATIVE "${EH_PATH}"
+        "${EH_PATH}/host/features/eh_host_feat_*/include")
+
+    idf_component_register(NAME esp_hosted
+        INCLUDE_DIRS host/compat/include ${_eh_feat_incs}
+        REQUIRES esp_event esp_timer log esp_common esp_wifi
+        PRIV_REQUIRES driver esp_driver_gpio esp_driver_spi esp_driver_sdmmc esp_driver_uart
+                      esp_pm nvs_flash
+                      protocomm)  # eh_cp_feat_rpc when CP framework is built
+
+    # eh_host  — HOST-side aggregator; every host/ subdir self-attaches.
+    # eh_cp    — CP-side aggregator; every coprocessor/ subdir self-attaches.
+    if(CONFIG_ESP_HOSTED_HOST)
+        if(NOT TARGET eh_host)
+            add_library(eh_host INTERFACE)
+        endif()
+        target_link_libraries(${COMPONENT_LIB} INTERFACE eh_host)
+    endif()
+    if(CONFIG_ESP_HOSTED_CP)
+        if(NOT TARGET eh_cp)
+            add_library(eh_cp INTERFACE)
+        endif()
+        target_link_libraries(${COMPONENT_LIB} INTERFACE eh_cp)
+    endif()
+
+    idf_component_optional_requires(PRIVATE esp_wifi_remote)
+
+    if(CONFIG_ESP_HOSTED_CP_FEAT_WIFI_READY)
+        idf_build_set_property(LINK_OPTIONS "-Wl,--wrap=esp_wifi_connect" APPEND)
+    endif()
 else()
-    message(STATUS "Using legacy driver component (IDF <= 4.4)")
-    list(APPEND driver_requires driver)
+    if(CONFIG_ESP_HOSTED_HOST AND NOT TARGET eh_host)
+        add_library(eh_host INTERFACE)
+    endif()
+    if(CONFIG_ESP_HOSTED_CP AND NOT TARGET eh_cp)
+        add_library(eh_cp INTERFACE)
+    endif()
+
+    if(NOT TARGET esp_hosted)
+        add_library(esp_hosted INTERFACE)
+        if(TARGET eh_host)
+            target_link_libraries(esp_hosted INTERFACE eh_host)
+        endif()
+        if(TARGET eh_cp)
+            target_link_libraries(esp_hosted INTERFACE eh_cp)
+        endif()
+    endif()
+
 endif()
 
-### to support ESP-Hosted events, make esp_event a public requirement
-list(APPEND driver_requires esp_event)
-
-idf_component_register(SRCS ${srcs}
-	PRIV_REQUIRES soc esp_netif esp_timer driver esp_wifi bt esp_http_client console wpa_supplicant openthread
-	REQUIRES ${driver_requires}
-	INCLUDE_DIRS ${pub_include}
-	PRIV_INCLUDE_DIRS ${priv_include})
-
-idf_component_set_property(${COMPONENT_NAME} WHOLE_ARCHIVE TRUE)
-
-if(DEFINED ENV{ESP_HOSTED_CI_PEDANTIC})
-	target_compile_options(${COMPONENT_LIB} PRIVATE
-		-Werror -Werror=deprecated-declarations -Werror=unused-variable
-		-Werror=unused-but-set-variable -Werror=unused-function
-		$<$<COMPILE_LANGUAGE:C>:-Wstrict-prototypes>)
+if(CONFIG_ESP_HOSTED)
+    add_subdirectory("${EH_PATH}/common"       ${CMAKE_BINARY_DIR}/common)
 endif()
 
-if(CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE)
-	idf_component_optional_requires(PRIVATE sdmmc)
+if(CONFIG_ESP_HOSTED_HOST)
+    add_subdirectory("${EH_PATH}/host/eh_host_config"
+                     ${CMAKE_BINARY_DIR}/eh_host_config)
 endif()
+if(CONFIG_ESP_HOSTED_CP)
+    add_subdirectory("${EH_PATH}/coprocessor"  ${CMAKE_BINARY_DIR}/coprocessor)
+endif()
+if(CONFIG_ESP_HOSTED_HOST)
+    add_subdirectory("${EH_PATH}/host"         ${CMAKE_BINARY_DIR}/host)
+endif()
+add_subdirectory("${EH_PATH}/port"             ${CMAKE_BINARY_DIR}/port)
 
-# Required if using ESP-IDF without commit 6b6065de509b5de39e4655fd425bf96f43b365f7:
-# fix(driver_spi): fix p4 cache auto writeback during spi(dma) rx
-# if(CONFIG_IDF_TARGET_ESP32P4 AND (CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE OR CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE))
-# 	# used to workaround SPI transfer issue
-# 	idf_component_optional_requires(PRIVATE esp_mm)
-# endif()
+if(CONFIG_ESP_HOSTED_HOST)
+    if(CONFIG_ESP_HOSTED_HOST_PORT_TYPE_ESP_IDF)
+        add_subdirectory("${EH_PATH}/port/os/idf"
+                         ${CMAKE_BINARY_DIR}/port_os_idf)
+        target_link_libraries(eh_host INTERFACE eh_host_port_idf)
+    elseif(CONFIG_ESP_HOSTED_HOST_PORT_TYPE_POSIX)
+        add_subdirectory("${EH_PATH}/port/os/posix"
+                         ${CMAKE_BINARY_DIR}/port_os_posix)
+        target_link_libraries(eh_host INTERFACE eh_host_port_posix)
+    endif()
 
-
-if(CONFIG_ESP_HOSTED_NETWORK_SPLIT_ENABLED)
-    idf_component_get_property(lwip lwip COMPONENT_LIB)
-    if(TARGET ${lwip})
-    	# Use generator expressions to only apply to non-INTERFACE targets
-    	get_target_property(lwip_type ${lwip} TYPE)
-    	if(NOT lwip_type STREQUAL "INTERFACE_LIBRARY")
-			#target_include_directories(${lwip} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/common")
-			#target_compile_definitions(${lwip} PRIVATE "-DESP_IDF_LWIP_HOOK_FILENAME=\"${CMAKE_CURRENT_SOURCE_DIR}/common/esp_hosted_lwip_src_port_hook.h\"")
-
-            # Some IDF release/v5.4 commits fail to attach hook file for udp.c, so mandate attach for every file in lwip build
-        	message(STATUS "********** Configuring LWIP for network split port configs **********")
-            target_compile_options(${lwip} PRIVATE "-include" "${CMAKE_CURRENT_SOURCE_DIR}/common/esp_hosted_lwip_src_port_hook.h")
-    	endif()
+    if(NOT ESP_PLATFORM AND TARGET esp_event)
+        target_link_libraries(eh_host INTERFACE esp_event)
     endif()
 endif()
