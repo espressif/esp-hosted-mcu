@@ -1,5 +1,10 @@
 # Unreleased - Main Branch
 
+
+# Releases
+
+# $${\color{green} \text{2.12.13}}$$
+
 - host: protected access to sync and async response tables and uid incrementing with mutex locks
 - co-processor: added Tx retry and statistic counters for AP interface. Corrected STA interface to only retry on `ESP_ERR_NO_MEM`.
 - co-processor: added Kconfig setting for number of Tx retries, default changed from 1 retry to 5.
@@ -16,7 +21,6 @@
 - fixed RPC response parse failures being reported as success, which could crash the host in `esp_wifi_sta_get_ap_info()`
 - fixed RPC serial reassembly stalling the RX datapath when an RPC handler is slow
 
-# Releases
 
 # $${\color{green} \text{2.12.12}}$$
 

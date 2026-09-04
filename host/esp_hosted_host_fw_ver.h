@@ -19,7 +19,7 @@ extern "C" {
 
 #define ESP_HOSTED_VERSION_MAJOR_1 2
 #define ESP_HOSTED_VERSION_MINOR_1 12
-#define ESP_HOSTED_VERSION_PATCH_1 12
+#define ESP_HOSTED_VERSION_PATCH_1 13
 
 /**
  * Macro to convert version number into an integer
