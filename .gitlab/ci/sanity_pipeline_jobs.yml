@@ -21,7 +21,7 @@ sanity_build_idf_release_mqtt:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example_mqtt
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -33,7 +33,7 @@ sanity_build_idf_release_mqtt:
 ### wifi/iperf example
 sanity_build_idf_v5.5_iperf:
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -47,7 +47,7 @@ sanity_build_idf_v5.5_iperf_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -74,7 +74,7 @@ sanity_build_idf_master_iperf:
 
 sanity_build_coprocessor_idf_v5.5:
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -87,7 +87,7 @@ sanity_build_coprocessor_idf_v5.5_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -106,6 +106,14 @@ sanity_build_coprocessor_idf_master:
     matrix:
       - IDF_TARGET: ["esp32c6", "esp32c5", "esp32c61"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
+      - IDF_TARGET: ["esp32"]
+        SLAVE_CI_FILE: ["sdio", "uart"]
+      # esp32 + spi overflows iram0_0_seg on IDF master; this gate is link coverage
+      - IDF_TARGET: ["esp32"]
+        SLAVE_CI_FILE: ["spi"]
+        CONFIG_OVERRIDE: "CONFIG_ESP_WIFI_IRAM_OPT=n"
+      - IDF_TARGET: ["esp32c2", "esp32c3", "esp32s3"]
+        SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
 # verify co-processor targets with BT only
 sanity_build_coprocessor_idf_master_2:
@@ -135,7 +143,7 @@ sanity_build_coprocessor_rcp_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -165,7 +173,7 @@ sanity_build_nimble_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -195,7 +203,7 @@ sanity_build_bluedroid_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -228,7 +236,7 @@ sanity_build_wifi_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -261,7 +269,7 @@ sanity_build_transport_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -291,7 +299,7 @@ sanity_build_zigbee_examples:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -301,19 +309,27 @@ sanity_build_zigbee_examples:
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         EXAMPLE_TO_BUILD: ["host_zigbee_thermostat"]
 
-###
-### Promote staging to the release/v2.x support branch after successful regression testing
-###
-
-promote_staging_to_release_v2:
-  stage: deploy
+create_release_tag:
+  stage: release
   image: python:3.8
+  tags:
+    - build
   before_script: []
   dependencies: []
   rules:
-    - if: $CI_COMMIT_BRANCH == "staging" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
   script:
-    - git remote set-url origin https://oauth2:${GITLAB_TOKEN_STAGING_TO_MAIN}@gitlab.espressif.cn:6688/app-frameworks/esp_hosted_mcu.git
-    - git push origin $CI_COMMIT_SHA:refs/heads/release/v2.x
-  tags:
-    - build
+    - |
+      set -e
+      VER=$(python3 -c "import re,sys;print(re.search(r'^version:\s*\"?([^\"\s]+)\"?', open('idf_component.yml').read(), re.M).group(1))")
+      test -n "${VER}"
+      git remote set-url origin "https://oauth2:${GITLAB_TOKEN_STAGING_TO_MAIN}@gitlab.espressif.cn:6688/app-frameworks/esp_hosted_mcu.git"
+      # tags are not fetched at the default git depth, so ask the remote
+      if git ls-remote --tags --exit-code origin "refs/tags/v${VER}" >/dev/null 2>&1; then
+        echo "v${VER} already released"
+        exit 0
+      fi
+      git config user.name "$GITLAB_USER_NAME"
+      git config user.email "$GITLAB_USER_EMAIL"
+      git tag -a "v${VER}" "$CI_COMMIT_SHA" -m "ESP-Hosted-MCU ${VER}"
+      git push origin "v${VER}"

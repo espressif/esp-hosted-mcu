@@ -13,7 +13,7 @@ regression_build_idf_v5.3_mqtt_h2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example_mqtt
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -28,7 +28,7 @@ regression_build_idf_v5.3_mqtt_p4:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example_mqtt
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -43,7 +43,7 @@ regression_build_idf_v5.4_mqtt:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example_mqtt
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -56,7 +56,7 @@ regression_build_idf_v5.5_iperf:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -72,7 +72,7 @@ regression_build_idf_v5.5_iperf_2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -86,7 +86,7 @@ regression_build_idf_master_iperf:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.default_rules, rules]
   extends: .build_template
   image: espressif/idf:latest
   parallel:
@@ -99,7 +99,7 @@ regression_build_coprocessor_idf_v5.3_pt1:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -114,7 +114,7 @@ regression_build_coprocessor_idf_v5.3_pt2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -129,7 +129,7 @@ regression_build_coprocessor_idf_v5.3_esp32:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -144,7 +144,7 @@ regression_build_coprocessor_idf_v5.4_pt1:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -157,7 +157,7 @@ regression_build_coprocessor_idf_v5.4_pt2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -170,7 +170,7 @@ regression_build_coprocessor_idf_v5.4_esp32:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -183,7 +183,7 @@ regression_build_coprocessor_idf_v5.5:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -198,7 +198,7 @@ regression_build_coprocessor_idf_v5.5_2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -211,7 +211,7 @@ regression_build_coprocessor_idf_v5.5_esp32:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -226,7 +226,7 @@ regression_build_coprocessor_idf_v5.5_esp32_2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -239,7 +239,7 @@ regression_build_coprocessor_idf_master_all_features_enabled:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.default_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:latest
   parallel:
@@ -251,7 +251,7 @@ regression_build_nimble_examples_h2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -267,7 +267,7 @@ regression_build_nimble_examples_p4:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -283,7 +283,7 @@ regression_build_bluedroid_examples_h2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -301,7 +301,7 @@ regression_build_bluedroid_examples_p4:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -319,7 +319,7 @@ regression_build_wifi_examples_h2:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -337,7 +337,7 @@ regression_build_wifi_examples_p4:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -357,7 +357,7 @@ regression_build_wifi_examples_p4:
 # for p4, build for other ESP-IDFs
 regression_build_transport_examples_h2:
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -370,7 +370,7 @@ regression_build_transport_examples_h2:
 
 regression_build_transport_examples_p4:
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -386,7 +386,7 @@ regression_build_misc_examples:
   tags:
     - build
   rules:
-    - !reference [.staging_branch_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
