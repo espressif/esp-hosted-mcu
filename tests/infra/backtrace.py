@@ -26,6 +26,17 @@ def _find_addr2line(chip):
             return r.stdout.strip()
     except Exception:
         pass
+
+    # pytest runs outside the IDF environment, so PATH usually lacks the
+    # toolchain. Fall back to the espressif tools tree.
+    import glob
+    for root in (os.environ.get('IDF_TOOLS_PATH'),
+                 os.path.expanduser('~/.espressif')):
+        if not root:
+            continue
+        hits = glob.glob(os.path.join(root, 'tools', '*', '*', '*', 'bin', tool))
+        if hits:
+            return sorted(hits)[-1]
     return None
 
 
@@ -39,7 +50,7 @@ def _find_elf(build_dir):
     return None
 
 
-def _decode_addrs(addr2line, elf, addrs):
+def _decode_addrs(addr2line, elf, addrs, full_paths=False):
     """Decode addresses to short function+file:line. Returns {addr: short_str}."""
     if not addrs:
         return {}
@@ -61,8 +72,9 @@ def _decode_addrs(addr2line, elf, addrs):
             detail = m.group(2)
             if '??' in detail:
                 continue
-            # Shorten paths to filename only
-            detail = re.sub(r'/[^\s:]+/([^/\s:]+:\d+)', r'\1', detail)
+            if not full_paths:
+                # Shorten paths to filename only
+                detail = re.sub(r'/[^\s:]+/([^/\s:]+:\d+)', r'\1', detail)
             detail = detail.replace(' (inlined by) ', ' <- ')
             results[addr] = detail
     return results

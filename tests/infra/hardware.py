@@ -60,19 +60,23 @@ def eh_test_hw_probe_device(port, expected_chip=None, timeout=5):
         idf_python = os.path.join(os.environ.get('IDF_PYTHON_ENV_PATH', ''), 'bin', 'python')
         if not os.path.exists(idf_python):
             idf_python = 'python'
-        cmd = (f'{idf_python} -m esptool --port {port}'
-               f' --before default_reset --after no_reset read_mac')
-        r = subprocess.run(
-            cmd, shell=True,
-            capture_output=True, text=True, timeout=timeout
-        )
-        output = r.stdout + r.stderr
+        # esptool 6.x renamed these to hyphenated forms and deprecated the
+        # underscore ones; 4.x/5.x only know underscores. Try hyphens, fall
+        # back, so an IDF up/downgrade does not blind the probe.
+        variants = (' --before default-reset --after no-reset read-mac',
+                    ' --before default_reset --after no_reset read_mac')
+        r, output = None, ''
+        for v in variants:
+            cmd = f'{idf_python} -m esptool --port {port}{v}'
+            r = subprocess.run(cmd, shell=True, capture_output=True,
+                               text=True, timeout=timeout)
+            output = r.stdout + r.stderr
+            if re.search(r'Chip (?:is|type:)', output):
+                break
 
-        # Parse chip type. esptool <5 prints "Chip is <name>"; esptool 5 (IDF 6.0)
-        # prints "Chip type:   <name>". Both fall back to "Detecting chip type...".
-        chip_match = re.search(r'Chip is (\S+)', output)
-        if not chip_match:
-            chip_match = re.search(r'Chip type:\s+(\S+)', output)
+        # Parse chip type. esptool <=4.x prints "Chip is <name>"; 5.x/6.x print
+        # "Chip type: <name>". Accept both so an IDF bump does not blind the probe.
+        chip_match = re.search(r'Chip (?:is|type:)\s+(\S+)', output)
         if not chip_match:
             chip_match = re.search(r'Detecting chip type[.\s]*(\S+)', output)
 
@@ -80,12 +84,10 @@ def eh_test_hw_probe_device(port, expected_chip=None, timeout=5):
             result['chip'] = chip_match.group(1)
             result['connected'] = True
 
-            # Extract silicon revision: "Chip is ESP32-P4 (revision v0.2)" or,
-            # on esptool 5 (IDF 6.0), "Chip type:   ESP32-P4 (revision v1.3)".
-            # Without the second spelling a P4 bench aborts every HW run:
-            # _rev_overlay() treats an unreadable P4 revision as build-critical.
+            # Silicon revision, same two spellings:
+            #   "Chip is ESP32-P4 (revision v0.2)" / "Chip type: ESP32-P4 (revision v1.3)"
             rev_match = re.search(
-                r'(?:Chip is|Chip type:)\s+\S+\s+\(revision\s+v?(\d+\.\d+)\)', output)
+                r'Chip (?:is|type:)\s+\S+\s+\(revision\s+v?(\d+\.\d+)\)', output)
             if rev_match:
                 result['revision'] = rev_match.group(1)
 

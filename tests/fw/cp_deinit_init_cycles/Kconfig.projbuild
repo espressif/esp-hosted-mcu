@@ -1,0 +1,12 @@
+menu "Test harness: CP deinit/init cycles"
+
+config EH_TEST_CP_DEINIT_INIT_CYCLES
+    int "deinit/init cycles to run at boot"
+    default 0
+    range 0 1000
+    help
+        Run this many deinit and init cycles on a temporary task after boot,
+        printing free heap once per cycle at the same point. 0 disables the
+        harness and compiles none of it.
+
+endmenu
