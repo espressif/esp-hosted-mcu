@@ -9,27 +9,9 @@
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "release/v2.x"
 
 # release branch rule
-# Regression gates the MERGE, not the push. The GitHub push mirror fires on the
-# push event and cannot be sequenced after a pipeline, so a job that runs only
-# after the merge can report a failure but cannot stop publication. Running the
-# regression suite on the merge request, with
-# only_allow_merge_if_pipeline_succeeds enabled, is what keeps a failing build
-# off release/v2.x and therefore off GitHub.
-#
-# Stage order gives early failure: build (host + unpinned idf_master canaries)
-# -> build_coprocessor -> build_example (heavy matrix), so a broken tree dies in
-# the cheap stage instead of after the full matrix.
-# Two clauses on purpose:
-#   merge_request_event -> the authoritative gate. With
-#     only_allow_merge_if_pipeline_succeeds, red here means no merge, so
-#     release/v2.x never moves and the mirror has nothing to publish.
-#   push                -> re-runs on the merge commit. Advisory: the mirror has
-#     already published by then. It verifies the actual merged tree (merged-results
-#     pipelines are off, so the MR only ever tested the source head) and keeps the
-#     protected-branch pipeline non-empty, which GitLab treats as an error.
+# used for the post-merge breadth matrix on release/v2.x
 .release_branch_rules:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "release/v2.x"
     - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
 
 # no build rule to disable jobs temporarily

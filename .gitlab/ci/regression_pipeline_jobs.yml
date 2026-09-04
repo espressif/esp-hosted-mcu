@@ -86,7 +86,7 @@ regression_build_idf_master_iperf:
   tags:
     - build
   rules:
-    - !reference [.release_branch_rules, rules]
+    - !reference [.default_rules, rules]
   extends: .build_template
   image: espressif/idf:latest
   parallel:
@@ -239,7 +239,7 @@ regression_build_coprocessor_idf_master_all_features_enabled:
   tags:
     - build
   rules:
-    - !reference [.release_branch_rules, rules]
+    - !reference [.default_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:latest
   parallel:

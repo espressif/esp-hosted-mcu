@@ -21,7 +21,7 @@ sanity_build_idf_release_mqtt:
   variables:
     EXAMPLE_CI_FILE: "sdkconfig.ci.p4_wifi"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example_mqtt
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -33,7 +33,7 @@ sanity_build_idf_release_mqtt:
 ### wifi/iperf example
 sanity_build_idf_v5.5_iperf:
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -47,7 +47,7 @@ sanity_build_idf_v5.5_iperf_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -74,7 +74,7 @@ sanity_build_idf_master_iperf:
 
 sanity_build_coprocessor_idf_v5.5:
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -87,7 +87,7 @@ sanity_build_coprocessor_idf_v5.5_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -106,6 +106,10 @@ sanity_build_coprocessor_idf_master:
     matrix:
       - IDF_TARGET: ["esp32c6", "esp32c5", "esp32c61"]
         SLAVE_CI_FILE: ["sdio", "spi", "spi_hd", "uart", "dpp"]
+      - IDF_TARGET: ["esp32"]
+        SLAVE_CI_FILE: ["sdio", "spi", "uart"]
+      - IDF_TARGET: ["esp32c2", "esp32c3", "esp32s3"]
+        SLAVE_CI_FILE: ["spi", "spi_hd", "uart"]
 
 # verify co-processor targets with BT only
 sanity_build_coprocessor_idf_master_2:
@@ -135,7 +139,7 @@ sanity_build_coprocessor_rcp_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_coprocessor
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -165,7 +169,7 @@ sanity_build_nimble_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -195,7 +199,7 @@ sanity_build_bluedroid_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -228,7 +232,7 @@ sanity_build_wifi_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -261,7 +265,7 @@ sanity_build_transport_examples_2:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
@@ -291,7 +295,7 @@ sanity_build_zigbee_examples:
   variables:
     OVERRIDE_IDF_CI_CONSTRAINTS: "v5.5"
   rules:
-    - !reference [.default_rules, rules]
+    - !reference [.release_branch_rules, rules]
   extends: .build_template_example
   image: espressif/idf:${IDF_VER}
   parallel:
