@@ -37,11 +37,16 @@ target_link_libraries(eh_cp_feat_nw_split INTERFACE
     -Wl,--wrap=esp_wifi_internal_reg_rxcb
 )
 
-if(TARGET lwip)
-    target_include_directories(lwip PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-    target_compile_definitions(lwip PRIVATE
-        "ESP_IDF_LWIP_HOOK_FILENAME=\"eh_cp_feat_nw_split_lwip_hook.h\""
-    )
+# 1. Override lwIP's ephemeral port range for network split.
+# 2. Force-include the shared header into all lwIP source files.
+# 3. ESP_IDF_LWIP_HOOK_FILENAME cannot be used because some sources
+#    (e.g. udp.c) do not include the hook header.
+if(COMMAND idf_component_get_property)
+    idf_component_get_property(eh_lwip lwip COMPONENT_LIB)
+    if(TARGET ${eh_lwip})
+        target_compile_options(${eh_lwip} PRIVATE "-include"
+            "${CMAKE_CURRENT_LIST_DIR}/../../../common/eh_common/include/eh_nw_split_lwip_src_port_hook.h")
+    endif()
 endif()
 
 if(CONFIG_ESP_HOSTED_CP_FEAT_NW_SPLIT_AUTO_INIT)
