@@ -18,6 +18,7 @@
 #include "eh_host_mcu_transport_init_event.h"
 #include "eh_common_sdio_cfg.h"
 #include "eh_host_raw_tp_stats.h"
+#include "eh_host_pkt_stats.h"
 #include "eh_host_port_sdio_reg.h"
 #include "eh_host_port_sdio.h"
 #include "eh_mempool.h"
@@ -870,6 +871,9 @@ static void sdio_tx_aggregate_iter(void)
 		}
 		if (got != BUFFER_AVAILABLE) {
 			sdio_aggr_credit_timeouts++;
+#if ESP_PKT_STATS
+			pkt_stats.tx_credit_stalls++;
+#endif
 			if (has_ctrl || sdio_aggr_credit_timeouts >= SDIO_AGGR_NO_CREDIT_WEDGE)
 				ESP_LOGE(TAG, "SDIO aggr: no slave credits (%lu consecutive)%s — "
 				         "slave stalled?", (unsigned long)sdio_aggr_credit_timeouts,
@@ -1260,10 +1264,8 @@ static esp_err_t sdio_packet_push_data_to_queue(uint8_t * buf, uint32_t buf_len)
 static esp_err_t sdio_push_aggr_to_queue(uint8_t *buf, uint32_t buf_len)
 {
 	uint16_t len = 0, offset = 0;
-	uint16_t nsub = 0;
-#if CONFIG_ESP_HOSTED_HOST_SDIO_AGGR_TRACE
-	uint32_t total = buf_len;
-#endif
+	uint16_t subframes = 0;
+	const uint32_t aggr_len = buf_len;
 
 	while (buf_len > sizeof(struct esp_payload_header)) {
 		struct esp_payload_header *dh = (struct esp_payload_header *)buf;
@@ -1272,8 +1274,10 @@ static esp_err_t sdio_push_aggr_to_queue(uint8_t *buf, uint32_t buf_len)
 
 		if (!is_valid_sdio_rx_packet(buf, &len, &offset)) {
 			sdio_rx_stream_drops++;
-			ESP_LOGE(TAG, "aggr rx: invalid sub-frame (drop#%lu, remaining=%lu)",
-			         (unsigned long)sdio_rx_stream_drops, (unsigned long)buf_len);
+			ESP_LOGE(TAG, "aggr rx: invalid sub-frame (drop#%lu, remaining=%lu of "
+			         "aggr_len=%lu, subframes_ok=%u)",
+			         (unsigned long)sdio_rx_stream_drops, (unsigned long)buf_len,
+			         (unsigned long)aggr_len, subframes);
 			return ESP_FAIL;                    /* undecodable past this point */
 		}
 
@@ -1291,7 +1295,7 @@ static esp_err_t sdio_push_aggr_to_queue(uint8_t *buf, uint32_t buf_len)
 				ESP_LOGI(TAG, "aggr rx: failed to queue sub-frame");
 		} /* OOM: skip this sub-frame, keep walking */
 
-		nsub++;
+		subframes++;
 		uint32_t aligned = (packet_size + 3u) & ~3u;
 		if (aligned >= buf_len)
 			goto out_ok;
@@ -1300,11 +1304,9 @@ static esp_err_t sdio_push_aggr_to_queue(uint8_t *buf, uint32_t buf_len)
 	}
 out_ok:
 #if CONFIG_ESP_HOSTED_HOST_SDIO_AGGR_TRACE
-	if (nsub > 1)
+	if (subframes > 1)
 		ESP_LOGI(TAG, "sdio aggr rx: %u sub-frames (%lu B)",
-			         nsub, (unsigned long)total);
-#else
-	(void)nsub;
+			         subframes, (unsigned long)aggr_len);
 #endif
 	return ESP_OK;
 }

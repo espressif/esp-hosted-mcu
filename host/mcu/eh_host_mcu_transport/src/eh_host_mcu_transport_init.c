@@ -23,6 +23,7 @@
 #include "eh_host_auto_init.h"
 #include "eh_host_port_task.h"
 #include "eh_host_raw_tp_stats.h"
+#include "eh_host_pkt_stats.h"
 #include "esp_log.h"
 
 /* Once per bring-up; cleared in eh_host_mcu_transport_deinit() so a reinit
@@ -233,12 +234,14 @@ int eh_host_mcu_transport_init(void)
     eh_host_port_mutex_lock(s_mtx);
     s_inited = 1;
     eh_host_port_mutex_unlock(s_mtx);
+    eh_host_pkt_stats_init();
     return 0;
 }
 
 int eh_host_mcu_transport_deinit(void)
 {
     eh_host_raw_tp_deinit();
+    eh_host_pkt_stats_deinit();
 
     ensure_mtx();
     eh_host_port_mutex_lock(s_mtx);

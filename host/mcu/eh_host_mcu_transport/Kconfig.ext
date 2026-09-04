@@ -74,4 +74,26 @@ if ESP_HOSTED_HOST_TRANSPORT_MCU
 			default 1460
 	endmenu
 
+	menu "Transport Debug"
+		config ESP_HOSTED_HOST_PKT_STATS
+			bool "Transport packet stats"
+			depends on ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+			default n
+			help
+				Log the host datapath counters at regular intervals. The
+				counters show TX in, out and discards, RX in and out, credit
+				stalls.
+
+				To find frame loss between the network stack and the CP,
+				compare these counters with the CP packet stats.
+
+				This option is a debug aid. Keep it disabled in production
+				builds.
+
+		config ESP_HOSTED_HOST_PKT_STATS_INTERVAL_SEC
+			depends on ESP_HOSTED_HOST_PKT_STATS
+			int "Packet stats reporting interval (sec)"
+			default 30
+	endmenu
+
 endif
