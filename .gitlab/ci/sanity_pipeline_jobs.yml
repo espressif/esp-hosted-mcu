@@ -305,3 +305,27 @@ sanity_build_zigbee_examples:
         IDF_SLAVE_TARGET: ["esp32c6", "esp32c5"]
         EXAMPLE_TO_BUILD: ["host_zigbee_thermostat"]
 
+create_release_tag:
+  stage: release
+  image: python:3.8
+  tags:
+    - build
+  before_script: []
+  dependencies: []
+  rules:
+    - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
+  script:
+    - |
+      set -e
+      VER=$(python3 -c "import re,sys;print(re.search(r'^version:\s*\"?([^\"\s]+)\"?', open('idf_component.yml').read(), re.M).group(1))")
+      test -n "$VER"
+      git remote set-url origin "https://oauth2:${GITLAB_TOKEN_STAGING_TO_MAIN}@gitlab.espressif.cn:6688/app-frameworks/esp_hosted_mcu.git"
+      # tags are not fetched at the default git depth, so ask the remote
+      if git ls-remote --tags --exit-code origin "refs/tags/v${VER}" >/dev/null 2>&1; then
+        echo "v${VER} already released"
+        exit 0
+      fi
+      git config user.name "$GITLAB_USER_NAME"
+      git config user.email "$GITLAB_USER_EMAIL"
+      git tag -a "v${VER}" "$CI_COMMIT_SHA" -m "ESP-Hosted-MCU ${VER}"
+      git push origin "v${VER}"
