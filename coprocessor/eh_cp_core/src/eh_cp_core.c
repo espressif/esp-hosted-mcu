@@ -46,7 +46,11 @@
 #include "eh_frame.h"
 #include "eh_check.h"
 
+/* Limit feature count to the mask size; overflow could skip init/deinit. */
+#define EH_CP_FEAT_CAP 32
 static void auto_feat_init_task(void *pvParameters);
+static size_t feat_count(void);
+static size_t feat_next(uint32_t *seen, size_t n, bool ascending);
 
 
 #define BYPASS_TX_PRIORITY_Q 1
@@ -111,9 +115,21 @@ esp_netif_t *slave_sta_netif = NULL;
 SemaphoreHandle_t host_reset_sem;
 
 static bool g_eh_cp_initialized = false;
+
+static volatile bool g_cp_running;
+static EventGroupHandle_t g_task_exit_eg;
+#define EH_CP_EXIT_RECV   BIT0
+#define EH_CP_EXIT_SEND   BIT1
+#define EH_CP_EXIT_RESET  BIT2
+#define EH_CP_Q_SENTINEL  0xFF   /* not a queue index */
+#define EH_CP_TASK_EXIT_WAIT_MS 2000
+#define EH_CP_FEAT_INIT_WAIT_MS 10000
 static SemaphoreHandle_t g_init_mutex = NULL;
 
 EventGroupHandle_t g_auto_feat_init_done_eg = NULL;
+
+/* Tracks which features have been initialized. */
+static uint32_t s_feat_inited_mask;
 
 
 static void print_firmware_version(void);
@@ -626,7 +642,7 @@ done:
 
 static inline bool recv_ready(void)
 {
-	return datapath && if_handle->state == ACTIVE && eh_cp_host_ps_reachable();
+	return datapath && if_handle && if_handle->state == ACTIVE && eh_cp_host_ps_reachable();
 }
 
 static TaskHandle_t s_recv_task_handle;
@@ -651,10 +667,13 @@ static void recv_task(void* pvParameters)
 {
 	interface_buffer_handle_t buf_handle = {0};
 
-	for (;;) {
+	while (g_cp_running) {
 
-		while (!recv_ready())
+		while (g_cp_running && !recv_ready())
 			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+		if (!g_cp_running)
+			break;
 
 		int len = if_context->if_ops->read(if_handle, &buf_handle);
 		if (len <= 0) {
@@ -666,6 +685,10 @@ static void recv_task(void* pvParameters)
 
 		process_rx_pkt(&buf_handle);
 	}
+
+	s_recv_task_handle = NULL;   /* eh_cp_recv_kick() reads this */
+	xEventGroupSetBits(g_task_exit_eg, EH_CP_EXIT_RECV);
+	vTaskDelete(NULL);
 }
 
 
@@ -829,17 +852,23 @@ static void send_task(void* pvParameters)
 	uint8_t queue_type = 0;
 	interface_buffer_handle_t buf_handle = {0};
 
-	while (1) {
+	while (g_cp_running) {
 
 		if (!datapath) {
 			vTaskDelay(pdMS_TO_TICKS(100));
 			continue;
 		}
 
-		if (xQueueReceive(meta_to_host_queue, &queue_type, portMAX_DELAY))
+		if (xQueueReceive(meta_to_host_queue, &queue_type, portMAX_DELAY)) {
+			if (!g_cp_running || queue_type == EH_CP_Q_SENTINEL)
+				break;
 			if (xQueueReceive(to_host_queue[queue_type], &buf_handle, portMAX_DELAY))
 				process_tx_pkt(&buf_handle);
+		}
 	}
+
+	xEventGroupSetBits(g_task_exit_eg, EH_CP_EXIT_SEND);
+	vTaskDelete(NULL);
 }
 #endif
 
@@ -852,10 +881,12 @@ static void host_reset_task(void* pvParameters)
 
 	ESP_LOGI(TAG, "host reset handler task started");
 
-	while (1) {
+	while (g_cp_running) {
 
 		if (host_reset_sem) {
 			xSemaphoreTake(host_reset_sem, portMAX_DELAY);
+			if (!g_cp_running)
+				break;
 			ESP_LOGI(TAG, "host_reset_task: host_reset_sem taken, preparing slave-up TLV");
 		} else {
 			vTaskDelay(pdMS_TO_TICKS(100));
@@ -873,6 +904,9 @@ static void host_reset_task(void* pvParameters)
 		ESP_LOGI(TAG,"Send slave up event");
 		generate_startup_event(capa, ext_capa, raw_tp_cap, feat_caps);
 	}
+
+	xEventGroupSetBits(g_task_exit_eg, EH_CP_EXIT_RESET);
+	vTaskDelete(NULL);
 }
 
 
@@ -921,6 +955,12 @@ esp_err_t eh_cp_init_internal(void)
         ESP_LOGE(TAG, "Failed to create ext_init_done event group");
         return ESP_ERR_NO_MEM;
     }
+    g_task_exit_eg = xEventGroupCreate();
+    if (!g_task_exit_eg) {
+        ESP_LOGE(TAG, "Failed to create task_exit event group");
+        return ESP_ERR_NO_MEM;
+    }
+    g_cp_running = true;
     populate_core_caps();
 
     assert(host_reset_sem = xSemaphoreCreateBinary());
@@ -1099,71 +1139,221 @@ static void populate_core_caps(void)
     ESP_LOGI(TAG, "Core caps: 0x%02x  ext_caps: 0x%08"PRIx32, caps, ext_caps);
 }
 
-esp_err_t eh_cp_deinit(void)
+/* Wait for feature init to finish before deinit. */
+static esp_err_t deinit_await_feat_init(void)
 {
-    eh_cp_deinit_transport_test_debugging_tasks();
+    if (!g_auto_feat_init_done_eg)
+        return ESP_OK;
 
-    for (const eh_cp_feat_desc_t *d = &_eh_cp_feat_descs_start;
-         d < &_eh_cp_feat_descs_end; d++) {
-        if (d->deinit_fn) {
-            esp_err_t r = d->deinit_fn();
-            if (r != ESP_OK) {
-                ESP_LOGW(TAG, "ext '%s' deinit failed: %s",
-                         d->name ? d->name : "?", esp_err_to_name(r));
-            }
+    EventBits_t done = xEventGroupWaitBits(g_auto_feat_init_done_eg,
+                                           EH_CP_FEAT_INIT_DONE_BIT, pdFALSE, pdTRUE,
+                                           pdMS_TO_TICKS(EH_CP_FEAT_INIT_WAIT_MS));
+    if (!(done & EH_CP_FEAT_INIT_DONE_BIT)) {
+        ESP_LOGE(TAG, "deinit: feature init unfinished after %d ms, releasing nothing",
+                 EH_CP_FEAT_INIT_WAIT_MS);
+        return ESP_ERR_TIMEOUT;
+    }
+    return ESP_OK;
+}
+
+/* Stop datapath tasks before releasing their resources. */
+static esp_err_t deinit_stop_tasks(void)
+{
+    /* datapath clears before any wake, so a woken task leaves. */
+    g_cp_running = false;
+    datapath = 0;
+
+    /* A notify only covers the recv_ready() gate. A reader parked inside
+     * if_ops->read() needs the transport to release it, and deinit does that
+     * too late - the core waits for recv_task to exit before calling it. */
+    if (if_context && if_context->if_ops && if_context->if_ops->stop)
+        if_context->if_ops->stop(if_handle);
+    if (s_recv_task_handle)
+        xTaskNotifyGive(s_recv_task_handle);
+#if !BYPASS_TX_PRIORITY_Q
+    if (meta_to_host_queue) {
+        uint8_t sentinel = EH_CP_Q_SENTINEL;
+        xQueueSend(meta_to_host_queue, &sentinel, 0);
+    }
+#endif
+    if (host_reset_sem)
+        xSemaphoreGive(host_reset_sem);
+
+    EventBits_t want = EH_CP_EXIT_RECV | EH_CP_EXIT_RESET;
+#if !BYPASS_TX_PRIORITY_Q
+    want |= EH_CP_EXIT_SEND;
+#endif
+    EventBits_t got = xEventGroupWaitBits(g_task_exit_eg, want, pdFALSE, pdTRUE,
+                                          pdMS_TO_TICKS(EH_CP_TASK_EXIT_WAIT_MS));
+    if ((got & want) != want) {
+        ESP_LOGE(TAG, "deinit: tasks still running (want 0x%02x got 0x%02x)",
+                 (unsigned)want, (unsigned)got);
+        return ESP_ERR_TIMEOUT;
+    }
+    ESP_LOGI(TAG, "deinit: tasks stopped (0x%02x)", (unsigned)want);
+    return ESP_OK;
+}
+
+/* Reverse of init: a feature may depend on every lower-priority one. */
+static void deinit_features(void)
+{
+    size_t n = feat_count();
+    uint32_t seen = 0;
+
+    for (size_t k = 0; k < n; k++) {
+        size_t i = feat_next(&seen, n, false);
+        if (i == SIZE_MAX)
+            break;
+        if (!(s_feat_inited_mask & (1u << i)))
+            continue;
+        s_feat_inited_mask &= ~(1u << i);
+
+        const eh_cp_feat_desc_t *d = &_eh_cp_feat_descs_start[i];
+        if (!d->deinit_fn)
+            continue;
+        esp_err_t r = d->deinit_fn();
+        if (r != ESP_OK) {
+            ESP_LOGW(TAG, "ext '%s' deinit failed: %s",
+                     d->name ? d->name : "?", esp_err_to_name(r));
         }
     }
+}
+
+static void deinit_transport(void)
+{
+#if EH_CP_FEAT_WIFI_READY
+    eh_cp_rx_unregister(ESP_STA_IF);
+    eh_cp_rx_unregister(ESP_AP_IF);
+#endif
+    if (if_context && if_context->if_ops && if_context->if_ops->deinit)
+        if_context->if_ops->deinit(if_handle);
+    interface_remove_driver();
+    if_handle = NULL;
+    if_context = NULL;
+    datapath_open_pending = 0;
+}
+
+/* Last: every task that waits on these has confirmed it left. */
+static void deinit_core_objects(void)
+{
+#if !BYPASS_TX_PRIORITY_Q
+    for (uint8_t i = 0; i < MAX_PRIORITY_QUEUES; i++) {
+        if (to_host_queue[i]) {
+            vQueueDelete(to_host_queue[i]);
+            to_host_queue[i] = NULL;
+        }
+    }
+    if (meta_to_host_queue) {
+        vQueueDelete(meta_to_host_queue);
+        meta_to_host_queue = NULL;
+    }
+#endif
+    if (host_reset_sem) {
+        vSemaphoreDelete(host_reset_sem);
+        host_reset_sem = NULL;
+    }
+    if (g_auto_feat_init_done_eg) {
+        vEventGroupDelete(g_auto_feat_init_done_eg);
+        g_auto_feat_init_done_eg = NULL;
+    }
+    if (g_task_exit_eg) {
+        vEventGroupDelete(g_task_exit_eg);
+        g_task_exit_eg = NULL;
+    }
+}
+
+esp_err_t eh_cp_deinit(void)
+{
+    if (!g_eh_cp_initialized)
+        return ESP_OK;
+
+    esp_err_t ret = deinit_await_feat_init();
+    if (ret != ESP_OK)
+        return ret;
+
+    ret = deinit_stop_tasks();
+    if (ret != ESP_OK)
+        return ret;
+
+    eh_cp_utils_stop_debugging_tasks();
+    eh_cp_deinit_transport_test_debugging_tasks();
+    deinit_features();
+    deinit_transport();
+    deinit_core_objects();
+
+    g_eh_cp_initialized = false;
     ESP_LOGI(TAG, "ESP-Hosted CP deinitialized successfully");
     return ESP_OK;
 }
 
-static void auto_feat_init_task(void *pvParameters)
+static size_t feat_count(void)
 {
-    uintptr_t _ds = (uintptr_t)&_eh_cp_feat_descs_start;
-    size_t _dbytes = (size_t)((uintptr_t)&_eh_cp_feat_descs_end - _ds);
-    /* Link-collected array: a fill gap before _start would mis-index the walk
-     * and deref garbage names. Require struct alignment + whole-entry span. */
-    size_t n = ((_ds & (_Alignof(eh_cp_feat_desc_t) - 1)) != 0 ||
-                (_dbytes % sizeof(eh_cp_feat_desc_t)) != 0)
-                   ? 0 : _dbytes / sizeof(eh_cp_feat_desc_t);
-    if (n == 0 && _dbytes != 0)
-        ESP_LOGE(TAG, "auto_feat_init_task: descriptor section misaligned "
-                 "(start=%p span=%uB) — skipping", (void *)_ds, (unsigned)_dbytes);
-    ESP_LOGI(TAG, "auto_feat_init_task: found %u extension descriptor(s)", (unsigned)n);
+    uintptr_t start = (uintptr_t)_eh_cp_feat_descs_start;
+    size_t bytes = (size_t)((uintptr_t)_eh_cp_feat_descs_end - start);
+
+    /* A fill gap before _start would mis-index the walk and deref garbage. */
+    if ((start & (_Alignof(eh_cp_feat_desc_t) - 1)) != 0 ||
+        (bytes % sizeof(eh_cp_feat_desc_t)) != 0) {
+        if (bytes != 0)
+            ESP_LOGE(TAG, "feat descriptors misaligned (start=%p span=%uB)",
+                     (void *)start, (unsigned)bytes);
+        return 0;
+    }
+
+    size_t n = bytes / sizeof(eh_cp_feat_desc_t);
+    if (n > EH_CP_FEAT_CAP) {
+        ESP_LOGE(TAG, "%u features exceeds the %u-bit record: running none",
+                 (unsigned)n, (unsigned)EH_CP_FEAT_CAP);
+        return 0;
+    }
+    return n;
+}
+
+/* Select the next feature by priority and position. */
+static size_t feat_next(uint32_t *seen, size_t n, bool ascending)
+{
+    size_t best = SIZE_MAX;
 
     for (size_t i = 0; i < n; i++) {
-        const eh_cp_feat_desc_t *d = &_eh_cp_feat_descs_start + i;
-        ESP_LOGI(TAG, "  desc[%zu] name='%s' prio=%d init=%p deinit=%p @%p",
+        if (*seen & (1u << i))
+            continue;
+        int p = _eh_cp_feat_descs_start[i].priority;
+        if (best == SIZE_MAX ||
+            (ascending ? p <  _eh_cp_feat_descs_start[best].priority
+                       : p >= _eh_cp_feat_descs_start[best].priority))
+            best = i;
+    }
+    if (best != SIZE_MAX)
+        *seen |= (1u << best);
+    return best;
+}
+
+static void auto_feat_init_task(void *pvParameters)
+{
+    size_t n = feat_count();
+
+    s_feat_inited_mask = 0;
+    ESP_LOGI(TAG, "auto_feat_init_task: found %u extension descriptor(s)", (unsigned)n);
+    for (size_t i = 0; i < n; i++) {
+        const eh_cp_feat_desc_t *d = &_eh_cp_feat_descs_start[i];
+        ESP_LOGI(TAG, "  desc[%zu] name='%s' prio=%d init=%p deinit=%p",
                  i, d->name ? d->name : "(null)", (int)d->priority,
-                 (void *)(uintptr_t)d->init_fn, (void *)(uintptr_t)d->deinit_fn, (const void *)d);
+                 (void *)(uintptr_t)d->init_fn, (void *)(uintptr_t)d->deinit_fn);
     }
 
     if (n == 0) {
-        ESP_LOGW(TAG, "auto_feat_init_task: no extensions registered via EH_CP_FEAT_REGISTER");
+        ESP_LOGW(TAG, "auto_feat_init_task: no extensions registered");
         xEventGroupSetBits(g_auto_feat_init_done_eg, EH_CP_FEAT_INIT_DONE_BIT);
         vTaskDelete(NULL);
         return;
     }
 
-    /* Insertion sort over pointer array; linker section is read-only. */
-    const eh_cp_feat_desc_t *sorted[16];
-    if (n > 16) {
-        ESP_LOGE(TAG, "auto_feat_init_task: too many extensions (%u > 16), truncating", (unsigned)n);
-        n = 16;
-    }
-    for (size_t i = 0; i < n; i++) sorted[i] = &_eh_cp_feat_descs_start + i;
-    for (size_t i = 1; i < n; i++) {
-        const eh_cp_feat_desc_t *key = sorted[i];
-        size_t j = i;
-        while (j > 0 && sorted[j-1]->priority > key->priority) {
-            sorted[j] = sorted[j-1];
-            j--;
-        }
-        sorted[j] = key;
-    }
-
-    for (size_t i = 0; i < n; i++) {
-        const eh_cp_feat_desc_t *d = sorted[i];
+    uint32_t seen = 0;
+    for (size_t k = 0; k < n; k++) {
+        size_t i = feat_next(&seen, n, true);
+        if (i == SIZE_MAX)
+            break;
+        const eh_cp_feat_desc_t *d = &_eh_cp_feat_descs_start[i];
         if (!d->init_fn) {
             ESP_LOGW(TAG, "auto_feat_init_task: descriptor '%s' has NULL init_fn, skipping",
                      d->name ? d->name : "?");
@@ -1171,6 +1361,8 @@ static void auto_feat_init_task(void *pvParameters)
         }
         ESP_LOGI(TAG, "auto_feat_init_task: initialising '%s' (priority %d)",
                  d->name ? d->name : "?", d->priority);
+        /* Record before the call: a partial init still holds resources. */
+        s_feat_inited_mask |= (1u << i);
         esp_err_t r = d->init_fn();
         if (r != ESP_OK) {
             ESP_LOGE(TAG, "auto_feat_init_task: '%s' init() failed: %s",

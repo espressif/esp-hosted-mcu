@@ -38,6 +38,7 @@ static esp_err_t eh_cp_feat_cli_init(void)
 	return eh_cp_feat_cli_start("coprocessor> ");
 }
 
+/* No deinit_fn: tearing down the CLI from its own task is unsafe. */
 #if EH_CP_FEAT_CLI_AUTO_INIT
 EH_CP_FEAT_REGISTER(eh_cp_feat_cli_init,
                    NULL,

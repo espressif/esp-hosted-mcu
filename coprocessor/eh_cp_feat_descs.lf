@@ -5,7 +5,7 @@
 
 [sections:eh_cp_feat_descs]
 entries:
-    .eh_cp_feat_descs_dram
+    eh_cp_feat_descs
 
 [scheme:eh_cp_feat_descs_default]
 entries:

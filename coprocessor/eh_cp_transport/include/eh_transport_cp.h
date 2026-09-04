@@ -94,6 +94,9 @@ typedef struct {
 	int (*read)(interface_handle_t *handle, interface_buffer_handle_t *buf_handle);
 	esp_err_t (*reset)(interface_handle_t *handle);
 	void (*deinit)(interface_handle_t *handle);
+	/* Optional. Release a reader parked in read() so it returns. deinit does
+	 * this too, but the core needs it BEFORE it waits for recv_task to exit. */
+	void (*stop)(interface_handle_t *handle);
 } if_ops_t;
 
 typedef struct {

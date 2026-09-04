@@ -578,12 +578,13 @@ void eh_host_wifi_admit_rx(bool is_ap, bool admit)
     s_rx_admit[is_ap ? 1 : 0] = admit;
 }
 
-/* Shelved with the nw_split latch alternative (see eh_host_feat_nw_split.c):
- * bool eh_host_wifi_sta_netif_started(void)
- * {
- *     return s_sta_netif_started;
- * }
- */
+/* 1. Record when nw_split starts the STA netif itself.
+ * 2. Prevent a later CP STA_START from starting it again.
+ * 3. Avoid netif_add asserting on an already-added netif. */
+void eh_host_wifi_note_sta_netif_started(bool started)
+{
+    s_sta_netif_started = started;
+}
 
 static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
 {

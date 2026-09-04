@@ -153,6 +153,8 @@ static void on_cp_dhcp_status(void *arg, esp_event_base_t base, int32_t id, void
         ESP_LOGD(NW_SPLIT_TAG, "netif input not attached; stashing IP " IPSTR
                  " and self-driving STA_START", IP2STR(&e->ipv4.ip));
         (void)esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, 0);
+        /* Own the latch: a relayed STA_START must not start the netif again. */
+        eh_host_wifi_note_sta_netif_started(true);
         return;
     }
 

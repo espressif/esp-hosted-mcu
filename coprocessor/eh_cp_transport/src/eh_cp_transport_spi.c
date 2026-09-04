@@ -185,6 +185,7 @@ static void spi_apply_ps_flags(uint8_t flags)
 static int esp_spi_read(interface_handle_t *if_handle, interface_buffer_handle_t * buf_handle);
 static esp_err_t esp_spi_reset(interface_handle_t *handle);
 static void esp_spi_deinit(interface_handle_t *handle);
+static void esp_spi_stop(interface_handle_t *handle);
 static void esp_spi_read_done(void *handle);
 static void queue_next_transaction(void);
 
@@ -194,6 +195,7 @@ if_ops_t if_ops = {
 	.read = esp_spi_read,
 	.reset = esp_spi_reset,
 	.deinit = esp_spi_deinit,
+	.stop = esp_spi_stop,
 };
 
 #define TX_NUM_BLKS    (SPI_TX_TOTAL_QUEUE_SIZE+1+SPI_DRIVER_QUEUE_SIZE)
@@ -1021,6 +1023,23 @@ static esp_err_t esp_spi_reset(interface_handle_t *handle)
 		ESP_LOGE(TAG, "spi slave bus free failed\n");
 	}
 	return ret;
+}
+
+static void esp_spi_stop(interface_handle_t *handle)
+{
+	/* Do NOT touch handle->state: deinit returns early when it is already
+	 * DEINIT, which would skip the whole teardown. The give is the release. */
+	(void)handle;
+#ifdef CONFIG_ESP_ENABLE_RX_PRIORITY_QUEUES
+	if (spi_rx_sem)
+		for (int i = 0; i < MAX_PRIORITY_QUEUES; i++)
+			xSemaphoreGive(spi_rx_sem);
+#else
+	if (spi_rx_queue) {
+		interface_buffer_handle_t empty = {0};
+		xQueueSend(spi_rx_queue, &empty, 0);
+	}
+#endif
 }
 
 static void esp_spi_deinit(interface_handle_t *handle)

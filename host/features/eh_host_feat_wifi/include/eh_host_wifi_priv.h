@@ -21,7 +21,7 @@ void eh_host_wifi_admit_rx(bool is_ap, bool admit);
 /* True once the STA netif has been added (STA_START handled) and not yet torn
  * down (STA_STOP/deinit). Shelved — nw_split uses the netif->input actual-state
  * check instead; kept here as the commented alternative it referenced. */
-/* bool eh_host_wifi_sta_netif_started(void); */
+void eh_host_wifi_note_sta_netif_started(bool started);
 
 #ifdef __cplusplus
 }
