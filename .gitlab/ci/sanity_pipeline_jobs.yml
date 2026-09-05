@@ -369,9 +369,9 @@ deploy_github:
     - cd /tmp/deploy
     # create_release_tag pushed the tag after this pipeline started, so the
     # clone above does not have it yet.
-    - git fetch --quiet origin "refs/tags/v*:refs/tags/v*"
+    - git fetch --quiet origin "refs/tags/v2.*:refs/tags/v2.*"
     - git remote add gh git@github.com:espressif/esp-hosted-mcu.git
     - git push gh "${CI_COMMIT_SHA}:refs/heads/${CI_COMMIT_BRANCH}"
-    # Release tags only: the registry workflow on GitHub triggers on v2.*, and
-    # topic tags have no business there.
-    - git push gh "refs/tags/v*:refs/tags/v*"
+    # 2.x tags only. main runs a job of the same name pushing v3.*; a shared
+    # v* glob would let either branch publish the other line's release.
+    - git push gh "refs/tags/v2.*:refs/tags/v2.*"
