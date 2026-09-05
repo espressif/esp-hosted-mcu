@@ -1,9 +1,13 @@
 # Unreleased
 
+# Releases
+
+# $${\color{green} \text{3.0.7}}$$
+
 - host: updated OpenThread host configuration for UART Tx and Rx, and OpenThread document
 - host: fix memory leak by saving allocated GPIO ISRs in a list when enabled. GPIO ISR is deallocated from list and freed when disabled.
-
-# Releases
+- repo: 3.x moves to `espressif/esp-hosted-mcu` `main`; 2.x continues on `release/v2.x`
+- ci: the pipeline tags the release and pushes to GitHub; the registry publishes from a `v3.*` tag instead of a branch push
 
 # $${\color{green} \text{3.0.6}}$$
 
