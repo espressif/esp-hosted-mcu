@@ -161,8 +161,10 @@ def main():
     dg = script_text(d["deploy_github"])
     check("deploy_github pushes the branch",
           'refs/heads/${CI_COMMIT_BRANCH}' in dg)
-    check("deploy_github pushes release tags only",
-          'refs/tags/v*:refs/tags/v*' in dg)
+    # release/v2.x runs a job of the same name pushing v2.*; a shared v* glob
+    # would let either branch publish the other line's release.
+    check("deploy_github pushes 3.x tags only",
+          'refs/tags/v3.*:refs/tags/v3.*' in dg and 'refs/tags/v*' not in dg)
     check("deploy_github targets esp-hosted-mcu",
           "github.com:espressif/esp-hosted-mcu.git" in dg)
     crt = script_text(d["create_release_tag"])

@@ -85,6 +85,8 @@ pipeline_rules_test:
         - .gitlab-ci.yml
         - tools/ci/test_pipeline_rules.py
         - tools/ci/decide_build.sh
+        # the test asserts this file's trigger, so a revert there must trip it
+        - .github/workflows/upload_component.yml
     - if: '$CI_COMMIT_BRANCH =~ /^release/'
   script:
     - python3 tools/ci/test_pipeline_rules.py
@@ -325,8 +327,8 @@ create_release_tag:
       git config user.name "$GITLAB_USER_NAME"
       git config user.email "$GITLAB_USER_EMAIL"
       git tag -a "v${VER}" "$CI_COMMIT_SHA" -m "ESP-Hosted ${VER}"
-      # Nothing in this repo is meant to run on tags, and a tag pipeline would
-      # fail before any rule applies.
+      # No job in this file matches a tag, so a tag pipeline would be an empty
+      # pipeline. Skip creating one at all.
       git push -o ci.skip origin "v${VER}"
 
 deploy_github:
@@ -357,8 +359,9 @@ deploy_github:
     - cd /tmp/deploy
     # create_release_tag pushed the tag after this pipeline started, so the
     # clone above does not have it yet.
-    - git fetch --quiet origin "refs/tags/v*:refs/tags/v*"
+    - git fetch --quiet origin "refs/tags/v3.*:refs/tags/v3.*"
     - git remote add gh git@github.com:espressif/esp-hosted-mcu.git
     - git push gh "${CI_COMMIT_SHA}:refs/heads/${CI_COMMIT_BRANCH}"
-    # Release tags only. Topic tags have no business on GitHub.
-    - git push gh "refs/tags/v*:refs/tags/v*"
+    # 3.x tags only. release/v2.x runs the same job and pushes v2.*; a shared
+    # v* glob would let either branch publish the other's release.
+    - git push gh "refs/tags/v3.*:refs/tags/v3.*"
