@@ -1,4 +1,12 @@
 [codespell]
-skip = build,*.drawio,*.svg,*.pdf,common/proto/esp_hosted_rpc.pb-c.*,slave/main/esp_hosted_coprocessor_fw_ver.h,host/esp_hosted_host_fw_ver.h
-ignore-words-list = rsource,INDX,ans,aNULL,aci,DEACTIVE,OT,ot
+# The skip list mirrors the vendored/upstream trees in
+# tools/check_copyright_config.yaml, for the same reason: they are not ours to
+# edit, and write-changes below rewrites in place. Left unskipped, codespell
+# turned 'socklen_t tolen' into 'token' in lwip/include/lwip/sockets.h.
+# Patterns have no leading ./ so they also match the relative paths pre-commit
+# passes.
+skip = build,.deps,managed_components,vendor,tmp_registry_readmes,*.drawio,*.svg,*.pdf,*.jpg,*.jpeg,*.png,*eh_common_fw_version.h,*common/serializers/third_party*,*common/serializers/eh_proto_v2/src/proto*,*tools/vendor*,*port/idf_components/esp_wifi_remote*,*port/idf_components/lwip*,*port/idf_components/esp_netif/lwip*,*examples/bluetooth/esp_hosted_nimble/bleprph_wifi_coex*
+# emac   Ethernet MAC, a hardware acronym; 'EMACS' is not a correction
+# inout  Doxygen direction marker, @param[inout]
+ignore-words-list = rsource,INDX,ans,aNULL,aci,DEACTIVE,OT,ot,ser,emac,inout
 write-changes = true

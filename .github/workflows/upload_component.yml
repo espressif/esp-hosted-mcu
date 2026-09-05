@@ -1,8 +1,11 @@
 name: Push component to https://components.espressif.com
+# The tag is what marks a release: create_release_tag on GitLab makes v<version>
+# only when idf_component.yml moved, and deploy_github carries it here. A branch
+# trigger would re-run on every merge, including those that change no version.
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v3.*'
 
 jobs:
   upload_components:
@@ -10,10 +13,66 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: "recursive"
+          submodules: recursive
 
-      - name : Copy common dir into slave
-        run: cp -r common slave/main/
+      # Registry self-containment: each example resolves its shared component via a
+      # relative override_path in the repo checkout; the registry strips override_path,
+      # so an extracted example must carry the component itself. Copy it into each
+      # example's components/ (IDF auto-discovers it) before upload. Explicit per
+      # example on purpose — no globbing, so placement is exact.
+      - name: Bundle shared example components into examples
+        run: |
+          set -e
+          # esp_hosted_examples_common -> CP examples
+          mkdir -p examples/network_split/station/cp/components
+          cp -r examples/common_components/esp_hosted_examples_common examples/network_split/station/cp/components/
+          mkdir -p examples/network_split/iperf/cp/components
+          cp -r examples/common_components/esp_hosted_examples_common examples/network_split/iperf/cp/components/
+          mkdir -p examples/power_save/host/network_split__host_deep_sleep/cp/components
+          cp -r examples/common_components/esp_hosted_examples_common examples/power_save/host/network_split__host_deep_sleep/cp/components/
+          mkdir -p examples/power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep/cp/components
+          cp -r examples/common_components/esp_hosted_examples_common examples/power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep/cp/components/
+          # esp_hosted_examples_common -> network_split mcu_host examples
+          mkdir -p examples/network_split/station/mcu_host/components
+          cp -r examples/common_components/esp_hosted_examples_common examples/network_split/station/mcu_host/components/
+          mkdir -p examples/network_split/iperf/mcu_host/components
+          cp -r examples/common_components/esp_hosted_examples_common examples/network_split/iperf/mcu_host/components/
+          # ---- Bluetooth ----
+          # The NimBLE/Bluedroid hosted-HCI stack ports are internal to esp_hosted
+          # (built from examples/common_components/eh_host_* by the root CMakeLists),
+          # so BT examples need no port bundling. nimble_uart/bleprph_host_only_uart
+          # carries nimble_peripheral_utils in-tree (mcu_host/components/). Only the
+          # Wi-Fi-coex example still bundles the shared examples_common helper:
+          mkdir -p examples/bluetooth/esp_hosted_nimble/bleprph_wifi_coex/mcu_host/components
+          cp -r examples/common_components/esp_hosted_examples_common examples/bluetooth/esp_hosted_nimble/bleprph_wifi_coex/mcu_host/components/
+
+      - name: Strip bundled local-component deps from example manifests
+        run: |
+          set -e
+          for e in \
+            examples/network_split/station/cp \
+            examples/network_split/iperf/cp \
+            examples/power_save/host/network_split__host_deep_sleep/cp \
+            examples/power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep/cp \
+            examples/network_split/station/mcu_host \
+            examples/network_split/iperf/mcu_host \
+            examples/bluetooth/esp_hosted_nimble/bleprph_wifi_coex/mcu_host ; do
+            python3 tools/ci/strip_bundled_deps.py "$e/main/idf_component.yml" \
+              esp_hosted_examples_common
+          done
+
+      # Registry example pages: the registry publishes the cp/ mcu_host/ esp_host/
+      # project dirs (not the top-level example README). Generate their READMEs
+      # from the marker-tagged top README at publish time (see tools/gen_registry_readmes.py
+      # and docs/design/registry-example-readme-generation.md). In-place, CI-only —
+      # never committed. Non-marked examples (e.g. bluetooth) keep their own READMEs.
+      - name: Generate registry example READMEs
+        run: python3 tools/gen_registry_readmes.py
+
+      # The registry renders a CHANGELOG.md at the component root; ours lives at
+      # docs/changelog.md. Stage it at the root for upload (CI-only, not committed).
+      - name: Stage changelog at component root for the registry
+        run: cp docs/changelog.md CHANGELOG.md
 
       - name: Upload component to the component registry
         uses: espressif/upload-components-ci-action@v2

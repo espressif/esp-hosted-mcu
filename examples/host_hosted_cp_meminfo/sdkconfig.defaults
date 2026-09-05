@@ -1,3 +1,0 @@
-# enable mem monitor configuration
-CONFIG_ESP_HOSTED_MEM_MONITOR=y
-CONFIG_FREERTOS_HZ=1000

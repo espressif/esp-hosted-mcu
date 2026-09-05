@@ -2,7 +2,7 @@
 #
 # SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
-# check that the CHANGELOG.md file contains the changelog for the version
+# check that the changelog file contains the changelog for the version
 # in idf_component.yml
 # exit with 0 if ok
 # exit with 1 if fail
@@ -12,14 +12,14 @@ import re
 import sys
 # paths to files to check
 yml_file = "idf_component.yml"
-changelog_file = "CHANGELOG.md"
+changelog_file = "docs/changelog.md"
 def get_idf_yml_version_as_string() -> str:
 	# read the yml file
 	file_info = open(yml_file, "r")
 	info = file_info.read()
 	file_info.close()
 	# extract the version info
-	ver = re.search("^version: \"([0-9.]+)\"", info)
+	ver = re.search("^version: \"([0-9.]+)\"", info, re.MULTILINE)
 	# print("yml:", ver.group(1))
 	return ver.group(1)
 def changelog_has_version(ver_string: str, debug: bool = False) -> int:
@@ -57,7 +57,7 @@ def check(debug: bool = False) -> int:
 	return 0
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
-		description="Check that CHANGELOG.md contains an entry for the version in idf_component.yml"
+		description="Check that the changelog contains an entry for the version in idf_component.yml"
 	)
 	parser.add_argument(
 		"--debug",
