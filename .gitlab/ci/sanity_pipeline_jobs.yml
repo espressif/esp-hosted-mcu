@@ -332,7 +332,10 @@ create_release_tag:
       git config user.name "$GITLAB_USER_NAME"
       git config user.email "$GITLAB_USER_EMAIL"
       git tag -a "v${VER}" "$CI_COMMIT_SHA" -m "ESP-Hosted-MCU ${VER}"
-      git push origin "v${VER}"
+      # A tag pipeline would resolve the ci/actions/common include with the
+      # bot token, which cannot read that project, so it fails before any
+      # rule applies. Nothing here runs on tags.
+      git push -o ci.skip origin "v${VER}"
 
 # Proves the GITLAB_TO_GITHUB_DEPLOY_KEY variable can push to GitHub from a
 # runner. Pushes a probe tag that is created only in this job and never on
