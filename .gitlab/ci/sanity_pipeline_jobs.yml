@@ -332,7 +332,10 @@ create_release_tag:
       git config user.name "$GITLAB_USER_NAME"
       git config user.email "$GITLAB_USER_EMAIL"
       git tag -a "v${VER}" "$CI_COMMIT_SHA" -m "ESP-Hosted-MCU ${VER}"
-      git push origin "v${VER}"
+      # A tag pipeline would resolve the ci/actions/common include with the
+      # bot token, which cannot read that project, so it fails before any
+      # rule applies. Nothing here runs on tags.
+      git push -o ci.skip origin "v${VER}"
 
 # Proves the GITLAB_TO_GITHUB_DEPLOY_KEY variable can push to GitHub from a
 # runner. Pushes a probe tag that is created only in this job and never on
@@ -350,12 +353,19 @@ github_deploy_key_probe:
     GIT_STRATEGY: none
   rules:
     - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
-      when: manual
       allow_failure: true
   script:
     - apk add --no-cache git openssh-client
-    - chmod 600 "$GITLAB_TO_GITHUB_DEPLOY_KEY"
-    - export GIT_SSH_COMMAND="ssh -i $GITLAB_TO_GITHUB_DEPLOY_KEY -o StrictHostKeyChecking=accept-new"
+    - |
+      # The key travels base64 encoded so it holds no whitespace, which is what
+      # a masked variable requires. A File variable keeps the PEM verbatim and
+      # loses the trailing newline, which openssh rejects with
+      # "error in libcrypto".
+      echo "$GH_DEPLOY_KEY_VAR" | base64 -d > /tmp/deploy_key
+      chmod 600 /tmp/deploy_key
+      head -1 /tmp/deploy_key
+      tail -1 /tmp/deploy_key
+    - export GIT_SSH_COMMAND="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=accept-new"
     - GH=git@github.com:espressif/esp-hosted-mcu.git
     - PROBE="ci-deploy-probe-${CI_PIPELINE_ID}"
     - echo "=== BEFORE — expect no output ==="
@@ -371,3 +381,5 @@ github_deploy_key_probe:
     - git push gh "refs/tags/${PROBE}"
     - echo "=== AFTER — expect the tag ==="
     - git ls-remote "$GH" "refs/tags/${PROBE}"
+    - echo "=== removing the probe tag again ==="
+    - git push gh --delete "refs/tags/${PROBE}"
