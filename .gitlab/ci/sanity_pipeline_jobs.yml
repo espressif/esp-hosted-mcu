@@ -337,23 +337,24 @@ create_release_tag:
       # rule applies. Nothing here runs on tags.
       git push -o ci.skip origin "v${VER}"
 
-# Proves the GITLAB_TO_GITHUB_DEPLOY_KEY variable can push to GitHub from a
-# runner. Pushes a probe tag that is created only in this job and never on
-# GitLab, so the push mirror cannot be the thing that delivered it: absent at
-# the source, present at the destination means the key did it. The name does
-# not match v2.*, so the registry workflow ignores it.
-github_deploy_key_probe:
+# The push mirror copies every ref GitLab gets, whatever the pipeline did.
+# Pushing from here puts GitHub behind the same gate as the release tag:
+# nothing reaches it until the pipeline is green.
+deploy_github:
   stage: release
   image: alpine:3.20
   tags:
     - build
   before_script: []
   dependencies: []
+  # create_release_tag shares this stage, and the tag has to exist on GitLab
+  # before this job can carry it across.
+  needs:
+    - create_release_tag
   variables:
     GIT_STRATEGY: none
   rules:
     - if: $CI_COMMIT_BRANCH == "release/v2.x" && $CI_PIPELINE_SOURCE == "push"
-      allow_failure: true
   script:
     - apk add --no-cache git openssh-client
     - |
@@ -363,23 +364,14 @@ github_deploy_key_probe:
       # "error in libcrypto".
       echo "$GH_DEPLOY_KEY_VAR" | base64 -d > /tmp/deploy_key
       chmod 600 /tmp/deploy_key
-      head -1 /tmp/deploy_key
-      tail -1 /tmp/deploy_key
     - export GIT_SSH_COMMAND="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=accept-new"
-    - GH=git@github.com:espressif/esp-hosted-mcu.git
-    - PROBE="ci-deploy-probe-${CI_PIPELINE_ID}"
-    - echo "=== BEFORE — expect no output ==="
-    - git ls-remote "$GH" "refs/tags/${PROBE}"
-    - git init -q /tmp/probe
-    - cd /tmp/probe
-    - git remote add gh "$GH"
-    # Tag a commit GitHub already has, so the push carries the ref alone and
-    # transfers no objects.
-    - git fetch -q --depth 1 gh refs/heads/release/v2.x
-    - git tag "$PROBE" FETCH_HEAD
-    - echo "=== PUSH — expect '* [new tag]' ==="
-    - git push gh "refs/tags/${PROBE}"
-    - echo "=== AFTER — expect the tag ==="
-    - git ls-remote "$GH" "refs/tags/${PROBE}"
-    - echo "=== removing the probe tag again ==="
-    - git push gh --delete "refs/tags/${PROBE}"
+    - git clone --quiet "$CI_REPOSITORY_URL" /tmp/deploy
+    - cd /tmp/deploy
+    # create_release_tag pushed the tag after this pipeline started, so the
+    # clone above does not have it yet.
+    - git fetch --quiet origin "refs/tags/v*:refs/tags/v*"
+    - git remote add gh git@github.com:espressif/esp-hosted-mcu.git
+    - git push gh "${CI_COMMIT_SHA}:refs/heads/${CI_COMMIT_BRANCH}"
+    # Release tags only: the registry workflow on GitHub triggers on v2.*, and
+    # topic tags have no business there.
+    - git push gh "refs/tags/v*:refs/tags/v*"
