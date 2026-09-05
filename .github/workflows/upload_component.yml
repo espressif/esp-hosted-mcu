@@ -1,8 +1,11 @@
 name: Push component to https://components.espressif.com
+# The tag is what marks a release: create_release_tag on GitLab makes v<version>
+# only when idf_component.yml moved, and deploy_github carries it here. A branch
+# trigger would re-run on every merge, including those that change no version.
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v3.*'
 
 jobs:
   upload_components:

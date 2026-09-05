@@ -1,6 +1,7 @@
 stages:
   - pre
   - build
+  - release
 
 variables:
   # Build needs the vendored protobuf-c submodule (msg_codec compiles it); the
@@ -292,3 +293,72 @@ build_host_v551_p4:           # [POST] power_save + transport_config + api_exerc
         -p examples/power_save/host/network_split__host_deep_sleep/esp_host \
            examples/system/mcu_transport_config/mcu_host \
            examples/system/api_exerciser/mcu_host
+
+# ───────────────────────── release: tag and deploy ─────────────────────────
+# GitHub is the publishing side: the registry workflow there runs on a v3.* tag.
+# Both jobs run on every push to main and do nothing when the version has not
+# moved, so an ordinary merge is a no-op.
+
+create_release_tag:
+  stage: release
+  image: python:3.8
+  tags: [build]
+  before_script: []
+  dependencies: []
+  variables:
+    # This job reads one line of idf_component.yml. The global 'normal' would
+    # check out all three submodules for nothing.
+    GIT_SUBMODULE_STRATEGY: none
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
+  script:
+    - |
+      set -e
+      VER=$(python3 -c "import re;print(re.search(r'^version:\s*\"?([^\"\s]+)\"?', open('idf_component.yml').read(), re.M).group(1))")
+      test -n "${VER}"
+      git remote set-url origin "https://oauth2:${GITLAB_TOKEN_STAGING_TO_MAIN}@gitlab.espressif.cn:6688/app-frameworks/esp_hosted_mcu.git"
+      # tags are not fetched at the default git depth, so ask the remote
+      if git ls-remote --tags --exit-code origin "refs/tags/v${VER}" >/dev/null 2>&1; then
+        echo "v${VER} already released"
+        exit 0
+      fi
+      git config user.name "$GITLAB_USER_NAME"
+      git config user.email "$GITLAB_USER_EMAIL"
+      git tag -a "v${VER}" "$CI_COMMIT_SHA" -m "ESP-Hosted ${VER}"
+      # Nothing in this repo is meant to run on tags, and a tag pipeline would
+      # fail before any rule applies.
+      git push -o ci.skip origin "v${VER}"
+
+deploy_github:
+  stage: release
+  image: alpine:3.20
+  tags: [build]
+  before_script: []
+  dependencies: []
+  # create_release_tag shares this stage, and the tag has to exist on GitLab
+  # before this job can carry it across.
+  needs:
+    - create_release_tag
+  variables:
+    GIT_STRATEGY: none
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
+  script:
+    - apk add --no-cache git openssh-client
+    - |
+      # The key travels base64 encoded so it holds no whitespace, which is what
+      # a masked variable requires. A File variable keeps the PEM verbatim and
+      # loses the trailing newline, which openssh rejects with
+      # "error in libcrypto".
+      echo "$GH_DEPLOY_KEY_VAR" | base64 -d > /tmp/deploy_key
+      chmod 600 /tmp/deploy_key
+    - export GIT_SSH_COMMAND="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=accept-new"
+    - git clone --quiet "$CI_REPOSITORY_URL" /tmp/deploy
+    - cd /tmp/deploy
+    # create_release_tag pushed the tag after this pipeline started, so the
+    # clone above does not have it yet.
+    - git fetch --quiet origin "refs/tags/v*:refs/tags/v*"
+    - git remote add gh git@github.com:espressif/esp-hosted-mcu.git
+    - git push gh "${CI_COMMIT_SHA}:refs/heads/${CI_COMMIT_BRANCH}"
+    # Release tags only. Topic tags have no business on GitHub.
+    - git push gh "refs/tags/v*:refs/tags/v*"

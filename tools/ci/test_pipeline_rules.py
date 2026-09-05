@@ -25,6 +25,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CI = ROOT / ".gitlab-ci.yml"
 DECIDE = ROOT / "tools" / "ci" / "decide_build.sh"
+WORKFLOW = ROOT / ".github" / "workflows" / "upload_component.yml"
 
 # build job -> which side it must gate on
 CP_JOBS = ["build_cp_super", "build_cp_super_ext", "build_cp_specials"]
@@ -142,8 +143,40 @@ def main():
     check("decide_build.sh exists", DECIDE.exists())
 
     for j in [*CP_JOBS, *HOST_JOBS, "premerge_check", "pre_commit",
-              "pipeline_rules_test"]:
+              "pipeline_rules_test", "create_release_tag", "deploy_github"]:
         check(f"job exists: {j}", j in d, f"missing {j}")
+
+    # --- release path: main pushes only, tag before deploy ---
+    check("release stage declared", "release" in d["stages"])
+    for j in ("create_release_tag", "deploy_github"):
+        rules = d[j].get("rules") or []
+        one = len(rules) == 1 and set(rules[0]) == {"if"}
+        check(f"{j} has a single unconditional-on-main rule", one, f"rules={rules}")
+        cond = rules[0]["if"] if one else ""
+        check(f"{j} runs on main", '$CI_COMMIT_BRANCH == "main"' in cond, cond)
+        check(f"{j} runs on push only", '$CI_PIPELINE_SOURCE == "push"' in cond, cond)
+        check(f"{j} is in the release stage", d[j].get("stage") == "release")
+    check("deploy_github waits for create_release_tag",
+          d["deploy_github"].get("needs") == ["create_release_tag"])
+    dg = script_text(d["deploy_github"])
+    check("deploy_github pushes the branch",
+          'refs/heads/${CI_COMMIT_BRANCH}' in dg)
+    check("deploy_github pushes release tags only",
+          'refs/tags/v*:refs/tags/v*' in dg)
+    check("deploy_github targets esp-hosted-mcu",
+          "github.com:espressif/esp-hosted-mcu.git" in dg)
+    crt = script_text(d["create_release_tag"])
+    check("create_release_tag skips an existing tag", "already released" in crt)
+    check("create_release_tag suppresses the tag pipeline", "-o ci.skip" in crt)
+
+    # The registry publishes from the tag deploy_github pushes, not from a
+    # branch: a branch trigger would re-run on every merge.
+    wf = yaml.safe_load(WORKFLOW.read_text())
+    on = wf.get("on") or wf.get(True)
+    check("upload_component triggers on a tag", "tags" in (on.get("push") or {}),
+          f"on={on}")
+    check("upload_component ignores branch pushes",
+          "branches" not in (on.get("push") or {}), f"on={on}")
 
     # --- every build job wires the gate for the right side, then eh_setup ---
     for j in CP_JOBS:
