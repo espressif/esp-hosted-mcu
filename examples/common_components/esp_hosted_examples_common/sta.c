@@ -119,7 +119,8 @@ static void sta_set_country(void)
  * MUST run after esp_wifi_start() (else ESP_ERR_WIFI_NOT_STARTED). */
 static void sta_set_band(void)
 {
-#if CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G
+/* Handle for CP and Host both */
+#if defined(CONFIG_SOC_WIFI_SUPPORT_5G) || defined(CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G)
     ESP_ERROR_CHECK(esp_wifi_set_band_mode(EH_EXAMPLE_WIFI_BAND_MODE));
 #endif
 }
