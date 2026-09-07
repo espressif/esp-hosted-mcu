@@ -14,6 +14,7 @@
 
 #include "eh_host.h"
 #include "eh_host_core.h"
+#include "esp_hosted_host_fw_ver.h"
 
 static const char *TAG = "get_cp_fw_version";
 
@@ -58,6 +59,12 @@ void app_main(void)
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "esp_event_handler_register: 0x%x (continuing)", err);
     }
+
+    ESP_LOGI(TAG, "Host firmware: " ESP_HOSTED_VERSION_PRINTF_FMT,
+             ESP_HOSTED_VERSION_PRINTF_ARGS(ESP_HOSTED_VERSION_VAL(
+                     ESP_HOSTED_VERSION_MAJOR_1,
+                     ESP_HOSTED_VERSION_MINOR_1,
+                     ESP_HOSTED_VERSION_PATCH_1)));
 
     for (;;) {
         eh_host_coprocessor_fwver_t fw;

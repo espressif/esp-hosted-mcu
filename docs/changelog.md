@@ -1,5 +1,6 @@
 # Unreleased
 
+- Fix: host: `ESP_HOSTED_VERSION_*` report the component version
 # Releases
 
 # $${\color{green} \text{3.0.7}}$$
