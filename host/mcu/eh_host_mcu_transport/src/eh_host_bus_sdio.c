@@ -852,14 +852,11 @@ static void sdio_tx_aggregate_iter(void)
 		int wait_ms = has_ctrl ? SDIO_AGGR_CREDIT_WAIT_CTRL_MS : SDIO_AGGR_CREDIT_WAIT_BULK_MS;
 		int got = BUFFER_UNAVAILABLE;
 
-		/* Poll credits WITHOUT holding the bus lock across the wait: take it
-		 * only for each one-shot probe and drop it before the 20us delay, so
-		 * the RX task can interleave bus traffic during a TX credit stall
-		 * (full-duplex). Holding it across the whole ms bound would freeze RX.
-		 * fg polls every 10-20us inside the bound; the non-blocking probe keeps
-		 * each step ~20us (the blocking variant nests a 400us→30ms backoff). */
-		for (uint32_t waited_us = 0; waited_us <= (uint32_t)wait_ms * 1000u;
-		     waited_us += 20u) {
+		/* 1. Probe without the bus lock so RX can run during TX credit stalls.
+		 * 2. Spin briefly for the fast path, then yield to avoid starving
+		 *    the console. */
+		const uint32_t SPIN_US = 200u;
+		for (uint32_t waited_us = 0; waited_us <= (uint32_t)wait_ms * 1000u; ) {
 			SDIO_DRV_LOCK();
 			int r = sdio_tx_credit_ready(buf_needed);
 			SDIO_DRV_UNLOCK();
@@ -867,7 +864,13 @@ static void sdio_tx_aggregate_iter(void)
 				got = BUFFER_AVAILABLE;
 				break;
 			}
-			eh_host_port_task_delay_us(20);
+			if (waited_us < SPIN_US) {
+				eh_host_port_task_delay_us(20);
+				waited_us += 20u;
+			} else {
+				eh_host_port_task_delay_ms(1);   /* yields */
+				waited_us += 1000u;
+			}
 		}
 		if (got != BUFFER_AVAILABLE) {
 			sdio_aggr_credit_timeouts++;
