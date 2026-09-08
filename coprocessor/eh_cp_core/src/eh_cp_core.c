@@ -549,6 +549,8 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 				pkt_stats.hs_bus_sta_fail++;
 			else
 				pkt_stats.hs_bus_sta_out++;
+  #else
+			(void)ret;
   #endif
 		}
 	} else if (buf_handle->if_type == ESP_AP_IF) {
