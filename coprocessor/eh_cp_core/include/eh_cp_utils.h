@@ -62,6 +62,7 @@ extern struct pkt_stats_t pkt_stats;
 
 
 void eh_cp_utils_create_debugging_tasks(void);
+void eh_cp_utils_stop_debugging_tasks(void);
 void eh_cp_utils_dump_mem_stats(void);
 void eh_cp_utils_log_mem_stats(const char *tag, const char *stage);
 

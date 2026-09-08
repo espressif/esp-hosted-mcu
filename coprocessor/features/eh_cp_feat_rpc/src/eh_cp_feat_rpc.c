@@ -92,6 +92,8 @@ static esp_err_t eh_cp_feat_rpc_deinit(void)
     esp_event_handler_unregister(EH_CP_EVENT,
                                  EH_CP_EVT_PRIVATE_RPC_READY,
                                  ext_rpc_private_ready_handler);
+	/* Release the RX callback registered during init. */
+    eh_cp_unregister_rx_cb(ESP_SERIAL_IF);
     return eh_cp_protocomm_deinit();
 }
 

@@ -47,6 +47,18 @@ esp_err_t eh_cp_register_rx_cb(eh_if_type_t iface_type,
     return ESP_OK;
 }
 
+esp_err_t eh_cp_unregister_rx_cb(eh_if_type_t iface_type)
+{
+    if (iface_type >= ESP_IF_TYPE_MAX) {
+        ESP_LOGE(TAG, "unregister_rx_cb: invalid iface_type %d", iface_type);
+        return ESP_ERR_INVALID_ARG;
+    }
+    g_iface_table[iface_type].rx  = NULL;
+    g_iface_table[iface_type].ctx = NULL;
+    ESP_LOGD(TAG, "RX cb cleared for iface %d", iface_type);
+    return ESP_OK;
+}
+
 esp_err_t eh_cp_register_tx_cb(eh_if_type_t iface_type,
                                        hosted_tx_cb_t tx_cb, void *ctx)
 {

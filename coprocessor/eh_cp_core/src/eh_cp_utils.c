@@ -164,9 +164,11 @@ exit:
 	return ret;
 }
 
+static volatile bool s_dbg_running;
+
 static void log_runtime_stats_task(void* pvParameters)
 {
-	while (1) {
+	while (s_dbg_running) {
 		ESP_LOGI(TAG, "\n\nGetting real time stats over %d ticks\n", (int)STATS_TICKS);
 		if (log_real_time_stats(STATS_TICKS) == ESP_OK) {
 			ESP_LOGI(TAG, "Real time stats obtained\n");
@@ -176,6 +178,7 @@ static void log_runtime_stats_task(void* pvParameters)
 		eh_cp_utils_dump_mem_stats();
 		vTaskDelay(STATS_TICKS);
 	}
+	vTaskDelete(NULL);
 }
 #endif /* CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS */
 
@@ -216,9 +219,11 @@ static void stats_timer_func(void* arg)
 #endif /* ESP_FUNCTION_PROFILING */
 }
 
+static esp_timer_handle_t s_stats_timer;
+
 static void start_timer_to_display_stats(int periodic_time_sec)
 {
-	esp_timer_handle_t stats_timer = {0};
+	esp_timer_handle_t stats_timer = NULL;
 	esp_timer_create_args_t create_args = {
 			.callback = &stats_timer_func,
 			.arg = NULL,
@@ -227,6 +232,7 @@ static void start_timer_to_display_stats(int periodic_time_sec)
 
 	EH_CHECK_OK(esp_timer_create(&create_args, &stats_timer));
 	EH_CHECK_OK(esp_timer_start_periodic(stats_timer, SEC_TO_USEC(periodic_time_sec)));
+	s_stats_timer = stats_timer;
 }
 #endif /* ESP_PKT_STATS */
 
@@ -234,6 +240,7 @@ static void start_timer_to_display_stats(int periodic_time_sec)
 void eh_cp_utils_create_debugging_tasks(void)
 {
 #ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+	s_dbg_running = true;
 	assert(xTaskCreate(log_runtime_stats_task, "log_runtime_stats_task",
 
 			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
@@ -243,4 +250,18 @@ void eh_cp_utils_create_debugging_tasks(void)
 #if ESP_PKT_STATS
 	start_timer_to_display_stats(ESP_PKT_STATS_REPORT_INTERVAL);
 #endif /* ESP_PKT_STATS */
+}
+
+void eh_cp_utils_stop_debugging_tasks(void)
+{
+#ifdef CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+	s_dbg_running = false;
+#endif
+#if ESP_PKT_STATS
+	if (s_stats_timer) {
+		esp_timer_stop(s_stats_timer);
+		EH_CHECK_OK(esp_timer_delete(s_stats_timer));
+		s_stats_timer = NULL;
+	}
+#endif
 }

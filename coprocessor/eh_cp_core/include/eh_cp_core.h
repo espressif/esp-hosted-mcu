@@ -33,6 +33,7 @@ extern volatile uint8_t rpc_ver_negotiated;
 
 esp_err_t eh_cp_register_rx_cb(eh_if_type_t iface_type,
                                        hosted_rx_cb_t rx_cb, void *ctx);
+esp_err_t eh_cp_unregister_rx_cb(eh_if_type_t iface_type);
 esp_err_t eh_cp_register_tx_cb(eh_if_type_t iface_type,
                                        hosted_tx_cb_t tx_cb, void *ctx);
 esp_err_t eh_cp_dispatch_rx(eh_if_type_t iface_type,
@@ -48,7 +49,7 @@ uint32_t eh_cp_get_ext_caps(void);
 void     eh_cp_get_feat_caps(uint32_t out_feat_caps[EH_FEAT_CAPS_COUNT]);
 
 
-/* Extension auto-init: descriptors placed in .eh_cp_feat_descs_dram via
+/* Extension auto-init: descriptors placed in eh_cp_feat_descs via
  * EH_CP_FEAT_REGISTER; core sorts ascending by priority and calls init_fn.
  * Convention: 100=rpc, 200=feat, 300=late. */
 typedef esp_err_t (*eh_cp_feat_init_fn_t)(void);
@@ -64,7 +65,8 @@ typedef struct {
 #define EH_CP_FEAT_REGISTER(_init, _deinit, _name, _affinity, _prio)          \
     static const eh_cp_feat_desc_t                                        \
     __eh_cp_feat_desc_##_init                                             \
-    __attribute__((section(".eh_cp_feat_descs_dram"), used, aligned(4))) = {  \
+    __attribute__((section("eh_cp_feat_descs"), used,                     \
+                   aligned(sizeof(void *)))) = {  \
         .init_fn   = (_init),                                                 \
         .deinit_fn = (_deinit),                                               \
         .name      = (_name),                                                 \
@@ -72,8 +74,10 @@ typedef struct {
         .priority  = (_prio),                                                 \
     }
 
-extern const eh_cp_feat_desc_t _eh_cp_feat_descs_start;
-extern const eh_cp_feat_desc_t _eh_cp_feat_descs_end;
+/* Array-typed: pointer arithmetic over a link-collected range is only defined
+ * on an array, and it lets the walk index positions directly. */
+extern const eh_cp_feat_desc_t _eh_cp_feat_descs_start[];
+extern const eh_cp_feat_desc_t _eh_cp_feat_descs_end[];
 
 /* Set by auto_feat_init_task; host_reset_task waits for it before advertising caps. */
 #define EH_CP_FEAT_INIT_DONE_BIT   (1u << 0)

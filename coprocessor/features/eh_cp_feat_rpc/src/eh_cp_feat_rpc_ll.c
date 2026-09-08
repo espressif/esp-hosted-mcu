@@ -37,6 +37,7 @@ static const char TAG[] = "ehcp_pcom_pserial";
 #define EPNAME_MAX                   16
 #define MIN_EP_NAME_LEN              1
 #define MAX_EP_NAME_LEN              (EPNAME_MAX - 1)
+#define PSERIAL_EXIT_WAIT_MS 2000
 /* pserial_task queue depth — must absorb WiFi re-init event storm (6+ events). */
 #if defined(CONFIG_IDF_TARGET_ESP32C2)
   #define REQ_Q_MAX                  6
@@ -64,6 +65,8 @@ struct pserial_config {
 	pserial_xmit    xmit;
 	pserial_recv    recv;
 	QUEUE_HANDLE    req_queue;
+	SemaphoreHandle_t exited;    /* task confirms it left before stop() frees this */
+	volatile bool   exit_req;
 };
 
 typedef struct {
@@ -603,6 +606,9 @@ static void pserial_task(void *params)
 	}
 
 	while (xQueueReceive(pserial_cfg->req_queue, &arg, portMAX_DELAY) == pdTRUE) {
+		if (pserial_cfg->exit_req)
+			break;
+
 		if (arg.type == PROTO_EVT_ENDPOINT) {
 			/* Events */
 			ESP_HEXLOGV("pserial_evt_rx", arg.data, arg.len, 32);
@@ -633,7 +639,12 @@ static void pserial_task(void *params)
 		}
 	}
 
-	ESP_LOGI(TAG, "Unexpected termination of pserial task");
+	if (arg.data) {
+		free(arg.data);
+		arg.data = NULL;
+	}
+	xSemaphoreGive(pserial_cfg->exited);
+	vTaskDelete(NULL);
 }
 
 static esp_err_t protocomm_pserial_start(protocomm_t *pc,
@@ -656,6 +667,16 @@ static esp_err_t protocomm_pserial_start(protocomm_t *pc,
 	pserial_cfg->xmit = xmit;
 	pserial_cfg->recv = recv;
 	pserial_cfg->req_queue = xQueueCreate(REQ_Q_MAX, sizeof(serial_arg_t));
+	pserial_cfg->exited    = xSemaphoreCreateBinary();
+	pserial_cfg->exit_req  = false;
+	if (!pserial_cfg->req_queue || !pserial_cfg->exited) {
+		if (pserial_cfg->req_queue)
+			vQueueDelete(pserial_cfg->req_queue);
+		if (pserial_cfg->exited)
+			vSemaphoreDelete(pserial_cfg->exited);
+		free(pserial_cfg);
+		return ESP_ERR_NO_MEM;
+	}
 
 	pc->priv = pserial_cfg;
 
@@ -684,6 +705,16 @@ static esp_err_t protocomm_pserial_stop(protocomm_t *pc)
 
 	pserial_cfg = (struct pserial_config *) pc->priv;
 
+	/* Stop the task before deleting its queue. */
+	pserial_cfg->exit_req = true;
+	serial_arg_t wake = {0};
+	xQueueSend(pserial_cfg->req_queue, &wake, 0);
+	if (pserial_cfg->exited &&
+	    xSemaphoreTake(pserial_cfg->exited, pdMS_TO_TICKS(PSERIAL_EXIT_WAIT_MS)) != pdTRUE) {
+		ESP_LOGE(TAG, "pserial_task did not exit; releasing nothing");
+		return ESP_ERR_TIMEOUT;
+	}
+
 	while (xQueueReceive(pserial_cfg->req_queue, &arg, 0) == pdTRUE) {
 		if (arg.data) {
 			free(arg.data);
@@ -701,8 +732,7 @@ static esp_err_t protocomm_pserial_stop(protocomm_t *pc)
 	}
 
 	vQueueDelete(pserial_cfg->req_queue);
-	vTaskDelay(pdMS_TO_TICKS(100));
-
+	vSemaphoreDelete(pserial_cfg->exited);
 	free(pserial_cfg);
 	pc->priv = NULL;
 
@@ -892,6 +922,10 @@ esp_err_t eh_cp_protocomm_deinit(void)
         return ESP_OK;
     }
 
+	/* Stop the endpoint consumer before freeing its resources. */
+    protocomm_pserial_stop(g_protocomm_instance);
+    protocomm_delete(g_protocomm_instance);
+
     if (g_endpoint_mutex) {
         xSemaphoreTake(g_endpoint_mutex, portMAX_DELAY);
         for (size_t i = 0; i < g_endpoint_count; i++) {
@@ -906,9 +940,6 @@ esp_err_t eh_cp_protocomm_deinit(void)
         vSemaphoreDelete(g_endpoint_mutex);
         g_endpoint_mutex = NULL;
     }
-
-    protocomm_pserial_stop(g_protocomm_instance);
-    protocomm_delete(g_protocomm_instance);
 
     g_protocomm_instance = NULL;
     g_write_cb = NULL;

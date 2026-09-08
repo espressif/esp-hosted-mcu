@@ -78,6 +78,13 @@ static void raw_tp_tx_task(void *arg)
         if (eh_host_transport_tx(ESP_TEST_IF, 0, s_tx_buf,
                                  EH_HOST_PORT_RAW_TP_PKT_LEN, 0) == ESP_OK) {
             s_test_raw_tx_len += EH_HOST_PORT_RAW_TP_PKT_LEN;
+        } else {
+            /* Back off when the wire cannot take it (e.g. SDIO out of slave
+             * credits). Retrying with no delay busy-spins this task at the
+             * default priority and starves its peers - including the console,
+             * so `raw_tp stop` can never be serviced. A fast wire almost never
+             * takes this path, which is why it only shows on a slow one. */
+            eh_host_port_task_delay_ms(1);
         }
     }
     s_tx_task_running = 0;

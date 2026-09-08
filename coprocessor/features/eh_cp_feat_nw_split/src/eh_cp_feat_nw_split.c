@@ -79,6 +79,7 @@ eh_cp_rx_cb_t nw_split_wlan_sta_rx_cb =	NULL;
 
 /* Coprocessor station netif */
 static esp_netif_t *coprocessor_sta_netif = NULL;
+static esp_netif_t *s_owned_sta_netif = NULL;
 static bool s_sta_rx_overridden = false;
 static bool s_sta_got_ip = false;
 static bool s_sta_netif_input_ready = false;
@@ -1081,6 +1082,7 @@ static esp_netif_t *eh_cp_feat_nw_split_init_coprocessor_netif(eh_cp_feat_nw_spl
 	/* DHCP client auto-starts when netif is created with ESP_NETIF_DHCP_CLIENT. */
 
 	coprocessor_sta_netif = netif_sta;
+	s_owned_sta_netif = netif_sta;
 	assert(coprocessor_sta_netif);
 
 	/* netif start happens in WIFI_EVENT_STA_START default handler — don't start here. */
@@ -1176,17 +1178,35 @@ esp_err_t eh_cp_feat_nw_split_deinit(void)
 {
 	ESP_LOGI(TAG, "Deinitializing network split component");
 
-	/* Unsubscription is handled by each RPC adapter in its own deinit(). */
+    /* Unsubscription is handled by each RPC adapter in its own deinit(). */
 
-	/* Unregister event handlers */
+    /* Unregister event handlers. */
 	EH_CHECK_OK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
-											   wifi_event_handler));
+											   wifi_event_handler), ESP_ERR_NOT_FOUND);
 	EH_CHECK_OK(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID,
-											   wifi_event_handler));
+											   wifi_event_handler), ESP_ERR_NOT_FOUND);
 	EH_CHECK_OK(esp_event_handler_unregister(EH_CP_EVENT,
-		EH_CP_EVT_PRIVATE_RPC_READY, nw_split_core_event_handler));
+		EH_CP_EVT_PRIVATE_RPC_READY, nw_split_core_event_handler), ESP_ERR_NOT_FOUND);
 	s_nw_split_owns_sta_rxcb = false;  /* allow restore */
 	eh_cp_rx_register(ESP_STA_IF, orig_wlan_rx_cb_for_host);
+
+	/* Stop the STA netif before destroying an owned netif. */
+	esp_netif_t *sta = coprocessor_sta_netif ? coprocessor_sta_netif
+	                 : esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+	if (sta) {
+		EH_CHECK_OK_WARN(esp_netif_dhcpc_stop(sta),
+		                 ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED,
+		                 ESP_ERR_ESP_NETIF_IF_NOT_READY);
+		esp_netif_action_stop(sta, NULL, 0, NULL);
+	}
+
+	if (s_owned_sta_netif) {
+		EH_CHECK_OK_WARN(esp_wifi_clear_default_wifi_driver_and_handlers(s_owned_sta_netif));
+		esp_netif_destroy(s_owned_sta_netif);
+		s_owned_sta_netif = NULL;
+	}
+	coprocessor_sta_netif = NULL;
+	s_sta_netif_input_ready = false;
 
 	ESP_LOGI(TAG, "Network split deinitialization completed");
 	return ESP_OK;

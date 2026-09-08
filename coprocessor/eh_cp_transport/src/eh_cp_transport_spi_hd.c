@@ -173,6 +173,7 @@ static interface_handle_t * esp_spi_hd_init(void);
 static int esp_spi_hd_read(interface_handle_t *if_handle, interface_buffer_handle_t *buf_handle);
 static int32_t esp_spi_hd_write(interface_handle_t *handle, interface_buffer_handle_t *buf_handle);
 static void esp_spi_hd_deinit(interface_handle_t * handle);
+static void esp_spi_hd_stop(interface_handle_t *handle);
 static esp_err_t esp_spi_hd_reset(interface_handle_t *handle);
 
 if_ops_t if_ops = {
@@ -181,6 +182,7 @@ if_ops_t if_ops = {
 	.read = esp_spi_hd_read,
 	.reset = esp_spi_hd_reset,
 	.deinit = esp_spi_hd_deinit,
+	.stop = esp_spi_hd_stop,
 };
 
 static struct hosted_mempool * buf_mp_tx_g;
@@ -731,6 +733,28 @@ static interface_handle_t * esp_spi_hd_init(void)
 	return &if_handle_g;
 }
 
+static void esp_spi_hd_stop(interface_handle_t *handle)
+{
+	/* Do NOT touch handle->state: deinit returns early when it is already
+	 * DEINIT, which would skip the whole teardown. The give is the release. */
+	(void)handle;
+	if (spi_hd_rx_sem)
+		for (int i = 0; i < MAX_PRIORITY_QUEUES; i++)
+			xSemaphoreGive(spi_hd_rx_sem);
+}
+
+/* Clear handshake flags before deinit; stale flags can cause the host and CP
+ * to get out of sync during the next wake/init cycle. */
+static void clear_handshake_flags(void)
+{
+	uint32_t zero = 0;
+
+	spi_slave_hd_write_buffer(SPI_HOST, SPI_HD_REG_SLAVE_READY,
+			(uint8_t *)&zero, sizeof(zero));
+	spi_slave_hd_write_buffer(SPI_HOST, SPI_HD_REG_SLAVE_CTRL,
+			(uint8_t *)&zero, sizeof(zero));
+}
+
 static void esp_spi_hd_deinit(interface_handle_t * handle)
 {
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
@@ -740,6 +764,8 @@ static void esp_spi_hd_deinit(interface_handle_t * handle)
 		return;
 	}
 	if_handle_g.state = DEINIT;
+
+	clear_handshake_flags();
 
 	/* 1. Ask the workers to exit. One that is awake reaches its loop top and
 	 *    suspends itself, so it is never deleted mid-malloc; one parked in
