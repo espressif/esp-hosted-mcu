@@ -202,6 +202,24 @@ menu "CP core"
 				help
 					Size of Rx queue for packets
 		endmenu
+
+		config ESP_HOSTED_CP_WIFI_TX_RETRY_LIMIT
+			int "Host to Wi-Fi TX retry limit on buffer-full"
+			default 16
+			range 1 64
+			help
+				The number of retries when the Wi-Fi TX buffer pool is full.
+				Each retry waits approximately 1 ms.
+
+				If the pool is full, the CP retries. If all retries fail, the
+				CP discards the frame. A discarded frame causes a TCP timeout
+				of approximately 1.5 s.
+
+				A larger value increases TCP throughput. A larger value also
+				holds the SDIO receive task for a maximum of N ms.
+
+				Use 16 for maximum throughput. Measured: 30 Mbit/s, from 8.
+				Use 2 for low latency. 2 is the behavior before this option.
 	endmenu
 
 	menu "Core: Debug & Misc"

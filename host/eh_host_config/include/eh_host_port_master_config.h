@@ -33,6 +33,12 @@
 #else
     #define EH_HOST_PORT_DFLT_TASK_FROM_SPIRAM (0)
 #endif
+#ifdef CONFIG_ESP_HOSTED_HOST_PKT_STATS
+    #define EH_HOST_PKT_STATS (1)
+    #define EH_HOST_PKT_STATS_INTERVAL_SEC CONFIG_ESP_HOSTED_HOST_PKT_STATS_INTERVAL_SEC
+#else
+    #define EH_HOST_PKT_STATS (0)
+#endif
 
 /* Allow external code to override Hosted functions. */
 #define EH_HOST_PORT_WEAK_REF __attribute__((weak))

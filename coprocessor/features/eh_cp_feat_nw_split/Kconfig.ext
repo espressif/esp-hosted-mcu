@@ -80,71 +80,75 @@ if ESP_HOSTED_CP_FEAT_NW_SPLIT
 
 	endchoice
 
-	menu "Slave side (local) LWIP port range (static)"
+	menu "Co-processor side (local) LWIP port range (static)"
+		help
+			Range used by the co-processor for its local ports. Both ends are inclusive.
 		config LWIP_TCP_LOCAL_PORT_RANGE_START
-			int "Slave TCP start port"
+			int "Co-processor TCP start port"
 			default 61440
 			help
-				Slave side TCP start port. Host defaults to 49152
-				Slave range: 61440-65535
+				Co-processor side TCP start port. Host defaults to 49152
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 
 		config LWIP_TCP_LOCAL_PORT_RANGE_END
-			int "Slave TCP end port"
+			int "Co-processor TCP end port"
 			default 65535
 			help
-				Slave side TCP end port. Host defaults to 61439
-				Slave range: 61440-65535
+				Co-processor side TCP end port. Host defaults to 61439
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 
 		config LWIP_UDP_LOCAL_PORT_RANGE_START
-			int "Slave UDP start port"
+			int "Co-processor UDP start port"
 			default 61440
 			help
-				Slave side UDP start port. Host defaults to 49152
-				Slave range: 61440-65535
+				Co-processor side UDP start port. Host defaults to 49152
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 
 		config LWIP_UDP_LOCAL_PORT_RANGE_END
-			int "Slave UDP end port"
+			int "Co-processor UDP end port"
 			default 65535
 			help
-				Slave side UDP end port. Host defaults to 61439
-				Slave range: 61440-65535
+				Co-processor side UDP end port. Host defaults to 61439
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 	endmenu
 
 	menu "Host side (remote) LWIP port range (static)"
+		help
+			The range the host uses for its own ports. Both ends are inclusive.
 		config LWIP_TCP_REMOTE_PORT_RANGE_START
 			int "Host TCP start port"
 			default 49152
 			help
-				Host side TCP start port. Slave defaults to 61440
-				Slave range: 61440-65535
+				Host side TCP start port. Co-processor defaults to 61440
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 
 		config LWIP_TCP_REMOTE_PORT_RANGE_END
 			int "Host TCP end port"
 			default 61439
 			help
-				Host side TCP end port. Slave defaults to 65535
-				Slave range: 61440-65535
+				Host side TCP end port. Co-processor defaults to 65535
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 
 		config LWIP_UDP_REMOTE_PORT_RANGE_START
 			int "Host UDP start port"
 			default 49152
 			help
-				Host side TCP start port. Slave defaults to 61440
-				Slave range: 61440-65535
+				Host side UDP start port. Co-processor defaults to 61440
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 
 		config LWIP_UDP_REMOTE_PORT_RANGE_END
 			int "Host UDP end port"
 			default 61439
 			help
-				Host side UDP end port. Slave defaults to 65535
-				Slave range: 61440-65535
+				Host side UDP end port. Co-processor defaults to 65535
+				Co-processor range: 61440-65535
 				Host range: 49152-61439
 	endmenu
 

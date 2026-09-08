@@ -11,6 +11,7 @@ set(EH_TRANSPORT_SRCS
     "src/eh_host_mcu_transport_channels.c"
     "src/eh_host_mcu_wifi_remote_glue.c"
     "src/eh_host_raw_tp_stats.c"
+    "src/eh_host_pkt_stats.c"
     "src/eh_host_mcu_transport_state.c"
     "src/eh_host_mcu_transport_init_event.c"
     "src/eh_host_mcu_transport_send_caps.c"

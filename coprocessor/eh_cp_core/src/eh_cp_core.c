@@ -55,7 +55,15 @@ static const char TAG[] = "ehcp_core";
 #define TO_HOST_QUEUE_SIZE               10
 
 #define ETH_DATA_LEN                     1500
-#define MAX_WIFI_STA_TX_RETRY            2
+/* Host->WiFi TX retry-on-transient-pool-full: hold the frame briefly so bursty
+ * TCP paces via SDIO credit instead of dropping into an RTO. Tunable via Kconfig
+ * (throughput vs latency); default 16 keeps the fallback for non-Kconfig builds. */
+#ifdef CONFIG_ESP_HOSTED_CP_WIFI_TX_RETRY_LIMIT
+#define MAX_WIFI_STA_TX_RETRY            CONFIG_ESP_HOSTED_CP_WIFI_TX_RETRY_LIMIT
+#else
+#define MAX_WIFI_STA_TX_RETRY            16
+#endif
+#define WIFI_TX_RETRY_DELAY_MS           1
 
 /* Serial RX reassembly buffer: heap-grown via realloc per fragment. */
 static struct serial_rx_data {
@@ -475,13 +483,30 @@ static void process_priv_command(uint8_t *payload, uint16_t payload_len)
 #endif
 }
 
+/* Hold the frame over transient WiFi pool exhaustion so a burst paces on the
+ * bus instead of dropping into a TCP RTO. Any other error is terminal. */
+static int wifi_tx_with_retry(wifi_interface_t wifi_if, uint8_t *payload,
+                              uint16_t payload_len)
+{
+	int ret = ESP_OK;
+	int retry = MAX_WIFI_STA_TX_RETRY;
+
+	do {
+		ret = esp_wifi_internal_tx(wifi_if, payload, payload_len);
+		if (ret != ESP_ERR_NO_MEM)
+			break;
+		vTaskDelay(pdMS_TO_TICKS(WIFI_TX_RETRY_DELAY_MS));
+	} while (--retry);
+
+	return ret;
+}
+
 static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
 	uint8_t *payload = NULL;
 	uint16_t payload_len = 0;
 
 #if EH_CP_FEAT_WIFI_READY
-	int retry_wifi_tx = MAX_WIFI_STA_TX_RETRY;
 #endif
 
 	/* Fields already decoded by transport via eh_frame_decode; don't re-parse. */
@@ -502,14 +527,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		/* Registry dispatch first; fall back to direct WiFi TX if no RX cb. */
 		esp_err_t reg_ret = eh_cp_dispatch_rx(ESP_STA_IF, payload, payload_len, NULL);
 		if (reg_ret == ESP_ERR_NOT_FOUND && station_connected) {
-			int ret = 0;
-			do {
-				ret = esp_wifi_internal_tx(WIFI_IF_STA, payload, payload_len);
-				if (ret) {
-					vTaskDelay(pdMS_TO_TICKS(1));
-				}
-				retry_wifi_tx--;
-			} while (ret && retry_wifi_tx);
+			int ret = wifi_tx_with_retry(WIFI_IF_STA, payload, payload_len);
   #if ESP_PKT_STATS
 			if (ret)
 				pkt_stats.hs_bus_sta_fail++;
@@ -520,7 +538,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	} else if (buf_handle->if_type == ESP_AP_IF) {
 		esp_err_t reg_ret = eh_cp_dispatch_rx(ESP_AP_IF, payload, payload_len, NULL);
 		if (reg_ret == ESP_ERR_NOT_FOUND && softap_started) {
-			esp_wifi_internal_tx(WIFI_IF_AP, payload, payload_len);
+			wifi_tx_with_retry(WIFI_IF_AP, payload, payload_len);
 			ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
 		}
 #endif

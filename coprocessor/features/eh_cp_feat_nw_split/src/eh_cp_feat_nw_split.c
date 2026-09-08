@@ -15,7 +15,7 @@
 #if EH_CP_FEAT_HOST_PS_READY
 #include "eh_cp_feat_host_ps_apis.h"
 #endif
-#include "eh_cp_feat_nw_split_lwip_hook.h"
+#include "eh_nw_split_lwip_src_port_hook.h"
 #include "eh_cp_feat_nw_split_events.h"
 #include "eh_cp_feat_nw_split_apis.h"
 #include "eh_cp_feat_wifi.h"
