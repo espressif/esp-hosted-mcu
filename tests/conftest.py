@@ -266,7 +266,8 @@ def bench(substrate, lab_tmp, worker_id):
 
     def _make(example, host_role="mcu_host", transport="sdio", timeout="60s",
               wake=False, overlay=None, cp_overlay=None, cp_ota_overlay=None,
-              hostfwd=(), cp_app_to_host=None, pre_launch=None):
+              hostfwd=(), cp_app_to_host=None, pre_launch=None,
+              cp_inject=None):
         if transport not in target.transports:
             pytest.skip(f"{substrate} bench provides no transport={transport}")
         # pre_launch: a callback run AFTER firmware is built but BEFORE the DUTs
@@ -279,6 +280,7 @@ def bench(substrate, lab_tmp, worker_id):
             BenchSpec(example=example, host_role=host_role, transport=transport,
                       wake=wake, timeout=timeout, extra_ovl=tuple(overlay or ()),
                       cp_extra_ovl=tuple(cp_overlay or ()),
+                      cp_inject=cp_inject,
                       cp_ota_ovl=tuple(cp_ota_overlay or ()),
                       hostfwd=tuple(hostfwd), cp_app_to_host=cp_app_to_host),
             worker_id=worker_id, lab_tmp=lab_tmp, **extra)

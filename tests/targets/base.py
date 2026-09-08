@@ -32,6 +32,9 @@ class BenchSpec:
     timeout: str = "60s"             # per-DUT run cap (EH_EMU_TIMEOUT overrides)
     extra_ovl: tuple = ()            # per-test host sdkconfig lines (e.g. wifi creds)
     cp_extra_ovl: tuple = ()         # per-test CP sdkconfig lines (e.g. SDIO SW_AGGR)
+    cp_inject: dict = None           # {dest_rel: abs_src} staged into the CP's
+                                     # scratch build copy — lets tests/fw/ own a
+                                     # harness instead of an example carrying it
     hostfwd: tuple = ()              # extra CP guest ports to forward for network-split
                                      # routing tests (e.g. 61500 echo, 61600 http);
                                      # each maps to a distinct host loopback port,
@@ -53,6 +56,9 @@ class Bench:
     net: object = None
     teardown: object = None          # callable() or None
     caps: frozenset = field(default_factory=frozenset)
+    # Build outputs a test may need, e.g. {'cp_elf': ..., 'host_elf': ...} for
+    # resolving addresses a DUT printed.
+    artifacts: dict = field(default_factory=dict)
 
     @property
     def host(self):

@@ -211,15 +211,26 @@ def _expect_impl(dut, success, fail, timeout, use_exact):
         return EhTestExpectResult(False, diag, elapsed)
 
 
+def _timeout_scale():
+    """EH_EXPECT_TIMEOUT_SCALE multiplies every expect deadline. The emulator runs
+    ~2.2x slower than wall and ~10x lower throughput than hardware, so a suite
+    written to hardware deadlines can time out on emu for no defect reason.
+    Inert unless set."""
+    try:
+        return max(1.0, float(os.environ.get('EH_EXPECT_TIMEOUT_SCALE', '1')))
+    except ValueError:
+        return 1.0
+
+
 def eh_test_expect(dut, success, fail=None, timeout=15):
     """Native pytest-embedded expect with fail-pattern bifurcation.
     Forward-only timeout diagnostics (see _expect_impl)."""
-    return _expect_impl(dut, success, fail, timeout, use_exact=False)
+    return _expect_impl(dut, success, fail, timeout * _timeout_scale(), use_exact=False)
 
 
 def eh_test_expect_exact(dut, success, fail=None, timeout=15):
     """Same as eh_test_expect but literal match (faster, no regex)."""
-    return _expect_impl(dut, success, fail, timeout, use_exact=True)
+    return _expect_impl(dut, success, fail, timeout * _timeout_scale(), use_exact=True)
 
 
 def eh_test_verify_transport(host_dut, timeout=15):

@@ -188,7 +188,8 @@ class EmuTarget(BenchProvider):
             cp_bus_ovl.append("CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y")
         cp_ovl = cp_bus_ovl + list(spec.cp_extra_ovl)
 
-        cp_fw = build_fw.build(spec.example, spec.cp_role, spec.cp_target, cp_ovl)
+        cp_fw = build_fw.build(spec.example, spec.cp_role, spec.cp_target, cp_ovl,
+                               inject=spec.cp_inject)
         # Stage the freshly-built CP app image into the host build (e.g. the host's
         # LittleFS OTA source dir) — app-only .bin, not merged, so the host OTAs
         # exactly the CP app it was built against.
@@ -323,4 +324,6 @@ class EmuTarget(BenchProvider):
 
         caps = self.caps | ({CAP_NET} if fwd else frozenset())
         return Bench(duts=[host, cp], net=Net(port, fwd) if fwd else None,
-                     teardown=down, caps=caps)
+                     teardown=down, caps=caps,
+                     artifacts={'cp_elf': cp_fw.get('elf'),
+                                'host_elf': host_fw.get('elf')})

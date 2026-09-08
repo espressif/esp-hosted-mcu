@@ -57,7 +57,8 @@ def _bench(lab_tmp, worker_id):
         BenchSpec(example=_PS_EXAMPLE, host_role='esp_host', transport='sdio',
                   wake=True, timeout='200s'),
         worker_id=worker_id, lab_tmp=lab_tmp)
-    yield {'host': b.host, 'cp': b.cp, 'net': b.net}
+    yield {'host': b.host, 'cp': b.cp, 'net': b.net,
+           'artifacts': b.artifacts}
     b.down()
 
 
@@ -81,14 +82,14 @@ def emu_bench(lab_tmp, worker_id):
     benches = []
 
     def _make(example, host_role, transport, wake=False, timeout='60s',
-              cp_extra_ovl=(), extra_ovl=()):
+              cp_extra_ovl=(), extra_ovl=(), cp_inject=None):
         b = target.make(
             BenchSpec(example=example, host_role=host_role, transport=transport,
-                      wake=wake, timeout=timeout,
+                      wake=wake, timeout=timeout, cp_inject=cp_inject,
                       cp_extra_ovl=tuple(cp_extra_ovl), extra_ovl=tuple(extra_ovl)),
             worker_id=worker_id, lab_tmp=lab_tmp)
         benches.append(b)
-        out = {'host': b.host, 'cp': b.cp}
+        out = {'host': b.host, 'cp': b.cp, 'artifacts': b.artifacts}
         if b.net is not None:
             out['net'] = b.net
         return out
