@@ -228,8 +228,11 @@ esp_err_t app_wifi_connect(const app_wifi_creds_t *creds, bool force)
     if (force || !app_wifi_cp_creds_match(creds)) {
         wifi_config_t wc = { 0 };
 
-        strlcpy((char *)wc.sta.ssid, creds->ssid, sizeof(wc.sta.ssid));
-        strlcpy((char *)wc.sta.password, creds->password, sizeof(wc.sta.password));
+        /* Full width: strlcpy would reserve a terminator and drop a byte. */
+        memcpy(wc.sta.ssid, creds->ssid,
+               strnlen(creds->ssid, sizeof(wc.sta.ssid)));
+        memcpy(wc.sta.password, creds->password,
+               strnlen(creds->password, sizeof(wc.sta.password)));
         wc.sta.threshold.authmode = wc.sta.password[0] ? WIFI_AUTH_WPA2_PSK
                                                        : WIFI_AUTH_OPEN;
         /* Goes out in the association request, so this is the only place it can

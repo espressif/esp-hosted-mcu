@@ -24,10 +24,11 @@ enum {
 	WIFI_SCAN_AP_REC_ftm_initiator_BIT = 7,
 	WIFI_SCAN_AP_REC_phy_11a_BIT       = 8,
 	WIFI_SCAN_AP_REC_phy_11ac_BIT      = 9,
-	WIFI_SCAN_AP_REC_MAX_USED_BIT      = 10,
+	WIFI_SCAN_AP_REC_akm_dpp_BIT       = 10,
+	WIFI_SCAN_AP_REC_MAX_USED_BIT      = 11,
 };
 
-#define WIFI_SCAN_AP_RESERVED_BITMASK             0xFC00
+#define WIFI_SCAN_AP_RESERVED_BITMASK             0xFFFFF800
 
 #define WIFI_SCAN_AP_GET_RESERVED_VAL(num)                                      \
     ((num & WIFI_SCAN_AP_RESERVED_BITMASK) >> WIFI_SCAN_AP_REC_MAX_USED_BIT)
@@ -42,10 +43,12 @@ enum {
 	WIFI_STA_INFO_phy_lr_BIT        = 3,
 	WIFI_STA_INFO_phy_11ax_BIT      = 4,
 	WIFI_STA_INFO_is_mesh_child_BIT = 5,
-	WIFI_STA_INFO_MAX_USED_BIT      = 6,
+	WIFI_STA_INFO_phy_11a_BIT       = 6,
+	WIFI_STA_INFO_phy_11ac_BIT      = 7,
+	WIFI_STA_INFO_MAX_USED_BIT      = 8,
 };
 
-#define WIFI_STA_INFO_RESERVED_BITMASK             0xFFC0
+#define WIFI_STA_INFO_RESERVED_BITMASK             0xFF00
 
 #define WIFI_STA_INFO_GET_RESERVED_VAL(num)                                      \
     ((num & WIFI_STA_INFO_RESERVED_BITMASK) >> WIFI_STA_INFO_MAX_USED_BIT)
@@ -73,10 +76,11 @@ enum {
 	WIFI_STA_CONFIG_1_ft_enabled = 3,
 	WIFI_STA_CONFIG_1_owe_enabled = 4,
 	WIFI_STA_CONFIG_1_transition_disable = 5,
-	WIFI_STA_CONFIG_1_MAX_USED_BIT = 6,
+	WIFI_STA_CONFIG_1_disable_wpa3_compat = 6,
+	WIFI_STA_CONFIG_1_MAX_USED_BIT = 7,
 };
 
-#define WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFFC0
+#define WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFF80
 
 #define WIFI_STA_CONFIG_1_GET_RESERVED_VAL(num)                                   \
     ((num & WIFI_STA_CONFIG_1_RESERVED_BITMASK) >> WIFI_STA_CONFIG_1_MAX_USED_BIT)

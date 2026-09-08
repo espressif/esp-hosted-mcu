@@ -166,15 +166,23 @@ extern int g_private_key_passwd_len;
 
 #define RPC_REQ_COPY_STR RPC_REQ_COPY_BYTES
 
-#define RPC_RESP_COPY_STR(dest, src, max_len)                                   \
-  if (src) {                                                                    \
-    dest.data = (uint8_t*)strndup((const char*)src, max_len);                         \
-    if (!dest.data) {                                                           \
-      ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);     \
+/* IDF arrays like wifi_sta_config_t.ssid[32] are unterminated when full, so
+ * the length needs bounding too. */
+static inline bool eh_cp_dup_str_bounded(ProtobufCBinaryData *dest,
+                                        const void *src, size_t max_len)
+{
+    if (!src) return true;
+    dest->data = (uint8_t *)strndup((const char *)src, max_len);
+    if (!dest->data) return false;
+    dest->len = min(max_len, strnlen((const char *)src, max_len) + 1);
+    return true;
+}
+
+#define RPC_RESP_COPY_STR(dest, src, max_len)                                        \
+  if (!eh_cp_dup_str_bounded(&(dest), (src), (max_len))) {                       \
+    ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);        \
       resp_payload->resp = FAILURE;                                             \
-      return ESP_OK;                                                            \
-    }                                                                           \
-    dest.len = min(max_len,strlen((const char*)src)+1);                                 \
+      return ESP_OK;                                                                          \
   }
 
 #define RPC_RESP_COPY_BYTES_SRC_UNCHECKED(dest, src, num)                       \
@@ -197,13 +205,9 @@ extern int g_private_key_passwd_len;
   }
 
 #define RPC_COPY_STR(dest, src, max_len)                                        \
-  if (src) {                                                                    \
-    dest.data = (uint8_t*)strndup((const char*)src, max_len);                         \
-    if (!dest.data) {                                                           \
-      ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);     \
-      return FAILURE;                                                           \
-    }                                                                           \
-    dest.len = min(max_len,strlen((const char*)src)+1);                                 \
+  if (!eh_cp_dup_str_bounded(&(dest), (src), (max_len))) {                       \
+    ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);        \
+      return FAILURE;                                                                          \
   }
 
 #define RPC_COPY_BYTES(dest, src, num)                                          \
@@ -268,15 +272,11 @@ extern int g_private_key_passwd_len;
     }                                                                           \
   } while(0)
 
-  #define NTFY_COPY_STR(dest, src, max_len)                                       \
-    if (src) {                                                                    \
-      dest.data = (uint8_t*)strndup((const char*)src, max_len);                         \
-      if (!dest.data) {                                                           \
-        ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);     \
-        ntfy_payload->resp = FAILURE;                                             \
-        return ESP_OK;                                                            \
-      }                                                                           \
-      dest.len = min(max_len,strlen((const char*)src)+1);                               \
+  #define NTFY_COPY_STR(dest, src, max_len)                                     \
+    if (!eh_cp_dup_str_bounded(&(dest), (src), (max_len))) {                     \
+      ESP_LOGE(TAG, "%s:%u Failed to duplicate bytes\n",__func__,__LINE__);      \
+      ntfy_payload->resp = FAILURE;                                              \
+      return ESP_OK;                                                             \
     }
 
 /* Protocomm callbacks for protobuf processing - these exist in eh_cp_feat_rpc_ext_v2_rpc_core.c */

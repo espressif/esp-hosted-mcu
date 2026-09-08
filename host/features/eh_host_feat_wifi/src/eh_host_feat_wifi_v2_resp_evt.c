@@ -39,6 +39,7 @@ static void copy_wifi_ap_record(eh_rpc_wifi_ap_record_t *dst,
     dst->wps           = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_wps_BIT,           src->bitmask);
     dst->ftm_responder = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_ftm_responder_BIT, src->bitmask);
     dst->ftm_initiator = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_ftm_initiator_BIT, src->bitmask);
+    dst->akm_dpp       = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_SCAN_AP_REC_akm_dpp_BIT,      src->bitmask);
     dst->reserved      = EH_HOST_WIFI_SCAN_AP_GET_RESERVED_VAL(src->bitmask);
     if (src->country) {
         size_t cn = src->country->cc.len < EH_RPC_COUNTRY_CC_LEN
@@ -50,6 +51,7 @@ static void copy_wifi_ap_record(eh_rpc_wifi_ap_record_t *dst,
         dst->country.schan        = src->country->schan;
         dst->country.nchan        = src->country->nchan;
         dst->country.max_tx_power = src->country->max_tx_power;
+        dst->country.wifi_5g_channel_mask = src->country->wifi_5g_channel_mask;
         dst->country.policy       = src->country->policy;
     }
     if (src->he_ap) {
@@ -205,6 +207,7 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
             c->u.wifi_cfg.sae_ext = ap->sae_ext;
+            c->u.wifi_cfg.wpa3_compatible_mode = ap->wpa3_compatible_mode;
             if (ap->bss_max_idle_cfg) {
                 c->u.wifi_cfg.bss_max_idle_period =
                     ap->bss_max_idle_cfg->period;
@@ -248,15 +251,38 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
         const RpcRespWifiStaGetApInfo *r = rpc->resp_wifi_sta_get_ap_info;
         c->resp_event_status = r->resp;
         if (r->ap_record) {
-            const WifiApRecord *ap = r->ap_record;
-            EH_RPC_COPY_BIN(c->u.wifi_cfg.ssid,  EH_RPC_SSID_LEN, &ap->ssid);
-            EH_RPC_COPY_BIN(c->u.wifi_cfg.bssid, EH_RPC_MAC_LEN,  &ap->bssid);
-            c->u.wifi_cfg.bssid_set = true;
-            c->u.wifi_cfg.channel   = ap->primary;
-            c->u.wifi_cfg.authmode  = ap->authmode;
+            copy_wifi_ap_record(&c->u.ap_record, r->ap_record);
         }
         return 0;
     }
+
+    case RPC_ID__Resp_WifiStaGetRssi:
+        if (!rpc->resp_wifi_sta_get_rssi) return -1;
+        c->resp_event_status = rpc->resp_wifi_sta_get_rssi->resp;
+        c->u.sta_query.rssi  = rpc->resp_wifi_sta_get_rssi->rssi;
+        return 0;
+
+    case RPC_ID__Resp_WifiStaGetAid:
+        if (!rpc->resp_wifi_sta_get_aid) return -1;
+        c->resp_event_status = rpc->resp_wifi_sta_get_aid->resp;
+        c->u.sta_query.aid   = rpc->resp_wifi_sta_get_aid->aid;
+        return 0;
+
+    case RPC_ID__Resp_WifiStaGetNegotiatedPhymode:
+        if (!rpc->resp_wifi_sta_get_negotiated_phymode) return -1;
+        c->resp_event_status   = rpc->resp_wifi_sta_get_negotiated_phymode->resp;
+        c->u.sta_query.phymode = rpc->resp_wifi_sta_get_negotiated_phymode->phymode;
+        return 0;
+
+    case RPC_ID__Resp_WifiClearFastConnect:
+        if (!rpc->resp_wifi_clear_fast_connect) return -1;
+        c->resp_event_status = rpc->resp_wifi_clear_fast_connect->resp;
+        return 0;
+
+    case RPC_ID__Resp_WifiSetOkcSupport:
+        if (!rpc->resp_wifi_set_okc_support) return -1;
+        c->resp_event_status = rpc->resp_wifi_set_okc_support->resp;
+        return 0;
 
     case RPC_ID__Resp_WifiSetCountryCode:
         if (!rpc->resp_wifi_set_country_code) return -1;
@@ -292,6 +318,7 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
             c->u.wifi_country.schan        = cc->schan;
             c->u.wifi_country.nchan        = cc->nchan;
             c->u.wifi_country.max_tx_power = cc->max_tx_power;
+            c->u.wifi_country.wifi_5g_channel_mask = cc->wifi_5g_channel_mask;
             c->u.wifi_country.policy       = cc->policy;
         }
         return 0;
@@ -303,6 +330,10 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
         c->resp_event_status = r->resp;
         if (r->sta_list && r->sta_list->n_sta && r->sta_list->sta) {
             size_t n = r->sta_list->n_sta;
+            if (r->sta_list->num >= 0 && (size_t)r->sta_list->num < n) {
+                n = (size_t)r->sta_list->num;
+            }
+            if (!n) return 0;
             eh_rpc_wifi_sta_info_t *arr = (eh_rpc_wifi_sta_info_t *)
                 calloc(n, sizeof(*arr));
             if (!arr) return -1;
@@ -316,6 +347,8 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
                 arr[i].phy_11n       = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11n_BIT,       src->bitmask);
                 arr[i].phy_lr        = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_lr_BIT,        src->bitmask);
                 arr[i].phy_11ax      = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11ax_BIT,      src->bitmask);
+                arr[i].phy_11a       = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11a_BIT,       src->bitmask);
+                arr[i].phy_11ac      = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_phy_11ac_BIT,      src->bitmask);
                 arr[i].is_mesh_child = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_INFO_is_mesh_child_BIT, src->bitmask);
                 arr[i].reserved      = EH_HOST_WIFI_STA_INFO_GET_RESERVED_VAL(src->bitmask);
             }

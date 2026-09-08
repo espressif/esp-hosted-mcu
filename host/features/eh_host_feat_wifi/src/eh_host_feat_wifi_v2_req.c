@@ -228,6 +228,7 @@ static int compose_req_wifi_set_config(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
         ap->sae_ext = cfg->sae_ext;
+        ap->wpa3_compatible_mode = cfg->wpa3_compatible_mode;
         /* nested wifi_bss_max_idle_config */
         WifiBssMaxIdleConfig *bmi = (WifiBssMaxIdleConfig *)
             rpc_ext_v2_tracked_calloc(trk, sizeof(*bmi));
@@ -304,10 +305,37 @@ static int compose_req_wifi_scan_start(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
 
     cfg->channel              = sc->channel;
     cfg->show_hidden          = sc->show_hidden;
+    cfg->coex_background_scan = sc->coex_background_scan;
     cfg->scan_type            = sc->scan_type;
     cfg->home_chan_dwell_time = sc->home_chan_dwell_time;
 
     p->config = cfg;
+    return 0;
+}
+
+COMPOSE_REQ_EMPTY(compose_req_sta_get_rssi, RpcReqWifiStaGetRssi,
+                  req_wifi_sta_get_rssi,
+                  rpc__req__wifi_sta_get_rssi__init)
+
+COMPOSE_REQ_EMPTY(compose_req_sta_get_aid, RpcReqWifiStaGetAid,
+                  req_wifi_sta_get_aid,
+                  rpc__req__wifi_sta_get_aid__init)
+
+COMPOSE_REQ_EMPTY(compose_req_sta_get_negotiated_phymode,
+                  RpcReqWifiStaGetNegotiatedPhymode,
+                  req_wifi_sta_get_negotiated_phymode,
+                  rpc__req__wifi_sta_get_negotiated_phymode__init)
+
+COMPOSE_REQ_EMPTY(compose_req_wifi_clear_fast_connect,
+                  RpcReqWifiClearFastConnect, req_wifi_clear_fast_connect,
+                  rpc__req__wifi_clear_fast_connect__init)
+
+static int compose_req_wifi_set_okc_support(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
+                                            alloc_track_t *trk)
+{
+    ALLOC_PAYLOAD(RpcReqWifiSetOkcSupport, req_wifi_set_okc_support,
+                  rpc__req__wifi_set_okc_support__init);
+    p->enable = c->u.eap_bool.enable;
     return 0;
 }
 
@@ -345,6 +373,7 @@ static int compose_req_set_country(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
     cc->nchan         = c->u.wifi_country.nchan;
     cc->max_tx_power  = c->u.wifi_country.max_tx_power;
     cc->policy        = c->u.wifi_country.policy;
+    cc->wifi_5g_channel_mask = c->u.wifi_country.wifi_5g_channel_mask;
     p->country = cc;
     return 0;
 }
@@ -637,6 +666,14 @@ compose_fn rpc_ext_v2_pick_req_wifi(int32_t msg_id)
     case RPC_ID__Req_WifiClearApList:  return compose_req_wifi_clear_ap_list;
     case RPC_ID__Req_WifiRestore:      return compose_req_wifi_restore;
     case RPC_ID__Req_WifiStaGetApInfo: return compose_req_sta_get_ap_info;
+    case RPC_ID__Req_WifiStaGetRssi:   return compose_req_sta_get_rssi;
+    case RPC_ID__Req_WifiStaGetAid:    return compose_req_sta_get_aid;
+    case RPC_ID__Req_WifiStaGetNegotiatedPhymode:
+        return compose_req_sta_get_negotiated_phymode;
+    case RPC_ID__Req_WifiClearFastConnect:
+        return compose_req_wifi_clear_fast_connect;
+    case RPC_ID__Req_WifiSetOkcSupport:
+        return compose_req_wifi_set_okc_support;
 
     case RPC_ID__Req_WifiSetCountryCode:return compose_req_set_country_code;
     case RPC_ID__Req_WifiGetCountryCode:return compose_req_get_country_code;

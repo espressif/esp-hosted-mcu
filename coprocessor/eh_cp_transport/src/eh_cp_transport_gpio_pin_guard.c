@@ -24,7 +24,17 @@ static uint64_t get_reserved_pin_mask(void)
     /* Reserve the ACTIVE transport's pins so a host GpioConfig can't reconfigure
      * (and break) the link — e.g. flipping the SPI-HD DATA_READY line to open-drain.
      * Routed through the eh_cp_master_config redirector, NOT raw reference-era
-     * CONFIG_* symbols. SDIO slave pins are SoC-fixed, so there's nothing to guard. */
+     * CONFIG_* symbols. A fixed pin number does not make the pad untouchable:
+     * driving an SDIO line kills the bus mid-transfer. */
+#if EH_CP_TRANSPORT_SDIO
+    add_pin(&mask, EH_CP_SDIO_PIN_CMD);
+    add_pin(&mask, EH_CP_SDIO_PIN_CLK);
+    add_pin(&mask, EH_CP_SDIO_PIN_D0);
+    add_pin(&mask, EH_CP_SDIO_PIN_D1);
+    /* D2/D3 are routed even in 1-bit mode. */
+    add_pin(&mask, EH_CP_SDIO_PIN_D2);
+    add_pin(&mask, EH_CP_SDIO_PIN_D3);
+#endif
 #if EH_CP_TRANSPORT_SPI
     add_pin(&mask, EH_CP_SPI_PIN_MOSI);
     add_pin(&mask, EH_CP_SPI_PIN_MISO);
@@ -47,6 +57,9 @@ static uint64_t get_reserved_pin_mask(void)
 #if EH_CP_TRANSPORT_UART
     add_pin(&mask, EH_CP_UART_PIN_TX);
     add_pin(&mask, EH_CP_UART_PIN_RX);
+#endif
+#if EH_CP_FEAT_HOST_PS_READY
+    add_pin(&mask, EH_CP_FEAT_HOST_PS_WAKEUP_GPIO);
 #endif
 
     return mask;

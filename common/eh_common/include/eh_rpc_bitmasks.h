@@ -32,10 +32,11 @@ enum {
     EH_HOST_WIFI_SCAN_AP_REC_ftm_initiator_BIT = 7,
     EH_HOST_WIFI_SCAN_AP_REC_phy_11a_BIT       = 8,
     EH_HOST_WIFI_SCAN_AP_REC_phy_11ac_BIT      = 9,
-    EH_HOST_WIFI_SCAN_AP_REC_MAX_USED_BIT      = 10,
+    EH_HOST_WIFI_SCAN_AP_REC_akm_dpp_BIT       = 10,
+    EH_HOST_WIFI_SCAN_AP_REC_MAX_USED_BIT      = 11,
 };
 
-#define EH_HOST_WIFI_SCAN_AP_RESERVED_BITMASK             0xFC00u
+#define EH_HOST_WIFI_SCAN_AP_RESERVED_BITMASK             0xFFFFF800u
 
 #define EH_HOST_WIFI_SCAN_AP_GET_RESERVED_VAL(num)                              \
     (((num) & EH_HOST_WIFI_SCAN_AP_RESERVED_BITMASK)                            \
@@ -51,10 +52,12 @@ enum {
     EH_HOST_WIFI_STA_INFO_phy_lr_BIT        = 3,
     EH_HOST_WIFI_STA_INFO_phy_11ax_BIT      = 4,
     EH_HOST_WIFI_STA_INFO_is_mesh_child_BIT = 5,
-    EH_HOST_WIFI_STA_INFO_MAX_USED_BIT      = 6,
+    EH_HOST_WIFI_STA_INFO_phy_11a_BIT       = 6,
+    EH_HOST_WIFI_STA_INFO_phy_11ac_BIT      = 7,
+    EH_HOST_WIFI_STA_INFO_MAX_USED_BIT      = 8,
 };
 
-#define EH_HOST_WIFI_STA_INFO_RESERVED_BITMASK             0xFFC0u
+#define EH_HOST_WIFI_STA_INFO_RESERVED_BITMASK             0xFF00u
 
 #define EH_HOST_WIFI_STA_INFO_GET_RESERVED_VAL(num)                              \
     (((num) & EH_HOST_WIFI_STA_INFO_RESERVED_BITMASK)                            \
@@ -83,10 +86,11 @@ enum {
     EH_HOST_WIFI_STA_CONFIG_1_ft_enabled         = 3,
     EH_HOST_WIFI_STA_CONFIG_1_owe_enabled        = 4,
     EH_HOST_WIFI_STA_CONFIG_1_transition_disable = 5,
-    EH_HOST_WIFI_STA_CONFIG_1_MAX_USED_BIT       = 6,
+    EH_HOST_WIFI_STA_CONFIG_1_disable_wpa3_compat = 6,
+    EH_HOST_WIFI_STA_CONFIG_1_MAX_USED_BIT       = 7,
 };
 
-#define EH_HOST_WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFFC0u
+#define EH_HOST_WIFI_STA_CONFIG_1_RESERVED_BITMASK 0xFFFFFF80u
 
 #define EH_HOST_WIFI_STA_CONFIG_1_GET_RESERVED_VAL(num)                          \
     (((num) & EH_HOST_WIFI_STA_CONFIG_1_RESERVED_BITMASK)                        \

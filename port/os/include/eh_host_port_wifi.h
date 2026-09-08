@@ -62,6 +62,27 @@
   #define EH_HOST_PRESENT_IN_ESP_IDF_5_5_0      0
 #endif
 
+/* wifi_country_t::wifi_5g_channel_mask: slave SoC capability, not an IDF version */
+#ifdef CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G
+  #define EH_HOST_WIFI_GOT_5G_CHANNEL_MASK      1
+#else
+  #define EH_HOST_WIFI_GOT_5G_CHANNEL_MASK      0
+#endif
+
+/* wifi_ap_config_t::wpa3_compatible_mode: IDF v6.0+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+  #define EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE   1
+#else
+  #define EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE   0
+#endif
+
+/* wifi_sta_config_t::disable_wpa3_compatible_mode: IDF v6.0+ */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+  #define EH_HOST_GOT_WPA3_COMPATIBLE_MODE      1
+#else
+  #define EH_HOST_GOT_WPA3_COMPATIBLE_MODE      0
+#endif
+
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
   #define EH_HOST_PRESENT_IN_ESP_IDF_5_4_0      1
 #else
@@ -94,6 +115,14 @@
   #define EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 1
 #else
   #define EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 0
+#endif
+
+/* wifi_ap_record_t::akm_dpp: IDF v6.0.3+. release/v5.5 has it too, but no 5.5
+ * tag does, so the field stays absent there rather than guess a patch number. */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 3)
+  #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP       1
+#else
+  #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP       0
 #endif
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)

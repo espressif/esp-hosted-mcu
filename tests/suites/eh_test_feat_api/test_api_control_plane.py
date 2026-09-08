@@ -32,7 +32,6 @@ EX = 'system/api_exerciser'
 #   sdio    bus 18-23 ;  uart console 16/17 ;  reset 12/54
 # GPIO 14 is free on all of them. (GPIO 5 is spi_hd's D2 — would fight the SPI bus;
 # GPIO 4 is the spi_fd DR line — read the DR state, not the driven level.)
-GPIO_PIN = 14
 
 
 def _ready(bench, t, wake=False):
@@ -57,6 +56,19 @@ def _drivable(host, t, cmd):
     host.write(cmd)
     r = eh_test_expect(host, r'EH rc=-?\d+ cmd=' + cmd.split()[0], fail=FAIL, timeout=30)
     assert r.ok, f'[{t}] {cmd} drivable: {r.matched}'
+
+
+def _reaches_cp(host, t, cmd):
+    """Assert any rc except -1 (ESP_FAIL), which the host returns without
+    sending anything when a request has no composer or no response parser.
+
+    Sound only where the call is expected to succeed: ESP_FAIL is itself a
+    documented return of some Wi-Fi APIs, so on a failure path rc=-1 cannot
+    tell "never sent" from "the coprocessor tried and IDF refused"."""
+    host.write(cmd)
+    base = cmd.split()[0]
+    r = eh_test_expect(host, r'EH rc=(?!-1\b)-?\d+ cmd=' + base, fail=FAIL, timeout=30)
+    assert r.ok, f'[{t}] {cmd}: no result other than ESP_FAIL: {r.matched}'
 
 
 def _get_is(host, t, get_cmd, field, val):
@@ -90,7 +102,7 @@ def _roundtrip(host, t, get_cmd, field, set_fmt, v1, v2):
 ])
 @pytest.mark.second_chance
 @pytest.mark.xdist_group("emu_heavy")  # serialize: spi_fd RPC stalls if the emu is CPU-starved under parallel load
-def test_control_plane(bench, transport):
+def test_control_plane(bench, transport, bench_gpio):
     host, caps = _ready(bench, transport)
     t = transport
 
@@ -141,7 +153,8 @@ def test_control_plane(bench, transport):
     # AP-side getters (APSTA live): well-formed with zero associated STAs on emu —
     # sta_list returns num=0; get_sta_aid for an absent STA rejects cleanly.
     # (wifi_deauth_sta is a hard stop — see the tail — so it isn't run mid-sweep.)
-    _ok(host, t, 'wifi_ap_get_sta_list', r'num=\d+')
+    # The AP was created moments ago, so num can only be 0.
+    _ok(host, t, 'wifi_ap_get_sta_list', 'num=0')
     _drivable(host, t, 'wifi_ap_get_sta_aid 24:0a:c4:00:00:09')
     _ok(host, t, 'wifi_set_mode 1')  # back to STA for a sane end state
     # NULL-arg guard: host-side returns non-zero + err field, never crashes.
@@ -154,7 +167,26 @@ def test_control_plane(bench, transport):
     _ok(host, t, 'wifi_scan_get_ap_num', r'num=\d+')
     _drivable(host, t, 'wifi_scan_start 1')   # emu scan support varies; HW scans for real
     _drivable(host, t, 'wifi_scan_stop')
-    _drivable(host, t, 'wifi_scan_dump')
+
+    # Count before dumping: scan_get_ap_records consumes the AP list.
+    host.write('wifi_scan_get_ap_num')
+    scanned = eh_test_expect(host, r'EH rc=0 cmd=wifi_scan_get_ap_num num=[1-9]\d*',
+                             fail=FAIL, timeout=20).ok
+    if not scanned:
+        _drivable(host, t, 'wifi_scan_dump')   # nothing in range
+    else:
+        host.write('wifi_scan_dump')
+        r = eh_test_expect(host, r'EH scan ap ssid=.* rssi=-\d+ ch=\d+ phy=\d{7}',
+                           fail=FAIL, timeout=30)
+        assert r.ok, f'[{t}] scan record lost rssi or phy bits: {r.matched}'
+
+        # The unfiltered scan above found APs, so a filter on a name that
+        # cannot exist must find none. Needs no particular AP on air.
+        _ok(host, t, 'wifi_clear_ap_list')
+        _drivable(host, t, 'wifi_scan_start 1 eh-no-such-ssid')
+        _ok(host, t, 'wifi_scan_get_ap_num', 'num=0')
+
+    _ok(host, t, 'wifi_clear_fast_connect')
 
     # ── misc wifi (drivable: storage set, restore, idempotent disconnect) ─
     _ok(host, t, 'wifi_set_storage 0')
@@ -163,17 +195,40 @@ def test_control_plane(bench, transport):
     # ── gpio expander (loopback round-trip where the bench models it) ─────
     loopback = CAP_GPIO_LOOPBACK in caps
     _ok(host, t, 'gpio_init')
-    _ok(host, t, f'gpio_set_direction {GPIO_PIN} 2')  # OUTPUT
-    for level in (1, 0):
-        _ok(host, t, f'gpio_set_level {GPIO_PIN} {level}')
-        pat = (rf'EH rc=0 cmd=gpio_get_level level={level}' if loopback
-               else r'EH rc=0 cmd=gpio_get_level level=[01]')
-        host.write(f'gpio_get_level {GPIO_PIN}')
-        r = eh_test_expect(host, pat, fail=FAIL, timeout=20)
-        assert r.ok, f'[{t}] gpio_get_level ({"loopback" if loopback else "drivable"}): {r.matched}'
-    _ok(host, t, f'gpio_input_enable {GPIO_PIN}')
-    _ok(host, t, f'gpio_set_pull_mode {GPIO_PIN} 1')
-    _ok(host, t, f'gpio_reset_pin {GPIO_PIN}')
+
+    # A pin the transport owns must be refused. The coprocessor reserved SPI,
+    # SPI-HD and UART pins but not SDIO ones, on the reasoning that SDIO pins
+    # are SoC-fixed. Fixed numbers do not stop gpio_set_direction from
+    # reconfiguring the pad: the bus died mid-command and the host aborted on
+    # TRANSPORT_FAILURE. rc must be non-zero AND the link must survive, which
+    # the commands after this one prove.
+    reserved = bench_gpio.get('reserved')
+    if reserved is not None:
+        # All of them: a single-pin check passes with the rest of the mask empty.
+        pins = reserved if isinstance(reserved, list) else [reserved]
+        for pin_r in pins:
+            host.write(f'gpio_set_direction {pin_r} 2')
+            r = eh_test_expect(host, r'EH rc=-?[1-9]\d* cmd=gpio_set_direction',
+                               fail=FAIL, timeout=20)
+            assert r.ok, (f'[{t}] transport pin {pin_r} was not refused: '
+                          f'{r.matched}')
+        _ok(host, t, 'gpio_init')   # link still up after every refusal
+
+    pin = bench_gpio.get('pin')
+    if pin is None:
+        pass   # undeclared: could be a bus line, a strap or the wake pin
+    else:
+        _ok(host, t, f'gpio_set_direction {pin} 2')  # OUTPUT
+        for level in (1, 0):
+            _ok(host, t, f'gpio_set_level {pin} {level}')
+            pat = (rf'EH rc=0 cmd=gpio_get_level level={level}' if loopback
+                   else r'EH rc=0 cmd=gpio_get_level level=[01]')
+            host.write(f'gpio_get_level {pin}')
+            r = eh_test_expect(host, pat, fail=FAIL, timeout=20)
+            assert r.ok, f'[{t}] gpio_get_level ({"loopback" if loopback else "drivable"}): {r.matched}'
+        _ok(host, t, f'gpio_input_enable {pin}')
+        _ok(host, t, f'gpio_set_pull_mode {pin} 1')
+        _ok(host, t, f'gpio_reset_pin {pin}')
 
     # ── wifi iTWT (individual TWT; auto-enabled on HE-capable slaves) ──────
     # No AP/TWT peer on emu, so the setup family may reject — assert each RPC
@@ -230,7 +285,7 @@ _SPI_ASSOC_FLAKE = ("emu-under-load: post-assoc wifi_sta_get_ap_info times out (
 ])
 @pytest.mark.second_chance
 @pytest.mark.xdist_group("emu_heavy")  # serialize: spi_fd assoc flakes under parallel load
-def test_wifi_connected(bench, transport):
+def test_wifi_connected(bench, transport, sta_ap):
     """Connect to the bench's AP, then assert the connect-only STA queries return
     live data. Sequence: stage sta config → set_config → connect → poll a query
     until associated → assert ap_info/rssi/aid → disconnect. Gated on the bench
@@ -242,10 +297,19 @@ def test_wifi_connected(bench, transport):
     if 'wifi_ap' not in caps:
         pytest.skip(f'[{t}] bench has no associable AP (no wifi_ap cap)')
 
-    ssid = os.environ.get('EH_TEST_AP_SSID', 'myssid')
-    pw = os.environ.get('EH_TEST_AP_PASS', 'mypassword')
+    # Bench-declared; env vars override.
+    ssid = os.environ.get('EH_TEST_AP_SSID') or (sta_ap or {}).get('ssid')
+    pw = os.environ.get('EH_TEST_AP_PASS') or (sta_ap or {}).get('password')
+    if not ssid:
+        pytest.skip(f'[{t}] bench declares no AP credentials')
 
     _ok(host, t, 'wifi_set_mode 1')
+
+    # A C5 boots in band mode 1 (2.4 GHz) and ends a 5 GHz connect in
+    # reason 201, NO_AP_FOUND. AUTO leaves a 2.4 GHz bench unaffected.
+    if (sta_ap or {}).get('band') == '5g':
+        _ok(host, t, 'wifi_set_band_mode 3')   # 1=2G 2=5G 3=auto
+
     for c in ('wifi_cfg_reset', f'wifi_cfg_set sta_ssid {ssid}',
               f'wifi_cfg_set sta_password {pw}', 'wifi_set_config sta'):
         _ok(host, t, c)
@@ -263,18 +327,23 @@ def test_wifi_connected(bench, transport):
 
     # Connected — one query returns live AP data. A couple of retries absorb any
     # event→query settle, but this is NOT the old 20x poll-through-assoc loop.
+    # rssi= is load-bearing: an ssid-only match passes with rssi=0. An
+    # associated STA always reports a negative RSSI.
     associated = False
     for _ in range(3):
         host.write('wifi_sta_get_ap_info')
-        if eh_test_expect(host, rf'EH rc=0 cmd=wifi_sta_get_ap_info ssid={ssid}',
+        if eh_test_expect(host,
+                          rf'EH rc=0 cmd=wifi_sta_get_ap_info ssid={ssid} rssi=-\d+',
                           fail=FAIL, timeout=5).ok:
             associated = True
             break
-    assert associated, f'[{t}] ap_info did not report {ssid} after connect event'
+    assert associated, (f'[{t}] ap_info did not report {ssid} with a negative '
+                        f'rssi after connect event')
 
-    # The remaining connect-only queries exercise their RPC paths; the emu models
-    # only some (rssi returns N/A there), so assert well-formed rather than rc=0.
-    _drivable(host, t, 'wifi_sta_get_rssi')
-    _drivable(host, t, 'wifi_sta_get_aid')
-    _drivable(host, t, 'wifi_sta_get_negotiated_phymode')
+    # The remaining connect-only queries exercise their RPC paths. A bench
+    # without a real radio answers some of them with an error, so gate on the
+    # request reaching the CP rather than on rc=0.
+    _reaches_cp(host, t, 'wifi_sta_get_rssi')
+    _reaches_cp(host, t, 'wifi_sta_get_aid')
+    _reaches_cp(host, t, 'wifi_sta_get_negotiated_phymode')
     _ok(host, t, 'wifi_disconnect')

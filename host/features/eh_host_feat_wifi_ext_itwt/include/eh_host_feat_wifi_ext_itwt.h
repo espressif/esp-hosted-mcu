@@ -63,9 +63,12 @@ typedef struct eh_host_itwt_teardown_event {
     uint32_t  status;
 } eh_host_itwt_teardown_event_t;
 
+/* wifi_event_sta_itwt_suspend_t: suspend time per flow id. */
+#define EH_HOST_ITWT_MAX_FLOWS 8
 typedef struct eh_host_itwt_suspend_event {
     int32_t   status;
     uint32_t  flow_id_bitmap;
+    uint32_t  actual_suspend_time_ms[EH_HOST_ITWT_MAX_FLOWS];
 } eh_host_itwt_suspend_event_t;
 
 typedef struct eh_host_itwt_probe_event {

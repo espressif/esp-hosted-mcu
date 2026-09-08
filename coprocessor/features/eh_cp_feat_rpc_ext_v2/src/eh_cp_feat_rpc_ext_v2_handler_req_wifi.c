@@ -631,10 +631,12 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		WifiStaConfig * p_c_sta = req_payload->cfg->sta;
 		RPC_RET_FAIL_IF(!req_payload->cfg->sta);
 		RPC_REQ_COPY_STR(p_a_sta->ssid, p_c_sta->ssid, SSID_LENGTH);
-		if (strlen((char*)p_a_sta->ssid))
-			ESP_LOGI(TAG, "STA set config: SSID:%s", p_a_sta->ssid);
+		/* password[64] follows ssid[32], which is unterminated when full. */
+		size_t sta_slen = strnlen((char *)p_a_sta->ssid, sizeof(p_a_sta->ssid));
+		if (sta_slen)
+			ESP_LOGI(TAG, "STA set config: SSID:%.*s", (int)sta_slen, p_a_sta->ssid);
 		RPC_REQ_COPY_STR(p_a_sta->password, p_c_sta->password, PASSWORD_LENGTH);
-		if (strlen((char*)p_a_sta->password))
+		if (strnlen((char *)p_a_sta->password, sizeof(p_a_sta->password)))
 			ESP_LOGD(TAG, "STA: password:xxxxxxxx");
 		p_a_sta->scan_method = p_c_sta->scan_method;
 		p_a_sta->bssid_set = p_c_sta->bssid_set;
@@ -664,6 +666,10 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->ft_enabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_1_ft_enabled, p_c_sta->bitmask);
 		p_a_sta->owe_enabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_1_owe_enabled, p_c_sta->bitmask);
 		p_a_sta->transition_disable = EH_CP_GET_BIT(WIFI_STA_CONFIG_1_transition_disable, p_c_sta->bitmask);
+#if EH_CP_WIFI_GOT_WPA3_COMPATIBLE_MODE
+		p_a_sta->disable_wpa3_compatible_mode =
+			EH_CP_GET_BIT(WIFI_STA_CONFIG_1_disable_wpa3_compat, p_c_sta->bitmask);
+#endif
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
 #if EH_CP_WIFI_NEW_RESERVED_FIELDS
 		p_a_sta->reserved1 = WIFI_STA_CONFIG_1_GET_RESERVED_VAL(p_c_sta->bitmask);
@@ -737,6 +743,9 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 #if EH_CP_IDF_GE_5_5
 		p_a_ap->sae_ext = (p_c_ap->sae_ext);
+#if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
+		p_a_ap->wpa3_compatible_mode = (p_c_ap->wpa3_compatible_mode) & 1u;
+#endif
 		if (p_c_ap->bss_max_idle_cfg) {
 			EH_ASSIGN_NARROW(p_a_ap->bss_max_idle_cfg.period, p_c_ap->bss_max_idle_cfg->period);
 			p_a_ap->bss_max_idle_cfg.protected_keep_alive = p_c_ap->bss_max_idle_cfg->protected_keep_alive;
@@ -810,6 +819,10 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 
 		if (p_a_sta->transition_disable)
 			EH_CP_SET_BIT(WIFI_STA_CONFIG_1_transition_disable, p_c_sta->bitmask);
+#if EH_CP_WIFI_GOT_WPA3_COMPATIBLE_MODE
+		if (p_a_sta->disable_wpa3_compatible_mode)
+			EH_CP_SET_BIT(WIFI_STA_CONFIG_1_disable_wpa3_compat, p_c_sta->bitmask);
+#endif
 
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
 #if EH_CP_WIFI_NEW_RESERVED_FIELDS
@@ -900,6 +913,9 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 #if EH_CP_IDF_GE_5_5
 		p_c_ap->sae_ext = p_a_ap->sae_ext;
+#if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
+		p_c_ap->wpa3_compatible_mode = p_a_ap->wpa3_compatible_mode;
+#endif
 		RPC_ALLOC_ELEMENT(WifiBssMaxIdleConfig, p_c_ap->bss_max_idle_cfg, wifi_bss_max_idle_config__init);
 		p_c_ap->bss_max_idle_cfg->period = p_a_ap->bss_max_idle_cfg.period;
 		p_c_ap->bss_max_idle_cfg->protected_keep_alive = p_a_ap->bss_max_idle_cfg.protected_keep_alive;
@@ -971,6 +987,9 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 #endif
 #if EH_CP_IDF_GE_5_5
 		p_c_ap->sae_ext = p_a_ap->sae_ext;
+#if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
+		p_c_ap->wpa3_compatible_mode = p_a_ap->wpa3_compatible_mode;
+#endif
 		RPC_ALLOC_ELEMENT(WifiBssMaxIdleConfig, p_c_ap->bss_max_idle_cfg, wifi_bss_max_idle_config__init);
 		p_c_ap->bss_max_idle_cfg->period = p_a_ap->bss_max_idle_cfg.period;
 		p_c_ap->bss_max_idle_cfg->protected_keep_alive = p_a_ap->bss_max_idle_cfg.protected_keep_alive;
@@ -1014,6 +1033,9 @@ esp_err_t req_wifi_scan_start(Rpc *req, Rpc *resp, void *priv_data)
 
 		EH_ASSIGN_NARROW(p_a->channel, p_c->channel);
 		p_a->show_hidden = p_c->show_hidden;
+#if EH_CP_IDF_GE_5_4
+		p_a->coex_background_scan = p_c->coex_background_scan;
+#endif
 		p_a->scan_type = p_c->scan_type;
 
 		p_c_st = p_c->scan_time;
@@ -1152,6 +1174,11 @@ static int copy_ap_record_to_rpc_struct(WifiApRecord *rpc, wifi_ap_record_t *sca
 	if (scan->ftm_initiator)
 		EH_CP_SET_BIT(WIFI_SCAN_AP_REC_ftm_initiator_BIT,rpc->bitmask);
 
+#if EH_CP_WIFI_GOT_AP_REC_AKM_DPP
+	if (scan->akm_dpp)
+		EH_CP_SET_BIT(WIFI_SCAN_AP_REC_akm_dpp_BIT,rpc->bitmask);
+#endif
+
 	WIFI_SCAN_AP_SET_RESERVED_VAL(scan->reserved, rpc->bitmask);
 
 	/* country */
@@ -1159,6 +1186,9 @@ static int copy_ap_record_to_rpc_struct(WifiApRecord *rpc, wifi_ap_record_t *sca
 	rpc->country->schan        = scan->country.schan;
 	rpc->country->nchan        = scan->country.nchan;
 	rpc->country->max_tx_power = scan->country.max_tx_power;
+#if EH_CP_WIFI_GOT_5G_CHANNEL_MASK
+	rpc->country->wifi_5g_channel_mask = scan->country.wifi_5g_channel_mask;
+#endif
 	rpc->country->policy       = scan->country.policy;
 
 	ESP_LOGD(TAG, "Country cc:%c%c schan: %u nchan: %u max_tx_pow: %d policy: %u",
@@ -1240,17 +1270,26 @@ esp_err_t req_wifi_scan_get_ap_records(Rpc *req, Rpc *resp, void *priv_data)
 	EH_ASSIGN_NARROW(number, req->req_wifi_scan_get_ap_records->number);
 	ESP_LOGD(TAG,"n_elem_scan_list predicted: %u\n", number);
 
-	p_a_ap_list = (wifi_ap_record_t *)calloc(number, sizeof(wifi_ap_record_t));
-	RPC_RET_FAIL_IF(!p_a_ap_list);
-
+	/* number is host-supplied. Ask the radio how many records exist and
+	 * allocate the smaller of the two, so a wrong or hostile count cannot
+	 * turn into a multi-megabyte request on the coprocessor. */
 	ret = esp_wifi_scan_get_ap_num(&ap_count);
 	if (ret || !ap_count) {
 		ESP_LOGE(TAG,"esp_wifi_scan_get_ap_num: ret: %d num_ap_scanned:%u", ret, number);
 		goto err;
 	}
-	if (number < ap_count) {
-		ESP_LOGI(TAG,"n_elem_scan_list wants to return: %u Limit to %u\n", ap_count, number);
+	if (number > ap_count) {
+		ESP_LOGD(TAG,"n_elem_scan_list asked %u, only %u scanned", number, ap_count);
+		number = ap_count;
 	}
+	if (!number) {
+		/* Host asked for none: answer SUCCESS with an empty list. */
+		ESP_LOGD(TAG,"n_elem_scan_list asked 0 records");
+		goto err;
+	}
+
+	p_a_ap_list = (wifi_ap_record_t *)calloc(number, sizeof(wifi_ap_record_t));
+	RPC_RET_FAIL_IF(!p_a_ap_list);
 
 	ret = esp_wifi_scan_get_ap_records(&number, p_a_ap_list);
 	if(ret) {
@@ -1460,6 +1499,9 @@ esp_err_t req_wifi_set_country(Rpc *req, Rpc *resp, void *priv_data)
 	EH_ASSIGN_NARROW(country.schan, p_c_country->schan);
 	EH_ASSIGN_NARROW(country.nchan, p_c_country->nchan);
 	EH_ASSIGN_NARROW(country.max_tx_power, p_c_country->max_tx_power);
+#if EH_CP_WIFI_GOT_5G_CHANNEL_MASK
+	country.wifi_5g_channel_mask = p_c_country->wifi_5g_channel_mask;
+#endif
 	country.policy       = p_c_country->policy;
 
 	RPC_RET_FAIL_IF(esp_wifi_set_country(&country));
@@ -1483,6 +1525,9 @@ esp_err_t req_wifi_get_country(Rpc *req, Rpc *resp, void *priv_data)
 	p_c_country->schan        = country.schan;
 	p_c_country->nchan        = country.nchan;
 	p_c_country->max_tx_power = country.max_tx_power;
+#if EH_CP_WIFI_GOT_5G_CHANNEL_MASK
+	p_c_country->wifi_5g_channel_mask = country.wifi_5g_channel_mask;
+#endif
 	p_c_country->policy       = country.policy;
 
 err:
@@ -1502,13 +1547,28 @@ esp_err_t req_wifi_ap_get_sta_list(Rpc *req, Rpc *resp, void *priv_data)
 	RPC_ALLOC_ELEMENT(WifiStaList, resp_payload->sta_list, wifi_sta_list__init);
 	p_c_sta_list = resp_payload->sta_list;
 
-	resp_payload->sta_list->sta = (WifiStaInfo**)calloc(ESP_WIFI_MAX_CONN_NUM, sizeof(WifiStaInfo *));
-	if (!resp_payload->sta_list->sta) {
-		ESP_LOGE(TAG,"resp: malloc failed for resp_payload->sta_list->sta");
+	/* wifi_sta_list_t holds at most ESP_WIFI_MAX_CONN_NUM and entries past
+	 * num are invalid. Anything else is a broken list, not a short one. */
+	if (sta.num < 0 || sta.num > ESP_WIFI_MAX_CONN_NUM) {
+		ESP_LOGE(TAG,"esp_wifi_ap_get_sta_list returned num=%d, outside 0..%d",
+			sta.num, ESP_WIFI_MAX_CONN_NUM);
+		resp_payload->resp = ESP_ERR_INVALID_SIZE;
 		goto err;
 	}
 
-	for (int i = 0; i < ESP_WIFI_MAX_CONN_NUM; i++) {
+	if (sta.num) {
+		resp_payload->sta_list->sta = (WifiStaInfo**)calloc(sta.num, sizeof(WifiStaInfo *));
+		if (!resp_payload->sta_list->sta) {
+			ESP_LOGE(TAG,"resp: malloc failed for resp_payload->sta_list->sta");
+			resp_payload->resp = RPC_ERR_MEMORY_FAILURE;
+			goto err;
+		}
+		/* Set before filling: the free path walks n_sta, and calloc leaves
+		 * unfilled entries NULL, which free_unpacked skips. */
+		p_c_sta_list->n_sta = sta.num;
+	}
+
+	for (int i = 0; i < sta.num; i++) {
 		RPC_ALLOC_ELEMENT(WifiStaInfo, p_c_sta_list->sta[i], wifi_sta_info__init);
 		WifiStaInfo * p_c_sta_info = p_c_sta_list->sta[i];
 
@@ -1530,14 +1590,17 @@ esp_err_t req_wifi_ap_get_sta_list(Rpc *req, Rpc *resp, void *priv_data)
 		if (sta.sta[i].phy_11ax)
 			EH_CP_SET_BIT(WIFI_STA_INFO_phy_11ax_BIT, p_c_sta_info->bitmask);
 
+		if (sta.sta[i].phy_11a)
+			EH_CP_SET_BIT(WIFI_STA_INFO_phy_11a_BIT, p_c_sta_info->bitmask);
+
+		if (sta.sta[i].phy_11ac)
+			EH_CP_SET_BIT(WIFI_STA_INFO_phy_11ac_BIT, p_c_sta_info->bitmask);
+
 		if (sta.sta[i].is_mesh_child)
 			EH_CP_SET_BIT(WIFI_STA_INFO_is_mesh_child_BIT, p_c_sta_info->bitmask);
 
 		WIFI_STA_INFO_SET_RESERVED_VAL(sta.sta[i].reserved, p_c_sta_info->bitmask);
 	}
-	// number of sta records in the list
-	resp_payload->sta_list->n_sta = ESP_WIFI_MAX_CONN_NUM;
-
 	p_c_sta_list->num = sta.num;
 
 err:

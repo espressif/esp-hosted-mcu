@@ -130,6 +130,10 @@ esp_err_t copy_wifi_sta_cfg_to_rpc_struct(void *payload, rpc_payload_type_t type
 
 	if (p_a_sta->transition_disable)
 		EH_CP_SET_BIT(WIFI_STA_CONFIG_1_transition_disable, p_c_sta->bitmask);
+#if EH_CP_WIFI_GOT_WPA3_COMPATIBLE_MODE
+	if (p_a_sta->disable_wpa3_compatible_mode)
+		EH_CP_SET_BIT(WIFI_STA_CONFIG_1_disable_wpa3_compat, p_c_sta->bitmask);
+#endif
 
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
 #if EH_CP_WIFI_NEW_RESERVED_FIELDS

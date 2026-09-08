@@ -23,6 +23,7 @@ extern "C" {
 #define EH_RPC_OTA_CHUNK_MAX            1536u
 #define EH_RPC_IDF_TARGET_LEN           32u   /* e.g. "esp32c6" */
 #define EH_RPC_SAE_H2E_IDENTIFIER_LEN   32u
+#define EH_RPC_ITWT_MAX_FLOWS           8u    /* wifi_event_sta_itwt_suspend_t */
 
 typedef struct {
     uint8_t mac[EH_RPC_MAC_LEN];
@@ -89,6 +90,7 @@ typedef struct {
     uint32_t dtim_period;
     uint32_t transition_disable;
     uint32_t sae_ext;
+    uint32_t wpa3_compatible_mode;
     uint32_t bss_max_idle_period;
     bool     bss_max_idle_protected_keep_alive;
     uint32_t gtk_rekey_interval;
@@ -142,6 +144,7 @@ typedef struct {
     uint32_t home_chan_dwell_time;
     uint32_t ghz_2_channels;                  /* channel_bitmap.*        */
     uint32_t ghz_5_channels;
+    bool     coex_background_scan;
 } eh_rpc_wifi_scan_cfg_t;
 
 /* Req/Resp_WifiScanParams — mirrors wifi_scan_default_params_t. */
@@ -224,6 +227,7 @@ typedef struct {
     uint32_t nchan;
     int32_t  max_tx_power;
     int32_t  policy;
+    uint32_t wifi_5g_channel_mask;
 } eh_rpc_wifi_country_full_t;
 
 /* wifi_protocols mirror; ghz_2g/5g widened to uint32 for wire. */
@@ -254,6 +258,8 @@ typedef struct {
     bool     phy_11g;
     bool     phy_11n;
     bool     phy_lr;
+    bool     phy_11a;
+    bool     phy_11ac;
     bool     phy_11ax;
     bool     is_mesh_child;
     uint32_t reserved;
@@ -287,6 +293,7 @@ typedef struct {
     bool     wps;
     bool     ftm_responder;
     bool     ftm_initiator;
+    bool     akm_dpp;
     uint32_t reserved;
     eh_rpc_wifi_country_full_t country;
     uint32_t bss_color;             /* 6 bits semantically */
@@ -297,6 +304,13 @@ typedef struct {
     uint32_t vht_ch_freq1;
     uint32_t vht_ch_freq2;
 } eh_rpc_wifi_ap_record_t;
+
+/* Scalar STA queries, one field each. rssi stays signed end to end. */
+typedef struct {
+    int32_t  rssi;
+    uint32_t aid;
+    uint32_t phymode;
+} eh_rpc_wifi_sta_query_t;
 
 /* Resp_WifiScanGetApRecords: heap-owned array (Resp only). */
 typedef struct {
@@ -451,9 +465,12 @@ typedef struct {
     uint32_t  status;
 } eh_rpc_itwt_teardown_evt_t;
 
+/* actual_suspend_time_ms is indexed by flow id. */
 typedef struct {
     int32_t   status;
     uint32_t  flow_id_bitmap;
+    uint32_t  actual_suspend_time_ms[EH_RPC_ITWT_MAX_FLOWS];
+    uint32_t  n_actual_suspend_time_ms;
 } eh_rpc_itwt_suspend_evt_t;
 
 typedef struct {
@@ -558,6 +575,8 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_wifi_twt_config_t   wifi_twt_config;
         eh_rpc_sta_list_t          sta_list;
         eh_rpc_ap_records_t        ap_records;
+        eh_rpc_wifi_ap_record_t    ap_record;
+        eh_rpc_wifi_sta_query_t    sta_query;
         eh_rpc_mem_monitor_t       mem_monitor;
         eh_rpc_gpio_cfg_t          gpio_cfg;
         eh_rpc_gpio_level_t        gpio_level;

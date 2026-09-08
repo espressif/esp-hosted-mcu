@@ -210,6 +210,12 @@ static void itwt_suspend_handler(const void *ctrl_cmd, void *ctx)
         .status         = c->u.e_itwt_suspend.status,
         .flow_id_bitmap = c->u.e_itwt_suspend.flow_id_bitmap,
     };
+    uint32_t n = c->u.e_itwt_suspend.n_actual_suspend_time_ms;
+    if (n > EH_HOST_ITWT_MAX_FLOWS) n = EH_HOST_ITWT_MAX_FLOWS;
+    for (uint32_t i = 0; i < n; ++i) {
+        e.actual_suspend_time_ms[i] =
+            c->u.e_itwt_suspend.actual_suspend_time_ms[i];
+    }
     cb(&e, uc);
 }
 

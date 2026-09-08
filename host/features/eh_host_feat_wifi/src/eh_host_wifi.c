@@ -137,7 +137,11 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
 
     /* wifi_config_t is a union; pick fields per iface. Wire is flat. */
     if (iface == WIFI_IF_AP) {
-        size_t slen = strnlen((const char *)cfg->ap.ssid, sizeof(cfg->ap.ssid));
+        /* IDF: ssid_len 0 means NUL-terminated, else it is the length. */
+        size_t slen = cfg->ap.ssid_len
+                      ? cfg->ap.ssid_len
+                      : strnlen((const char *)cfg->ap.ssid, sizeof(cfg->ap.ssid));
+        if (slen > sizeof(cfg->ap.ssid)) slen = sizeof(cfg->ap.ssid);
         memcpy(req->u.wifi_cfg.ssid, cfg->ap.ssid, slen);
         req->u.wifi_cfg.ssid[slen] = '\0';
         req->u.wifi_cfg.ssid_len = (uint32_t)slen;
@@ -163,6 +167,9 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
         req->u.wifi_cfg.sae_ext                            = cfg->ap.sae_ext;
+#if EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE
+        req->u.wifi_cfg.wpa3_compatible_mode               = cfg->ap.wpa3_compatible_mode;
+#endif
         req->u.wifi_cfg.bss_max_idle_period                = cfg->ap.bss_max_idle_cfg.period;
         req->u.wifi_cfg.bss_max_idle_protected_keep_alive  = cfg->ap.bss_max_idle_cfg.protected_keep_alive;
         req->u.wifi_cfg.gtk_rekey_interval                 = cfg->ap.gtk_rekey_interval;
@@ -215,6 +222,10 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_1_owe_enabled, bm);
         if (cfg->sta.transition_disable)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_1_transition_disable, bm);
+#if EH_HOST_GOT_WPA3_COMPATIBLE_MODE
+        if (cfg->sta.disable_wpa3_compatible_mode)
+            EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_1_disable_wpa3_compat, bm);
+#endif
         req->u.wifi_cfg.bitmask = bm;
 
         uint32_t hbm = 0;
@@ -293,6 +304,9 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
 #endif
 #if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
             out->ap.sae_ext = (r->u.wifi_cfg.sae_ext);
+#if EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE
+            out->ap.wpa3_compatible_mode = (r->u.wifi_cfg.wpa3_compatible_mode) & 1u;
+#endif
             EH_ASSIGN_NARROW(out->ap.bss_max_idle_cfg.period, r->u.wifi_cfg.bss_max_idle_period);
             out->ap.bss_max_idle_cfg.protected_keep_alive = r->u.wifi_cfg.bss_max_idle_protected_keep_alive;
             EH_ASSIGN_NARROW(out->ap.gtk_rekey_interval, r->u.wifi_cfg.gtk_rekey_interval);
@@ -330,6 +344,10 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
             out->sta.ft_enabled         = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_ft_enabled, bm);
             out->sta.owe_enabled        = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_owe_enabled, bm);
             out->sta.transition_disable = EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_transition_disable, bm);
+#if EH_HOST_GOT_WPA3_COMPATIBLE_MODE
+            out->sta.disable_wpa3_compatible_mode =
+                EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_1_disable_wpa3_compat, bm);
+#endif
 #if EH_HOST_DECODE_WIFI_RESERVED_FIELD
 #  if EH_HOST_WIFI_NEW_RESERVED_FIELD_NAMES
             out->sta.reserved1 = EH_HOST_WIFI_STA_CONFIG_1_GET_RESERVED_VAL(bm);
@@ -379,6 +397,52 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
 esp_err_t eh_host_wifi_connect(void)    { return eh_rpc_do_empty_request(RPC_ID__Req_WifiConnect); }
 esp_err_t eh_host_wifi_disconnect(void) { return eh_rpc_do_empty_request(RPC_ID__Req_WifiDisconnect); }
 
+/* RPC mirror -> IDF struct; shared by sta_get_ap_info and scan_get_ap_record(s). */
+static void ap_record_to_idf(wifi_ap_record_t *dst,
+                             const eh_rpc_wifi_ap_record_t *src)
+{
+    memset(dst, 0, sizeof(*dst));
+    memcpy(dst->bssid, src->bssid, 6);
+    memcpy(dst->ssid, src->ssid,
+           sizeof(dst->ssid) < sizeof(src->ssid)
+           ? sizeof(dst->ssid) : sizeof(src->ssid));
+    dst->primary  = (uint8_t)src->primary;
+    dst->second   = (wifi_second_chan_t)src->second;
+    dst->rssi     = (int8_t)src->rssi;
+    dst->authmode = (wifi_auth_mode_t)src->authmode;
+    dst->pairwise_cipher = (wifi_cipher_type_t)src->pairwise_cipher;
+    dst->group_cipher    = (wifi_cipher_type_t)src->group_cipher;
+    dst->ant      = (wifi_ant_t)src->ant;
+    dst->phy_11b        = src->phy_11b;
+    dst->phy_11g        = src->phy_11g;
+    dst->phy_11n        = src->phy_11n;
+    dst->phy_lr         = src->phy_lr;
+    dst->phy_11a        = src->phy_11a;
+    dst->phy_11ac       = src->phy_11ac;
+    dst->phy_11ax       = src->phy_11ax;
+    dst->wps            = src->wps;
+    dst->ftm_responder  = src->ftm_responder;
+    dst->ftm_initiator  = src->ftm_initiator;
+#if EH_HOST_WIFI_GOT_AP_REC_AKM_DPP
+    dst->akm_dpp        = src->akm_dpp;
+#endif
+    memcpy(dst->country.cc, src->country.cc, 3);
+    dst->country.schan        = (uint8_t)src->country.schan;
+    dst->country.nchan        = (uint8_t)src->country.nchan;
+    dst->country.max_tx_power = (int8_t)src->country.max_tx_power;
+#if EH_HOST_WIFI_GOT_5G_CHANNEL_MASK
+    dst->country.wifi_5g_channel_mask = src->country.wifi_5g_channel_mask;
+#endif
+    dst->country.policy       = (wifi_country_policy_t)src->country.policy;
+    dst->he_ap.bss_color           = (src->bss_color) & 0x3Fu;
+    dst->he_ap.partial_bss_color   = src->partial_bss_color;
+    dst->he_ap.bss_color_disabled  = src->bss_color_disabled;
+    dst->he_ap.bssid_index         = (uint8_t)src->he_ap_bssid_index;
+    dst->bandwidth    = (wifi_bandwidth_t)src->bandwidth;
+    dst->vht_ch_freq1 = (uint8_t)src->vht_ch_freq1;
+    dst->vht_ch_freq2 = (uint8_t)src->vht_ch_freq2;
+}
+
 esp_err_t eh_host_wifi_sta_get_ap_info(wifi_ap_record_t *out)
 {
     if (!out) return ESP_ERR_INVALID_ARG;
@@ -390,11 +454,7 @@ esp_err_t eh_host_wifi_sta_get_ap_info(wifi_ap_record_t *out)
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiStaGetApInfo, req, (void **)&r) != 0) return ESP_FAIL;
     int rc = r->resp_event_status;
     if (rc == 0) {
-        memset(out, 0, sizeof(*out));
-        memcpy(out->bssid, r->u.wifi_cfg.bssid, 6);
-        memcpy(out->ssid, r->u.wifi_cfg.ssid, sizeof(out->ssid));
-        out->primary  = (uint8_t)r->u.wifi_cfg.channel;
-        out->authmode = (wifi_auth_mode_t)r->u.wifi_cfg.authmode;
+        ap_record_to_idf(out, &r->u.ap_record);
     }
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
@@ -425,6 +485,9 @@ esp_err_t eh_host_wifi_scan_start(const wifi_scan_config_t *cfg, bool block)
         }
         p->channel              = cfg->channel;
         p->show_hidden          = cfg->show_hidden;
+#if EH_HOST_PRESENT_IN_ESP_IDF_5_4_0
+        p->coex_background_scan = cfg->coex_background_scan;
+#endif
         p->scan_type            = (int32_t)cfg->scan_type;
         p->passive              = cfg->scan_time.passive;
         p->active_min           = cfg->scan_time.active.min;
@@ -594,11 +657,11 @@ static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
 
     wifi_event_sta_connected_t evt;
     memset(&evt, 0, sizeof(evt));
-    size_t n = sizeof(c->u.e_sta_connected.ssid);
+    /* ssid_len wins: a 32-byte SSID fills the field, unterminated. */
+    size_t n = c->u.e_sta_connected.ssid_len;
     if (n > sizeof(evt.ssid)) n = sizeof(evt.ssid);
-    memcpy(evt.ssid, c->u.e_sta_connected.ssid, n - 1);
-    evt.ssid[sizeof(evt.ssid) - 1] = '\0';
-    evt.ssid_len = (uint8_t)strnlen((const char *)evt.ssid, sizeof(evt.ssid));
+    memcpy(evt.ssid, c->u.e_sta_connected.ssid, n);
+    evt.ssid_len = (uint8_t)n;
     memcpy(evt.bssid, c->u.e_sta_connected.bssid, 6);
     EH_ASSIGN_NARROW(evt.channel, c->u.e_sta_connected.channel);
     evt.authmode = c->u.e_sta_connected.authmode;
@@ -629,11 +692,11 @@ static void wifi_sta_disconnected_handler(const void *ctrl_cmd, void *ctx)
 
     wifi_event_sta_disconnected_t evt;
     memset(&evt, 0, sizeof(evt));
-    size_t n = sizeof(c->u.e_sta_disconnected.ssid);
+    /* ssid_len wins: a 32-byte SSID fills the field, unterminated. */
+    size_t n = c->u.e_sta_disconnected.ssid_len;
     if (n > sizeof(evt.ssid)) n = sizeof(evt.ssid);
-    memcpy(evt.ssid, c->u.e_sta_disconnected.ssid, n - 1);
-    evt.ssid[sizeof(evt.ssid) - 1] = '\0';
-    evt.ssid_len = (uint8_t)strnlen((const char *)evt.ssid, sizeof(evt.ssid));
+    memcpy(evt.ssid, c->u.e_sta_disconnected.ssid, n);
+    evt.ssid_len = (uint8_t)n;
     memcpy(evt.bssid, c->u.e_sta_disconnected.bssid, 6);
     EH_ASSIGN_NARROW(evt.reason, c->u.e_sta_disconnected.reason);
     EH_ASSIGN_NARROW(evt.rssi, c->u.e_sta_disconnected.rssi);
@@ -727,9 +790,11 @@ static void wifi_dpp_cfg_recvd_handler(const void *ctrl_cmd, void *ctx)
     if (n > sizeof(evt.wifi_cfg.sta.ssid))
         n = sizeof(evt.wifi_cfg.sta.ssid);
     memcpy(evt.wifi_cfg.sta.ssid, c->u.e_wifi_dpp_cfg_recvd.ssid, n);
+    /* password[64] carries no length; a 64-byte PSK leaves no terminator. */
+    size_t plen = strnlen((const char *)c->u.e_wifi_dpp_cfg_recvd.password,
+                          sizeof(evt.wifi_cfg.sta.password));
     memcpy(evt.wifi_cfg.sta.password,
-           c->u.e_wifi_dpp_cfg_recvd.password,
-           sizeof(evt.wifi_cfg.sta.password) - 1);
+           c->u.e_wifi_dpp_cfg_recvd.password, plen);
     if (c->u.e_wifi_dpp_cfg_recvd.bssid_set) {
         memcpy(evt.wifi_cfg.sta.bssid,
                c->u.e_wifi_dpp_cfg_recvd.bssid,
@@ -925,6 +990,8 @@ esp_err_t eh_host_wifi_ap_get_sta_list(wifi_sta_list_t *sta)
             sta->sta[i].phy_11g       = src->phy_11g;
             sta->sta[i].phy_11n       = src->phy_11n;
             sta->sta[i].phy_lr        = src->phy_lr;
+            sta->sta[i].phy_11a       = src->phy_11a;
+            sta->sta[i].phy_11ac      = src->phy_11ac;
             sta->sta[i].phy_11ax      = src->phy_11ax;
             sta->sta[i].is_mesh_child = src->is_mesh_child;
         }
@@ -943,7 +1010,7 @@ esp_err_t eh_host_wifi_sta_get_aid(uint16_t *aid)
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiStaGetAid, req,
                                          (void **)&r) != 0) return ESP_FAIL;
     int rc = r->resp_event_status;
-    if (rc == 0) *aid = (uint16_t)r->u.wifi_mode.mode;
+    if (rc == 0) *aid = (uint16_t)r->u.sta_query.aid;
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
 }
@@ -957,7 +1024,7 @@ esp_err_t eh_host_wifi_sta_get_rssi(int *rssi)
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiStaGetRssi, req,
                                          (void **)&r) != 0) return ESP_FAIL;
     int rc = r->resp_event_status;
-    if (rc == 0) *rssi = (int)r->u.wifi_mode.mode;
+    if (rc == 0) *rssi = (int)r->u.sta_query.rssi;
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
 }
@@ -971,7 +1038,7 @@ esp_err_t eh_host_wifi_sta_get_negotiated_phymode(wifi_phy_mode_t *phymode)
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiStaGetNegotiatedPhymode, req,
                                          (void **)&r) != 0) return ESP_FAIL;
     int rc = r->resp_event_status;
-    if (rc == 0) *phymode = (wifi_phy_mode_t)r->u.wifi_mode.mode;
+    if (rc == 0) *phymode = (wifi_phy_mode_t)r->u.sta_query.phymode;
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
 }
@@ -1131,6 +1198,9 @@ esp_err_t eh_host_wifi_set_country(const wifi_country_t *country)
     req->u.wifi_country.schan        = country->schan;
     req->u.wifi_country.nchan        = country->nchan;
     req->u.wifi_country.max_tx_power = country->max_tx_power;
+#if EH_HOST_WIFI_GOT_5G_CHANNEL_MASK
+    req->u.wifi_country.wifi_5g_channel_mask = country->wifi_5g_channel_mask;
+#endif
     req->u.wifi_country.policy       = (int32_t)country->policy;
     eh_rpc_ctrl_cmd_t *r = NULL;
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiSetCountry, req,
@@ -1157,6 +1227,9 @@ esp_err_t eh_host_wifi_get_country(wifi_country_t *country)
         country->schan        = (uint8_t)r->u.wifi_country.schan;
         country->nchan        = (uint8_t)r->u.wifi_country.nchan;
         country->max_tx_power = (int8_t)r->u.wifi_country.max_tx_power;
+#if EH_HOST_WIFI_GOT_5G_CHANNEL_MASK
+        country->wifi_5g_channel_mask = r->u.wifi_country.wifi_5g_channel_mask;
+#endif
         country->policy       = (wifi_country_policy_t)r->u.wifi_country.policy;
     }
     eh_rpc_ctrl_cmd_free(r);
@@ -1177,38 +1250,7 @@ esp_err_t eh_host_wifi_scan_get_ap_record(wifi_ap_record_t *ap_record)
         eh_rpc_ctrl_cmd_free(r);
         return rc != 0 ? (esp_err_t)rc : ESP_FAIL;
     }
-    const eh_rpc_wifi_ap_record_t *src = &r->u.ap_records.records[0];
-    memset(ap_record, 0, sizeof(*ap_record));
-    memcpy(ap_record->bssid, src->bssid, 6);
-    memcpy(ap_record->ssid,  src->ssid,
-           sizeof(ap_record->ssid) < sizeof(src->ssid)
-           ? sizeof(ap_record->ssid) : sizeof(src->ssid));
-    ap_record->primary         = (uint8_t)src->primary;
-    ap_record->second          = (wifi_second_chan_t)src->second;
-    ap_record->rssi            = (int8_t)src->rssi;
-    ap_record->authmode        = (wifi_auth_mode_t)src->authmode;
-    ap_record->pairwise_cipher = (wifi_cipher_type_t)src->pairwise_cipher;
-    ap_record->group_cipher    = (wifi_cipher_type_t)src->group_cipher;
-    ap_record->ant             = (wifi_ant_t)src->ant;
-    ap_record->phy_11b        = src->phy_11b;
-    ap_record->phy_11g        = src->phy_11g;
-    ap_record->phy_11n        = src->phy_11n;
-    ap_record->phy_lr         = src->phy_lr;
-    ap_record->wps            = src->wps;
-    ap_record->ftm_responder  = src->ftm_responder;
-    ap_record->ftm_initiator  = src->ftm_initiator;
-    memcpy(ap_record->country.cc, src->country.cc, 3);
-    ap_record->country.schan        = (uint8_t)src->country.schan;
-    ap_record->country.nchan        = (uint8_t)src->country.nchan;
-    ap_record->country.max_tx_power = (int8_t)src->country.max_tx_power;
-    ap_record->country.policy       = (wifi_country_policy_t)src->country.policy;
-    ap_record->he_ap.bss_color = (src->bss_color) & 0x3Fu;
-    ap_record->he_ap.partial_bss_color  = src->partial_bss_color;
-    ap_record->he_ap.bss_color_disabled = src->bss_color_disabled;
-    ap_record->he_ap.bssid_index        = (uint8_t)src->he_ap_bssid_index;
-    ap_record->bandwidth    = (wifi_bandwidth_t)src->bandwidth;
-    ap_record->vht_ch_freq1 = (uint8_t)src->vht_ch_freq1;
-    ap_record->vht_ch_freq2 = (uint8_t)src->vht_ch_freq2;
+    ap_record_to_idf(ap_record, &r->u.ap_records.records[0]);
     eh_rpc_ctrl_cmd_free(r);
     return ESP_OK;
 }
@@ -1233,38 +1275,7 @@ esp_err_t eh_host_wifi_scan_get_ap_records(uint16_t *number,
         uint32_t n = r->u.ap_records.number;
         if (n > cap) n = cap;
         for (uint32_t i = 0; i < n && r->u.ap_records.records; ++i) {
-            const eh_rpc_wifi_ap_record_t *src = &r->u.ap_records.records[i];
-            wifi_ap_record_t *dst = &ap_records[i];
-            memcpy(dst->bssid, src->bssid, 6);
-            memcpy(dst->ssid,  src->ssid,
-                   sizeof(dst->ssid) < sizeof(src->ssid)
-                   ? sizeof(dst->ssid) : sizeof(src->ssid));
-            dst->primary  = (uint8_t)src->primary;
-            dst->second   = (wifi_second_chan_t)src->second;
-            dst->rssi     = (int8_t)src->rssi;
-            dst->authmode = (wifi_auth_mode_t)src->authmode;
-            dst->pairwise_cipher = (wifi_cipher_type_t)src->pairwise_cipher;
-            dst->group_cipher    = (wifi_cipher_type_t)src->group_cipher;
-            dst->ant      = (wifi_ant_t)src->ant;
-            dst->phy_11b        = src->phy_11b;
-            dst->phy_11g        = src->phy_11g;
-            dst->phy_11n        = src->phy_11n;
-            dst->phy_lr         = src->phy_lr;
-            dst->wps            = src->wps;
-            dst->ftm_responder  = src->ftm_responder;
-            dst->ftm_initiator  = src->ftm_initiator;
-            memcpy(dst->country.cc, src->country.cc, 3);
-            dst->country.schan        = (uint8_t)src->country.schan;
-            dst->country.nchan        = (uint8_t)src->country.nchan;
-            dst->country.max_tx_power = (int8_t)src->country.max_tx_power;
-            dst->country.policy       = (wifi_country_policy_t)src->country.policy;
-            dst->he_ap.bss_color = (src->bss_color) & 0x3Fu;
-            dst->he_ap.partial_bss_color   = src->partial_bss_color;
-            dst->he_ap.bss_color_disabled  = src->bss_color_disabled;
-            dst->he_ap.bssid_index         = (uint8_t)src->he_ap_bssid_index;
-            dst->bandwidth    = (wifi_bandwidth_t)src->bandwidth;
-            dst->vht_ch_freq1 = (uint8_t)src->vht_ch_freq1;
-            dst->vht_ch_freq2 = (uint8_t)src->vht_ch_freq2;
+            ap_record_to_idf(&ap_records[i], &r->u.ap_records.records[i]);
         }
         *number = (uint16_t)n;
     }
