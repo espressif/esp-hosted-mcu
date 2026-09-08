@@ -1020,8 +1020,8 @@ esp_err_t eh_cp_init_internal(void)
 		assert(to_host_queue[prio_q_idx]);
 	}
 	assert(xTaskCreate(send_task , "send_task" ,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL ,
-			CONFIG_ESP_HOSTED_DEFAULT_TASK_PRIORITY, NULL) == pdTRUE);
+			EH_CP_TASK_STACK_SIZE, NULL ,
+			EH_CP_TASK_PRIO_DEFAULT, NULL) == pdTRUE);
 #endif
 
 
@@ -1237,11 +1237,18 @@ static void deinit_transport(void)
 static void deinit_core_objects(void)
 {
 #if !BYPASS_TX_PRIORITY_Q
+    interface_buffer_handle_t buf_handle = {0};
+
+    /* Queued handles own their buffers; vQueueDelete does not free them. */
     for (uint8_t i = 0; i < MAX_PRIORITY_QUEUES; i++) {
-        if (to_host_queue[i]) {
-            vQueueDelete(to_host_queue[i]);
-            to_host_queue[i] = NULL;
+        if (!to_host_queue[i])
+            continue;
+        while (xQueueReceive(to_host_queue[i], &buf_handle, 0) == pdTRUE) {
+            if (buf_handle.free_buf_handle && buf_handle.priv_buffer_handle)
+                buf_handle.free_buf_handle(buf_handle.priv_buffer_handle);
         }
+        vQueueDelete(to_host_queue[i]);
+        to_host_queue[i] = NULL;
     }
     if (meta_to_host_queue) {
         vQueueDelete(meta_to_host_queue);
