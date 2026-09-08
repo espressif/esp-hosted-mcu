@@ -105,17 +105,18 @@ typedef struct {
 /* Function converts mac string to byte stream */
 static esp_err_t convert_mac_to_bytes(uint8_t *out, char *s)
 {
-	uint8_t mac[MAC_NUM_BYTES] = {0};
+	unsigned int mac[MAC_NUM_BYTES] = {0};
 	int num_bytes = 0;
 	if (!s || (strlen(s) < MAC_STR_LEN))  {
 		return ESP_FAIL;
 	}
-	num_bytes =  sscanf(s, "%2hhx:%2hhx:%2hhx:%2hhx:%2hhx:%2hhx",
+	num_bytes =  sscanf(s, "%2x:%2x:%2x:%2x:%2x:%2x",
 			&mac[0],&mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
 	if (num_bytes < MAC_NUM_BYTES) {
 		return ESP_FAIL;
 	}
-	memcpy(out, mac, MAC_NUM_BYTES);
+	for (int i = 0; i < MAC_NUM_BYTES; i++)
+		out[i] = (uint8_t)mac[i];
 	return ESP_OK;
 }
 

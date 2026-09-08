@@ -1343,8 +1343,8 @@ static void auto_feat_init_task(void *pvParameters)
     ESP_LOGI(TAG, "auto_feat_init_task: found %u extension descriptor(s)", (unsigned)n);
     for (size_t i = 0; i < n; i++) {
         const eh_cp_feat_desc_t *d = &_eh_cp_feat_descs_start[i];
-        ESP_LOGI(TAG, "  desc[%zu] name='%s' prio=%d init=%p deinit=%p",
-                 i, d->name ? d->name : "(null)", (int)d->priority,
+        ESP_LOGI(TAG, "  desc[%u] name='%s' prio=%d init=%p deinit=%p",
+                 (unsigned)i, d->name ? d->name : "(null)", (int)d->priority,
                  (void *)(uintptr_t)d->init_fn, (void *)(uintptr_t)d->deinit_fn);
     }
 

@@ -565,7 +565,7 @@ esp_err_t rpc_evt_custom_rpc(Rpc *ntfy, const uint8_t *data, size_t len)
      * len is the total byte count of that buffer.
      */
     if (!data || len < sizeof(uint32_t)) {
-        ESP_LOGE(TAG, "Custom RPC event: invalid data (len=%zu)", len);
+        ESP_LOGE(TAG, "Custom RPC event: invalid data (len=%u)", (unsigned)len);
         return ESP_FAIL;
     }
 
@@ -583,7 +583,7 @@ esp_err_t rpc_evt_custom_rpc(Rpc *ntfy, const uint8_t *data, size_t len)
     if (payload_len > 0) {
         ntfy_payload->data.data = (uint8_t *)malloc(payload_len);
         if (!ntfy_payload->data.data) {
-            ESP_LOGE(TAG, "Failed to allocate %zu bytes for custom RPC event", payload_len);
+            ESP_LOGE(TAG, "Failed to allocate %u bytes for custom RPC event", (unsigned)payload_len);
             ntfy_payload->resp = FAILURE;
             return ESP_OK;
         }

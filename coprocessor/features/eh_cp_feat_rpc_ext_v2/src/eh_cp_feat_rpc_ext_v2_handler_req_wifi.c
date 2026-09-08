@@ -16,6 +16,7 @@
 #include "eh_cp_feat_rpc_ext_v2.h"
 #include "eh_cp_feat_rpc.h"
 #include "eh_cp_feat_rpc_ext_v2_priv.h"
+#include "eh_common.h"
 #include "eh_cp_linker_tags.h"
 #include "eh_cp_feat_wifi_event.h"
 #include "eh_cp_feat_wifi.h"
@@ -311,9 +312,11 @@ static bool wifi_init_config_changed(const wifi_init_config_t *new_cfg, const wi
 	ESP_LOGI(TAG, "%20s | %7"PRIu16" | %7"PRIi16" | %7"PRIi16, param_str, default, host, final);
 
 #define PRINT_HEX64_USE_HOST_VALUE(param_str, default, host, final)		\
-	ESP_LOGD(TAG, "%20s | 0x%5"PRIx16" | 0x%5"PRIx64" | 0x%5"PRIx64, param_str, default, host, final);
+	ESP_LOGD(TAG, "%20s | 0x%5"PRIx16" | 0x%08lx%08lx | 0x%08lx%08lx", param_str, default, \
+			EH_HI32(host), EH_LO32(host), EH_HI32(final), EH_LO32(final));
 #define PRINT_HEX64_USE_DEFAULT_VALUE(param_str, default, host, final) \
-	ESP_LOGW(TAG, "%20s | %7"PRIx16" | %7"PRIx64" | %7"PRIx64, param_str, default, host, final);
+	ESP_LOGW(TAG, "%20s | %7"PRIx16" | %08lx%08lx | %08lx%08lx", param_str, default, \
+			EH_HI32(host), EH_LO32(host), EH_HI32(final), EH_LO32(final));
 
 // macros to copy host or default value
 #define USE_HOST_VALUE(PARAM_STR, DEFAULT, PARAM) \

@@ -145,8 +145,8 @@ static esp_err_t parse_tlv(uint8_t **buf, size_t *total_len,
 
 	/* Bounds check: value bytes must fit within remaining buffer */
 	if ((size_t)tlv_len > *total_len - 3) {
-		ESP_LOGE("parse_tlv", "TLV truncated: type=%d val_len=%u remaining=%zu",
-		         b[0], tlv_len, *total_len - 3);
+		ESP_LOGE("parse_tlv", "TLV truncated: type=%d val_len=%u remaining=%u",
+		         b[0], tlv_len, (unsigned)(*total_len - 3));
 		return ESP_FAIL;
 	}
 

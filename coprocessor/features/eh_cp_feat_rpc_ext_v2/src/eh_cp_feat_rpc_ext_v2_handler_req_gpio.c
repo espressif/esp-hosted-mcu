@@ -7,6 +7,7 @@
 #if EH_CP_FEAT_GPIO_EXP_READY
 
 #include "eh_cp_feat_rpc_ext_v2_priv.h"
+#include "eh_common.h"
 #include "eh_cp_transport_gpio_pin_guard.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -25,8 +26,8 @@ esp_err_t req_gpio_config(Rpc *req, Rpc *resp, void *priv_data)
     config.pull_down_en = req_payload->config->pull_down_en;
     config.intr_type = req_payload->config->intr_type;
     config.pin_bit_mask = req_payload->config->pin_bit_mask;
-    ESP_LOGD(TAG, "RPC req_gpio_config: mask=0x%llx mode=%u pu=%u pd=%u intr=%u",
-             (unsigned long long)config.pin_bit_mask,
+    ESP_LOGD(TAG, "RPC req_gpio_config: mask=0x%08lx%08lx mode=%u pu=%u pd=%u intr=%u",
+             EH_HI32(config.pin_bit_mask), EH_LO32(config.pin_bit_mask),
              (unsigned)config.mode,
              (unsigned)config.pull_up_en,
              (unsigned)config.pull_down_en,

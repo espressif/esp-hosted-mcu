@@ -49,7 +49,7 @@ static esp_err_t peer_data_rpc_send(uint32_t msg_id,
     size_t total = sizeof(msg_id) + len;
     uint8_t *buf = malloc(total);
     if (!buf) {
-        ESP_LOGE(TAG, "peer_data_rpc_send: malloc(%zu) failed", total);
+        ESP_LOGE(TAG, "peer_data_rpc_send: malloc(%u) failed", (unsigned)total);
         return ESP_ERR_NO_MEM;
     }
     memcpy(buf, &msg_id, sizeof(msg_id));
