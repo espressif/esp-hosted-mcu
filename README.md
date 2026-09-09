@@ -15,7 +15,20 @@ This high-level block diagram shows ESP-Hosted's relationship with the host MCU 
   <img src="docs/images/esp_hosted.jpg" alt="Architecture at a Glance" width="80%">
 </p>
 
-The host keeps the product logic. The ESP co-processor offloads the radio and network stack over your chosen transport bus. See [Architecture](docs/architecture.md) for the full design.
+The host keeps the product logic. The ESP co-processor offloads the radio and network stack over your chosen transport bus. See [Architecture](docs/architecture.md) for the details.
+
+
+#### Release tracking
+
+Releases are published to the ESP Component Registry as [`espressif/esp_hosted`](https://components.espressif.com/components/espressif/esp_hosted).
+
+#### Cloning the repo
+
+```bash
+git clone --recurse-submodules https://github.com/espressif/esp-hosted-mcu.git esp_hosted
+```
+
+The repository is named `esp-hosted-mcu`, but the registry component is maintained as `esp_hosted`, so the repository is cloned into the `esp_hosted` directory for consistency.
 
 ## 2. Directory Structure
 
