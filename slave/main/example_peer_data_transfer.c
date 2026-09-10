@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -85,15 +85,15 @@ static void cat_callback(uint32_t msg_id, const uint8_t *data, size_t data_len, 
 {
     /* Verify the user pointer came back as registered */
     if (!verify_user_ptr(user, &cat_ctx)) {
-        printf("slave <--- host: CAT       (%zu bytes Tx) [unexpected user ptr]\n", data_len);
+        printf("slave <--- host: CAT       (%u bytes Tx) [unexpected user ptr]\n", (unsigned)data_len);
     } else {
-        printf("slave <--- host: CAT       (%zu bytes Tx)\n", data_len);
+        printf("slave <--- host: CAT       (%u bytes Tx)\n", (unsigned)data_len);
     }
 
     /* Echo back with MSG_ID_MEOW */
     esp_err_t ret = esp_hosted_send_custom_data(MSG_ID_MEOW, data, data_len);
     if (ret == ESP_OK) {
-        printf("slave ---> host: MEOW      (%zu bytes Tx)\n", data_len);
+        printf("slave ---> host: MEOW      (%u bytes Tx)\n", (unsigned)data_len);
     } else {
         printf("slave ---> host: MEOW      send failed\n");
     }
@@ -106,15 +106,15 @@ static void dog_callback(uint32_t msg_id, const uint8_t *data, size_t data_len, 
 {
     /* Verify the user pointer came back as registered */
     if (!verify_user_ptr(user, &dog_ctx)) {
-        printf("slave <--- host: DOG       (%zu bytes Tx) [unexpected user ptr]\n", data_len);
+        printf("slave <--- host: DOG       (%u bytes Tx) [unexpected user ptr]\n", (unsigned)data_len);
     } else {
-        printf("slave <--- host: DOG       (%zu bytes Tx)\n", data_len);
+        printf("slave <--- host: DOG       (%u bytes Tx)\n", (unsigned)data_len);
     }
 
     /* Echo back with MSG_ID_WOOF */
     esp_err_t ret = esp_hosted_send_custom_data(MSG_ID_WOOF, data, data_len);
     if (ret == ESP_OK) {
-        printf("slave ---> host: WOOF      (%zu bytes Tx)\n", data_len);
+        printf("slave ---> host: WOOF      (%u bytes Tx)\n", (unsigned)data_len);
     } else {
         printf("slave ---> host: WOOF      send failed\n");
     }
@@ -127,15 +127,15 @@ static void human_callback(uint32_t msg_id, const uint8_t *data, size_t data_len
 {
     /* Verify the user pointer came back as registered */
     if (!verify_user_ptr(user, &human_ctx)) {
-        printf("slave <--- host: HUMAN     (%zu bytes Tx) [unexpected user ptr]\n", data_len);
+        printf("slave <--- host: HUMAN     (%u bytes Tx) [unexpected user ptr]\n", (unsigned)data_len);
     } else {
-        printf("slave <--- host: HUMAN     (%zu bytes Tx)\n", data_len);
+        printf("slave <--- host: HUMAN     (%u bytes Tx)\n", (unsigned)data_len);
     }
 
     /* Echo back with MSG_ID_HELLO */
     esp_err_t ret = esp_hosted_send_custom_data(MSG_ID_HELLO, data, data_len);
     if (ret == ESP_OK) {
-        printf("slave ---> host: HELLO     (%zu bytes Tx)\n", data_len);
+        printf("slave ---> host: HELLO     (%u bytes Tx)\n", (unsigned)data_len);
     } else {
         printf("slave ---> host: HELLO     send failed\n");
 

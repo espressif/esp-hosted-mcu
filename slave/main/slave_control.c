@@ -912,7 +912,7 @@ esp_err_t esp_hosted_send_custom_data(uint32_t msg_id_to_send, const uint8_t *da
 	size_t total_len = sizeof(msg_id_to_send) + data_len_to_send;
 	uint8_t *buf = malloc(total_len);
 	if (!buf) {
-		ESP_LOGE(TAG, "Failed to allocate %zu bytes", total_len);
+		ESP_LOGE(TAG, "Failed to allocate %u bytes", (unsigned)total_len);
 		return ESP_ERR_NO_MEM;
 	}
 

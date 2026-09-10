@@ -1,5 +1,6 @@
 # Unreleased - Main Branch
 
+- removed C99 formatting features (`%z`) not supported by Newlib Nano library
 - added support for 128 byte L2 cache line size
 
 > [!WARNING]

@@ -155,7 +155,7 @@ static int h_uart_write_packet(interface_buffer_handle_t *buf_handle)
 	}
 
 	if (buf_handle->payload_len > curr_transfer_size - sizeof(struct esp_payload_header)) {
-		ESP_LOGE(TAG, "Pkt len [%u] > Max [%zu]. Drop",
+		ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
 				buf_handle->payload_len, curr_transfer_size - sizeof(struct esp_payload_header));
 		result = ESP_FAIL;
 		goto done;

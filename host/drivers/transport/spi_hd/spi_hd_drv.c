@@ -304,7 +304,7 @@ static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle)
 	}
 
 	if (buf_handle->payload_len > curr_transfer_size - sizeof(struct esp_payload_header)) {
-		ESP_LOGE(TAG, "Pkt len [%u] > Max [%zu]. Drop",
+		ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
 				buf_handle->payload_len, curr_transfer_size - sizeof(struct esp_payload_header));
 		result = ESP_FAIL;
 		goto done;
@@ -635,8 +635,8 @@ static void spi_hd_read_task(void const* pvParameters)
 
 		/* Validate transfer size to prevent buffer overflow */
 		if (size_to_xfer > curr_transfer_size) {
-			ESP_LOGE(TAG, "read_bytes[%"PRIu32"] > curr_transfer_size[%zu]. Ignoring read request",
-					size_to_xfer, curr_transfer_size);
+			ESP_LOGE(TAG, "read_bytes[%"PRIu32"] > curr_transfer_size[%u]. Ignoring read request",
+					size_to_xfer, (unsigned)curr_transfer_size);
 
 			SPI_HD_DRV_UNLOCK();
 			continue;
