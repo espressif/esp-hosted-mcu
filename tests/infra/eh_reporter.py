@@ -304,7 +304,7 @@ def summarize(run_dir, retry_dir=None, regression=False, elapsed=None, prewarm=N
             f["outcome"] = e["outcome"]
 
     if not final:  # nothing ran (e.g. --collect-only / -k with no match): no matrix
-        return {"recovered": [], "allow_fail": [], "blocking": []}
+        return {"recovered": [], "allow_fail": [], "blocking": [], "counts": {}}
     items = [(f["nodeid"], _state_of(f["outcome"], f["allow_fail"], f["recovered"]))
              for f in final.values()]
     grid, order = _grid_from_states(items)
@@ -321,7 +321,8 @@ def summarize(run_dir, retry_dir=None, regression=False, elapsed=None, prewarm=N
               "blocking": len(blocking),
               "skipped": sum(1 for f in final.values() if f["outcome"] == "skipped")}
     _print_groups(recovered, allow_fail, blocking, run_dir, counts, elapsed, prewarm)
-    return {"recovered": recovered, "allow_fail": allow_fail, "blocking": blocking}
+    return {"recovered": recovered, "allow_fail": allow_fail, "blocking": blocking,
+            "counts": counts}
 
 
 def _print_groups(recovered, allow_fail, blocking, run_dir, counts, elapsed=None, prewarm=None):
