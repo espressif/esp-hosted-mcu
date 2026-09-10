@@ -19,4 +19,8 @@
 #define EH_SET_BIT(n)              (1U << (n))
 #define EH_GET_BIT(v, n)           (((v) >> (n)) & 1U)
 
+/* newlib-nano printf has no 64-bit conversions; print as two 32-bit halves. */
+#define EH_HI32(v)                 ((unsigned long)((unsigned long long)(v) >> 32))
+#define EH_LO32(v)                 ((unsigned long)((unsigned long long)(v) & 0xFFFFFFFFULL))
+
 #endif /* __ESP_HOSTED_COMMON__H */

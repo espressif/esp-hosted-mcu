@@ -390,8 +390,9 @@ int wakeup_host_mandate(uint32_t timeout_ms)
 
 		if (GET_CURR_TIME_IN_MS() - start_time > timeout_ms) {
 			/* timeout */
-			ESP_LOGI(TAG, "%s:%u timeout Curr:%llu start:%llu timeout:%lu",
-					__func__,__LINE__, GET_CURR_TIME_IN_MS(), start_time, timeout_ms);
+			ESP_LOGI(TAG, "%s:%u timeout Curr:%lu start:%lu timeout:%lu",
+					__func__,__LINE__, (unsigned long)GET_CURR_TIME_IN_MS(),
+					(unsigned long)start_time, timeout_ms);
 			break;
 		}
 

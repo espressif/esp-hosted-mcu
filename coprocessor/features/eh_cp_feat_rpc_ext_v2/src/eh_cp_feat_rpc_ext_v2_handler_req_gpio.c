@@ -7,6 +7,7 @@
 #if EH_CP_FEAT_GPIO_EXP_READY
 
 #include "eh_cp_feat_rpc_ext_v2_priv.h"
+#include "eh_common.h"
 #include "eh_cp_transport_gpio_pin_guard.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -25,12 +26,12 @@ esp_err_t req_gpio_config(Rpc *req, Rpc *resp, void *priv_data)
     config.pull_down_en = req_payload->config->pull_down_en;
     config.intr_type = req_payload->config->intr_type;
     config.pin_bit_mask = req_payload->config->pin_bit_mask;
-    ESP_LOGD(TAG, "RPC req_gpio_config: mask=0x%llx mode=%u pu=%u pd=%u intr=%u",
-             (unsigned long long)config.pin_bit_mask,
-             (unsigned)config.mode,
-             (unsigned)config.pull_up_en,
-             (unsigned)config.pull_down_en,
-             (unsigned)config.intr_type);
+    ESP_LOGD(TAG, "RPC req_gpio_config: mask=0x%08lx%08lx mode=%u pu=%u pd=%u intr=%u",
+             EH_HI32(config.pin_bit_mask), EH_LO32(config.pin_bit_mask),
+             (unsigned int)config.mode,
+             (unsigned int)config.pull_up_en,
+             (unsigned int)config.pull_down_en,
+             (unsigned int)config.intr_type);
 
     if (config.intr_type != GPIO_INTR_DISABLE) {
 		ESP_LOGE(TAG, "ISR is not supported from slave yet. please contact through github issues, if needed.");
@@ -77,7 +78,7 @@ esp_err_t req_gpio_set_level(Rpc *req, Rpc *resp, void *priv_data)
     gpio_num_t gpio_num = req_payload->gpio_num;
     uint32_t level = req_payload->level;
     ESP_LOGD(TAG, "RPC req_gpio_set_level: gpio=%d level=%u",
-             (int)gpio_num, (unsigned)level);
+             (int)gpio_num, (unsigned int)level);
     if (!eh_cp_transport_gpio_pin_guard_is_eligible(gpio_num)) {
         resp_payload->resp = ESP_ERR_INVALID_ARG;
         return ESP_OK;
@@ -111,7 +112,7 @@ esp_err_t req_gpio_set_direction(Rpc *req, Rpc *resp, void *priv_data)
     gpio_num_t gpio_num = req_payload->gpio_num;
     gpio_mode_t mode = req_payload->mode;
     ESP_LOGD(TAG, "RPC req_gpio_set_direction: gpio=%d mode=%u",
-             (int)gpio_num, (unsigned)mode);
+             (int)gpio_num, (unsigned int)mode);
     if (!eh_cp_transport_gpio_pin_guard_is_eligible(gpio_num)) {
         resp_payload->resp = ESP_ERR_INVALID_ARG;
         return ESP_OK;
@@ -145,7 +146,7 @@ esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data)
     gpio_num_t gpio_num = req_payload->gpio_num;
     gpio_pull_mode_t pull_mode = req_payload->pull;
     ESP_LOGD(TAG, "RPC req_gpio_set_pull_mode: gpio=%d pull=%u",
-             (int)gpio_num, (unsigned)pull_mode);
+             (int)gpio_num, (unsigned int)pull_mode);
     if (!eh_cp_transport_gpio_pin_guard_is_eligible(gpio_num)) {
         resp_payload->resp = ESP_ERR_INVALID_ARG;
         return ESP_OK;

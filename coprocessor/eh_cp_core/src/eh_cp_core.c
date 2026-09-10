@@ -413,10 +413,10 @@ static esp_err_t host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 			uint8_t peer_ver = *(pos + 2);
 			if (peer_ver != EH_CP_RPC_WIRE_VERSION) {
 				ESP_LOGE(TAG, "RPC version mismatch: peer=0x%02x, ours=0x%02x — aborting",
-				         (unsigned)peer_ver, (unsigned)EH_CP_RPC_WIRE_VERSION);
+				         (unsigned int)peer_ver, (unsigned int)EH_CP_RPC_WIRE_VERSION);
 				abort();
 			}
-			ESP_LOGI(TAG, "RPC version negotiated: V%u", (unsigned)peer_ver);
+			ESP_LOGI(TAG, "RPC version negotiated: V%u", (unsigned int)peer_ver);
 
 		} else if (*pos == ESP_PRIV_RPC_EP_ACK) {
 			if (tag_len >= 1 && *(pos + 2) == 1) {
@@ -549,6 +549,8 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 				pkt_stats.hs_bus_sta_fail++;
 			else
 				pkt_stats.hs_bus_sta_out++;
+  #else
+			(void)ret;
   #endif
 		}
 	} else if (buf_handle->if_type == ESP_AP_IF) {
@@ -769,7 +771,7 @@ static int event_handler(uint8_t val)
 					o->on_ps_event(ESP_POWER_SAVE_ON);
 			} else {
 				eh_cp_host_ps_state_t st = eh_cp_host_ps_get();
-				ESP_EARLY_LOGI(TAG, "PS_ON ignored in state %u", (unsigned)st);
+				ESP_EARLY_LOGI(TAG, "PS_ON ignored in state %u", (unsigned int)st);
 			}
 #else
 			eh_cp_recv_kick();
@@ -794,7 +796,7 @@ static int event_handler(uint8_t val)
 			break;
 
 		default:
-			ESP_EARLY_LOGW(TAG, "event_handler: unknown event %u", (unsigned)val);
+			ESP_EARLY_LOGW(TAG, "event_handler: unknown event %u", (unsigned int)val);
 			break;
 	}
 	return 0;
@@ -1187,10 +1189,10 @@ static esp_err_t deinit_stop_tasks(void)
                                           pdMS_TO_TICKS(EH_CP_TASK_EXIT_WAIT_MS));
     if ((got & want) != want) {
         ESP_LOGE(TAG, "deinit: tasks still running (want 0x%02x got 0x%02x)",
-                 (unsigned)want, (unsigned)got);
+                 (unsigned int)want, (unsigned int)got);
         return ESP_ERR_TIMEOUT;
     }
-    ESP_LOGI(TAG, "deinit: tasks stopped (0x%02x)", (unsigned)want);
+    ESP_LOGI(TAG, "deinit: tasks stopped (0x%02x)", (unsigned int)want);
     return ESP_OK;
 }
 
@@ -1303,14 +1305,14 @@ static size_t feat_count(void)
         (bytes % sizeof(eh_cp_feat_desc_t)) != 0) {
         if (bytes != 0)
             ESP_LOGE(TAG, "feat descriptors misaligned (start=%p span=%uB)",
-                     (void *)start, (unsigned)bytes);
+                     (void *)start, (unsigned int)bytes);
         return 0;
     }
 
     size_t n = bytes / sizeof(eh_cp_feat_desc_t);
     if (n > EH_CP_FEAT_CAP) {
         ESP_LOGE(TAG, "%u features exceeds the %u-bit record: running none",
-                 (unsigned)n, (unsigned)EH_CP_FEAT_CAP);
+                 (unsigned int)n, (unsigned int)EH_CP_FEAT_CAP);
         return 0;
     }
     return n;
@@ -1340,11 +1342,11 @@ static void auto_feat_init_task(void *pvParameters)
     size_t n = feat_count();
 
     s_feat_inited_mask = 0;
-    ESP_LOGI(TAG, "auto_feat_init_task: found %u extension descriptor(s)", (unsigned)n);
+    ESP_LOGI(TAG, "auto_feat_init_task: found %u extension descriptor(s)", (unsigned int)n);
     for (size_t i = 0; i < n; i++) {
         const eh_cp_feat_desc_t *d = &_eh_cp_feat_descs_start[i];
-        ESP_LOGI(TAG, "  desc[%zu] name='%s' prio=%d init=%p deinit=%p",
-                 i, d->name ? d->name : "(null)", (int)d->priority,
+        ESP_LOGI(TAG, "  desc[%u] name='%s' prio=%d init=%p deinit=%p",
+                 (unsigned int)i, d->name ? d->name : "(null)", (int)d->priority,
                  (void *)(uintptr_t)d->init_fn, (void *)(uintptr_t)d->deinit_fn);
     }
 
