@@ -122,7 +122,7 @@ struct eh_host_uart_config eh_host_get_default_uart_config(void)
 #if EH_HOST_TRANSPORT_BUS_SPI && defined(ESP_PLATFORM)
 void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 {
-    unsigned mhz = (unsigned)EH_HOST_PORT_SPI_FD_CLK_MHZ;
+    unsigned mhz = (unsigned int)EH_HOST_PORT_SPI_FD_CLK_MHZ;
     unsigned max_mhz = (chip_id == EH_PRIV_FIRMWARE_CHIP_ESP32) ? 10u : 40u;
     if (mhz < max_mhz) {
         ESP_LOGW(TAG, "SPI FD clock in-use: [%u]MHz. Can optimize in 1MHz steps till Max[%u]MHz",
@@ -133,7 +133,7 @@ void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 {
     (void)chip_id;
-    unsigned mhz = (unsigned)EH_HOST_PORT_SPI_HD_CLK_MHZ;
+    unsigned mhz = (unsigned int)EH_HOST_PORT_SPI_HD_CLK_MHZ;
     if (mhz < 40u) {
         ESP_LOGW(TAG, "SPI HD clock in-use: [%u]MHz. Can optimize in 1MHz steps till Max[%u]MHz",
                  mhz, 40u);
@@ -144,9 +144,9 @@ void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 {
     (void)chip_id;
     /* Read Kconfig freq, not SDMMC_FREQ_DEFAULT (would always alarm at 40MHz) */
-    if ((unsigned)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ < 40000u) {
+    if ((unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ < 40000u) {
         ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 40000KHz",
-                 (unsigned)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ);
+                 (unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ);
     }
 }
 #elif EH_HOST_TRANSPORT_BUS_UART && defined(ESP_PLATFORM)
@@ -154,7 +154,7 @@ void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 {
     (void)chip_id;
     /* 921600 is the practical stable ceiling (docs/design/uart.md, performance.md). */
-    unsigned baud = (unsigned)EH_HOST_PORT_UART_BAUD_RATE;
+    unsigned baud = (unsigned int)EH_HOST_PORT_UART_BAUD_RATE;
     if (baud < 921600u) {
         ESP_LOGW(TAG, "UART baud [%u] is below 921600, the reliable rate for this link "
                       "(software flow control only). The UART peripheral itself can reach "

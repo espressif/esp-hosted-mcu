@@ -180,7 +180,7 @@ int eh_host_hold_slave_reset_gpio_pre_power_save(void)
     if (rc > 0) return 0;               /* integrator opted out */
     eh_host_port_err_t prc = eh_host_port_gpio_hold(&desc, true);
     if (prc != EH_HOST_PORT_OK) {
-        ESP_LOGE(TAG, "gpio_hold(en, pin=%u): %d", (unsigned)desc.pin, (int)prc);
+        ESP_LOGE(TAG, "gpio_hold(en, pin=%u): %d", (unsigned int)desc.pin, (int)prc);
         return -EIO;
     }
     return 0;
@@ -198,7 +198,7 @@ int eh_host_release_slave_reset_gpio_post_wakeup(void)
     if (rc > 0) return 0;
     eh_host_port_err_t prc = eh_host_port_gpio_hold(&desc, false);
     if (prc != EH_HOST_PORT_OK) {
-        ESP_LOGE(TAG, "gpio_hold(dis, pin=%u): %d", (unsigned)desc.pin, (int)prc);
+        ESP_LOGE(TAG, "gpio_hold(dis, pin=%u): %d", (unsigned int)desc.pin, (int)prc);
         return -EIO;
     }
     return 0;

@@ -242,12 +242,12 @@ int eh_rpc_evt_dispatch(int32_t msg_id, const void *ctrl_cmd)
     g_evt_dispatch_inflight++;
     eh_host_port_mutex_unlock(g_evt_mtx);
 
-    ESP_LOGD("eh_host_feat_rpc", "evt_dispatch: msg_id=%" PRId32 " subscribers=%zu", msg_id, n);
+    ESP_LOGD("eh_host_feat_rpc", "evt_dispatch: msg_id=%" PRId32 " subscribers=%lu", msg_id, (unsigned long)n);
 
     tl_dispatch_depth++;
     for (size_t i = 0; i < n; i++) {
-        ESP_LOGD("eh_host_feat_rpc", "evt_dispatch: msg_id=%" PRId32 " -> cb[%zu]=%p ctx=%p",
-                   msg_id, i, (void *)(uintptr_t)snap[i].cb, snap[i].ctx);
+        ESP_LOGD("eh_host_feat_rpc", "evt_dispatch: msg_id=%" PRId32 " -> cb[%lu]=%p ctx=%p",
+                   msg_id, (unsigned long)i, (void *)(uintptr_t)snap[i].cb, snap[i].ctx);
         snap[i].cb(ctrl_cmd, snap[i].ctx);
     }
     tl_dispatch_depth--;

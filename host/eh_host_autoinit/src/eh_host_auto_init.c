@@ -21,7 +21,7 @@ size_t eh_host_auto_init_count(void)
     if ((s & (_Alignof(eh_host_feat_desc_t) - 1)) != 0 ||
         (bytes % sizeof(eh_host_feat_desc_t)) != 0) {
         EH_AUTO_INIT_LOG("auto_init: descriptor section misaligned "
-                   "(start=%p span=%uB) — skipping", (void *)s, (unsigned)bytes);
+                   "(start=%p span=%uB) — skipping", (void *)s, (unsigned int)bytes);
         return 0;
     }
     return bytes / sizeof(eh_host_feat_desc_t);
@@ -78,7 +78,7 @@ int eh_host_auto_init_features(void)
         EH_AUTO_INIT_LOG("auto_init: no registered features");
         return 0;
     }
-    EH_AUTO_INIT_LOG("auto_init: found %u descriptor(s)", (unsigned)n);
+    EH_AUTO_INIT_LOG("auto_init: found %u descriptor(s)", (unsigned int)n);
 
     if (ensure_flags(n) != 0) {
         EH_AUTO_INIT_LOG("auto_init: calloc for inited_flags failed");
@@ -114,7 +114,7 @@ int eh_host_auto_init_features(void)
             continue;
         }
         EH_AUTO_INIT_LOG("auto_init: initialising '%s' (priority %u)",
-                   d->name ? d->name : "?", (unsigned)d->priority);
+                   d->name ? d->name : "?", (unsigned int)d->priority);
         int rc = d->init_fn();
         if (rc == 0) {
             g_inited_flags[di] = 1;
@@ -159,7 +159,7 @@ int eh_host_auto_deinit_features(void)
         if (g_inited_flags && di < g_inited_flags_n &&
             g_inited_flags[di] && d->deinit_fn) {
             EH_AUTO_INIT_LOG("auto_deinit: deinitialising '%s' (priority %u)",
-                       d->name ? d->name : "?", (unsigned)d->priority);
+                       d->name ? d->name : "?", (unsigned int)d->priority);
             (void)d->deinit_fn();
         }
         if (g_inited_flags && di < g_inited_flags_n) {

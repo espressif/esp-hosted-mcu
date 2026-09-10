@@ -29,7 +29,7 @@ const char *esp_err_to_name(esp_err_t code)
     default: break;
     }
     static __thread char buf[32];
-    snprintf(buf, sizeof(buf), "UNKNOWN ERROR (0x%x)", (unsigned)code);
+    snprintf(buf, sizeof(buf), "UNKNOWN ERROR (0x%x)", (unsigned int)code);
     return buf;
 }
 
@@ -38,7 +38,7 @@ void _esp_error_check_failed(esp_err_t rc, const char *file, int line,
 {
     fprintf(stderr,
             "ESP_ERROR_CHECK failed: rc=0x%x (%s) at %s:%d in %s — %s\n",
-            (unsigned)rc, esp_err_to_name(rc),
+            (unsigned int)rc, esp_err_to_name(rc),
             file ? file : "?", line,
             function ? function : "?",
             expression ? expression : "?");
@@ -52,7 +52,7 @@ void _esp_error_check_failed_without_abort(esp_err_t rc, const char *file,
 {
     ESP_LOGE("eh_check",
              "rc=0x%x (%s) at %s:%d in %s — %s",
-             (unsigned)rc, esp_err_to_name(rc),
+             (unsigned int)rc, esp_err_to_name(rc),
              file ? file : "?", line,
              function ? function : "?",
              expression ? expression : "?");

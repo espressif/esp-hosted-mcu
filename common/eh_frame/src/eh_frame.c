@@ -53,7 +53,7 @@ static uint16_t frame_checksum_zeroed(const uint8_t *buf, uint16_t len, uint16_t
 static void frame_dbg_hex(const char *tag, const uint8_t *buf, uint16_t len, uint16_t max)
 {
     uint16_t i, n = (len < max) ? len : max;
-    printf("[frame] %s len=%u: ", tag, (unsigned)len);
+    printf("[frame] %s len=%u: ", tag, (unsigned int)len);
     for (i = 0; i < n; i++) {
         printf("%02x ", buf[i]);
     }
@@ -64,16 +64,16 @@ static void frame_dbg_hex(const char *tag, const uint8_t *buf, uint16_t len, uin
 static void frame_dbg_v1(const uint8_t *buf, uint16_t buf_len, uint16_t len, uint16_t offset, uint16_t total, uint16_t stored, uint16_t calc)
 {
     printf("[frame] v1 buf_len=%u len=%u offset=%u total=%u stored=%u calc=%u\n",
-           (unsigned)buf_len, (unsigned)len, (unsigned)offset, (unsigned)total,
-           (unsigned)stored, (unsigned)calc);
+           (unsigned int)buf_len, (unsigned int)len, (unsigned int)offset, (unsigned int)total,
+           (unsigned int)stored, (unsigned int)calc);
     frame_dbg_hex("v1_hdr", buf, (uint16_t)((buf_len < 12) ? buf_len : 12), 12);
 }
 
 static void frame_dbg_v2(const uint8_t *buf, uint16_t buf_len, uint16_t len, uint16_t offset, uint16_t total, uint16_t stored, uint16_t calc)
 {
     printf("[frame] v2 buf_len=%u len=%u offset=%u total=%u stored=%u calc=%u\n",
-           (unsigned)buf_len, (unsigned)len, (unsigned)offset, (unsigned)total,
-           (unsigned)stored, (unsigned)calc);
+           (unsigned int)buf_len, (unsigned int)len, (unsigned int)offset, (unsigned int)total,
+           (unsigned int)stored, (unsigned int)calc);
     frame_dbg_hex("v2_hdr", buf, (uint16_t)((buf_len < 20) ? buf_len : 20), 20);
 }
 #endif
@@ -242,9 +242,9 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
       (offset > (EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES))) {
         if (warn) {
             FRAME_WARN("v1 bad offset: got=%u exp=%u..%u len=%u",
-                       (unsigned)offset, (unsigned)EH_FRAME_V1_MIN_OFFSET_BYTES,
-                       (unsigned)EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES,
-                       (unsigned)len);
+                       (unsigned int)offset, (unsigned int)EH_FRAME_V1_MIN_OFFSET_BYTES,
+                       (unsigned int)EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES,
+                       (unsigned int)len);
         }
         return EH_FRAME_INVALID;
     }
@@ -269,8 +269,8 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
         if (calc != stored) {
             if (warn) {
                 FRAME_WARN("v1 checksum mismatch: stored=%u calc=%u len=%u offset=%u total=%u",
-                           (unsigned)stored, (unsigned)calc, (unsigned)len,
-                           (unsigned)offset, (unsigned)total);
+                           (unsigned int)stored, (unsigned int)calc, (unsigned int)len,
+                           (unsigned int)offset, (unsigned int)total);
             }
             return EH_FRAME_CORRUPT;
         }
@@ -324,7 +324,7 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
     if (offset != hdr_sz) {
         if (warn)
             FRAME_WARN("v2 bad offset: got=%u exp=%u len=%u",
-                       (unsigned)offset, (unsigned)hdr_sz, (unsigned)len);
+                       (unsigned int)offset, (unsigned int)hdr_sz, (unsigned int)len);
         return EH_FRAME_INVALID;
     }
 
@@ -348,8 +348,8 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
         if (calc != stored) {
             if (warn) {
                 FRAME_WARN("v2 checksum mismatch: stored=%u calc=%u len=%u offset=%u total=%u",
-                           (unsigned)stored, (unsigned)calc, (unsigned)len,
-                           (unsigned)offset, (unsigned)total);
+                           (unsigned int)stored, (unsigned int)calc, (unsigned int)len,
+                           (unsigned int)offset, (unsigned int)total);
             }
             return EH_FRAME_CORRUPT;
         }

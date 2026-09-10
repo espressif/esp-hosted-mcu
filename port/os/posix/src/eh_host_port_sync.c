@@ -169,7 +169,7 @@ eh_host_port_sem_t *eh_host_port_sem_create(void)
 eh_host_port_sem_t *eh_host_port_sem_create_counting(uint32_t max_count)
 {
     if (max_count == 0) return NULL;
-    return sem_create_with_max((unsigned)max_count);
+    return sem_create_with_max((unsigned int)max_count);
 }
 
 void eh_host_port_sem_destroy(eh_host_port_sem_t *s)

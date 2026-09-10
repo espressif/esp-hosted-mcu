@@ -66,9 +66,9 @@ void app_main(void)
         if (err == ESP_OK) {
             ESP_LOGI(TAG,
                      "CP firmware: %u.%u.%u",
-                     (unsigned)fw.major1,
-                     (unsigned)fw.minor1,
-                     (unsigned)fw.patch1);
+                     (unsigned int)fw.major1,
+                     (unsigned int)fw.minor1,
+                     (unsigned int)fw.patch1);
         } else {
             ESP_LOGE(TAG, "eh_host_sys_get_cp_fw_version: 0x%x", err);
         }

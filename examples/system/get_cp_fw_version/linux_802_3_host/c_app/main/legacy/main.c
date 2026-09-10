@@ -52,7 +52,7 @@ static void on_cp_init(void *user_ctx,
     const esp_hosted_event_init_t *init =
         (const esp_hosted_event_init_t *)event_data;
     printf("CP init event: reason=%u\n",
-           (unsigned)init->reason);
+           (unsigned int)init->reason);
 }
 
 int main(void)

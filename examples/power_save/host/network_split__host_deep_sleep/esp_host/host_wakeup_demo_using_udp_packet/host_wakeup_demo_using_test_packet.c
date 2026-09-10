@@ -40,7 +40,7 @@ static int send_udp(const char *ip, int port)
         close(sock);
         return EXIT_FAILURE;
     }
-    printf("Sent %zd bytes to %s:%d (UDP)\n", sent, ip, port);
+    printf("Sent %d bytes to %s:%d (UDP)\n", (int)sent, ip, port);
     close(sock);
     return EXIT_SUCCESS;
 }
@@ -71,7 +71,7 @@ static int send_tcp(const char *ip, int port)
         close(sock);
         return EXIT_FAILURE;
     }
-    printf("Sent %zd bytes to %s:%d (TCP)\n", sent, ip, port);
+    printf("Sent %d bytes to %s:%d (TCP)\n", (int)sent, ip, port);
     close(sock);
     return EXIT_SUCCESS;
 }

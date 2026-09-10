@@ -85,7 +85,7 @@ esp_err_t eh_cp_feat_system_heartbeat_start(uint32_t duration_sec)
 		ESP_LOGE(TAG, "Failed to start HB timer");
 		return ESP_FAIL;
 	}
-	ESP_LOGI(TAG, "HB timer started for %u sec", (unsigned)duration_sec);
+	ESP_LOGI(TAG, "HB timer started for %u sec", (unsigned int)duration_sec);
 
 	return ESP_OK;
 }

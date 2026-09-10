@@ -327,12 +327,12 @@ static void *watcher_main(void *arg)
                 nh->nlmsg_type == RTM_DELLINK) {
                 struct ifinfomsg *ifi = (struct ifinfomsg *)NLMSG_DATA(nh);
                 if (n->ifindex != 0 &&
-                    (unsigned)ifi->ifi_index != n->ifindex) continue;
+                    (unsigned int)ifi->ifi_index != n->ifindex) continue;
                 bool running = (ifi->ifi_flags & IFF_RUNNING) != 0 &&
                                nh->nlmsg_type != RTM_DELLINK;
                 ESP_LOGD(TAG, "[%s] netlink LINK event type=%u running=%d flags=0x%x",
-                         n->linux_ifname, (unsigned)nh->nlmsg_type, running ? 1 : 0,
-                         (unsigned)ifi->ifi_flags);
+                         n->linux_ifname, (unsigned int)nh->nlmsg_type, running ? 1 : 0,
+                         (unsigned int)ifi->ifi_flags);
                 if (!running) post_lost_ip(n);
                 continue;
             }
@@ -350,14 +350,14 @@ static void *watcher_main(void *arg)
 
             if (ifa->ifa_family == AF_INET) {
                 ESP_LOGD(TAG, "[%s] netlink ADDR event type=%u family=AF_INET",
-                         n->linux_ifname, (unsigned)nh->nlmsg_type);
+                         n->linux_ifname, (unsigned int)nh->nlmsg_type);
                 if (nh->nlmsg_type == RTM_NEWADDR) post_got_ip(n);
                 else                                post_lost_ip(n);
             } else if (n->ipv6_enabled) {
                 /* Per-netif gate: app armed v6 via esp_netif_create_ip6_
                  * linklocal().  No IDF LOST_IP6 event — emit on add only. */
                 ESP_LOGD(TAG, "[%s] netlink ADDR event type=%u family=AF_INET6",
-                         n->linux_ifname, (unsigned)nh->nlmsg_type);
+                         n->linux_ifname, (unsigned int)nh->nlmsg_type);
                 if (nh->nlmsg_type == RTM_NEWADDR) post_got_ip6(n, nh);
             }
         }
@@ -690,7 +690,7 @@ esp_err_t esp_netif_down(esp_netif_t *n)
         esp_err_t rc = esp_netif_dhcps_stop(n);
         if (rc != ESP_OK)
             ESP_LOGW(TAG, "[%s] dhcps_stop on netif down: 0x%x",
-                     n->linux_ifname, (unsigned)rc);
+                     n->linux_ifname, (unsigned int)rc);
     }
 
     /* Bring the netdev administratively DOWN — mirror of esp_netif_up. */
@@ -901,7 +901,7 @@ int esp_netif_get_all_ip6(esp_netif_t *n, esp_ip6_addr_t if_ip6[])
 esp_err_t esp_netif_set_dns_info(esp_netif_t *n, esp_netif_dns_type_t t,
                                   esp_netif_dns_info_t *dns)
 {
-    if (!n || !dns || (unsigned)t >= ESP_NETIF_DNS_MAX)
+    if (!n || !dns || (unsigned int)t >= ESP_NETIF_DNS_MAX)
         return ESP_ERR_INVALID_ARG;
     n->dns[t] = *dns;
     return ESP_OK;
@@ -910,7 +910,7 @@ esp_err_t esp_netif_set_dns_info(esp_netif_t *n, esp_netif_dns_type_t t,
 esp_err_t esp_netif_get_dns_info(esp_netif_t *n, esp_netif_dns_type_t t,
                                   esp_netif_dns_info_t *dns)
 {
-    if (!n || !dns || (unsigned)t >= ESP_NETIF_DNS_MAX)
+    if (!n || !dns || (unsigned int)t >= ESP_NETIF_DNS_MAX)
         return ESP_ERR_INVALID_ARG;
     *dns = n->dns[t];
     return ESP_OK;

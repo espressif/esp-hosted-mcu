@@ -300,8 +300,8 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal)
         if (status == EZB_BDB_STATUS_SUCCESS) {
             ezb_extpanid_t extended_pan_id;
             ezb_nwk_get_extended_panid(&extended_pan_id);
-            ESP_LOGI(TAG, "Formed network successfully: PAN ID(0x%04hx, EXT: 0x%llx), Channel(%d), Short Address(0x%04hx)",
-                     ezb_nwk_get_panid(), extended_pan_id.u64, ezb_nwk_get_current_channel(), ezb_nwk_get_short_address());
+            ESP_LOGI(TAG, "Formed network successfully: PAN ID(0x%04hx, EXT: 0x%08lx%08lx), Channel(%d), Short Address(0x%04hx)",
+                     ezb_nwk_get_panid(), (unsigned long)(extended_pan_id.u64 >> 32), (unsigned long)(extended_pan_id.u64 & 0xFFFFFFFFU), ezb_nwk_get_current_channel(), ezb_nwk_get_short_address());
             ezb_bdb_start_top_level_commissioning(EZB_BDB_MODE_NETWORK_STEERING);
         } else {
             ESP_LOGW(TAG, "Failed to form network with status(0x%02x)", status);

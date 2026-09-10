@@ -88,25 +88,25 @@ void eh_cp_feat_debug_heap_cycle_end(uint32_t cycle_n)
 			++live; bytes += rec.size;
 #if CONFIG_HEAP_TRACING_STACK_DEPTH >= 4
 			ESP_LOGI(TAG, "  [%u] %u B @ %p <- %p %p %p %p",
-			         (unsigned)i, (unsigned)rec.size, rec.address,
+			         (unsigned int)i, (unsigned int)rec.size, rec.address,
 			         rec.alloced_by[0], rec.alloced_by[1],
 			         rec.alloced_by[2], rec.alloced_by[3]);
 #elif CONFIG_HEAP_TRACING_STACK_DEPTH >= 2
 			ESP_LOGI(TAG, "  [%u] %u B @ %p <- %p %p",
-			         (unsigned)i, (unsigned)rec.size, rec.address,
+			         (unsigned int)i, (unsigned int)rec.size, rec.address,
 			         rec.alloced_by[0], rec.alloced_by[1]);
 #elif CONFIG_HEAP_TRACING_STACK_DEPTH >= 1
 			ESP_LOGI(TAG, "  [%u] %u B @ %p <- %p",
-			         (unsigned)i, (unsigned)rec.size, rec.address,
+			         (unsigned int)i, (unsigned int)rec.size, rec.address,
 			         rec.alloced_by[0]);
 #else
 			ESP_LOGI(TAG, "  [%u] %u B @ %p",
-			         (unsigned)i, (unsigned)rec.size, rec.address);
+			         (unsigned int)i, (unsigned int)rec.size, rec.address);
 #endif
 			if ((i & 0xF) == 0xF) vTaskDelay(1);
 		}
 		ESP_LOGI(TAG, "cycle %lu trace: %u live (%u B)",
-		         (unsigned long)cycle_n, (unsigned)live, (unsigned)bytes);
+		         (unsigned long)cycle_n, (unsigned int)live, (unsigned int)bytes);
 	}
 #endif
 

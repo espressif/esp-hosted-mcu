@@ -81,7 +81,7 @@ static inline void start_cli_after_light_sleep(void)
 	/* RAM-only counters; first-cycle marker helps identify a CP reboot. */
 	#define APP_CP_PS_STATS_LOG(at) \
 		ESP_EARLY_LOGI(TAG, "[ps_stats] %s sleeps=%u wakes=%u%s", \
-		               (at), (unsigned)s_ps_sleeps, (unsigned)s_ps_wakes, \
+		               (at), (unsigned int)s_ps_sleeps, (unsigned int)s_ps_wakes, \
 		               (s_ps_sleeps <= 1u && s_ps_wakes == 0u) \
 		                   ? " (first cycle since this CP booted)" : "")
 #else

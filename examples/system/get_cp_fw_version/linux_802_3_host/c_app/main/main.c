@@ -23,7 +23,7 @@ static void on_cp_init(void *user_ctx,
     const eh_host_event_init_t *init =
         (const eh_host_event_init_t *)event_data;
     printf("CP init event: reason=%u\n",
-           (unsigned)init->reason);
+           (unsigned int)init->reason);
 }
 
 static int s_task_rc = 1;

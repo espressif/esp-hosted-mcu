@@ -180,14 +180,14 @@ static void eh_host_mcu_transport_diagnose_peer_rpc_version(uint8_t peer_rpc_ver
 {
     if (peer_rpc_version == 0) {
         s_peer_advertised_rpc_version = false;
-        ESP_LOGI(TAG, "Default RPC to V%u", (unsigned)EH_HOST_RPC_WIRE_VERSION);
+        ESP_LOGI(TAG, "Default RPC to V%u", (unsigned int)EH_HOST_RPC_WIRE_VERSION);
         return;
     }
 
     s_peer_advertised_rpc_version = true;
 
     if (peer_rpc_version == EH_HOST_RPC_WIRE_VERSION) {
-        ESP_LOGI(TAG, "RPC version negotiated: V%u", (unsigned)peer_rpc_version);
+        ESP_LOGI(TAG, "RPC version negotiated: V%u", (unsigned int)peer_rpc_version);
         return;
     }
 
@@ -196,7 +196,7 @@ static void eh_host_mcu_transport_diagnose_peer_rpc_version(uint8_t peer_rpc_ver
      * recovery procedure below restores compatibility. */
     ESP_LOGE(TAG,
         "RPC version mismatch: peer=0x%02x, ours=0x%02x.",
-        (unsigned)peer_rpc_version, (unsigned)EH_HOST_RPC_WIRE_VERSION);
+        (unsigned int)peer_rpc_version, (unsigned int)EH_HOST_RPC_WIRE_VERSION);
     ESP_LOGE(TAG,
         "  RPC commands will likely fail.  Recovery procedure:");
     ESP_LOGE(TAG,
@@ -228,7 +228,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
     if (!evt_buf) return -1;
     if (len > 64) {
         ESP_LOGE(TAG, "init event too long: %u — possible bus mode mismatch",
-                 (unsigned)len);
+                 (unsigned int)len);
         return -1;
     }
 
@@ -254,7 +254,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         case EH_PRIV_CAPABILITY:
             if (tlen >= 1) {
                 s_capabilities = val[0];
-                ESP_LOGI(TAG, "capabilities: 0x%02x", (unsigned)s_capabilities);
+                ESP_LOGI(TAG, "capabilities: 0x%02x", (unsigned int)s_capabilities);
                 print_capabilities(s_capabilities);
                 eh_frame_set_checksum_enabled(s_capabilities & ESP_CHECKSUM_ENABLED);
             }
@@ -262,7 +262,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         case EH_PRIV_CAP_EXT:
             if (tlen >= 4) {
                 s_ext_caps = le32(val);
-                ESP_LOGI(TAG, "extended capabilities: 0x%08x", (unsigned)s_ext_caps);
+                ESP_LOGI(TAG, "extended capabilities: 0x%08x", (unsigned int)s_ext_caps);
                 print_ext_capabilities(s_ext_caps);
             }
             break;
@@ -270,13 +270,13 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
             if (tlen >= 1) {
                 s_chip_id = val[0];
                 ESP_LOGI(TAG, "slave chip id: 0x%02x (%s)",
-                         (unsigned)s_chip_id, chip_id_name(s_chip_id));
+                         (unsigned int)s_chip_id, chip_id_name(s_chip_id));
             }
             break;
         case EH_PRIV_FIRMWARE_VERSION:
             if (tlen >= 4) {
                 s_fw_version = le32(val);
-                ESP_LOGD(TAG, "coprocessor firmware: 0x%08x", (unsigned)s_fw_version);
+                ESP_LOGD(TAG, "coprocessor firmware: 0x%08x", (unsigned int)s_fw_version);
             }
             break;
         case EH_PRIV_TRANS_SDIO_MODE:
@@ -293,23 +293,23 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
             struct eh_priv_sdio_buf_config cfg;
             if (eh_sdio_cfg_parse(val, tlen, &cfg) != EH_SDIO_CFG_OK) {
                 ESP_LOGE(TAG, "malformed SDIO buf-config TLV (len=%u) — aborting init",
-                         (unsigned)tlen);
+                         (unsigned int)tlen);
                 return -1;
             }
             s_sdio_buf_cfg       = cfg;
             s_sdio_buf_cfg_valid = true;
             ESP_LOGI(TAG, "SDIO buf-config: e2h mode=%u bufsz=%uB, h2e mode=%u bufsz=%uB",
-                     (unsigned)cfg.e2h_mode,
-                     (unsigned)cfg.e2h_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK,
-                     (unsigned)cfg.h2e_mode,
-                     (unsigned)cfg.h2e_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK);
+                     (unsigned int)cfg.e2h_mode,
+                     (unsigned int)cfg.e2h_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK,
+                     (unsigned int)cfg.h2e_mode,
+                     (unsigned int)cfg.h2e_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK);
             break;
         }
         case EH_PRIV_RX_Q_SIZE:
-            if (tlen >= 1) ESP_LOGD(TAG, "slave rx queue size: %u", (unsigned)val[0]);
+            if (tlen >= 1) ESP_LOGD(TAG, "slave rx queue size: %u", (unsigned int)val[0]);
             break;
         case EH_PRIV_TX_Q_SIZE:
-            if (tlen >= 1) ESP_LOGD(TAG, "slave tx queue size: %u", (unsigned)val[0]);
+            if (tlen >= 1) ESP_LOGD(TAG, "slave tx queue size: %u", (unsigned int)val[0]);
             break;
         case EH_PRIV_TEST_RAW_TP:
             if (tlen >= 1) {
@@ -333,7 +333,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
 
     if (!chip_id_is_known(s_chip_id)) {
         ESP_LOGE(TAG, "unrecognised slave chip id 0x%02x — refusing",
-                 (unsigned)s_chip_id);
+                 (unsigned int)s_chip_id);
         s_chip_id = EH_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
         return -1;
     }
@@ -354,12 +354,12 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         if (!probe) {
             ESP_LOGE(TAG, "SDIO SW_AGGR advertised %u B buffers — host cannot "
                           "allocate; failing init (no silent degrade)",
-                     (unsigned)probe_sz);
+                     (unsigned int)probe_sz);
             assert(probe);
             return -1;
         }
         eh_host_port_dma_free(probe);
-        ESP_LOGI(TAG, "SDIO SW_AGGR negotiated (e2h=%uB h2e=%uB)", (unsigned)e2h, (unsigned)h2e);
+        ESP_LOGI(TAG, "SDIO SW_AGGR negotiated (e2h=%uB h2e=%uB)", (unsigned int)e2h, (unsigned int)h2e);
     } else {
 		ESP_LOGI(TAG, "CP without SDIO SW_AGGR; compatible streaming mode enabled");
     }
@@ -371,9 +371,9 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
 #endif
 
     ESP_LOGI(TAG, "chip=0x%02x (%s) fw=0x%08x caps=0x%02x ext=0x%08x",
-             (unsigned)s_chip_id, chip_id_name(s_chip_id),
-             (unsigned)s_fw_version,
-             (unsigned)s_capabilities, (unsigned)s_ext_caps);
+             (unsigned int)s_chip_id, chip_id_name(s_chip_id),
+             (unsigned int)s_fw_version,
+             (unsigned int)s_capabilities, (unsigned int)s_ext_caps);
     return 0;
 }
 
@@ -404,7 +404,7 @@ int eh_host_mcu_transport_verify_chip_match(uint8_t slave_chip_id)
     if (expected == EH_PRIV_FIRMWARE_CHIP_UNRECOGNIZED) return 0;
     if (slave_chip_id == expected) return 0;
     ESP_LOGE(TAG, "chip mismatch: expect=0x%02x got=0x%02x",
-             (unsigned)expected, (unsigned)slave_chip_id);
+             (unsigned int)expected, (unsigned int)slave_chip_id);
     return -1;
 }
 

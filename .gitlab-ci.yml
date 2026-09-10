@@ -45,6 +45,7 @@ premerge_check:
     - python3 tools/check_changelog.py
     - python3 tools/check_example_structure.py
     - bash tools/check_override_path_depth.sh
+    - python3 tools/check_nano_printf_specifiers.py
 
 pre_commit:
   stage: pre

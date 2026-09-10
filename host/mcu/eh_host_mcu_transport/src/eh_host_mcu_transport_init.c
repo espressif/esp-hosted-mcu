@@ -85,7 +85,7 @@ void eh_host_mcu_transport_priv_dispatch_rx(const uint8_t *buf, size_t len)
     if (cb) {
         cb(buf, len, ctx);
     } else {
-        ESP_LOGW("eh_dispatch", "rx-drop: no priv consumer, %u bytes", (unsigned)len);
+        ESP_LOGW("eh_dispatch", "rx-drop: no priv consumer, %u bytes", (unsigned int)len);
     }
 }
 
@@ -95,7 +95,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
 
     if ((h->flags & FLAG_WAKEUP_PKT) && h->payload_len < 1500) {
         ESP_LOGW("eh_dispatch", "Host wakeup triggered, if_type: %u, len: %u",
-                    (unsigned)h->if_type, (unsigned)h->payload_len);
+                    (unsigned int)h->if_type, (unsigned int)h->payload_len);
     }
 
     if (h->if_type == ESP_PRIV_IF && h->payload_len >= 2) {
@@ -152,7 +152,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
         size_t new_len = s_serial_rx.len + h->payload_len;
         uint8_t *new_buf = (uint8_t *)realloc(s_serial_rx.data, new_len);
         if (!new_buf) {
-            ESP_LOGE("eh_dispatch", "serial_rx: realloc failed (%u bytes)", (unsigned)new_len);
+            ESP_LOGE("eh_dispatch", "serial_rx: realloc failed (%u bytes)", (unsigned int)new_len);
             free(s_serial_rx.data);
             s_serial_rx.data = NULL;
             s_serial_rx.len = 0;
@@ -168,7 +168,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
 
         if (s_serial_rx.len > UINT16_MAX) {
             ESP_LOGE("eh_dispatch", "serial_rx: reassembled msg too large (%u bytes)",
-                        (unsigned)s_serial_rx.len);
+                        (unsigned int)s_serial_rx.len);
             free(s_serial_rx.data);
             s_serial_rx.data = NULL;
             s_serial_rx.len = 0;
@@ -205,8 +205,8 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
     if (h->if_type == ESP_STA_IF || h->if_type == ESP_AP_IF ||
         h->if_type == ESP_ETH_IF) {
         ESP_LOGW("eh_dispatch", "rx-drop: no channel for if_type=%u len=%u flags=0x%x",
-                 (unsigned)h->if_type, (unsigned)h->payload_len,
-                 (unsigned)h->flags);
+                 (unsigned int)h->if_type, (unsigned int)h->payload_len,
+                 (unsigned int)h->flags);
         return;
     }
 

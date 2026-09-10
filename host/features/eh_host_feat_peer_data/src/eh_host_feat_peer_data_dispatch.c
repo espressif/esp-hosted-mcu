@@ -50,11 +50,11 @@ static void dispatcher(void *handler_arg, esp_event_base_t base,
             }
         }
         if (!cb) {
-            ESP_LOGW(TAG, "evt: no cb for msg_id=%" PRIu32 " (registered=%zu)",
-                     evt->msg_id, s_count);
+            ESP_LOGW(TAG, "evt: no cb for msg_id=%" PRIu32 " (registered=%lu)",
+                     evt->msg_id, (unsigned long)s_count);
             for (size_t i = 0; i < s_count; i++) {
-                ESP_LOGW(TAG, "evt: reg[%zu]=%" PRIu32 " cb=%p ctx=%p",
-                         i, s_entries[i].msg_id, (void *)s_entries[i].cb, s_entries[i].ctx);
+                ESP_LOGW(TAG, "evt: reg[%lu]=%" PRIu32 " cb=%p ctx=%p",
+                         (unsigned long)i, s_entries[i].msg_id, (void *)s_entries[i].cb, s_entries[i].ctx);
             }
         }
         eh_host_port_mutex_unlock(s_lock);
@@ -105,8 +105,8 @@ esp_err_t eh_host_peer_data_register(uint32_t msg_id,
     s_entries[s_count].cb     = cb;
     s_entries[s_count].ctx    = ctx;
     s_count++;
-    ESP_LOGI(TAG, "register add: msg_id=%" PRIu32 " cb=%p ctx=%p count=%zu",
-             msg_id, (void *)cb, ctx, s_count);
+    ESP_LOGI(TAG, "register add: msg_id=%" PRIu32 " cb=%p ctx=%p count=%lu",
+             msg_id, (void *)cb, ctx, (unsigned long)s_count);
 
     esp_err_t reg_rc = ESP_OK;
     if (!s_handler_registered) {

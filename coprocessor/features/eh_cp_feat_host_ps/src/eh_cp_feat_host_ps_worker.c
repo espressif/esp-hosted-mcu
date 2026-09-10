@@ -64,13 +64,13 @@ esp_err_t eh_cp_feat_host_ps_post_alert(uint32_t event)
 {
 	if (!ps_alert_q) {
 		ESP_EARLY_LOGE(TAG, "power-save worker not started, event %u lost",
-			       (unsigned)event);
+			       (unsigned int)event);
 		return ESP_ERR_INVALID_STATE;
 	}
 	/* Never block a transport rx task here; depth 4 covers ON/OFF pairs. */
 	if (xQueueSend(ps_alert_q, &event, 0) != pdTRUE) {
 		ESP_EARLY_LOGE(TAG, "power-save queue full, event %u lost",
-			       (unsigned)event);
+			       (unsigned int)event);
 		return ESP_FAIL;
 	}
 	return ESP_OK;

@@ -90,7 +90,7 @@ static esp_err_t hosted_channel_rx_guard(void *h, void *buffer,
          * window at all; reaching this line means that gate let one through, so
          * say so loudly instead of losing it silently. */
         ESP_LOGW("eh_rx_guard", "%s: netif input not attached yet, dropping %u bytes",
-                 is_ap ? "ap" : "sta", (unsigned)len);
+                 is_ap ? "ap" : "sta", (unsigned int)len);
     }
     free(buff_to_free);
     return ESP_OK;

@@ -9,7 +9,7 @@
 #include "eh_rpc_id_map.h"
 #include "gen_v1.h"
 
-_Static_assert(EH_RPC_V1_REQ_MIN  == (unsigned)CTRL_MSG_ID__Req_Base,
+_Static_assert(EH_RPC_V1_REQ_MIN  == (unsigned int)CTRL_MSG_ID__Req_Base,
                "FG REQ_MIN mismatch with proto CTRL_MSG_ID__Req_Base");
-_Static_assert(EH_RPC_V1_RESP_MIN == (unsigned)CTRL_MSG_ID__Resp_Base,
+_Static_assert(EH_RPC_V1_RESP_MIN == (unsigned int)CTRL_MSG_ID__Resp_Base,
                "FG RESP_MIN mismatch with proto CTRL_MSG_ID__Resp_Base");

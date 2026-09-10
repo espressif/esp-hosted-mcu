@@ -41,7 +41,7 @@ static esp_err_t bring_up_controller(uint32_t timeout_ms)
         r = eh_host_bt_controller_init();
         if (r == ESP_OK || r == ESP_ERR_INVALID_STATE) break;   /* INVALID_STATE = already up */
         if (waited >= timeout_ms) {
-            ESP_LOGE(TAG, "controller init failed: 0x%x (CP not ready after %ums)", r, (unsigned)waited);
+            ESP_LOGE(TAG, "controller init failed: 0x%x (CP not ready after %ums)", r, (unsigned int)waited);
             return r;
         }
         vTaskDelay(pdMS_TO_TICKS(EH_BT_CTRL_RETRY_STEP_MS));

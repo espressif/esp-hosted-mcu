@@ -72,7 +72,7 @@ static void show_config(void)
 	ESP_LOGI(TAG, "transport[host]: SPI mode=%d %u MHz "
 		"MOSI=%d MISO=%d CLK=%d CS=%d HANDSHAKE=%d DATA_READY=%d RESET=%d",
 		(int)EH_HOST_PORT_SPI_MODE,
-		(unsigned)EH_HOST_PORT_SPI_FD_CLK_MHZ,
+		(unsigned int)EH_HOST_PORT_SPI_FD_CLK_MHZ,
 		EH_HOST_PORT_SPI_GPIO_MOSI_Pin,      EH_HOST_PORT_SPI_GPIO_MISO_Pin,
 		EH_HOST_PORT_SPI_GPIO_SCLK_Pin,      EH_HOST_PORT_SPI_GPIO_CS_Pin,
 		EH_HOST_PORT_SPI_GPIO_HANDSHAKE_Pin, EH_HOST_PORT_SPI_GPIO_DATA_READY_Pin,
@@ -509,7 +509,7 @@ int eh_host_bus_tx(interface_buffer_handle_t *bh)
         len = (size_t)eh_frame_hdr_size() + hb.payload_len;
     }
     if (len > EH_SPI_MAX_BUF) {
-        ESP_LOGE(TAG, "tx len %u > max %u", (unsigned)len, EH_SPI_MAX_BUF);
+        ESP_LOGE(TAG, "tx len %u > max %u", (unsigned int)len, EH_SPI_MAX_BUF);
         if (bh->free_buf_handle) bh->free_buf_handle(bh->priv_buffer_handle);
         return -1;
     }
