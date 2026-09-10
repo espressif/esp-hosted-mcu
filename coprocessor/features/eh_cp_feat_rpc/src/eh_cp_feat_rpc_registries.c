@@ -223,7 +223,7 @@ esp_err_t eh_cp_rpc_evt_register(uint16_t id_min, uint16_t id_max,
     s_evt_table[s_evt_count++] = (rpc_evt_entry_t){ id_min, id_max, serialise, ctx };
 
     ESP_LOGI(TAG, "++ RPC Evt [%u]: [0x%04x->0x%04x] => %p (Total %u)",
-             (unsigned int)s_evt_count, id_min, id_max, serialise, (unsigned int)s_evt_count);
+             (unsigned int)(s_evt_count - 1), id_min, id_max, serialise, (unsigned int)s_evt_count);
 
     eh_cp_rpc_registry_unlock();
     return ESP_OK;
