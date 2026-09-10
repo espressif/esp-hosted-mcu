@@ -61,8 +61,12 @@ static int parse_iface(const char *s, wifi_interface_t *out)
 
 static int parse_mac(const char *s, uint8_t mac[6])
 {
-    return sscanf(s, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-                  &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) == 6 ? 0 : -1;
+    /* newlib-nano scanf has no hh: it stops at the second h and converts nothing. */
+    unsigned int b[6] = {0};
+    if (sscanf(s, "%2x:%2x:%2x:%2x:%2x:%2x",
+               &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) != 6) return -1;
+    for (int i = 0; i < 6; i++) mac[i] = (uint8_t)b[i];
+    return 0;
 }
 
 /* ── system ─────────────────────────────────────────────────────────── */
@@ -524,8 +528,7 @@ static int cmd_wifi_ap_get_sta_list(int argc, char **argv)
 static int cmd_wifi_ap_get_sta_aid(int argc, char **argv)
 {
     uint8_t mac[6] = {0};
-    if (argc < 2 || sscanf(argv[1], "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-                           &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) != 6) {
+    if (argc < 2 || parse_mac(argv[1], mac) != 0) {
         eh_out("wifi_ap_get_sta_aid", -1, "err=USAGE");
         return 0;
     }
