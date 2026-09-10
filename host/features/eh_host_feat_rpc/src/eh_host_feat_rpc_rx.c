@@ -109,11 +109,11 @@ static int rx_upcall(const uint8_t *buf, size_t len, void *ctx)
         return 0;
     }
     if (!eh_rpc_is_ready()) {
-        ESP_LOGW("eh_rpc_ll", "rx_upcall: drop %zu bytes (rpc not ready)", len);
+        ESP_LOGW("eh_rpc_ll", "rx_upcall: drop %lu bytes (rpc not ready)", (unsigned long)len);
         return 0;
     }
     if (!g_rx_q) {
-        ESP_LOGW("eh_rpc_ll", "rx_upcall: drop %zu bytes (rx queue null)", len);
+        ESP_LOGW("eh_rpc_ll", "rx_upcall: drop %lu bytes (rx queue null)", (unsigned long)len);
         return -1;
     }
 
@@ -128,7 +128,7 @@ static int rx_upcall(const uint8_t *buf, size_t len, void *ctx)
         free(copy);
         /* RX queue overflow drops a frame — if it was a response, the waiting
          * sync request times out. Visible so the loss is attributable. */
-        ESP_LOGW("eh_host_feat_rpc", "rx_upcall: queue full, dropping %zu bytes", len);
+        ESP_LOGW("eh_host_feat_rpc", "rx_upcall: queue full, dropping %lu bytes", (unsigned long)len);
         return -1;
     }
     return 0;
@@ -201,7 +201,7 @@ static void rx_worker(void *arg)
         } else {
             /* An undecodable frame is silently lost otherwise — if it was a
              * response, its sync request times out with no other trace. */
-            ESP_LOGW("eh_host_feat_rpc", "decode_frame failed rc=%d (%zu bytes)", rc, item.len);
+            ESP_LOGW("eh_host_feat_rpc", "decode_frame failed rc=%d (%lu bytes)", rc, (unsigned long)item.len);
             if (rx.ctrl_cmd && ctx->proto_ops->free_ctrl_cmd) {
                 ctx->proto_ops->free_ctrl_cmd(rx.ctrl_cmd);
             }

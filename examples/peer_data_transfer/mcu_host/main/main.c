@@ -97,8 +97,8 @@ static bool verify_received_data(const uint8_t *data, size_t data_len, uint32_t 
 	for (size_t i = 0; i < data_len; i++) {
 		uint8_t expected = ((i + request_msg_id) & 0xFF);
 		if (data[i] != expected) {
-			ESP_LOGE(TAG, "   ❌ Pattern mismatch at offset %zu: expected 0x%02x, got 0x%02x",
-					i, expected, data[i]);
+			ESP_LOGE(TAG, "   ❌ Pattern mismatch at offset %u: expected 0x%02x, got 0x%02x",
+					(unsigned int)i, expected, data[i]);
 			return false;
 		}
 	}
@@ -127,7 +127,7 @@ static void meow_callback(uint32_t msg_id, const uint8_t *data, size_t data_len,
 {
 	/* Verify the user pointer came back as registered */
 	if (!verify_user_ptr(user, &meow_ctx)) {
-		ESP_LOGW(TAG, "slave ---> host: MEOW      (%zu bytes Rx) [unexpected user ptr]", data_len);
+		ESP_LOGW(TAG, "slave ---> host: MEOW      (%u bytes Rx) [unexpected user ptr]", (unsigned int)data_len);
 	}
 
 	total_received++;
@@ -135,10 +135,10 @@ static void meow_callback(uint32_t msg_id, const uint8_t *data, size_t data_len,
 
 	/* Verify against CAT request pattern */
 	if (verify_received_data(data, data_len, MSG_ID_CAT)) {
-		ESP_LOGI(TAG, "slave ---> host: MEOW      (%zu bytes Rx) .. Verified, all OK!", data_len);
+		ESP_LOGI(TAG, "slave ---> host: MEOW      (%u bytes Rx) .. Verified, all OK!", (unsigned int)data_len);
 	} else {
 		data_mismatch_count++;
-		ESP_LOGE(TAG, "slave ---> host: MEOW      (%zu bytes Rx) ❌ data mismatch", data_len);
+		ESP_LOGE(TAG, "slave ---> host: MEOW      (%u bytes Rx) ❌ data mismatch", (unsigned int)data_len);
 	}
 }
 
@@ -149,7 +149,7 @@ static void woof_callback(uint32_t msg_id, const uint8_t *data, size_t data_len,
 {
 	/* Verify the user pointer came back as registered */
 	if (!verify_user_ptr(user, &woof_ctx)) {
-		ESP_LOGW(TAG, "slave ---> host: WOOF      (%zu bytes Rx) [unexpected user ptr]", data_len);
+		ESP_LOGW(TAG, "slave ---> host: WOOF      (%u bytes Rx) [unexpected user ptr]", (unsigned int)data_len);
 	}
 
 	total_received++;
@@ -157,10 +157,10 @@ static void woof_callback(uint32_t msg_id, const uint8_t *data, size_t data_len,
 
 	/* Verify against DOG request pattern */
 	if (verify_received_data(data, data_len, MSG_ID_DOG)) {
-		ESP_LOGI(TAG, "slave ---> host: WOOF      (%zu bytes Rx) .. Verified, all OK!", data_len);
+		ESP_LOGI(TAG, "slave ---> host: WOOF      (%u bytes Rx) .. Verified, all OK!", (unsigned int)data_len);
 	} else {
 		data_mismatch_count++;
-		ESP_LOGE(TAG, "slave ---> host: WOOF      (%zu bytes Rx) ❌ data mismatch", data_len);
+		ESP_LOGE(TAG, "slave ---> host: WOOF      (%u bytes Rx) ❌ data mismatch", (unsigned int)data_len);
 	}
 }
 
@@ -171,7 +171,7 @@ static void hello_callback(uint32_t msg_id, const uint8_t *data, size_t data_len
 {
 	/* Verify the user pointer came back as registered */
 	if (!verify_user_ptr(user, &hello_ctx)) {
-		ESP_LOGW(TAG, "slave ---> host: HELLO     (%zu bytes Rx) [unexpected user ptr]", data_len);
+		ESP_LOGW(TAG, "slave ---> host: HELLO     (%u bytes Rx) [unexpected user ptr]", (unsigned int)data_len);
 	}
 
 	total_received++;
@@ -179,10 +179,10 @@ static void hello_callback(uint32_t msg_id, const uint8_t *data, size_t data_len
 
 	/* Verify against HUMAN request pattern */
 	if (verify_received_data(data, data_len, MSG_ID_HUMAN)) {
-		ESP_LOGI(TAG, "slave ---> host: HELLO     (%zu bytes Rx) .. Verified, all OK!", data_len);
+		ESP_LOGI(TAG, "slave ---> host: HELLO     (%u bytes Rx) .. Verified, all OK!", (unsigned int)data_len);
 	} else {
 		data_mismatch_count++;
-		ESP_LOGE(TAG, "slave ---> host: HELLO     (%zu bytes Rx) ❌ data mismatch", data_len);
+		ESP_LOGE(TAG, "slave ---> host: HELLO     (%u bytes Rx) ❌ data mismatch", (unsigned int)data_len);
 	}
 }
 

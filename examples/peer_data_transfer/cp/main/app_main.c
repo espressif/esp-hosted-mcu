@@ -60,8 +60,8 @@ static void on_cat(uint32_t msg_id_recvd, const uint8_t *data_recvd,
 {
     animal_ctx_t *ctx = (animal_ctx_t *)local_context;
     ctx->recv_count++;
-    ESP_LOGI(TAG, "[%s] recv #%" PRIu32 " len=%zu",
-             ctx->animal_name, ctx->recv_count, data_len_recvd);
+    ESP_LOGI(TAG, "[%s] recv #%" PRIu32 " len=%u",
+             ctx->animal_name, ctx->recv_count, (unsigned int)data_len_recvd);
     eh_cp_feat_peer_data_send(MSG_ID_MEOW, data_recvd, data_len_recvd);
 }
 
@@ -70,8 +70,8 @@ static void on_dog(uint32_t msg_id_recvd, const uint8_t *data_recvd,
 {
     animal_ctx_t *ctx = (animal_ctx_t *)local_context;
     ctx->recv_count++;
-    ESP_LOGI(TAG, "[%s] recv #%" PRIu32 " len=%zu",
-             ctx->animal_name, ctx->recv_count, data_len_recvd);
+    ESP_LOGI(TAG, "[%s] recv #%" PRIu32 " len=%u",
+             ctx->animal_name, ctx->recv_count, (unsigned int)data_len_recvd);
     eh_cp_feat_peer_data_send(MSG_ID_WOOF, data_recvd, data_len_recvd);
 }
 
@@ -80,8 +80,8 @@ static void on_human(uint32_t msg_id_recvd, const uint8_t *data_recvd,
 {
     animal_ctx_t *ctx = (animal_ctx_t *)local_context;
     ctx->recv_count++;
-    ESP_LOGI(TAG, "[%s] recv #%" PRIu32 " len=%zu",
-             ctx->animal_name, ctx->recv_count, data_len_recvd);
+    ESP_LOGI(TAG, "[%s] recv #%" PRIu32 " len=%u",
+             ctx->animal_name, ctx->recv_count, (unsigned int)data_len_recvd);
     eh_cp_feat_peer_data_send(MSG_ID_HELLO, data_recvd, data_len_recvd);
 }
 

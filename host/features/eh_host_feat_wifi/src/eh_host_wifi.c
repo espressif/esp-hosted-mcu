@@ -119,9 +119,9 @@ static inline void log_ssid_for_user(wifi_interface_t iface, wifi_config_t *cfg)
 	const unsigned char *ss = (iface == WIFI_IF_AP) ? cfg->ap.ssid : cfg->sta.ssid;
 	/* ap.ssid and sta.ssid are both 32 bytes, so the bound is the same either way. */
 	size_t                sl = strnlen((const char *)ss, sizeof(cfg->sta.ssid));
-	ESP_LOGI(EH_HOST_WIFI_TAG, "set_config iface=%s ssid=\"%.*s\" (%u bytes)",
+	ESP_LOGI(EH_HOST_WIFI_TAG, "set_config iface=%s ssid=\"%.*s\" (%lu bytes)",
 			(iface == WIFI_IF_AP) ? "AP" : "STA",
-			(int)sl, (const char *)ss, (unsigned)sl);
+			(int)sl, (const char *)ss, (unsigned long)sl);
 }
 
 esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
@@ -610,7 +610,7 @@ esp_err_t eh_host_wifi_get_country_code(char *country)
 /* WIFI_EVENT post; log drops since handlers have no caller for rc. */
 static void wifi_event_post_logged(int32_t evt_id, const void *data, size_t size)
 {
-    ESP_LOGD(EH_HOST_WIFI_TAG, "post WIFI_EVENT id=%" PRId32 " size=%zu", evt_id, size);
+    ESP_LOGD(EH_HOST_WIFI_TAG, "post WIFI_EVENT id=%" PRId32 " size=%lu", evt_id, (unsigned long)size);
     esp_err_t rc = esp_event_post(WIFI_EVENT, evt_id, (void *)(uintptr_t)data, size, 0);
     if (rc != ESP_OK)
         ESP_LOGW(EH_HOST_WIFI_TAG, "event_post WIFI_EVENT id=%" PRId32 " failed: %d",

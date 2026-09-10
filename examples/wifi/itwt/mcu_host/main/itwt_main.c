@@ -178,7 +178,7 @@ static void itwt_setup_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "<WIFI_EVENT_ITWT_SETUP>twt_id:%d, flow_id:%d, %s, %s, wake_dura:%d, wake_dura_unit:%d, wake_invl_e:%d, wake_invl_m:%d", setup->config.twt_id,
                 setup->config.flow_id, setup->config.trigger ? "trigger-enabled" : "non-trigger-enabled", setup->config.flow_type ? "unannounced" : "announced",
                 setup->config.min_wake_dura, setup->config.wake_duration_unit, setup->config.wake_invl_expn, setup->config.wake_invl_mant);
-        ESP_LOGI(TAG, "<WIFI_EVENT_ITWT_SETUP>target wake time:%lld, wake duration:%d us, service period:%d us", setup->target_wake_time, setup->config.min_wake_dura << (setup->config.wake_duration_unit == 1 ? 10 : 8),
+        ESP_LOGI(TAG, "<WIFI_EVENT_ITWT_SETUP>target wake time:0x%08lx%08lx, wake duration:%d us, service period:%d us", (unsigned long)(setup->target_wake_time >> 32), (unsigned long)(setup->target_wake_time & 0xFFFFFFFFU), setup->config.min_wake_dura << (setup->config.wake_duration_unit == 1 ? 10 : 8),
                 setup->config.wake_invl_mant << setup->config.wake_invl_expn);
     } else {
         if (setup->status == ESP_ERR_WIFI_TWT_SETUP_TIMEOUT) {

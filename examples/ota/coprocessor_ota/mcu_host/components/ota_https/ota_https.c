@@ -288,17 +288,17 @@ esp_err_t ota_https_perform(const char* image_url)
 
     if (content_length <= 0) {
 		 ESP_LOGE(TAG, "HTTP client fetch headers failed");
-		 ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
+		 ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %ld",
 				 esp_http_client_get_status_code(client),
-				 esp_http_client_get_content_length(client));
+				 (long)esp_http_client_get_content_length(client));
 		 esp_http_client_close(client);
         esp_http_client_cleanup(client);
         return ESP_HOSTED_SLAVE_OTA_FAILED;
     }
 
-	 ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %"PRId64,
+	 ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %ld",
 			 esp_http_client_get_status_code(client),
-			 esp_http_client_get_content_length(client));
+			 (long)esp_http_client_get_content_length(client));
 
     /* Begin OTA */
     ESP_LOGI(TAG, "Preparing OTA");
