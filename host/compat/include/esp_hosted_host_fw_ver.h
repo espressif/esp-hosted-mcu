@@ -4,30 +4,23 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Upstream-mcu compat: esp_hosted host fw version macros.
+ * Redirects to eh_common_fw_version.h, which is generated from
+ * idf_component.yml by tools/check_fw_versions.py.
  */
 #ifndef __ESP_HOSTED_HOST_FW_VERSION_H__
 #define __ESP_HOSTED_HOST_FW_VERSION_H__
 
-#define ESP_HOSTED_VERSION_MAJOR_1 2
-#define ESP_HOSTED_VERSION_MINOR_1 12
-#define ESP_HOSTED_VERSION_PATCH_1 6
+#include "eh_common_fw_version.h"
 
-/**
- * Macro to convert version number into an integer
- */
-#define ESP_HOSTED_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
+#define ESP_HOSTED_VERSION_MAJOR_1      PROJECT_VERSION_MAJOR_1
+#define ESP_HOSTED_VERSION_MINOR_1      PROJECT_VERSION_MINOR_1
+#define ESP_HOSTED_VERSION_PATCH_1      PROJECT_VERSION_PATCH_1
 
-/* Extract version components from version value */
-#define ESP_HOSTED_VERSION_MAJOR(ver) (((ver) >> 16) & 0xFF)
-#define ESP_HOSTED_VERSION_MINOR(ver) (((ver) >> 8) & 0xFF)
-#define ESP_HOSTED_VERSION_PATCH(ver) ((ver) & 0xFF)
-
-/* Format version tuple for printing */
-#define ESP_HOSTED_VERSION_PRINTF_ARGS(ver) \
-	(unsigned int)ESP_HOSTED_VERSION_MAJOR(ver), \
-	(unsigned int)ESP_HOSTED_VERSION_MINOR(ver), \
-	(unsigned int)ESP_HOSTED_VERSION_PATCH(ver)
-
-#define ESP_HOSTED_VERSION_PRINTF_FMT "%u.%u.%u"
+#define ESP_HOSTED_VERSION_VAL          EH_VERSION_VAL
+#define ESP_HOSTED_VERSION_MAJOR        EH_VERSION_MAJOR
+#define ESP_HOSTED_VERSION_MINOR        EH_VERSION_MINOR
+#define ESP_HOSTED_VERSION_PATCH        EH_VERSION_PATCH
+#define ESP_HOSTED_VERSION_PRINTF_ARGS  EH_VERSION_PRINTF_ARGS
+#define ESP_HOSTED_VERSION_PRINTF_FMT   EH_VERSION_PRINTF_FMT
 
 #endif
