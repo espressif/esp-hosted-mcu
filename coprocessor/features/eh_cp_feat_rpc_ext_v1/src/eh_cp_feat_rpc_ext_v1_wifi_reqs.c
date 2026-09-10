@@ -50,6 +50,18 @@ static const char* TAG = "rpc_linux_802_3_wifi_req";
 
 #define BSSID_STR_LEN               (18)
 
+/* IDF's ssid[32]/password[64] hold the maximum value with no terminator, so
+ * strlcpy() (which always reserves one) drops the last character. Copies at
+ * most cap bytes and returns how many, for callers that must also set a len. */
+static inline size_t eh_v1_copy_full(uint8_t *dst, size_t cap, const char *src)
+{
+	size_t n = src ? strnlen(src, cap) : 0;
+	memset(dst, 0, cap);
+	if (n)
+		memcpy(dst, src, n);
+	return n;
+}
+
 #define SSID_LENGTH                 (33)
 #define PASSWORD_LENGTH             (64)
 
@@ -326,12 +338,12 @@ esp_err_t req_connect_ap_handler (const CtrlMsg *req,
 	wifi_cfg->sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
 	/* Fill wifi_cfg with new request parameters */
 	if (req->req_connect_ap->ssid) {
-		strlcpy((char *)wifi_cfg->sta.ssid, req->req_connect_ap->ssid,
-				sizeof(wifi_cfg->sta.ssid));
+		eh_v1_copy_full(wifi_cfg->sta.ssid, sizeof(wifi_cfg->sta.ssid),
+				req->req_connect_ap->ssid);
 	}
 	if (req->req_connect_ap->pwd) {
-		strlcpy((char *)wifi_cfg->sta.password, req->req_connect_ap->pwd,
-				sizeof(wifi_cfg->sta.password));
+		eh_v1_copy_full(wifi_cfg->sta.password, sizeof(wifi_cfg->sta.password),
+				req->req_connect_ap->pwd);
 	}
 	if ((req->req_connect_ap->bssid) &&
 			(strlen((char *)req->req_connect_ap->bssid))) {
@@ -607,13 +619,17 @@ esp_err_t req_get_softap_config_handler (const CtrlMsg *req,
 	}
 #endif
 
-	if (strlen((char *)get_conf.ap.ssid)) {
-		strlcpy((char *)credentials.ssid,(char *)&get_conf.ap.ssid,
-				sizeof(credentials.ssid));
+	/* credentials.ssid/pwd are one byte wider than the IDF arrays, so the
+	 * bounded read below always leaves room for the terminator memset in. */
+	if (strnlen((char *)get_conf.ap.ssid, sizeof(get_conf.ap.ssid))) {
+		memset(credentials.ssid, 0, sizeof(credentials.ssid));
+		memcpy(credentials.ssid, get_conf.ap.ssid,
+				strnlen((char *)get_conf.ap.ssid, sizeof(get_conf.ap.ssid)));
 	}
-	if (strlen((char *)get_conf.ap.password)) {
-		strlcpy((char *)credentials.pwd,(char *)&get_conf.ap.password,
-				sizeof(credentials.pwd));
+	if (strnlen((char *)get_conf.ap.password, sizeof(get_conf.ap.password))) {
+		memset(credentials.pwd, 0, sizeof(credentials.pwd));
+		memcpy(credentials.pwd, get_conf.ap.password,
+				strnlen((char *)get_conf.ap.password, sizeof(get_conf.ap.password)));
 	}
 	credentials.chnl = get_conf.ap.channel;
 	credentials.max_conn = get_conf.ap.max_connection;
@@ -742,16 +758,18 @@ esp_err_t req_start_softap_handler (const CtrlMsg *req,
 	wifi_config->ap.authmode = req->req_start_softap->sec_prot;
 	if (wifi_config->ap.authmode != WIFI_AUTH_OPEN) {
 		if (req->req_start_softap->pwd) {
-			strlcpy((char *)wifi_config->ap.password,
-					req->req_start_softap->pwd,
-					sizeof(wifi_config->ap.password));
+			eh_v1_copy_full(wifi_config->ap.password,
+					sizeof(wifi_config->ap.password),
+					req->req_start_softap->pwd);
 		}
 	}
 	if (req->req_start_softap->ssid) {
-		strlcpy((char *)wifi_config->ap.ssid,
-				req->req_start_softap->ssid,
-				sizeof(wifi_config->ap.ssid));
-		wifi_config->ap.ssid_len = strlen(req->req_start_softap->ssid);
+		/* ssid_len must be what was copied: strlcpy stored 31 of a 32-byte SSID
+		 * while strlen() reported 32, so IDF read the terminator as a character. */
+		wifi_config->ap.ssid_len =
+			eh_v1_copy_full(wifi_config->ap.ssid,
+					sizeof(wifi_config->ap.ssid),
+					req->req_start_softap->ssid);
 	}
 
 	wifi_config->ap.channel = req->req_start_softap->chnl;
