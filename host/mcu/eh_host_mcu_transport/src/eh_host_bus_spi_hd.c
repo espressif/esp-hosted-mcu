@@ -165,7 +165,7 @@ static int spihd_read_reg(uint32_t addr, uint8_t *buf, size_t len)
     esp_err_t rc = spi_device_polling_transmit(s_spi_dev,
                                                (spi_transaction_t *)&t);
     if (rc != ESP_OK) {
-        ESP_LOGE(TAG, "read_reg[0x%02x] failed: %d", (unsigned)addr, (int)rc);
+        ESP_LOGE(TAG, "read_reg[0x%02x] failed: %d", (unsigned int)addr, (int)rc);
         return -1;
     }
     return 0;
@@ -217,7 +217,7 @@ static int spihd_write_reg(uint32_t addr, const uint8_t *buf, size_t len)
     esp_err_t rc = spi_device_polling_transmit(s_spi_dev,
                                                (spi_transaction_t *)&t);
     if (rc != ESP_OK) {
-        ESP_LOGE(TAG, "write_reg[0x%02x] failed: %d", (unsigned)addr, (int)rc);
+        ESP_LOGE(TAG, "write_reg[0x%02x] failed: %d", (unsigned int)addr, (int)rc);
         return -1;
     }
     return 0;
@@ -263,7 +263,7 @@ static int spihd_rddma(uint8_t *out, size_t len)
     esp_err_t rc = spi_device_polling_transmit(s_spi_dev,
                                                (spi_transaction_t *)&t);
     if (rc != ESP_OK) {
-        ESP_LOGE(TAG, "rddma len=%u failed: %d", (unsigned)len, (int)rc);
+        ESP_LOGE(TAG, "rddma len=%u failed: %d", (unsigned int)len, (int)rc);
         return -1;
     }
     /* INT0 tells slave "done reading". */
@@ -299,7 +299,7 @@ static int spihd_is_write_buffer_available(uint32_t needed)
     }
     if (!ok) {
         ESP_LOGW(TAG, "wr-buf-available exhausted %d retries (needed=%u)",
-                    EH_SPI_HD_WR_BUF_MAX_RETRIES, (unsigned)needed);
+                    EH_SPI_HD_WR_BUF_MAX_RETRIES, (unsigned int)needed);
     }
     eh_host_port_dma_free(reg);
     return ok;
@@ -321,7 +321,7 @@ static int spihd_wrdma(const uint8_t *in, size_t len)
     esp_err_t rc = spi_device_polling_transmit(s_spi_dev,
                                                (spi_transaction_t *)&t);
     if (rc != ESP_OK) {
-        ESP_LOGE(TAG, "wrdma len=%u failed: %d", (unsigned)len, (int)rc);
+        ESP_LOGE(TAG, "wrdma len=%u failed: %d", (unsigned int)len, (int)rc);
         return -1;
     }
     /* WR_END terminator: complete-segment marker. */
@@ -468,7 +468,7 @@ static void eh_spihd_rx_task(void *arg)
         }
         if (size_to_xfer > EH_SPIHD_MAX_BUF) {
             ESP_LOGE(TAG, "size_to_xfer=%u > MAX=%u; dropping",
-                     (unsigned)size_to_xfer, EH_SPIHD_MAX_BUF);
+                     (unsigned int)size_to_xfer, EH_SPIHD_MAX_BUF);
             eh_host_port_mutex_unlock(s_bus_lock);
             continue;
         }

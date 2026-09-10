@@ -134,9 +134,9 @@ static void sta_set_protocol(void)
     esp_err_t rc = esp_wifi_set_protocol(WIFI_IF_STA, EH_EXAMPLE_WIFI_PROTO);
     if (rc != ESP_OK)
         ESP_LOGW(TAG, "set_protocol(0x%02x) not applied: %s",
-                 (unsigned)EH_EXAMPLE_WIFI_PROTO, esp_err_to_name(rc));
+                 (unsigned int)EH_EXAMPLE_WIFI_PROTO, esp_err_to_name(rc));
     else
-        ESP_LOGI(TAG, "STA protocol set to 0x%02x", (unsigned)EH_EXAMPLE_WIFI_PROTO);
+        ESP_LOGI(TAG, "STA protocol set to 0x%02x", (unsigned int)EH_EXAMPLE_WIFI_PROTO);
 #endif
 }
 

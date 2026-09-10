@@ -51,7 +51,7 @@ static void rpc_send_event_if_ready(int32_t event_id, int msg_id, void *data, si
 		return;
 	}
 	ESP_LOGI(TAG, "TX evt → host: event_id=%ld msg_id=0x%04x len=%u",
-			event_id, (unsigned)msg_id, (unsigned)len);
+			event_id, (unsigned int)msg_id, (unsigned int)len);
 	EH_CHECK_OK_WARN(eh_cp_rpc_send_event(msg_id, data, len));
 }
 

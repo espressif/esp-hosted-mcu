@@ -50,7 +50,7 @@ static int trace_bytes(unsigned *recs_out, unsigned *ovf_out)
 		outstanding++;
 	}
 	*recs_out = outstanding;
-	*ovf_out  = (unsigned)sum.has_overflowed;
+	*ovf_out  = (unsigned int)sum.has_overflowed;
 	return bytes;
 }
 
@@ -70,7 +70,7 @@ static void report_records(void)
 				break;
 			w += snprintf(stk + w, sizeof(stk) - w, "%p ", rec.alloced_by[f]);
 		}
-		ESP_LOGW(TAG, "[cycles] rec %u B callers %s", (unsigned)rec.size, stk);
+		ESP_LOGW(TAG, "[cycles] rec %u B callers %s", (unsigned int)rec.size, stk);
 	}
 }
 #else
@@ -102,7 +102,7 @@ static void cp_cycles_task(void *arg)
 	esp_err_t d0 = eh_cp_deinit();
 	vTaskDelay(pdMS_TO_TICKS(SETTLE_MS));
 	ESP_LOGI(TAG, "[cycles] priming deinit=%d free=%u", (int)d0,
-	         (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+	         (unsigned int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 
 	for (int i = 1; i <= CYCLES; i++) {
 		unsigned recs = 0, ovf = 0;
@@ -125,7 +125,7 @@ static void cp_cycles_task(void *arg)
 		ESP_LOGI(TAG, "[cycles] cycle=%d init=%d deinit=%d bytes=%d "
 		              "recs=%u ovf=%u polls=%d free=%u",
 		         i, (int)r, (int)d, borrowed, recs, ovf, polls,
-		         (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+		         (unsigned int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
 	}
 
 	/* Run verdict: outstanding after the LAST deinit is what was never given

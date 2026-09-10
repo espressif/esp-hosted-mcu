@@ -35,7 +35,7 @@ static const char *TAG = "mcu_host";
 static int tx_sink(const uint8_t *buf, size_t len, void *ctx)
 {
     (void)buf; (void)ctx;
-    ESP_LOGD(TAG, "tx_sink dropped %u bytes", (unsigned)len);
+    ESP_LOGD(TAG, "tx_sink dropped %u bytes", (unsigned int)len);
     return (int)len;  /* pretend accepted */
 }
 

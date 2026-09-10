@@ -40,7 +40,7 @@ static void show_config(void)
 	ESP_LOGI(TAG, "transport[host]: UART port=%d %u bps %d%c%d "
 		"TX=%d RX=%d RESET=%d",
 		(int)EH_HOST_PORT_UART_PORT,
-		(unsigned)EH_HOST_PORT_UART_BAUD_RATE,
+		(unsigned int)EH_HOST_PORT_UART_BAUD_RATE,
 		(int)EH_HOST_PORT_UART_NUM_DATA_BITS,
 		(EH_HOST_PORT_UART_PARITY == 0) ? 'N' :
 		(EH_HOST_PORT_UART_PARITY == 2) ? 'E' : 'O',
@@ -122,7 +122,7 @@ static void eh_uart_rx_task(void *arg)
     }
     size_t acc_len = 0;
 
-    ESP_LOGI(TAG, "UART RX task started (acc_cap=%u)", (unsigned)cap);
+    ESP_LOGI(TAG, "UART RX task started (acc_cap=%u)", (unsigned int)cap);
 
     while (s_running) {
         size_t room = cap - acc_len;

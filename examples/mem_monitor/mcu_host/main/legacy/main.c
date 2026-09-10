@@ -116,7 +116,7 @@ static void esp_hosted_event_handler(void* arg, esp_event_base_t event_base,
     } else if (event_id == ESP_HOSTED_EVENT_CP_INIT) {
         ESP_LOGI(TAG, "*** got INIT event from co-processor ***");
         esp_hosted_event_init_t *event = (esp_hosted_event_init_t *)event_data;
-        ESP_LOGI(TAG, "*** Co-processor Reset Reason %u ***", (unsigned)event->reason);
+        ESP_LOGI(TAG, "*** Co-processor Reset Reason %u ***", (unsigned int)event->reason);
     } else if (event_id == ESP_HOSTED_EVENT_TRANSPORT_UP) {
         ESP_LOGI(TAG, "ESP-Hosted Transport is UP");
         xSemaphoreGive(sem_hosted_is_up);
@@ -195,7 +195,7 @@ static void print_mem_info_resp(esp_hosted_curr_mem_info_t *info)
     }
     ESP_LOGI(TAG, "======= Current Co-processor Mem Info =====");
     ESP_LOGI(TAG, "mem monitoring config  : %s", config_str);
-    ESP_LOGI(TAG, "report always          : %u", (unsigned)info->report_always);
+    ESP_LOGI(TAG, "report always          : %u", (unsigned int)info->report_always);
     ESP_LOGI(TAG, "reporting interval     : %"PRIu32, info->interval_sec);
     ESP_LOGI(TAG, "current heap size      : %"PRIu32, info->curr_total_heap_size);
     ESP_LOGI(TAG, "----------------------------------------------");

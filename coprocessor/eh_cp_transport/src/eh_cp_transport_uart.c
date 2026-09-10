@@ -75,7 +75,7 @@ static void show_config(void)
 	ESP_LOGI(TAG, "transport[cp]: UART port=%d %u bps %d%c%d "
 		"TX=%d RX=%d tx_q=%d rx_q=%d",
 		(int)HOSTED_UART,
-		(unsigned)HOSTED_UART_BAUD_RATE,
+		(unsigned int)HOSTED_UART_BAUD_RATE,
 		(int)HOSTED_UART_NUM_DATA_BITS,
 		(HOSTED_UART_PARITY == HOSTED_UART_PARITY_EVEN) ? 'E' :
 		(HOSTED_UART_PARITY == HOSTED_UART_PARITY_ODD)  ? 'O' : 'N',

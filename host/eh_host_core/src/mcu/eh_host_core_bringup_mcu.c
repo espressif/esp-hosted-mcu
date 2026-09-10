@@ -76,7 +76,7 @@ int eh_host_core_bringup(void)
         ESP_LOGW(TAG, "bring-up timed out; re-attempt %" PRIu32 "/%" PRIu32
                  " after %ums back-off",
                  attempt, max_retries,
-                 (unsigned)EH_RECONFIGURE_REATTEMPT_BACKOFF_MS);
+                 (unsigned int)EH_RECONFIGURE_REATTEMPT_BACKOFF_MS);
         eh_host_port_task_delay_ms(EH_RECONFIGURE_REATTEMPT_BACKOFF_MS);
         if (reconfigure_attempt(1 /*force_reset*/) == 0) {
             ESP_LOGI(TAG, "bring-up succeeded on re-attempt %" PRIu32, attempt);

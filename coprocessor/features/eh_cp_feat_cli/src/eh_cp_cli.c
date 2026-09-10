@@ -65,9 +65,9 @@ static int task_dump_cli_handler(int argc, char *argv[])
 	for (int i = 0; i < num_of_tasks; i++) {
 		printf("%16s\t%u\t%u\t%u\n",
 			   task_array[i].pcTaskName,
-			   (unsigned) task_array[i].xTaskNumber,
-			   (unsigned) task_array[i].uxCurrentPriority,
-			   (unsigned) task_array[i].usStackHighWaterMark);
+			   (unsigned int) task_array[i].xTaskNumber,
+			   (unsigned int) task_array[i].uxCurrentPriority,
+			   (unsigned int) task_array[i].usStackHighWaterMark);
 	}
 	free(task_array);
 #endif

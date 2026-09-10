@@ -334,7 +334,7 @@ int main(int argc, char **argv)
 	/* Initialize random seed.
 	 * Linux-flavour: upstream uses xTaskGetTickCount(); time() is the
 	 * portable equivalent that works without a FreeRTOS scheduler. */
-	srand((unsigned)time(NULL));
+	srand((unsigned int)time(NULL));
 
 	/* Initialize NVS */
 	esp_err_t ret = nvs_flash_init();

@@ -223,9 +223,9 @@ esp_err_t eh_host_sys_get_cp_app_desc(esp_hosted_app_desc_t *app_desc)
     /* "<major>.<minor>.<patch>" — matches upstream form. */
     snprintf(app_desc->version, sizeof(app_desc->version),
                    "%u.%u.%u",
-                   (unsigned)fw.major1,
-                   (unsigned)fw.minor1,
-                   (unsigned)fw.patch1);
+                   (unsigned int)fw.major1,
+                   (unsigned int)fw.minor1,
+                   (unsigned int)fw.patch1);
 
     /* TODO: surface idf_target via eh_host_sys_get_cp_info(). */
     return ESP_OK;

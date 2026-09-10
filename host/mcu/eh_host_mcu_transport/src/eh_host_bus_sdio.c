@@ -136,7 +136,7 @@ static void show_config(void)
 	ESP_LOGI(TAG, "transport[host]: SDIO %d-bit %u kHz "
 		"CLK=%d CMD=%d D0=%d D1=%d D2=%d D3=%d RESET=%d",
 		EH_HOST_PORT_SDIO_BUS_WIDTH,
-		(unsigned)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ,
+		(unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ,
 		EH_HOST_PORT_SDIO_PIN_CLK, EH_HOST_PORT_SDIO_PIN_CMD,
 		EH_HOST_PORT_SDIO_PIN_D0,  EH_HOST_PORT_SDIO_PIN_D1,
 		EH_HOST_PORT_SDIO_PIN_D2,  EH_HOST_PORT_SDIO_PIN_D3,
@@ -145,7 +145,7 @@ static void show_config(void)
 	ESP_LOGI(TAG, "transport[host]: SDIO %d-bit %u kHz "
 		"CLK=%d CMD=%d D0=%d D1=%d RESET=%d",
 		EH_HOST_PORT_SDIO_BUS_WIDTH,
-		(unsigned)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ,
+		(unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ,
 		EH_HOST_PORT_SDIO_PIN_CLK, EH_HOST_PORT_SDIO_PIN_CMD,
 		EH_HOST_PORT_SDIO_PIN_D0,  EH_HOST_PORT_SDIO_PIN_D1,
 		EH_HOST_PORT_GPIO_PIN_RESET);
@@ -1781,7 +1781,7 @@ static void sdio_process_rx_task(void *pvParameters)
 					assert(buf_handle->payload);
 					if (!copy_payload) {
 						ESP_LOGE(TAG, "bus_rx: payload copy alloc failed len=%u",
-							 (unsigned)buf_handle->payload_len);
+							 (unsigned int)buf_handle->payload_len);
 						EH_HOST_PORT_FREE_PTR_WITH_FUNC(buf_handle->free_buf_handle,
 								buf_handle->priv_buffer_handle);
 						continue;
@@ -1809,9 +1809,9 @@ static void sdio_process_rx_task(void *pvParameters)
 #endif
 			} else {
 				ESP_LOGW(TAG, "rx-drop: no channel for if_type=%u len=%u flags=0x%x",
-				         (unsigned)buf_handle->if_type,
-				         (unsigned)buf_handle->payload_len,
-				         (unsigned)buf_handle->flags);
+				         (unsigned int)buf_handle->if_type,
+				         (unsigned int)buf_handle->payload_len,
+				         (unsigned int)buf_handle->flags);
 			}
 		} else if (buf_handle->if_type == ESP_PRIV_IF) {
 
