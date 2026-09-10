@@ -79,7 +79,7 @@ static int cmd_sys_fw_version(int argc, char **argv)
     if (e == ESP_OK) {
         char f[48];
         snprintf(f, sizeof(f), "ver=%u.%u.%u",
-                 (unsigned)fw.major1, (unsigned)fw.minor1, (unsigned)fw.patch1);
+                 (unsigned int)fw.major1, (unsigned int)fw.minor1, (unsigned int)fw.patch1);
         eh_out("sys_fw_version", (int)e, f);
     } else {
         eh_out_rc("sys_fw_version", e);
@@ -218,7 +218,7 @@ static int cmd_wifi_get_channel(int argc, char **argv)
     uint8_t pri = 0;
     wifi_second_chan_t sec = WIFI_SECOND_CHAN_NONE;
     esp_err_t e = eh_host_wifi_get_channel(&pri, &sec);
-    if (e == ESP_OK) { char f[32]; snprintf(f, sizeof(f), "chan=%u sec=%d", (unsigned)pri, (int)sec); eh_out("wifi_get_channel", (int)e, f); }
+    if (e == ESP_OK) { char f[32]; snprintf(f, sizeof(f), "chan=%u sec=%d", (unsigned int)pri, (int)sec); eh_out("wifi_get_channel", (int)e, f); }
     else eh_out_rc("wifi_get_channel", e);
     return 0;
 }
@@ -275,7 +275,7 @@ static int cmd_wifi_get_inactive_time(int argc, char **argv)
     if (argc < 2 || parse_iface(argv[1], &ifx)) { eh_out("wifi_get_inactive_time", -1, "err=USAGE"); return 0; }
     uint16_t s = 0;
     esp_err_t e = eh_host_wifi_get_inactive_time(ifx, &s);
-    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "sec=%u", (unsigned)s); eh_out("wifi_get_inactive_time", (int)e, f); }
+    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "sec=%u", (unsigned int)s); eh_out("wifi_get_inactive_time", (int)e, f); }
     else eh_out_rc("wifi_get_inactive_time", e);
     return 0;
 }
@@ -388,14 +388,14 @@ static int cmd_wifi_get_config(int argc, char **argv)
     if (ifx == WIFI_IF_STA) {
         snprintf(f, sizeof(f), "ssid=%.*s channel=%u pwlen=%u",
                  (int)strnlen((char *)out.sta.ssid, sizeof(out.sta.ssid)),
-                 (char *)out.sta.ssid, (unsigned)out.sta.channel,
-                 (unsigned)strnlen((char *)out.sta.password,
+                 (char *)out.sta.ssid, (unsigned int)out.sta.channel,
+                 (unsigned int)strnlen((char *)out.sta.password,
                                    sizeof(out.sta.password)));
     } else {
         snprintf(f, sizeof(f), "ssid=%.*s channel=%u authmode=%d max_conn=%u hidden=%u",
                  (int)strnlen((char *)out.ap.ssid, sizeof(out.ap.ssid)),
-                 (char *)out.ap.ssid, (unsigned)out.ap.channel, (int)out.ap.authmode,
-                 (unsigned)out.ap.max_connection, (unsigned)out.ap.ssid_hidden);
+                 (char *)out.ap.ssid, (unsigned int)out.ap.channel, (int)out.ap.authmode,
+                 (unsigned int)out.ap.max_connection, (unsigned int)out.ap.ssid_hidden);
     }
     eh_out("wifi_get_config", 0, f);
     return 0;
@@ -462,7 +462,7 @@ static int cmd_wifi_scan_get_ap_num(int argc, char **argv)
 {
     uint16_t n = 0;
     esp_err_t e = eh_host_wifi_scan_get_ap_num(&n);
-    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "num=%u", (unsigned)n); eh_out("wifi_scan_get_ap_num", (int)e, f); }
+    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "num=%u", (unsigned int)n); eh_out("wifi_scan_get_ap_num", (int)e, f); }
     else eh_out_rc("wifi_scan_get_ap_num", e);
     return 0;
 }
@@ -479,11 +479,11 @@ static int cmd_wifi_scan_dump(int argc, char **argv)
     e = eh_host_wifi_scan_get_ap_records(&got, recs);
     for (uint16_t i = 0; i < got && e == ESP_OK; i++)
         printf("EH scan ap ssid=\"%s\" rssi=%d ch=%u phy=%u%u%u%u%u%u%u\n",
-               (char *)recs[i].ssid, (int)recs[i].rssi, (unsigned)recs[i].primary,
+               (char *)recs[i].ssid, (int)recs[i].rssi, (unsigned int)recs[i].primary,
                recs[i].phy_11b, recs[i].phy_11g, recs[i].phy_11n,
                recs[i].phy_11a, recs[i].phy_11ac, recs[i].phy_11ax,
                recs[i].phy_lr);
-    char f[24]; snprintf(f, sizeof(f), "n=%u", (unsigned)got);
+    char f[24]; snprintf(f, sizeof(f), "n=%u", (unsigned int)got);
     eh_out("wifi_scan_dump", (int)e, f);
     free(recs);
     return 0;
@@ -534,7 +534,7 @@ static int cmd_wifi_ap_get_sta_aid(int argc, char **argv)
     }
     uint16_t aid = 0;
     esp_err_t e = eh_host_wifi_ap_get_sta_aid(mac, &aid);
-    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "aid=%u", (unsigned)aid); eh_out("wifi_ap_get_sta_aid", (int)e, f); }
+    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "aid=%u", (unsigned int)aid); eh_out("wifi_ap_get_sta_aid", (int)e, f); }
     else eh_out_rc("wifi_ap_get_sta_aid", e);
     return 0;
 }
@@ -550,7 +550,7 @@ static int cmd_wifi_sta_get_aid(int argc, char **argv)
 {
     uint16_t aid = 0;
     esp_err_t e = eh_host_wifi_sta_get_aid(&aid);
-    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "aid=%u", (unsigned)aid); eh_out("wifi_sta_get_aid", (int)e, f); }
+    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "aid=%u", (unsigned int)aid); eh_out("wifi_sta_get_aid", (int)e, f); }
     else eh_out_rc("wifi_sta_get_aid", e);
     return 0;
 }
@@ -562,7 +562,7 @@ static int cmd_wifi_sta_get_ap_info(int argc, char **argv)
     esp_err_t e = eh_host_wifi_sta_get_ap_info(&ap);
     if (e == ESP_OK) {
         char f[80];
-        snprintf(f, sizeof(f), "ssid=%s rssi=%d chan=%u", (char *)ap.ssid, (int)ap.rssi, (unsigned)ap.primary);
+        snprintf(f, sizeof(f), "ssid=%s rssi=%d chan=%u", (char *)ap.ssid, (int)ap.rssi, (unsigned int)ap.primary);
         eh_out("wifi_sta_get_ap_info", (int)e, f);
     } else eh_out_rc("wifi_sta_get_ap_info", e);
     return 0;
@@ -604,7 +604,7 @@ static int cmd_wifi_itwt_flow_status(int argc, char **argv)
 {
     int32_t bm = 0;
     esp_err_t e = eh_host_wifi_sta_itwt_get_flow_id_status(&bm);
-    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "bitmap=0x%x", (unsigned)bm); eh_out("wifi_itwt_flow_status", (int)e, f); }
+    if (e == ESP_OK) { char f[24]; snprintf(f, sizeof(f), "bitmap=0x%x", (unsigned int)bm); eh_out("wifi_itwt_flow_status", (int)e, f); }
     else eh_out_rc("wifi_itwt_flow_status", e);
     return 0;
 }

@@ -370,7 +370,7 @@ static esp_err_t ctrl_ntfy_CustomRpc(CtrlMsg *ntfy,
         const uint8_t *data, size_t len)
 {
     if (!data || len < sizeof(uint32_t)) {
-        ESP_LOGE(TAG, "Custom RPC event: invalid data (len=%u)", (unsigned)len);
+        ESP_LOGE(TAG, "Custom RPC event: invalid data (len=%u)", (unsigned int)len);
         return ESP_FAIL;
     }
 
@@ -398,7 +398,7 @@ static esp_err_t ctrl_ntfy_CustomRpc(CtrlMsg *ntfy,
     if (payload_len > 0) {
         p->data.data = (uint8_t *)malloc(payload_len);
         if (!p->data.data) {
-            ESP_LOGE(TAG, "Failed to allocate payload copy (%u bytes)", (unsigned)payload_len);
+            ESP_LOGE(TAG, "Failed to allocate payload copy (%u bytes)", (unsigned int)payload_len);
             free(p);
             ntfy->event_custom_rpc_unserialised_msg = NULL;
             ntfy->payload_case = CTRL_MSG__PAYLOAD__NOT_SET;
@@ -409,7 +409,7 @@ static esp_err_t ctrl_ntfy_CustomRpc(CtrlMsg *ntfy,
     }
 
     ESP_LOGD(TAG, "Custom RPC event: msg_id=0x%" PRIx32 " payload_len=%u",
-             msg_id, (unsigned)payload_len);
+             msg_id, (unsigned int)payload_len);
     return ESP_OK;
 }
 

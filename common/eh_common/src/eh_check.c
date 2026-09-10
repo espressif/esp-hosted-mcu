@@ -14,7 +14,7 @@ void eh_check_failed(esp_err_t rc, const char *file, int line,
     fprintf(stderr,
             "EH_CHECK_OK failed: esp_err_t 0x%x (%s) "
             "at %s:%d\n  func: %s\n  expression: %s\n",
-            (unsigned)rc, esp_err_to_name(rc),
+            (unsigned int)rc, esp_err_to_name(rc),
             file, line, function, expression);
     fflush(stderr);
     abort();
@@ -25,7 +25,7 @@ void eh_check_failed_warn(esp_err_t rc, const char *file, int line,
 {
     ESP_LOGE("EH_CHECK_OK_WARN",
              "esp_err_t 0x%x (%s) at %s:%d, func: %s, expression: %s",
-             (unsigned)rc, esp_err_to_name(rc),
+             (unsigned int)rc, esp_err_to_name(rc),
              file, line, function, expression);
 }
 

@@ -123,7 +123,7 @@ static esp_err_t table_grow(void **table_ptr, size_t *cap,
     void *p = realloc(*table_ptr, new_cap * element_size);
     if (!p) {
         ESP_LOGE(TAG, "table_grow: realloc(%u slots × %u B) failed",
-                 (unsigned)new_cap, (unsigned)element_size);
+                 (unsigned int)new_cap, (unsigned int)element_size);
         return ESP_ERR_NO_MEM;
     }
     *table_ptr = p;
@@ -167,7 +167,7 @@ esp_err_t eh_cp_rpc_req_register(uint16_t id_min, uint16_t id_max,
     s_req_count++;
 
     ESP_LOGI(TAG, "++ RPC Req [%u]: [0x%04x->0x%04x] => %p (Total %u)",
-             (unsigned int)ins, id_min, id_max, handler, (unsigned)s_req_count);
+             (unsigned int)ins, id_min, id_max, handler, (unsigned int)s_req_count);
 
     eh_cp_rpc_registry_unlock();
     return ESP_OK;
@@ -223,7 +223,7 @@ esp_err_t eh_cp_rpc_evt_register(uint16_t id_min, uint16_t id_max,
     s_evt_table[s_evt_count++] = (rpc_evt_entry_t){ id_min, id_max, serialise, ctx };
 
     ESP_LOGI(TAG, "++ RPC Evt [%u]: [0x%04x->0x%04x] => %p (Total %u)",
-             (unsigned int)s_evt_count, id_min, id_max, serialise, (unsigned)s_evt_count);
+             (unsigned int)s_evt_count, id_min, id_max, serialise, (unsigned int)s_evt_count);
 
     eh_cp_rpc_registry_unlock();
     return ESP_OK;
@@ -255,7 +255,7 @@ esp_err_t eh_cp_rpc_dispatch_req(uint32_t msg_id,
 {
     ESP_LOGD(TAG, "dispatch_req: enter msg_id=0x%04"PRIx32""
              " req_len=%u req_table_count=%u",
-             msg_id, req_len, (unsigned)s_req_count);
+             msg_id, req_len, (unsigned int)s_req_count);
 
     eh_cp_rpc_registry_lock();
 
@@ -286,10 +286,10 @@ esp_err_t eh_cp_rpc_dispatch_req(uint32_t msg_id,
 
     /* Dump table on miss for diagnostics. */
     eh_cp_rpc_registry_lock();
-    ESP_LOGW(TAG, "dispatch_req: registered req ranges (count=%u):", (unsigned)s_req_count);
+    ESP_LOGW(TAG, "dispatch_req: registered req ranges (count=%u):", (unsigned int)s_req_count);
     for (size_t i = 0; i < s_req_count; i++) {
         ESP_LOGW(TAG, "  [%u] [0x%04x .. 0x%04x] handler=%p",
-                 (unsigned)i, s_req_table[i].id_min, s_req_table[i].id_max,
+                 (unsigned int)i, s_req_table[i].id_min, s_req_table[i].id_max,
                  (void *)(uintptr_t)s_req_table[i].handler);
     }
     eh_cp_rpc_registry_unlock();
@@ -301,7 +301,7 @@ esp_err_t eh_cp_rpc_send_event(uint32_t event_id,
 {
     ESP_LOGD(TAG, "send_event: enter event_id=0x%04"PRIx32""
              " data=%p len=%u evt_table_count=%u",
-             event_id, data, len, (unsigned)s_evt_count);
+             event_id, data, len, (unsigned int)s_evt_count);
 
     eh_cp_rpc_registry_lock();
 

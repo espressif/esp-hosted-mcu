@@ -115,8 +115,9 @@ static esp_err_t convert_mac_to_bytes(uint8_t *out, char *s)
 	if (num_bytes < MAC_NUM_BYTES) {
 		return ESP_FAIL;
 	}
-	for (int i = 0; i < MAC_NUM_BYTES; i++)
+	for (int i = 0; i < MAC_NUM_BYTES; i++) {
 		out[i] = (uint8_t)mac[i];
+	}
 	return ESP_OK;
 }
 
