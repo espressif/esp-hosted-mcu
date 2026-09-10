@@ -1119,6 +1119,13 @@ def cmd_test(args) -> int:
     # resolved IDF (SW_AGGR/SDIO asserts at boot otherwise). Verify+apply+stop
     # BEFORE any build, so a wrong/unpatched IDF fails fast with a clear message
     # instead of building, booting, asserting, and flooding the logs.
+    rc = _submodule_preflight()
+    if rc:
+        return rc
+    if substrate.startswith("emu"):
+        rc = _emu_preflight()
+        if rc:
+            return rc
     if env["EH_SUBSTRATE"] in ("emu", "hw"):
         rc = _idf_preflight(auto_apply=auto_apply_patches)
         if rc:
@@ -1312,7 +1319,16 @@ def _finalize_exit(run_dir: Path, retry_dir, regression: bool, raw_rc: int, elap
     res = eh_reporter.summarize(run_dir, retry_dir=retry_dir, regression=regression, elapsed=elapsed, prewarm=prewarm)
     if raw_rc not in (0, 1):
         return raw_rc  # collection/usage/internal error — don't mask it
-    return 1 if res["blocking"] else 0
+    if res["blocking"]:
+        return 1
+    # A run where every selected test skipped proves nothing; exiting 0 reports it
+    # as a pass. Only reachable when the skips are environmental (no emu, no bench).
+    c = res.get("counts") or {}
+    if c and not c.get("passed") and not c.get("recovered") and c.get("skipped"):
+        sys.stderr.write(f"{_RED}eh:{_RESET} every selected test SKIPPED "
+                         f"({c['skipped']}) — nothing ran, so this is not a pass.\n")
+        return 1
+    return 0
 
 
 def _render_seqdiags(run_dir: Path) -> None:
@@ -1961,6 +1977,36 @@ def cmd_patch_idf(args) -> int:
         return 0
     # check-before-apply: rewrite the guard line only if present; silent otherwise.
     return apply_idf_patches(Path(idf))
+
+
+def _submodule_preflight() -> int:
+    """The vendored protobuf-c is a submodule; a fresh worktree without it fails
+    deep in CMake ("Cannot find source file: protobuf-c/.../protobuf-c.c"). Say so
+    in one line instead. Returns 0 to proceed, non-zero to abort."""
+    pbc = REPO_ROOT / ("common/serializers/third_party/msg_codec/"
+                       "protobuf-c/protobuf-c/protobuf-c.c")
+    if pbc.exists():
+        return 0
+    sys.stderr.write(f"{_RED}eh:{_RESET} vendored protobuf-c is missing "
+                     f"({pbc.relative_to(REPO_ROOT)}).\n"
+                     f"    run: git submodule update --init --recursive\n")
+    return 1
+
+
+def _emu_preflight() -> int:
+    """An emu substrate with no emulator must fail, not skip. Every emu test calls
+    pytest.skip when the binary is absent, and a run where nothing executed still
+    exits 0 — a green result that proves nothing. Check once, up front.
+    Returns 0 to proceed, non-zero to abort."""
+    d = resolve_emu_dir()
+    b = emu_binary(d) if d else None
+    if d and b and b.exists():
+        return 0
+    what = "no emu directory resolved" if not d else f"not built at {b}"
+    sys.stderr.write(f"{_RED}eh:{_RESET} emu substrate requested but esp-emu is "
+                     f"unavailable ({what}).\n"
+                     f"    ./install.sh --with-emu   or   eh.py set-esp-emu <path>\n")
+    return 1
 
 
 def _idf_preflight(auto_apply: bool = False) -> int:
