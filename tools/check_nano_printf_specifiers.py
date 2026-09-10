@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 #
-# CI gate: coprocessor and common sources must not use a printf/scanf
+# CI gate: our sources must not use a printf/scanf
 # conversion that newlib-nano cannot parse.
 #
 # Nano's length-modifier table is the three characters "hlL". It drops the C99
@@ -22,8 +22,10 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-ROOTS = ("coprocessor", "common")
-SKIP = ("build", "managed_components")
+ROOTS = ("coprocessor", "common", "host", "examples")
+# Skipped: build output, third-party components, and the Linux roles — those
+# build against glibc or the kernel, never newlib-nano.
+SKIP = ("build", "managed_components", "linux", "linux_802_3_host")
 
 # %<flags><width>.<prec><modifier><conv>, plus the PRI*64 macro spellings.
 FORBIDDEN = re.compile(
