@@ -6,6 +6,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "eh_check.h"
+#include "eh_common.h"
 
 void eh_check_failed(esp_err_t rc, const char *file, int line,
                      const char *function, const char *expression)
@@ -31,6 +32,6 @@ void eh_check_failed_warn(esp_err_t rc, const char *file, int line,
 void eh_check_narrow_warn(long long val, const char *what, const char *function)
 {
     ESP_LOGW("EH_ASSIGN_NARROW",
-             "%s: value %ld does not fit %s — truncated on assignment",
-             function, (long)val, what);
+             "%s: value 0x%08lx%08lx does not fit %s — truncated on assignment",
+             function, EH_HI32(val), EH_LO32(val), what);
 }
