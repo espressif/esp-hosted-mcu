@@ -31,7 +31,7 @@ endif()
 foreach(feat
         bt openthread cp_ext_coex gpio_exp peer_data nw_split heartbeat
         system wifi wifi_ext_ent wifi_ext_itwt wifi_ext_dpp mem_monitor
-        power_save cli)
+        power_save cli rf_cert)
     string(TOUPPER "CONFIG_ESP_HOSTED_HOST_FEAT_${feat}_READY" _eh_cfg)
     if(${_eh_cfg})
         add_subdirectory(features/eh_host_feat_${feat}
@@ -47,7 +47,8 @@ endforeach()
 if(TARGET eh_host_feat_rpc_ext_v2)
     foreach(_rpc_feat
             bt openthread cp_ext_coex gpio_exp peer_data nw_split heartbeat
-            system wifi wifi_ext_ent wifi_ext_itwt wifi_ext_dpp mem_monitor)
+            system wifi wifi_ext_ent wifi_ext_itwt wifi_ext_dpp mem_monitor
+            rf_cert)
         if(TARGET eh_host_feat_${_rpc_feat})
             target_link_libraries(eh_host_feat_rpc_ext_v2
                 PRIVATE eh_host_feat_${_rpc_feat})

@@ -49,6 +49,10 @@ if(CONFIG_ESP_HOSTED_CP_FEAT_OPENTHREAD_READY)
     list(APPEND srcs src/eh_cp_feat_rpc_ext_v2_handler_req_openthread.c)
 endif()
 
+if(CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT_READY)
+    list(APPEND srcs src/eh_cp_feat_rpc_ext_v2_handler_req_rf_cert.c)
+endif()
+
 add_library(eh_cp_feat_rpc_ext_v2 STATIC ${srcs})
 
 target_include_directories(eh_cp_feat_rpc_ext_v2
@@ -121,6 +125,9 @@ if(CONFIG_ESP_HOSTED_CP_FEAT_GPIO_EXP_READY)
 endif()
 if(CONFIG_ESP_HOSTED_CP_FEAT_OPENTHREAD_READY)
     target_link_libraries(eh_cp_feat_rpc_ext_v2 PUBLIC eh_cp_feat_openthread)
+endif()
+if(CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT_READY)
+    target_link_libraries(eh_cp_feat_rpc_ext_v2 PUBLIC eh_cp_feat_rf_cert)
 endif()
 
 if(TARGET eh_cp)

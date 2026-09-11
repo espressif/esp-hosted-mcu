@@ -435,6 +435,13 @@ esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
 		ESP_LOGE(TAG, "Openthread is not enabled");
 		resp_payload->resp = FAILURE;
 #endif
+	} else if (req_payload->feature == RPC_FEATURE__Feature_Rf_Cert) {
+#if EH_CP_FEAT_RF_CERT_READY
+		return req_feature_control_rf_cert(req_payload, resp_payload);
+#else
+		ESP_LOGE(TAG, "RF cert test is not enabled");
+		resp_payload->resp = FAILURE;
+#endif
 	} else {
 		// invalid feature
 		ESP_LOGE(TAG, "error: invalid Feature Control");

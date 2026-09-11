@@ -2,6 +2,7 @@ menuconfig ESP_HOSTED_HOST_FEAT_CLI
 	bool "host cli"
 	depends on ESP_HOSTED_HOST && ESP_HOSTED_HOST_TYPE_MCU
 	default y if ESP_HOSTED_HOST_FEAT_POWER_SAVE
+	default y if ESP_HOSTED_HOST_FEAT_RF_CERT
 	default n
 	help
 	  Enable the host-side CLI feature.  Registers one esp_console

@@ -129,6 +129,17 @@ Each request has a corresponding response.
 | 110 | 268 | MemMonitor | 2.11.7 |
 | 111 | 269 | WifiScanParams | 2.12.0 |
 | 112 | 396 | ExtCoex | 2.12.1 |
+| 113 | 397 | PhyWifiTx | Unreleased |
+| 114 | 398 | PhyWifiRx | Unreleased |
+| 115 | 399 | PhyWifiTxTone | Unreleased |
+| 116 | 400 | PhyGetRxResult | Unreleased |
+| 117 | 401 | PhyCmdStop | Unreleased |
+| 118 | 402 | PhyTxContinEn | Unreleased |
+| 119 | 403 | PhyCbw40mEn | Unreleased |
+| 120 | 404 | PhyWifi11axTxSet | Unreleased |
+| 121 | 405 | PhyBleTx | Unreleased |
+| 122 | 406 | PhyBleRx | Unreleased |
+| 123 | 407 | PhyBtTxTone | Unreleased |
 
 ---
 

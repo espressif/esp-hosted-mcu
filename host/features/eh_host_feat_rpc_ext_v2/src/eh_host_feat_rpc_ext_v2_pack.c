@@ -57,6 +57,9 @@ static compose_fn pick_compose(int32_t msg_id)
 #if EH_HOST_FEAT_GPIO_EXP_READY
     #include "eh_host_feat_gpio_exp_v2_req_ids.inc"
 #endif
+#if EH_HOST_FEAT_RF_CERT_READY
+    #include "eh_host_feat_rf_cert_v2_req_ids.inc"
+#endif
 #if EH_HOST_FEAT_CP_EXT_COEX_READY
     #include "eh_host_feat_cp_ext_coex_v2_req_ids.inc"
 #endif

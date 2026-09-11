@@ -1,0 +1,30 @@
+# ── Role: COPROCESSOR ────────────────────────────────────────────────
+# RF certification test co-processor. It only serves RPCs: the host
+# drives every test. Nothing runs here on its own.
+CONFIG_ESP_HOSTED=y
+CONFIG_ESP_HOSTED_CP=y
+CONFIG_ESP_HOSTED_CP_FOR_MCU=y
+CONFIG_ESP_HOSTED_CP_RPC_V2=y
+
+# RF certification test feature, plus the IDF PHY cert APIs it needs.
+CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT=y
+CONFIG_ESP_PHY_ENABLE_CERT_TEST=y
+
+# Cert mode takes the radio, so the Wi-Fi driver stays out of the way.
+# The PHY test libraries do not use it.
+CONFIG_ESP_WIFI_ENABLED=n
+CONFIG_BT_ENABLED=n
+
+# A long continuous transmit gives the idle task no work; without this
+# the task watchdog fires. The IDF phy/cert_test example does the same.
+CONFIG_ESP_TASK_WDT_EN=n
+
+# OTA
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_eh_cp_ota_4m.csv"
+
+CONFIG_FREERTOS_HZ=1000
+
+# Serves gpio_output_set, which drives a coprocessor pin.
+CONFIG_ESP_HOSTED_CP_FEAT_GPIO_EXP=y

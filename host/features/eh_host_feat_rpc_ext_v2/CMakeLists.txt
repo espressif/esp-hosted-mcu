@@ -12,11 +12,12 @@ set(SRCS
     "src/eh_host_feat_rpc_ext_v2_api_common.c"
 )
 
-# Shared RpcReqFeatureControl wire op — used by both feat_bt and feat_openthread.
-if(CONFIG_ESP_HOSTED_HOST_FEAT_BT_READY OR CONFIG_ESP_HOSTED_HOST_FEAT_OPENTHREAD_READY)
-    list(APPEND SRCS "src/feature_control_req.c")
-    list(APPEND SRCS "src/feature_control_resp_evt.c")
-endif()
+# Shared RpcReqFeatureControl wire op — used by every feature whose lifecycle
+# rides Req_FeatureControl.  Both files compile to nothing unless
+# EH_HOST_FEAT_FEATURE_CONTROL_READY is set, so that one gate in
+# rpc_ext_v2_priv.h is the only place the feature list lives.
+list(APPEND SRCS "src/feature_control_req.c")
+list(APPEND SRCS "src/feature_control_resp_evt.c")
 
 add_library(eh_host_feat_rpc_ext_v2 STATIC ${SRCS})
 

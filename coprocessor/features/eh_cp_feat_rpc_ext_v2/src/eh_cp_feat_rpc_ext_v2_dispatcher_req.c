@@ -481,6 +481,48 @@ esp_err_t eh_cp_feat_rpc_ext_v2_rpc_req_dispatcher(Rpc *req, Rpc *resp, void *pr
             break;
 #endif
 
+#if EH_CP_FEAT_RF_CERT_READY
+        case RPC_ID__Req_PhyGetRxResult:
+            ret = req_phy_get_rx_result(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_PhyCmdStop:
+            ret = req_phy_cmd_stop(req, resp, priv_data);
+            break;
+#if EH_CP_FEAT_RF_CERT_WIFI
+        case RPC_ID__Req_PhyWifiTx:
+            ret = req_phy_wifi_tx(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_PhyWifiRx:
+            ret = req_phy_wifi_rx(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_PhyWifiTxTone:
+            ret = req_phy_wifi_tx_tone(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_PhyTxContinEn:
+            ret = req_phy_tx_contin_en(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_PhyCbw40mEn:
+            ret = req_phy_cbw40m_en(req, resp, priv_data);
+            break;
+#if EH_CP_FEAT_RF_CERT_HE
+        case RPC_ID__Req_PhyWifi11axTxSet:
+            ret = req_phy_wifi_11ax_tx_set(req, resp, priv_data);
+            break;
+#endif // EH_CP_FEAT_RF_CERT_HE
+#endif // EH_CP_FEAT_RF_CERT_WIFI
+#if EH_CP_FEAT_RF_CERT_BLE
+        case RPC_ID__Req_PhyBleTx:
+            ret = req_phy_ble_tx(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_PhyBleRx:
+            ret = req_phy_ble_rx(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_PhyBtTxTone:
+            ret = req_phy_bt_tx_tone(req, resp, priv_data);
+            break;
+#endif // EH_CP_FEAT_RF_CERT_BLE
+#endif // EH_CP_FEAT_RF_CERT_READY
+
 #if EH_CP_FEAT_GPIO_EXP_READY
         case RPC_ID__Req_GpioConfig:
             ret = req_gpio_config(req, resp, priv_data);

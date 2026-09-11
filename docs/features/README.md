@@ -17,6 +17,7 @@ Come here **after** a first example works (see [Getting Started](../getting-star
 | Host Power Save | — | Yes | [Power Save](power-save.md) |
 | GPIO Expander | Yes | Yes | [GPIO Expander](gpio-expander.md) |
 | OTA & System | Yes | Yes | [OTA & System](ota-and-system.md) |
+| RF Certification Test | Yes | Yes | [RF Cert Test](rf-cert-test.md) |
 
 > [!NOTE]
 > OpenThread is MCU-host only. Bluetooth/BLE works on both hosts — on Linux it runs through the kernel module and a normal host stack such as BlueZ (no ESP-Hosted BT example needed), see [Bluetooth](bluetooth.md).
@@ -47,5 +48,7 @@ If you are unsure where to begin:
 **Host Power Save** — Coordinate host sleep/wake with the co-processor (pairs with network split). → [Power Save](power-save.md)
 
 **GPIO Expander** — Drive and read the co-processor's GPIOs from the host over RPC. → [GPIO Expander](gpio-expander.md)
+
+**RF Certification Test** — drive the co-processor's PHY cert tests from a host console: Wi-Fi and BLE transmit, receive with error counts, carrier tone. Off by default; never ship it enabled. → [RF Cert Test](rf-cert-test.md) · [example](../../examples/rf_cert/README.md)
 
 **OTA & System** — Query firmware version, receive hosted events, configure transport, monitor memory, and OTA-update the co-processor. → [OTA & System](ota-and-system.md)

@@ -310,6 +310,28 @@ typedef struct RpcEventSuppDppFail RpcEventSuppDppFail;
 typedef struct RpcEventWifiDppUriReady RpcEventWifiDppUriReady;
 typedef struct RpcEventWifiDppCfgRecvd RpcEventWifiDppCfgRecvd;
 typedef struct RpcEventWifiDppFail RpcEventWifiDppFail;
+typedef struct RpcReqPhyWifiTx RpcReqPhyWifiTx;
+typedef struct RpcRespPhyWifiTx RpcRespPhyWifiTx;
+typedef struct RpcReqPhyWifiRx RpcReqPhyWifiRx;
+typedef struct RpcRespPhyWifiRx RpcRespPhyWifiRx;
+typedef struct RpcReqPhyWifiTxTone RpcReqPhyWifiTxTone;
+typedef struct RpcRespPhyWifiTxTone RpcRespPhyWifiTxTone;
+typedef struct RpcReqPhyGetRxResult RpcReqPhyGetRxResult;
+typedef struct RpcRespPhyGetRxResult RpcRespPhyGetRxResult;
+typedef struct RpcReqPhyCmdStop RpcReqPhyCmdStop;
+typedef struct RpcRespPhyCmdStop RpcRespPhyCmdStop;
+typedef struct RpcReqPhyTxContinEn RpcReqPhyTxContinEn;
+typedef struct RpcRespPhyTxContinEn RpcRespPhyTxContinEn;
+typedef struct RpcReqPhyCbw40mEn RpcReqPhyCbw40mEn;
+typedef struct RpcRespPhyCbw40mEn RpcRespPhyCbw40mEn;
+typedef struct RpcReqPhyWifi11axTxSet RpcReqPhyWifi11axTxSet;
+typedef struct RpcRespPhyWifi11axTxSet RpcRespPhyWifi11axTxSet;
+typedef struct RpcReqPhyBleTx RpcReqPhyBleTx;
+typedef struct RpcRespPhyBleTx RpcRespPhyBleTx;
+typedef struct RpcReqPhyBleRx RpcReqPhyBleRx;
+typedef struct RpcRespPhyBleRx RpcRespPhyBleRx;
+typedef struct RpcReqPhyBtTxTone RpcReqPhyBtTxTone;
+typedef struct RpcRespPhyBtTxTone RpcRespPhyBtTxTone;
 typedef struct RpcReqCustomRpc RpcReqCustomRpc;
 typedef struct RpcRespCustomRpc RpcRespCustomRpc;
 typedef struct RpcEventCustomRpc RpcEventCustomRpc;
@@ -377,10 +399,14 @@ typedef enum _RpcFeature {
   /*
    * OpenThread RCP (Radio Co-processor) Feature
    */
+  RPC_FEATURE__Feature_Openthread_Rcp = 2,
+  /*
+   * RF certification test (PHY cert test APIs). Conducted measurement only.
+   */
   /*
    * add additional features here
    */
-  RPC_FEATURE__Feature_Openthread_Rcp = 2
+  RPC_FEATURE__Feature_Rf_Cert = 3
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_FEATURE)
 } RpcFeature;
 typedef enum _RpcFeatureCommand {
@@ -1020,13 +1046,61 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_ExtCoex = 396,
   /*
+   * RF certification test (PHY cert test).  Needs the coprocessor built with
+   * CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT and CONFIG_ESP_PHY_ENABLE_CERT_TEST. 
+   */
+  /*
+   * 0x18D
+   */
+  RPC_ID__Req_PhyWifiTx = 397,
+  /*
+   * 0x18E
+   */
+  RPC_ID__Req_PhyWifiRx = 398,
+  /*
+   * 0x18F
+   */
+  RPC_ID__Req_PhyWifiTxTone = 399,
+  /*
+   * 0x190
+   */
+  RPC_ID__Req_PhyGetRxResult = 400,
+  /*
+   * 0x191
+   */
+  RPC_ID__Req_PhyCmdStop = 401,
+  /*
+   * 0x192
+   */
+  RPC_ID__Req_PhyTxContinEn = 402,
+  /*
+   * 0x193
+   */
+  RPC_ID__Req_PhyCbw40mEn = 403,
+  /*
+   * 0x194
+   */
+  RPC_ID__Req_PhyWifi11axTxSet = 404,
+  /*
+   * 0x195
+   */
+  RPC_ID__Req_PhyBleTx = 405,
+  /*
+   * 0x196
+   */
+  RPC_ID__Req_PhyBleRx = 406,
+  /*
+   * 0x197
+   */
+  RPC_ID__Req_PhyBtTxTone = 407,
+  /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   *0x18D
+   *0x198
    */
-  RPC_ID__Req_Max = 397,
+  RPC_ID__Req_Max = 408,
   /*
    ** Response Msgs *
    */
@@ -1189,10 +1263,24 @@ typedef enum _RpcId {
   RPC_ID__Resp_GpioSetPullMode = 651,
   RPC_ID__Resp_ExtCoex = 652,
   /*
+   * RF certification test (PHY cert test) 
+   */
+  RPC_ID__Resp_PhyWifiTx = 653,
+  RPC_ID__Resp_PhyWifiRx = 654,
+  RPC_ID__Resp_PhyWifiTxTone = 655,
+  RPC_ID__Resp_PhyGetRxResult = 656,
+  RPC_ID__Resp_PhyCmdStop = 657,
+  RPC_ID__Resp_PhyTxContinEn = 658,
+  RPC_ID__Resp_PhyCbw40mEn = 659,
+  RPC_ID__Resp_PhyWifi11axTxSet = 660,
+  RPC_ID__Resp_PhyBleTx = 661,
+  RPC_ID__Resp_PhyBleRx = 662,
+  RPC_ID__Resp_PhyBtTxTone = 663,
+  /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 653,
+  RPC_ID__Resp_Max = 664,
   /*
    ** Event Msgs *
    */
@@ -5469,6 +5557,372 @@ struct  RpcEventWifiDppFail
 
 
 /*
+ * esp_phy_wifi_tx(chan, rate, backoff, length_byte, packet_delay, packet_num) 
+ */
+struct  RpcReqPhyWifiTx
+{
+  ProtobufCMessage base;
+  /*
+   * 1..14 
+   */
+  uint32_t chan;
+  /*
+   * esp_phy_wifi_rate_t 
+   */
+  uint32_t rate;
+  /*
+   * TX power attenuation, unit 0.25 dB 
+   */
+  int32_t backoff;
+  /*
+   * PSDU length in bytes 
+   */
+  uint32_t length_byte;
+  /*
+   * inter-packet gap, us 
+   */
+  uint32_t packet_delay;
+  /*
+   * 0 = send continuously 
+   */
+  uint32_t packet_num;
+};
+#define RPC__REQ__PHY_WIFI_TX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_wifi_tx__descriptor) \
+, 0, 0, 0, 0, 0, 0 }
+
+
+struct  RpcRespPhyWifiTx
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_WIFI_TX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_wifi_tx__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_wifi_rx(chan, rate) 
+ */
+struct  RpcReqPhyWifiRx
+{
+  ProtobufCMessage base;
+  /*
+   * 1..14 
+   */
+  uint32_t chan;
+  /*
+   * esp_phy_wifi_rate_t 
+   */
+  uint32_t rate;
+};
+#define RPC__REQ__PHY_WIFI_RX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_wifi_rx__descriptor) \
+, 0, 0 }
+
+
+struct  RpcRespPhyWifiRx
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_WIFI_RX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_wifi_rx__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_wifi_tx_tone(start, chan, backoff) 
+ */
+struct  RpcReqPhyWifiTxTone
+{
+  ProtobufCMessage base;
+  /*
+   * 1 = transmit, 0 = stop 
+   */
+  uint32_t start;
+  /*
+   * 1..14 
+   */
+  uint32_t chan;
+  /*
+   * unit 0.25 dB 
+   */
+  uint32_t backoff;
+};
+#define RPC__REQ__PHY_WIFI_TX_TONE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_wifi_tx_tone__descriptor) \
+, 0, 0, 0 }
+
+
+struct  RpcRespPhyWifiTxTone
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_WIFI_TX_TONE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_wifi_tx_tone__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_get_rx_result(&result) 
+ */
+struct  RpcReqPhyGetRxResult
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__PHY_GET_RX_RESULT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_get_rx_result__descriptor) \
+ }
+
+
+struct  RpcRespPhyGetRxResult
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  /*
+   * desired packets received 
+   */
+  uint32_t rx_correct_count;
+  /*
+   * average RSSI of desired packets 
+   */
+  int32_t rx_rssi;
+  /*
+   * total packets received 
+   */
+  uint32_t rx_total_count;
+  /*
+   * 0 none, 1 Wi-Fi, 2 BLE 
+   */
+  uint32_t rx_result_flag;
+};
+#define RPC__RESP__PHY_GET_RX_RESULT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_get_rx_result__descriptor) \
+, 0, 0, 0, 0, 0 }
+
+
+/*
+ * esp_phy_test_start_stop(value) — 0 ends the running TX/RX test.
+ * The coprocessor sets the value 3 that must precede a test itself. 
+ */
+struct  RpcReqPhyCmdStop
+{
+  ProtobufCMessage base;
+  uint32_t value;
+};
+#define RPC__REQ__PHY_CMD_STOP__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_cmd_stop__descriptor) \
+, 0 }
+
+
+struct  RpcRespPhyCmdStop
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_CMD_STOP__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_cmd_stop__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_tx_contin_en(contin_en) 
+ */
+struct  RpcReqPhyTxContinEn
+{
+  ProtobufCMessage base;
+  /*
+   * true = continuous packet TX 
+   */
+  protobuf_c_boolean contin_en;
+};
+#define RPC__REQ__PHY_TX_CONTIN_EN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_tx_contin_en__descriptor) \
+, 0 }
+
+
+struct  RpcRespPhyTxContinEn
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_TX_CONTIN_EN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_tx_contin_en__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_cbw40m_en(en) 
+ */
+struct  RpcReqPhyCbw40mEn
+{
+  ProtobufCMessage base;
+  /*
+   * false = 11n HT20, true = 11n HT40 
+   */
+  protobuf_c_boolean en;
+};
+#define RPC__REQ__PHY_CBW40M_EN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_cbw40m_en__descriptor) \
+, 0 }
+
+
+struct  RpcRespPhyCbw40mEn
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_CBW40M_EN__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_cbw40m_en__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_11ax_tx_set(he_format, pe, giltf_num, ru_index).
+ * Needs SOC_WIFI_HE_SUPPORT on the coprocessor. 
+ */
+struct  RpcReqPhyWifi11axTxSet
+{
+  ProtobufCMessage base;
+  uint32_t he_format;
+  uint32_t pe;
+  uint32_t giltf_num;
+  uint32_t ru_index;
+};
+#define RPC__REQ__PHY_WIFI11AX_TX_SET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_wifi11ax_tx_set__descriptor) \
+, 0, 0, 0, 0 }
+
+
+struct  RpcRespPhyWifi11axTxSet
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_WIFI11AX_TX_SET__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_wifi11ax_tx_set__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_ble_tx(txpwr, chan, len, data_type, syncw, rate, tx_num) 
+ */
+struct  RpcReqPhyBleTx
+{
+  ProtobufCMessage base;
+  /*
+   * level; TX power is about (level-8)*3 dBm 
+   */
+  uint32_t txpwr;
+  /*
+   * 0..39, freq = 2402 + chan*2 MHz 
+   */
+  uint32_t chan;
+  /*
+   * payload bytes, 0..255; 37 is typical 
+   */
+  uint32_t len;
+  /*
+   * esp_phy_ble_type_t 
+   */
+  uint32_t data_type;
+  /*
+   * packet identifier; 0x71764129 is typical 
+   */
+  uint32_t syncw;
+  /*
+   * esp_phy_ble_rate_t 
+   */
+  uint32_t rate;
+  /*
+   * 0 = send continuously 
+   */
+  uint32_t tx_num;
+};
+#define RPC__REQ__PHY_BLE_TX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_ble_tx__descriptor) \
+, 0, 0, 0, 0, 0, 0, 0 }
+
+
+struct  RpcRespPhyBleTx
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_BLE_TX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_ble_tx__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_ble_rx(chan, syncw, rate) 
+ */
+struct  RpcReqPhyBleRx
+{
+  ProtobufCMessage base;
+  /*
+   * 0..39 
+   */
+  uint32_t chan;
+  uint32_t syncw;
+  /*
+   * esp_phy_ble_rate_t 
+   */
+  uint32_t rate;
+};
+#define RPC__REQ__PHY_BLE_RX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_ble_rx__descriptor) \
+, 0, 0, 0 }
+
+
+struct  RpcRespPhyBleRx
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_BLE_RX__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_ble_rx__descriptor) \
+, 0 }
+
+
+/*
+ * esp_phy_bt_tx_tone(start, chan, power) 
+ */
+struct  RpcReqPhyBtTxTone
+{
+  ProtobufCMessage base;
+  /*
+   * 1 = transmit, 0 = stop 
+   */
+  uint32_t start;
+  /*
+   * 0..39 
+   */
+  uint32_t chan;
+  /*
+   * attenuation, unit 0.25 dB 
+   */
+  uint32_t power;
+};
+#define RPC__REQ__PHY_BT_TX_TONE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__phy_bt_tx_tone__descriptor) \
+, 0, 0, 0 }
+
+
+struct  RpcRespPhyBtTxTone
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__PHY_BT_TX_TONE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__phy_bt_tx_tone__descriptor) \
+, 0 }
+
+
+/*
  * Custom RPC messages for user-defined packed structures 
  */
 struct  RpcReqCustomRpc
@@ -5673,6 +6127,17 @@ typedef enum {
   RPC__PAYLOAD_REQ_GPIO_INPUT_ENABLE = 394,
   RPC__PAYLOAD_REQ_GPIO_SET_PULL_MODE = 395,
   RPC__PAYLOAD_REQ_EXT_COEX = 396,
+  RPC__PAYLOAD_REQ_PHY_WIFI_TX = 397,
+  RPC__PAYLOAD_REQ_PHY_WIFI_RX = 398,
+  RPC__PAYLOAD_REQ_PHY_WIFI_TX_TONE = 399,
+  RPC__PAYLOAD_REQ_PHY_GET_RX_RESULT = 400,
+  RPC__PAYLOAD_REQ_PHY_CMD_STOP = 401,
+  RPC__PAYLOAD_REQ_PHY_TX_CONTIN_EN = 402,
+  RPC__PAYLOAD_REQ_PHY_CBW40M_EN = 403,
+  RPC__PAYLOAD_REQ_PHY_WIFI_11AX_TX_SET = 404,
+  RPC__PAYLOAD_REQ_PHY_BLE_TX = 405,
+  RPC__PAYLOAD_REQ_PHY_BLE_RX = 406,
+  RPC__PAYLOAD_REQ_PHY_BT_TX_TONE = 407,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -5785,6 +6250,17 @@ typedef enum {
   RPC__PAYLOAD_RESP_GPIO_INPUT_ENABLE = 650,
   RPC__PAYLOAD_RESP_GPIO_SET_PULL_MODE = 651,
   RPC__PAYLOAD_RESP_EXT_COEX = 652,
+  RPC__PAYLOAD_RESP_PHY_WIFI_TX = 653,
+  RPC__PAYLOAD_RESP_PHY_WIFI_RX = 654,
+  RPC__PAYLOAD_RESP_PHY_WIFI_TX_TONE = 655,
+  RPC__PAYLOAD_RESP_PHY_GET_RX_RESULT = 656,
+  RPC__PAYLOAD_RESP_PHY_CMD_STOP = 657,
+  RPC__PAYLOAD_RESP_PHY_TX_CONTIN_EN = 658,
+  RPC__PAYLOAD_RESP_PHY_CBW40M_EN = 659,
+  RPC__PAYLOAD_RESP_PHY_WIFI_11AX_TX_SET = 660,
+  RPC__PAYLOAD_RESP_PHY_BLE_TX = 661,
+  RPC__PAYLOAD_RESP_PHY_BLE_RX = 662,
+  RPC__PAYLOAD_RESP_PHY_BT_TX_TONE = 663,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -5898,6 +6374,17 @@ struct  Rpc
     RpcReqOTABegin *req_ota_begin;
     RpcReqOTAEnd *req_ota_end;
     RpcReqOTAWrite *req_ota_write;
+    RpcReqPhyBleRx *req_phy_ble_rx;
+    RpcReqPhyBleTx *req_phy_ble_tx;
+    RpcReqPhyBtTxTone *req_phy_bt_tx_tone;
+    RpcReqPhyCbw40mEn *req_phy_cbw40m_en;
+    RpcReqPhyCmdStop *req_phy_cmd_stop;
+    RpcReqPhyGetRxResult *req_phy_get_rx_result;
+    RpcReqPhyTxContinEn *req_phy_tx_contin_en;
+    RpcReqPhyWifi11axTxSet *req_phy_wifi_11ax_tx_set;
+    RpcReqPhyWifiRx *req_phy_wifi_rx;
+    RpcReqPhyWifiTx *req_phy_wifi_tx;
+    RpcReqPhyWifiTxTone *req_phy_wifi_tx_tone;
     RpcReqSetDhcpDnsStatus *req_set_dhcp_dns;
     RpcReqSetMacAddress *req_set_mac_address;
     RpcReqWifiSetMaxTxPower *req_set_wifi_max_tx_power;
@@ -6013,6 +6500,17 @@ struct  Rpc
     RpcRespOTABegin *resp_ota_begin;
     RpcRespOTAEnd *resp_ota_end;
     RpcRespOTAWrite *resp_ota_write;
+    RpcRespPhyBleRx *resp_phy_ble_rx;
+    RpcRespPhyBleTx *resp_phy_ble_tx;
+    RpcRespPhyBtTxTone *resp_phy_bt_tx_tone;
+    RpcRespPhyCbw40mEn *resp_phy_cbw40m_en;
+    RpcRespPhyCmdStop *resp_phy_cmd_stop;
+    RpcRespPhyGetRxResult *resp_phy_get_rx_result;
+    RpcRespPhyTxContinEn *resp_phy_tx_contin_en;
+    RpcRespPhyWifi11axTxSet *resp_phy_wifi_11ax_tx_set;
+    RpcRespPhyWifiRx *resp_phy_wifi_rx;
+    RpcRespPhyWifiTx *resp_phy_wifi_tx;
+    RpcRespPhyWifiTxTone *resp_phy_wifi_tx_tone;
     RpcRespSetDhcpDnsStatus *resp_set_dhcp_dns;
     RpcRespSetMacAddress *resp_set_mac_address;
     RpcRespWifiSetMaxTxPower *resp_set_wifi_max_tx_power;
@@ -11692,6 +12190,424 @@ RpcEventWifiDppFail *
 void   rpc__event__wifi_dpp_fail__free_unpacked
                      (RpcEventWifiDppFail *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqPhyWifiTx methods */
+void   rpc__req__phy_wifi_tx__init
+                     (RpcReqPhyWifiTx         *message);
+size_t rpc__req__phy_wifi_tx__get_packed_size
+                     (const RpcReqPhyWifiTx   *message);
+size_t rpc__req__phy_wifi_tx__pack
+                     (const RpcReqPhyWifiTx   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_wifi_tx__pack_to_buffer
+                     (const RpcReqPhyWifiTx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyWifiTx *
+       rpc__req__phy_wifi_tx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_wifi_tx__free_unpacked
+                     (RpcReqPhyWifiTx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyWifiTx methods */
+void   rpc__resp__phy_wifi_tx__init
+                     (RpcRespPhyWifiTx         *message);
+size_t rpc__resp__phy_wifi_tx__get_packed_size
+                     (const RpcRespPhyWifiTx   *message);
+size_t rpc__resp__phy_wifi_tx__pack
+                     (const RpcRespPhyWifiTx   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_wifi_tx__pack_to_buffer
+                     (const RpcRespPhyWifiTx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyWifiTx *
+       rpc__resp__phy_wifi_tx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_wifi_tx__free_unpacked
+                     (RpcRespPhyWifiTx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyWifiRx methods */
+void   rpc__req__phy_wifi_rx__init
+                     (RpcReqPhyWifiRx         *message);
+size_t rpc__req__phy_wifi_rx__get_packed_size
+                     (const RpcReqPhyWifiRx   *message);
+size_t rpc__req__phy_wifi_rx__pack
+                     (const RpcReqPhyWifiRx   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_wifi_rx__pack_to_buffer
+                     (const RpcReqPhyWifiRx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyWifiRx *
+       rpc__req__phy_wifi_rx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_wifi_rx__free_unpacked
+                     (RpcReqPhyWifiRx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyWifiRx methods */
+void   rpc__resp__phy_wifi_rx__init
+                     (RpcRespPhyWifiRx         *message);
+size_t rpc__resp__phy_wifi_rx__get_packed_size
+                     (const RpcRespPhyWifiRx   *message);
+size_t rpc__resp__phy_wifi_rx__pack
+                     (const RpcRespPhyWifiRx   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_wifi_rx__pack_to_buffer
+                     (const RpcRespPhyWifiRx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyWifiRx *
+       rpc__resp__phy_wifi_rx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_wifi_rx__free_unpacked
+                     (RpcRespPhyWifiRx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyWifiTxTone methods */
+void   rpc__req__phy_wifi_tx_tone__init
+                     (RpcReqPhyWifiTxTone         *message);
+size_t rpc__req__phy_wifi_tx_tone__get_packed_size
+                     (const RpcReqPhyWifiTxTone   *message);
+size_t rpc__req__phy_wifi_tx_tone__pack
+                     (const RpcReqPhyWifiTxTone   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_wifi_tx_tone__pack_to_buffer
+                     (const RpcReqPhyWifiTxTone   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyWifiTxTone *
+       rpc__req__phy_wifi_tx_tone__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_wifi_tx_tone__free_unpacked
+                     (RpcReqPhyWifiTxTone *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyWifiTxTone methods */
+void   rpc__resp__phy_wifi_tx_tone__init
+                     (RpcRespPhyWifiTxTone         *message);
+size_t rpc__resp__phy_wifi_tx_tone__get_packed_size
+                     (const RpcRespPhyWifiTxTone   *message);
+size_t rpc__resp__phy_wifi_tx_tone__pack
+                     (const RpcRespPhyWifiTxTone   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_wifi_tx_tone__pack_to_buffer
+                     (const RpcRespPhyWifiTxTone   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyWifiTxTone *
+       rpc__resp__phy_wifi_tx_tone__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_wifi_tx_tone__free_unpacked
+                     (RpcRespPhyWifiTxTone *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyGetRxResult methods */
+void   rpc__req__phy_get_rx_result__init
+                     (RpcReqPhyGetRxResult         *message);
+size_t rpc__req__phy_get_rx_result__get_packed_size
+                     (const RpcReqPhyGetRxResult   *message);
+size_t rpc__req__phy_get_rx_result__pack
+                     (const RpcReqPhyGetRxResult   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_get_rx_result__pack_to_buffer
+                     (const RpcReqPhyGetRxResult   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyGetRxResult *
+       rpc__req__phy_get_rx_result__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_get_rx_result__free_unpacked
+                     (RpcReqPhyGetRxResult *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyGetRxResult methods */
+void   rpc__resp__phy_get_rx_result__init
+                     (RpcRespPhyGetRxResult         *message);
+size_t rpc__resp__phy_get_rx_result__get_packed_size
+                     (const RpcRespPhyGetRxResult   *message);
+size_t rpc__resp__phy_get_rx_result__pack
+                     (const RpcRespPhyGetRxResult   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_get_rx_result__pack_to_buffer
+                     (const RpcRespPhyGetRxResult   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyGetRxResult *
+       rpc__resp__phy_get_rx_result__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_get_rx_result__free_unpacked
+                     (RpcRespPhyGetRxResult *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyCmdStop methods */
+void   rpc__req__phy_cmd_stop__init
+                     (RpcReqPhyCmdStop         *message);
+size_t rpc__req__phy_cmd_stop__get_packed_size
+                     (const RpcReqPhyCmdStop   *message);
+size_t rpc__req__phy_cmd_stop__pack
+                     (const RpcReqPhyCmdStop   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_cmd_stop__pack_to_buffer
+                     (const RpcReqPhyCmdStop   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyCmdStop *
+       rpc__req__phy_cmd_stop__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_cmd_stop__free_unpacked
+                     (RpcReqPhyCmdStop *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyCmdStop methods */
+void   rpc__resp__phy_cmd_stop__init
+                     (RpcRespPhyCmdStop         *message);
+size_t rpc__resp__phy_cmd_stop__get_packed_size
+                     (const RpcRespPhyCmdStop   *message);
+size_t rpc__resp__phy_cmd_stop__pack
+                     (const RpcRespPhyCmdStop   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_cmd_stop__pack_to_buffer
+                     (const RpcRespPhyCmdStop   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyCmdStop *
+       rpc__resp__phy_cmd_stop__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_cmd_stop__free_unpacked
+                     (RpcRespPhyCmdStop *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyTxContinEn methods */
+void   rpc__req__phy_tx_contin_en__init
+                     (RpcReqPhyTxContinEn         *message);
+size_t rpc__req__phy_tx_contin_en__get_packed_size
+                     (const RpcReqPhyTxContinEn   *message);
+size_t rpc__req__phy_tx_contin_en__pack
+                     (const RpcReqPhyTxContinEn   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_tx_contin_en__pack_to_buffer
+                     (const RpcReqPhyTxContinEn   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyTxContinEn *
+       rpc__req__phy_tx_contin_en__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_tx_contin_en__free_unpacked
+                     (RpcReqPhyTxContinEn *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyTxContinEn methods */
+void   rpc__resp__phy_tx_contin_en__init
+                     (RpcRespPhyTxContinEn         *message);
+size_t rpc__resp__phy_tx_contin_en__get_packed_size
+                     (const RpcRespPhyTxContinEn   *message);
+size_t rpc__resp__phy_tx_contin_en__pack
+                     (const RpcRespPhyTxContinEn   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_tx_contin_en__pack_to_buffer
+                     (const RpcRespPhyTxContinEn   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyTxContinEn *
+       rpc__resp__phy_tx_contin_en__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_tx_contin_en__free_unpacked
+                     (RpcRespPhyTxContinEn *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyCbw40mEn methods */
+void   rpc__req__phy_cbw40m_en__init
+                     (RpcReqPhyCbw40mEn         *message);
+size_t rpc__req__phy_cbw40m_en__get_packed_size
+                     (const RpcReqPhyCbw40mEn   *message);
+size_t rpc__req__phy_cbw40m_en__pack
+                     (const RpcReqPhyCbw40mEn   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_cbw40m_en__pack_to_buffer
+                     (const RpcReqPhyCbw40mEn   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyCbw40mEn *
+       rpc__req__phy_cbw40m_en__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_cbw40m_en__free_unpacked
+                     (RpcReqPhyCbw40mEn *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyCbw40mEn methods */
+void   rpc__resp__phy_cbw40m_en__init
+                     (RpcRespPhyCbw40mEn         *message);
+size_t rpc__resp__phy_cbw40m_en__get_packed_size
+                     (const RpcRespPhyCbw40mEn   *message);
+size_t rpc__resp__phy_cbw40m_en__pack
+                     (const RpcRespPhyCbw40mEn   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_cbw40m_en__pack_to_buffer
+                     (const RpcRespPhyCbw40mEn   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyCbw40mEn *
+       rpc__resp__phy_cbw40m_en__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_cbw40m_en__free_unpacked
+                     (RpcRespPhyCbw40mEn *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyWifi11axTxSet methods */
+void   rpc__req__phy_wifi11ax_tx_set__init
+                     (RpcReqPhyWifi11axTxSet         *message);
+size_t rpc__req__phy_wifi11ax_tx_set__get_packed_size
+                     (const RpcReqPhyWifi11axTxSet   *message);
+size_t rpc__req__phy_wifi11ax_tx_set__pack
+                     (const RpcReqPhyWifi11axTxSet   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_wifi11ax_tx_set__pack_to_buffer
+                     (const RpcReqPhyWifi11axTxSet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyWifi11axTxSet *
+       rpc__req__phy_wifi11ax_tx_set__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_wifi11ax_tx_set__free_unpacked
+                     (RpcReqPhyWifi11axTxSet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyWifi11axTxSet methods */
+void   rpc__resp__phy_wifi11ax_tx_set__init
+                     (RpcRespPhyWifi11axTxSet         *message);
+size_t rpc__resp__phy_wifi11ax_tx_set__get_packed_size
+                     (const RpcRespPhyWifi11axTxSet   *message);
+size_t rpc__resp__phy_wifi11ax_tx_set__pack
+                     (const RpcRespPhyWifi11axTxSet   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_wifi11ax_tx_set__pack_to_buffer
+                     (const RpcRespPhyWifi11axTxSet   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyWifi11axTxSet *
+       rpc__resp__phy_wifi11ax_tx_set__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_wifi11ax_tx_set__free_unpacked
+                     (RpcRespPhyWifi11axTxSet *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyBleTx methods */
+void   rpc__req__phy_ble_tx__init
+                     (RpcReqPhyBleTx         *message);
+size_t rpc__req__phy_ble_tx__get_packed_size
+                     (const RpcReqPhyBleTx   *message);
+size_t rpc__req__phy_ble_tx__pack
+                     (const RpcReqPhyBleTx   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_ble_tx__pack_to_buffer
+                     (const RpcReqPhyBleTx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyBleTx *
+       rpc__req__phy_ble_tx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_ble_tx__free_unpacked
+                     (RpcReqPhyBleTx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyBleTx methods */
+void   rpc__resp__phy_ble_tx__init
+                     (RpcRespPhyBleTx         *message);
+size_t rpc__resp__phy_ble_tx__get_packed_size
+                     (const RpcRespPhyBleTx   *message);
+size_t rpc__resp__phy_ble_tx__pack
+                     (const RpcRespPhyBleTx   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_ble_tx__pack_to_buffer
+                     (const RpcRespPhyBleTx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyBleTx *
+       rpc__resp__phy_ble_tx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_ble_tx__free_unpacked
+                     (RpcRespPhyBleTx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyBleRx methods */
+void   rpc__req__phy_ble_rx__init
+                     (RpcReqPhyBleRx         *message);
+size_t rpc__req__phy_ble_rx__get_packed_size
+                     (const RpcReqPhyBleRx   *message);
+size_t rpc__req__phy_ble_rx__pack
+                     (const RpcReqPhyBleRx   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_ble_rx__pack_to_buffer
+                     (const RpcReqPhyBleRx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyBleRx *
+       rpc__req__phy_ble_rx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_ble_rx__free_unpacked
+                     (RpcReqPhyBleRx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyBleRx methods */
+void   rpc__resp__phy_ble_rx__init
+                     (RpcRespPhyBleRx         *message);
+size_t rpc__resp__phy_ble_rx__get_packed_size
+                     (const RpcRespPhyBleRx   *message);
+size_t rpc__resp__phy_ble_rx__pack
+                     (const RpcRespPhyBleRx   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_ble_rx__pack_to_buffer
+                     (const RpcRespPhyBleRx   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyBleRx *
+       rpc__resp__phy_ble_rx__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_ble_rx__free_unpacked
+                     (RpcRespPhyBleRx *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqPhyBtTxTone methods */
+void   rpc__req__phy_bt_tx_tone__init
+                     (RpcReqPhyBtTxTone         *message);
+size_t rpc__req__phy_bt_tx_tone__get_packed_size
+                     (const RpcReqPhyBtTxTone   *message);
+size_t rpc__req__phy_bt_tx_tone__pack
+                     (const RpcReqPhyBtTxTone   *message,
+                      uint8_t             *out);
+size_t rpc__req__phy_bt_tx_tone__pack_to_buffer
+                     (const RpcReqPhyBtTxTone   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqPhyBtTxTone *
+       rpc__req__phy_bt_tx_tone__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__phy_bt_tx_tone__free_unpacked
+                     (RpcReqPhyBtTxTone *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespPhyBtTxTone methods */
+void   rpc__resp__phy_bt_tx_tone__init
+                     (RpcRespPhyBtTxTone         *message);
+size_t rpc__resp__phy_bt_tx_tone__get_packed_size
+                     (const RpcRespPhyBtTxTone   *message);
+size_t rpc__resp__phy_bt_tx_tone__pack
+                     (const RpcRespPhyBtTxTone   *message,
+                      uint8_t             *out);
+size_t rpc__resp__phy_bt_tx_tone__pack_to_buffer
+                     (const RpcRespPhyBtTxTone   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespPhyBtTxTone *
+       rpc__resp__phy_bt_tx_tone__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__phy_bt_tx_tone__free_unpacked
+                     (RpcRespPhyBtTxTone *message,
+                      ProtobufCAllocator *allocator);
 /* RpcReqCustomRpc methods */
 void   rpc__req__custom_rpc__init
                      (RpcReqCustomRpc         *message);
@@ -12674,6 +13590,72 @@ typedef void (*RpcEventWifiDppCfgRecvd_Closure)
 typedef void (*RpcEventWifiDppFail_Closure)
                  (const RpcEventWifiDppFail *message,
                   void *closure_data);
+typedef void (*RpcReqPhyWifiTx_Closure)
+                 (const RpcReqPhyWifiTx *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyWifiTx_Closure)
+                 (const RpcRespPhyWifiTx *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyWifiRx_Closure)
+                 (const RpcReqPhyWifiRx *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyWifiRx_Closure)
+                 (const RpcRespPhyWifiRx *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyWifiTxTone_Closure)
+                 (const RpcReqPhyWifiTxTone *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyWifiTxTone_Closure)
+                 (const RpcRespPhyWifiTxTone *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyGetRxResult_Closure)
+                 (const RpcReqPhyGetRxResult *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyGetRxResult_Closure)
+                 (const RpcRespPhyGetRxResult *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyCmdStop_Closure)
+                 (const RpcReqPhyCmdStop *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyCmdStop_Closure)
+                 (const RpcRespPhyCmdStop *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyTxContinEn_Closure)
+                 (const RpcReqPhyTxContinEn *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyTxContinEn_Closure)
+                 (const RpcRespPhyTxContinEn *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyCbw40mEn_Closure)
+                 (const RpcReqPhyCbw40mEn *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyCbw40mEn_Closure)
+                 (const RpcRespPhyCbw40mEn *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyWifi11axTxSet_Closure)
+                 (const RpcReqPhyWifi11axTxSet *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyWifi11axTxSet_Closure)
+                 (const RpcRespPhyWifi11axTxSet *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyBleTx_Closure)
+                 (const RpcReqPhyBleTx *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyBleTx_Closure)
+                 (const RpcRespPhyBleTx *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyBleRx_Closure)
+                 (const RpcReqPhyBleRx *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyBleRx_Closure)
+                 (const RpcRespPhyBleRx *message,
+                  void *closure_data);
+typedef void (*RpcReqPhyBtTxTone_Closure)
+                 (const RpcReqPhyBtTxTone *message,
+                  void *closure_data);
+typedef void (*RpcRespPhyBtTxTone_Closure)
+                 (const RpcRespPhyBtTxTone *message,
+                  void *closure_data);
 typedef void (*RpcReqCustomRpc_Closure)
                  (const RpcReqCustomRpc *message,
                   void *closure_data);
@@ -13004,6 +13986,28 @@ extern const ProtobufCMessageDescriptor rpc__event__supp_dpp_fail__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_uri_ready__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_cfg_recvd__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__wifi_dpp_fail__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_wifi_tx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_wifi_tx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_wifi_rx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_wifi_rx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_wifi_tx_tone__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_wifi_tx_tone__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_get_rx_result__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_get_rx_result__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_cmd_stop__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_cmd_stop__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_tx_contin_en__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_tx_contin_en__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_cbw40m_en__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_cbw40m_en__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_wifi11ax_tx_set__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_wifi11ax_tx_set__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_ble_tx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_ble_tx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_ble_rx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_ble_rx__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__phy_bt_tx_tone__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__phy_bt_tx_tone__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__custom_rpc__descriptor;

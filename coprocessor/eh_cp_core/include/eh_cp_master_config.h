@@ -103,6 +103,12 @@
 #  define EH_CP_FEAT_GPIO_EXP_AUTO_INIT         0
 #endif
 
+#ifdef CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT_AUTO_INIT
+#  define EH_CP_FEAT_RF_CERT_AUTO_INIT          1
+#else
+#  define EH_CP_FEAT_RF_CERT_AUTO_INIT          0
+#endif
+
 #ifdef CONFIG_ESP_HOSTED_CP_FEAT_CP_EXT_COEX_AUTO_INIT
 #  define EH_CP_FEAT_CP_EXT_COEX_AUTO_INIT         1
 #else
@@ -125,6 +131,30 @@
 #  define EH_CP_FEAT_GPIO_EXP_READY    1
 #else
 #  define EH_CP_FEAT_GPIO_EXP_READY    0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT_READY
+#  define EH_CP_FEAT_RF_CERT_READY     1
+#else
+#  define EH_CP_FEAT_RF_CERT_READY     0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT_WIFI
+#  define EH_CP_FEAT_RF_CERT_WIFI      1
+#else
+#  define EH_CP_FEAT_RF_CERT_WIFI      0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT_BLE
+#  define EH_CP_FEAT_RF_CERT_BLE       1
+#else
+#  define EH_CP_FEAT_RF_CERT_BLE       0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT_HE
+#  define EH_CP_FEAT_RF_CERT_HE        1
+#else
+#  define EH_CP_FEAT_RF_CERT_HE        0
 #endif
 
 #ifdef CONFIG_ESP_HOSTED_CP_FEAT_DEBUG_READY

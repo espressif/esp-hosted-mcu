@@ -20,7 +20,7 @@ foreach(pair
         rpc host_ps system nw_split cli peer_data
         rpc_ext_v1 rpc_ext_v2
         wifi wifi_ext_ent wifi_ext_itwt wifi_ext_dpp
-        bt gpio_exp debug cp_ext_coex openthread)
+        bt gpio_exp debug cp_ext_coex openthread rf_cert)
     if(pair MATCHES "^([^:]+):(.+)$")
         set(_dir "${CMAKE_MATCH_1}")
         set(_cfg "${CMAKE_MATCH_2}")

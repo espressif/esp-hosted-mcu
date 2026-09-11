@@ -199,6 +199,7 @@ menu "Configure host"
 		orsource "features/eh_host_feat_mem_monitor/Kconfig.ext"
 		orsource "features/eh_host_feat_power_save/Kconfig.ext"
 		orsource "features/eh_host_feat_cli/Kconfig.ext"
+		orsource "features/eh_host_feat_rf_cert/Kconfig.ext"
 	endmenu
 
 	menu "Port"

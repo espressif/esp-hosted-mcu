@@ -16,13 +16,20 @@
 extern "C" {
 #endif
 
-/* FeatureControl shared by BT + OpenThread; single readiness gate. */
+/* FeatureControl is shared by every feature that drives its lifecycle through
+ * Req_FeatureControl instead of an RPC of its own.  A feature added here must
+ * also be added to the gate, or its compose and decode are left out of the
+ * build and every lifecycle call fails to pack. */
 #ifndef EH_HOST_FEAT_OPENTHREAD_READY
 #define EH_HOST_FEAT_OPENTHREAD_READY 0
 #endif
+#ifndef EH_HOST_FEAT_RF_CERT_READY
+#define EH_HOST_FEAT_RF_CERT_READY 0
+#endif
 
 #define EH_HOST_FEAT_FEATURE_CONTROL_READY \
-    (EH_HOST_FEAT_BT_READY || EH_HOST_FEAT_OPENTHREAD_READY)
+    (EH_HOST_FEAT_BT_READY || EH_HOST_FEAT_OPENTHREAD_READY || \
+     EH_HOST_FEAT_RF_CERT_READY)
 
 int eh_host_feat_rpc_ext_v2_pack(const eh_host_rpc_tx_ctx_t *ctx,
                                      uint8_t **out_buf, size_t *out_len);

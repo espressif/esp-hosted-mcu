@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Umbrella host-CLI registration; calls each per-feature register hook. */
 
-#include "sdkconfig.h"
+#include "eh_host_port_master_config.h"
 
 #include "esp_err.h"
 #include "esp_log.h"
@@ -16,10 +16,18 @@ esp_err_t eh_host_feat_cli_register_commands(void)
 {
     esp_err_t rc = ESP_OK;
 
-#if CONFIG_ESP_HOSTED_HOST_FEAT_POWER_SAVE_READY
+#if EH_HOST_FEAT_POWER_SAVE_READY
     rc = eh_host_feat_cli_host_ps_register();
     if (rc != ESP_OK) {
         ESP_LOGE(CLI_TAG, "host_ps CLI register failed: 0x%x", rc);
+        return rc;
+    }
+#endif
+
+#if EH_HOST_FEAT_RF_CERT_READY
+    rc = eh_host_feat_cli_rf_cert_register();
+    if (rc != ESP_OK) {
+        ESP_LOGE(CLI_TAG, "rf_cert CLI register failed: 0x%x", rc);
         return rc;
     }
 #endif
