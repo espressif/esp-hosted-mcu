@@ -54,10 +54,6 @@ typedef enum {
 // max transport size based on all transports
 #define ESP_TRANSPORT_MAX_BUF_SIZE        1536
 
-// transfer size for SPIRAM enabled as L2 cache with 128-byte line size
-// this applies to all transports
-#define ESP_TRANSPORT_SPIRAM_128B_LINE_BUF_SIZE 1536
-
 #define MAX_FRAGMENTABLE_PAYLOAD_SIZE     8192
 
 struct esp_priv_event {

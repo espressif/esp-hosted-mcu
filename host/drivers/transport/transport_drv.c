@@ -817,8 +817,7 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	/* payload len = Event len + sizeof(event type) + sizeof(event len) */
 	len += 2;
 
-	esp_err_t res = esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, sendbuf, g_h.funcs->_h_free, 0);
-	return res;
+	return esp_hosted_tx(ESP_PRIV_IF, 0, sendbuf, len, H_BUFF_NO_ZEROCOPY, sendbuf, g_h.funcs->_h_free, 0);
 }
 
 static int transport_delayed_init(void)
@@ -834,6 +833,11 @@ static int transport_delayed_init(void)
 	return 0;
 }
 
+#define CHECK_TLV_LEN(tag_len, expected_len, string)                    \
+    if (tag_len != expected_len) {                                      \
+        ESP_LOGE(TAG, "bad %s tag_len %u", string, tag_len);            \
+        break;                                                          \
+    }
 
 static int process_init_event(uint8_t *evt_buf, uint16_t len)
 {
@@ -866,21 +870,35 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	}
 
 	while (len_left) {
+		if (len_left < 3) {
+			// remaining length is too short for a TLV (minimum is 3 bytes)
+			ESP_LOGW(TAG, "remaining data length is too short for a TLV: skipping remaining data");
+			break;
+		}
 		tag_len = *(pos + 1);
+		if (len_left < (tag_len + 2)) {
+			// mismatch between packet length and TLV length
+			ESP_LOGW(TAG, "mismatch between INIT data length and TLV length: skipping remaining data");
+			break;
+		}
 
 		if (*pos == ESP_PRIV_CAPABILITY) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_CAPABILITY");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 			process_capabilities(*(pos + 2));
 			print_capabilities(*(pos + 2));
 		} else if (*pos == ESP_PRIV_CAP_EXT) {
+			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_CAP_EXT");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 			ext_cap = process_ext_capabilities(pos + 2);
 			print_ext_capabilities(pos + 2);
 		} else if (*pos == ESP_PRIV_FIRMWARE_CHIP_ID) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_FIRMWARE_CHIP_ID");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 			chip_type = *(pos+2);
 			verify_host_config_for_slave(chip_type);
 		} else if (*pos == ESP_PRIV_TEST_RAW_TP) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TEST_RAW_TP");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 #if TEST_RAW_TP
 			process_test_capabilities(*(pos + 2));
@@ -889,14 +907,18 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 				ESP_LOGW(TAG, "Slave enabled Raw Throughput Testing, but not enabled on Host");
 #endif
 		} else if (*pos == ESP_PRIV_RX_Q_SIZE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_RX_Q_SIZE");
 			ESP_LOGD(TAG, "slave rx queue size: %u", *(pos + 2));
 		} else if (*pos == ESP_PRIV_TX_Q_SIZE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TX_Q_SIZE");
 			ESP_LOGD(TAG, "slave tx queue size: %u", *(pos + 2));
 		} else if (*pos == ESP_PRIV_FIRMWARE_VERSION) {
+			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_FIRMWARE_VERSION");
 			// fw_version sent as a little-endian uint32_t
 			slave_fw_version = tlv_uint8_to_uint32(pos + 2);
 			ESP_LOGD(TAG, "slave fw version: 0x%08" PRIx32, slave_fw_version);
 		} else if (*pos == ESP_PRIV_TRANS_SDIO_MODE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TRANS_SDIO_MODE");
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
 			uint8_t slave_sdio_mode = *(pos + 2);
 #if H_SDIO_HOST_RX_MODE == H_SDIO_HOST_STREAMING_MODE
@@ -914,11 +936,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 			}
 #endif
 		} else if (*pos == ESP_PRIV_TRANSFER_SIZE) {
-			if (tag_len != LENGTH_4_BYTES) {
-				ESP_LOGE(TAG, "bad ESP_PRIV_TRANSPORT_SIZE tag_len %u", tag_len);
-				// break from the loop: cannot continue as packet is malformed
-				break;
-			}
+			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_TRANSFER_SIZE");
 			// transport_size sent as a little-endian uint32_t
 			transport_size = tlv_uint8_to_uint32(pos + 2);
 			ESP_LOGI(TAG, "got co-processor transport size: %" PRIu32, transport_size);
@@ -926,12 +944,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 			ESP_LOGD(TAG, "Unsupported EVENT: %2x", *pos);
 		}
 		pos += (tag_len+2);
-		if (len_left >= (tag_len+2)) {
-			len_left -= (tag_len+2);
-		} else {
-			// mismatch between packet length and TLV length
-			break;
-		}
+		len_left -= (tag_len+2);
 	}
 
 	// if ESP_PRIV_FIRMWARE_VERSION was not received, slave version will be 0.0.0

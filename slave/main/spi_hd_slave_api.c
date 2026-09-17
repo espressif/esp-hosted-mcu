@@ -521,16 +521,8 @@ static void spi_hd_rx_task(void* pvParameters)
 		header = (struct esp_payload_header *)buf_handle.payload;
 		len = le16toh(header->len);
 		offset = le16toh(header->offset);
-
-		if (buf_handle.payload_len && (buf_handle.payload_len < len+offset)) {
-			ESP_LOGE(TAG, "%s: err: read_len[%u] < len[%u]+offset[%u]", __func__,
-					buf_handle.payload_len, len, offset);
-			// return the transaction back to the rx queue
-			spi_hd_read_done(ret_trans);
-			continue;
-		}
-
 		flags = header->flags;
+
 		ESP_LOGV(TAG, "Received flags: 0x%02x", flags);
 
 		if (flags & FLAG_POWER_SAVE_STARTED) {
@@ -545,6 +537,14 @@ static void spi_hd_rx_task(void* pvParameters)
 				context.event_handler(ESP_POWER_SAVE_OFF);
 			}
 		}
+		if (buf_handle.payload_len < len+offset) {
+			ESP_LOGE(TAG, "%s: err: read_len[%u] < len[%u]+offset[%u]", __func__,
+					buf_handle.payload_len, len, offset);
+			// return the transaction back to the rx queue
+			spi_hd_read_done(ret_trans);
+			continue;
+		}
+
 #if CONFIG_ESP_SPI_HD_CHECKSUM
 		rx_checksum = le16toh(header->checksum);
 		header->checksum = 0;

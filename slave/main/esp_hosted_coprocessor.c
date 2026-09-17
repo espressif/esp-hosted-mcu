@@ -568,6 +568,12 @@ static void process_serial_rx_pkt(uint8_t *buf)
 	}
 }
 
+#define CHECK_TLV_LEN(tag_len, expected_len, string)                    \
+    if (tag_len != expected_len) {                                      \
+        ESP_LOGE(TAG, "bad %s tag_len %u", string, tag_len);            \
+        break;                                                          \
+    }
+
 static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 {
 	uint8_t len_left = len, tag_len;
@@ -587,20 +593,33 @@ static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 	}
 
 	while (len_left) {
+		if (len_left < 3) {
+			// remaining length is too short for a TLV (minimum is 3 bytes)
+			ESP_LOGW(TAG, "remaining data length is too short for a TLV: skipping remaining data");
+			break;
+		}
 		tag_len = *(pos + 1);
+		if (len_left < (tag_len + 2)) {
+			// mismatch between packet length and TLV length
+			ESP_LOGW(TAG, "mismatch between INIT data length and TLV length: skipping remaining data");
+			break;
+		}
 
 		if (*pos == HOST_CAPABILITIES) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "HOST_CAPABILITIES");
 
-			ESP_LOGI(TAG, "Host capabilities: %2x", *pos);
+			ESP_LOGI(TAG, "Host capabilities: %2x", *(pos + 2));
 
 		} else if (*pos == RCVD_ESP_FIRMWARE_CHIP_ID) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "RCVD_ESP_FIRMWARE_CHIP_ID");
 
-			if (CONFIG_IDF_FIRMWARE_CHIP_ID != *(pos+2)) {
+			if (CONFIG_IDF_FIRMWARE_CHIP_ID != *(pos + 2)) {
 				ESP_LOGE(TAG, "Chip id returned[%u] doesn't match with chip id sent[%u]",
 						*(pos+2), CONFIG_IDF_FIRMWARE_CHIP_ID);
 			}
 
 		} else if (*pos == SLV_CONFIG_TEST_RAW_TP) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "SLV_CONFIG_TEST_RAW_TP");
 #if TEST_RAW_TP
 			switch (*(pos + 2)) {
 
@@ -629,6 +648,7 @@ static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 				ESP_LOGW(TAG, "Host requested raw throughput testing, but not enabled in slave");
 #endif
 		} else if (*pos == SLV_CONFIG_THROTTLE_HIGH_THRESHOLD) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "SLV_CONFIG_THROTTLE_HIGH_THRESHOLD");
 
 			slv_cfg_g.throttle_high_threshold = *(pos + 2);
 			ESP_LOGI(TAG, "ESP<-Host wifi flow ctl start thres [%u%%]",
@@ -641,12 +661,14 @@ static int host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 			}
 
 		} else if (*pos == SLV_CONFIG_THROTTLE_LOW_THRESHOLD) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "SLV_CONFIG_THROTTLE_LOW_THRESHOLD");
 
 			slv_cfg_g.throttle_low_threshold = *(pos + 2);
 			ESP_LOGI(TAG, "ESP<-Host wifi flow ctl clear thres [%u%%]",
 					slv_cfg_g.throttle_low_threshold);
 
 		} else if (*pos == SLV_CONFIG_SET_TRANSFER_SIZE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTE, "SLV_CONFIG_SET_TRANSFER_SIZE");
 			if (if_context && if_context->if_ops && if_context->if_ops->set_transfer_size) {
 				uint32_t transfer_size =
 					(uint32_t)(*(pos + 2)) +
