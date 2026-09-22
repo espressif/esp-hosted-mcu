@@ -89,6 +89,11 @@ menu "UART Configuration"
 	config EH_TRANSPORT_CP_UART_GPIO_RESET
 		int "Slave GPIO pin to reset itself"
 		default -1
+		help
+			-1 (default) means the host resets the co-processor with its EN pin.
+			Set a pin only if the module does not expose EN. The host drives it
+			like EN: parked HIGH, pulsed LOW. A LOW pulse of 2 ms or more does a
+			software restart, which cannot recover a hung co-processor.
 
 	config EH_TRANSPORT_CP_UART_TX_Q_SIZE
 		int "Tx Queue Size"

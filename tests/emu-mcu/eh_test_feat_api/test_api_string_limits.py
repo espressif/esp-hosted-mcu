@@ -131,3 +131,36 @@ def test_sta_connected_event_ssid_short(emu_bench, transport):
     r = eh_test_expect(host, r'EH event wifi_sta_connected', fail=FAIL, timeout=60)
     assert r.ok, f'[{t}] never associated: {r.matched}'
     _ok(host, t, 'wifi_sta_get_ap_info', r'ssid=myssid rssi=-\d+')
+
+
+@pytest.mark.system
+@pytest.mark.sanity
+@pytest.mark.parametrize('transport', ['sdio'])
+def test_sta_connected_event_log_ssid_at_max(emu_bench, transport, monkeypatch):
+    """REGRESSION: the connected-event log must stop at ssid_len.
+
+    wifi_event_sta_connected_t is ssid[32] + ssid_len, so a 32-byte SSID leaves
+    no terminator in the array. A "%s" then reads past it, and the next byte is
+    ssid_len itself -- 32, which prints as a space. The reported name is
+    therefore always longer than the SSID. The closing quote directly after 32
+    bytes is the whole assertion.
+
+    The handler logs at DEBUG, so the overlay raises both the compiled-in
+    maximum and the default level; INFO builds cannot observe this line."""
+    monkeypatch.setenv('EH_EMU_WIFI_SSID', SSID_AT_MAX)
+    b = emu_bench(EX, 'mcu_host', transport, timeout='120s',
+                  extra_ovl=('CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y',
+                             'CONFIG_LOG_DEFAULT_LEVEL_DEBUG=y'))
+    host = b['host']
+    t = transport
+    r = eh_test_expect(host, r'EH api_exerciser ready', fail=FAIL, timeout=90)
+    assert r.ok, f'[{t}] ready: {r.matched}'
+    _ok(host, t, 'wifi_set_mode 1')
+    for c in ('wifi_cfg_reset', f'wifi_cfg_set sta_ssid {SSID_AT_MAX}',
+              'wifi_cfg_set sta_password mypassword', 'wifi_set_config sta'):
+        _ok(host, t, c)
+    _ok(host, t, 'wifi_connect')
+    r = eh_test_expect(host,
+                       r'rx RPC StaConnected ssid="' + SSID_AT_MAX + r'" aid=\d+',
+                       fail=FAIL, timeout=60)
+    assert r.ok, f'[{t}] connected log ran past 32 bytes: {r.matched}'

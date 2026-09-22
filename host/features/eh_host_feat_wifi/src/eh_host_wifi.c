@@ -667,7 +667,7 @@ static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
     evt.authmode = c->u.e_sta_connected.authmode;
     EH_ASSIGN_NARROW(evt.aid, c->u.e_sta_connected.aid);
     ESP_LOGD(EH_HOST_WIFI_TAG,
-             "rx RPC StaConnected ssid=\"%s\" aid=%u ch=%u auth=%u",
+             "rx RPC StaConnected ssid=\"%.32s\" aid=%u ch=%u auth=%u",
              (const char *)evt.ssid, evt.aid, evt.channel, evt.authmode);
     /* On a host-power-save wake the CP replays the connected state before it
      * relays STA_START, so the netif would be upped (by STA_CONNECTED) before it
@@ -701,7 +701,7 @@ static void wifi_sta_disconnected_handler(const void *ctrl_cmd, void *ctx)
     EH_ASSIGN_NARROW(evt.reason, c->u.e_sta_disconnected.reason);
     EH_ASSIGN_NARROW(evt.rssi, c->u.e_sta_disconnected.rssi);
     ESP_LOGI(EH_HOST_WIFI_TAG,
-             "rx RPC StaDisconnected ssid=\"%s\" reason=%u rssi=%d",
+             "rx RPC StaDisconnected ssid=\"%.32s\" reason=%u rssi=%d",
              (const char *)evt.ssid, evt.reason, evt.rssi);
     /* Link down → stop admitting DATA RX before any netif teardown. */
     s_rx_admit[0] = false;
