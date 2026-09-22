@@ -248,24 +248,6 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
 		default 5
 		range ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MIN ESP_HOSTED_SDIO_RESET_SLAVE_GPIO_MAX
 
-	choice ESP_HOSTED_SDIO_RESET_GPIO_CONFIG
-		prompt "Slave reset active level"
-		# ESP modules' EN / RST pin is active-low by convention (pull
-		# LOW to assert reset, HIGH to run).  Default reflects that.
-		# Boards with a transistor-buffered EN that inverts polarity
-		# need the explicit "Active high" override here.
-		default ESP_HOSTED_SDIO_RESET_ACTIVE_LOW
-		config ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH
-			bool "Active high"
-		config ESP_HOSTED_SDIO_RESET_ACTIVE_LOW
-			bool "Active low"
-	endchoice
-
-	config ESP_HOSTED_HOST_RESET_ACTIVE_LOW
-		bool
-		default y if ESP_HOSTED_SDIO_RESET_ACTIVE_LOW
-		default n
-
 	# ── SDIO bus pins ───────────────────────────────────────────────────
 
 	# Slot 0: IOMUX-fixed pins (P4: CMD=44, CLK=43, D0=39, D1=40, D2=41, D3=42)

@@ -1,6 +1,8 @@
 # Unreleased
 
 - Fix: host: `ESP_HOSTED_VERSION_*` report the component version
+- host: removed the slave-reset polarity Kconfig options; reset now always parks the pin HIGH
+- host/wifi: fixed a read past `ssid[32]` in the STA event logs
 # Releases
 
 # $${\color{green} \text{3.0.7}}$$

@@ -21,21 +21,6 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_UART
 			default 5
 			range -1 100
 
-		choice ESP_HOSTED_UART_RESET_GPIO_CONFIG
-			prompt "Slave reset active level"
-			# active-low so the reset pulse ends HIGH and the CP runs (as spi_hd/sdio)
-			default ESP_HOSTED_UART_RESET_ACTIVE_LOW
-			config ESP_HOSTED_UART_RESET_ACTIVE_HIGH
-				bool "Active high"
-			config ESP_HOSTED_UART_RESET_ACTIVE_LOW
-				bool "Active low"
-		endchoice
-
-		config ESP_HOSTED_HOST_RESET_ACTIVE_LOW
-			bool
-			default y if ESP_HOSTED_UART_RESET_ACTIVE_LOW
-			default n
-
 
 		config ESP_HOSTED_HOST_UART_PORT
 			int "UART port number"

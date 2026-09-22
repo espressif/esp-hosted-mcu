@@ -889,21 +889,6 @@
 #endif
 #define EH_HOST_PORT_GPIO_PORT_RESET                            NULL
 
-/* EN pin → active high; RST pin → active low. */
-#ifdef CONFIG_ESP_HOSTED_HOST_RESET_ACTIVE_LOW
-  #define EH_HOST_PORT_RESET_ACTIVE_HIGH                        0
-#else
-  #define EH_HOST_PORT_RESET_ACTIVE_HIGH                        1
-#endif
-
-#if EH_HOST_PORT_RESET_ACTIVE_HIGH
-  #define EH_HOST_PORT_RESET_VAL_ACTIVE                         EH_GPIO_HIGH
-  #define EH_HOST_PORT_RESET_VAL_INACTIVE                       EH_GPIO_LOW
-#else
-  #define EH_HOST_PORT_RESET_VAL_ACTIVE                         EH_GPIO_LOW
-  #define EH_HOST_PORT_RESET_VAL_INACTIVE                       EH_GPIO_HIGH
-#endif
-
 /* Co-processor connection */
 
 #ifdef CONFIG_ESP_HOSTED_HOST_CORE
