@@ -803,48 +803,42 @@ static int event_handler(uint8_t val)
 }
 
 #if defined(ESP_GPIO_SLAVE_RESET) && (ESP_GPIO_SLAVE_RESET != -1)
+/* Host drives this like EN: parked HIGH, pulsed LOW. Host pulse is 10 ms. */
+#define SLAVE_RESET_MIN_PULSE_US 2000
+
 static void IRAM_ATTR gpio_resetpin_isr_handler(void* arg)
 {
-	if (ESP_GPIO_SLAVE_RESET == -1) {
-		ESP_EARLY_LOGI(TAG, "%s: using EN pin for slave reset", __func__);
-		return;
-	}
-
-	static uint32_t lasthandshaketime_us;
-	uint32_t currtime_us = esp_timer_get_time();
+	static uint32_t fall_us;
+	uint32_t now_us = esp_timer_get_time();
 
 	if (gpio_get_level(ESP_GPIO_SLAVE_RESET) == 0) {
-		lasthandshaketime_us = currtime_us;
-	} else {
-		uint32_t diff = currtime_us - lasthandshaketime_us;
-		ESP_EARLY_LOGI(TAG, "%s Diff: %u", __func__, diff);
-		if (diff < 500) {
-			return; //ignore everything < half ms after an earlier irq
-		} else {
-			ESP_EARLY_LOGI(TAG, "Host triggered slave reset");
-			esp_restart();
-		}
+		fall_us = now_us;
+		return;
+	}
+	if (now_us - fall_us >= SLAVE_RESET_MIN_PULSE_US) {
+		esp_restart();
 	}
 }
 
-static void register_reset_pin(uint32_t gpio_num)
+static void register_reset_pin(int gpio_num)
 {
-	if (gpio_num != -1) {
-		ESP_LOGI(TAG, "Using GPIO [%lu] as slave reset pin", gpio_num);
-		gpio_reset_pin(gpio_num);
+	ESP_LOGI(TAG, "Using GPIO [%d] as slave reset pin (soft reset; EN still resets the chip)", gpio_num);
+	gpio_reset_pin(gpio_num);
 
-		gpio_config_t slave_reset_pin_conf={
-			.intr_type=GPIO_INTR_DISABLE,
-			.mode=GPIO_MODE_INPUT,
-			.pull_up_en=1,
-			.pin_bit_mask=(1<<gpio_num)
-		};
+	gpio_config_t slave_reset_pin_conf = {
+		.intr_type    = GPIO_INTR_ANYEDGE,
+		.mode         = GPIO_MODE_INPUT,
+		.pull_up_en   = 1,
+		.pin_bit_mask = (1ULL << gpio_num),
+	};
+	gpio_config(&slave_reset_pin_conf);
 
-		gpio_config(&slave_reset_pin_conf);
-		gpio_set_intr_type(gpio_num, GPIO_INTR_ANYEDGE);
-		gpio_install_isr_service(0);
-		gpio_isr_handler_add(gpio_num, gpio_resetpin_isr_handler, NULL);
+	esp_err_t rc = gpio_install_isr_service(0);   /* may already be installed */
+	if (rc != ESP_OK && rc != ESP_ERR_INVALID_STATE) {
+		ESP_LOGE(TAG, "reset pin: gpio_install_isr_service rc=%d", (int)rc);
+		return;
 	}
+	gpio_isr_handler_add(gpio_num, gpio_resetpin_isr_handler, NULL);
 }
 #endif
 
