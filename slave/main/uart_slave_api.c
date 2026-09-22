@@ -90,6 +90,10 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 static int h_uart_read(interface_handle_t *if_handle, interface_buffer_handle_t *buf_handle);
 static esp_err_t h_uart_reset(interface_handle_t *handle);
 static void h_uart_deinit(interface_handle_t *handle);
+static esp_err_t set_transfer_size(size_t transfer_size);
+
+// initial value for transfer size. Can be changed via `set_transfer_size()`
+static volatile size_t uart_transfer_size = BUFFER_SIZE;
 
 if_ops_t if_ops = {
 	.init = h_uart_init,
@@ -97,7 +101,7 @@ if_ops_t if_ops = {
 	.read = h_uart_read,
 	.reset = h_uart_reset,
 	.deinit = h_uart_deinit,
-	.set_transfer_size = NULL,
+	.set_transfer_size = set_transfer_size,
 };
 
 static interface_handle_t if_handle_g;
@@ -290,8 +294,16 @@ static void uart_rx_task(void* pvParameters)
 			continue;
 		}
 		total_len = len + sizeof(struct esp_payload_header);
-		if (total_len > BUFFER_SIZE) {
+		if (total_len > uart_transfer_size) {
 			ESP_LOGE(TAG, "incoming data too big: %d", total_len);
+			/* Consume the payload: the framing has no resync marker, so
+			 * leaving it in the FIFO desynchronises the stream. */
+			while (len) {
+				int chunk = (len > uart_transfer_size) ? uart_transfer_size : len;
+				int n = uart_read_bytes(HOSTED_UART, uart_scratch_buf, chunk, portMAX_DELAY);
+				if (n <= 0) break;
+				len -= n;
+			}
 			continue;
 		}
 
@@ -420,6 +432,10 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 	}
 
 	total_len = buf_handle->payload_len + offset;
+	if (total_len > uart_transfer_size) {
+		ESP_LOGE(TAG, "outgoing data too big: %" PRIu32, total_len);
+		return ESP_FAIL;
+	}
 
 	sendbuf = h_uart_buffer_tx_alloc(total_len, MEMSET_REQUIRED);
 	if (sendbuf == NULL) {
@@ -665,7 +681,7 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = ESP_PRIV_TRANSFER_SIZE;      pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
 	// send transfer size as a little endian 32bit value
-	TLV_UINT32_TO_UINT8(BUFFER_SIZE, pos);
+	TLV_UINT32_TO_UINT8((unsigned)uart_transfer_size, pos);
 	len += LENGTH_4_BYTE;
 
 	/* TLVs end */
@@ -692,4 +708,17 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 
 	// wait until all data is transmitted
 	uart_wait_tx_done(HOSTED_UART, portMAX_DELAY);
+}
+
+static esp_err_t set_transfer_size(size_t transfer_size)
+{
+	/* transfer size can only be set to BUFFER_SIZE or
+	 * to ESP_TRANSPORT_UART_MAX_BUF_SIZE */
+	if ((transfer_size == BUFFER_SIZE) ||
+			(transfer_size == ESP_TRANSPORT_UART_MAX_BUF_SIZE)) {
+		uart_transfer_size = transfer_size;
+		return ESP_OK;
+	}
+	ESP_LOGE(TAG, "failed to set uart_transfer_size to %u", (unsigned)transfer_size);
+	return ESP_FAIL;
 }

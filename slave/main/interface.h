@@ -31,10 +31,11 @@ extern "C" {
 
 /* Macro to split a uint32_t to little-endian uint8_t and store in consecutive locations */
 #define TLV_UINT32_TO_UINT8(value, pos) do {        \
-    *pos = ((uint32_t)value & 0xff);         pos++; \
-    *pos = ((uint32_t)value >> 8) & 0xff;    pos++; \
-    *pos = ((uint32_t)value >> 16) & 0xff;   pos++; \
-    *pos = ((uint32_t)value >> 24) & 0xff;   pos++; \
+    uint32_t __value = (uint32_t)value;             \
+    *pos = (__value & 0xff);         pos++;         \
+    *pos = (__value >> 8) & 0xff;    pos++;         \
+    *pos = (__value >> 16) & 0xff;   pos++;         \
+    *pos = (__value >> 24) & 0xff;   pos++;         \
 } while (0)
 
 typedef enum {
@@ -91,6 +92,19 @@ typedef struct {
 	INTERFACE_STATE state;
 }interface_handle_t;
 
+#if CONFIG_ESP_TRANSPORT_SIZE_LEGACY
+// SDIO transport size does not depend on this config
+
+#if CONFIG_ESP_SPI_HOST_INTERFACE
+#define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_SPI_LEGACY_MAX_BUF_SIZE
+#elif CONFIG_ESP_SPI_HD_HOST_INTERFACE
+#define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_SPI_HD_LEGACY_MAX_BUF_SIZE
+#elif CONFIG_ESP_UART_HOST_INTERFACE
+#define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_UART_LEGACY_MAX_BUF_SIZE
+#endif
+
+#else // CONFIG_ESP_TRANSPORT_SIZE_LEGACY
+
 #if CONFIG_ESP_SPI_HOST_INTERFACE
 #define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_SPI_MAX_BUF_SIZE
 #elif CONFIG_ESP_SDIO_HOST_INTERFACE
@@ -100,6 +114,8 @@ typedef struct {
 #elif CONFIG_ESP_UART_HOST_INTERFACE
 #define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_UART_MAX_BUF_SIZE
 #endif
+
+#endif // CONFIG_ESP_TRANSPORT_SIZE_LEGACY
 
 #define BSSID_BYTES_SIZE       6
 

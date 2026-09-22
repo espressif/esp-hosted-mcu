@@ -742,11 +742,19 @@ static int compare_fw_version(uint32_t slave_version)
 	}
 }
 
-static volatile uint32_t transport_size = 0;
+typedef struct slave_config {
+	uint8_t  host_cap;
+	uint8_t  firmware_chip_id;
+	uint8_t  raw_tp_direction;
+	uint8_t  low_thr_thesh;
+	uint8_t  high_thr_thesh;
+	uint32_t transport_size;
+} slave_config_t;
 
-esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
-		uint8_t raw_tp_direction, uint8_t low_thr_thesh, uint8_t high_thr_thesh)
+static esp_err_t send_slave_config(slave_config_t *config)
 {
+	if (!config) return ESP_FAIL;
+
 	struct esp_priv_event *event = NULL;
 	uint8_t *pos = NULL;
 	uint16_t len = 0;
@@ -770,28 +778,28 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	ESP_LOGI(TAG, "Slave chip Id[%x]", ESP_PRIV_FIRMWARE_CHIP_ID);
 	*pos = HOST_CAPABILITIES;                          pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = host_cap;                                   pos++;len++;
+	*pos = config->host_cap;                           pos++;len++;
 
 	/* TLV - Capability */
 	*pos = RCVD_ESP_FIRMWARE_CHIP_ID;                  pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = firmware_chip_id;                           pos++;len++;
+	*pos = config->firmware_chip_id;                   pos++;len++;
 
 	*pos = SLV_CONFIG_TEST_RAW_TP;                     pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = raw_tp_direction;                           pos++;len++;
+	*pos = config->raw_tp_direction;                   pos++;len++;
 
 	*pos = SLV_CONFIG_THROTTLE_HIGH_THRESHOLD;         pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = high_thr_thesh;                             pos++;len++;
+	*pos = config->high_thr_thesh;                     pos++;len++;
 
 	*pos = SLV_CONFIG_THROTTLE_LOW_THRESHOLD;          pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = low_thr_thesh;                              pos++;len++;
+	*pos = config->low_thr_thesh;                      pos++;len++;
 
-	if (transport_size) {
+	if (config->transport_size) {
 		// we got the co-processor transfer size
-		if (transport_size != TRANSPORT_BLOCK_SIZE) {
+		if (config->transport_size != TRANSPORT_BLOCK_SIZE) {
 			ESP_LOGI(TAG, "setting co-processor transport size to %d", TRANSPORT_BLOCK_SIZE);
 			*pos = SLV_CONFIG_SET_TRANSFER_SIZE;             pos++;len++;
 			*pos = LENGTH_4_BYTES;                           pos++;len++;
@@ -805,10 +813,10 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	}
 
 	ESP_LOGI(TAG, "raw_tp_dir[%s], flow_ctrl: low[%u] high[%u]",
-			raw_tp_direction == ESP_TEST_RAW_TP__HOST_TO_ESP? "h2s":
-			raw_tp_direction == ESP_TEST_RAW_TP__ESP_TO_HOST? "s2h":
-			raw_tp_direction == ESP_TEST_RAW_TP__BIDIRECTIONAL? "bi-dir":
-			"-", low_thr_thesh, high_thr_thesh);
+			config->raw_tp_direction == ESP_TEST_RAW_TP__HOST_TO_ESP? "h2s":
+			config->raw_tp_direction == ESP_TEST_RAW_TP__ESP_TO_HOST? "s2h":
+			config->raw_tp_direction == ESP_TEST_RAW_TP__BIDIRECTIONAL? "bi-dir":
+			"-", config->low_thr_thesh, config->high_thr_thesh);
 
 	/* TLVs end */
 
@@ -846,6 +854,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	uint8_t raw_tp_config = H_TEST_RAW_TP_DIR;
 	uint32_t ext_cap = 0;
 	uint32_t slave_fw_version = 0;
+	uint32_t transport_size = 0;
 
 	if (!evt_buf)
 		return ESP_FAIL;
@@ -1008,9 +1017,15 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 
 	transport_driver_event_handler(TRANSPORT_TX_ACTIVE);
 
-	ESP_ERROR_CHECK(send_slave_config(0, chip_type, raw_tp_config,
-		H_WIFI_TX_DATA_THROTTLE_LOW_THRESHOLD,
-		H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD));
+	slave_config_t slave_config = {
+		.host_cap         = 0,
+		.firmware_chip_id = chip_type,
+		.raw_tp_direction = raw_tp_config,
+		.low_thr_thesh    = H_WIFI_TX_DATA_THROTTLE_LOW_THRESHOLD,
+		.high_thr_thesh   = H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD,
+		.transport_size   = transport_size,
+	};
+	ESP_ERROR_CHECK(send_slave_config(&slave_config));
 
 	transport_delayed_init();
 

@@ -48,8 +48,10 @@ typedef enum {
 #define ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE 1536
 #define ESP_TRANSPORT_UART_MAX_BUF_SIZE   1536
 
-// legacy SPI transport size for compatibility with older versions of co-processors
+// legacy transport sizes for compatibility with older versions of co-processors
 #define ESP_TRANSPORT_SPI_LEGACY_MAX_BUF_SIZE    1600
+#define ESP_TRANSPORT_SPI_HD_LEGACY_MAX_BUF_SIZE 1600
+#define ESP_TRANSPORT_UART_LEGACY_MAX_BUF_SIZE   1600
 
 // max transport size based on all transports
 #define ESP_TRANSPORT_MAX_BUF_SIZE        1536

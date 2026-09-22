@@ -89,8 +89,8 @@ static uint8_t hosted_constructs_init_done = 0;
 #endif
 /* SPI internal configs */
 
-/* For backward compatibility with older hosts, we keep to the legacy size.
- * On co-processor, SPI_BUFFER_SIZE only sets the buffer sizes used for the transaction,
+
+/* On co-processor, SPI_BUFFER_SIZE only sets the buffer sizes used for the transaction,
  * while the host sets the SPI transaction length.
  * As long as actual data to send/receive to/from host is less than
  * the transaction length, no data is lost or truncated on host or co-processor.
@@ -99,7 +99,7 @@ static uint8_t hosted_constructs_init_done = 0;
  * - A transaction's length is determined by the clock and CS lines driven by the Host.
  * - If the transmission length is shorter than the buffer length, only the data equal to the length of the buffer will be transmitted.
  */
-#define SPI_BUFFER_SIZE            ESP_TRANSPORT_SPI_LEGACY_MAX_BUF_SIZE
+#define SPI_BUFFER_SIZE            MAX_TRANSPORT_BUF_SIZE
 #define SPI_QUEUE_SIZE             3
 
 #define GPIO_MASK_DATA_READY (1ULL << GPIO_DATA_READY)
@@ -400,14 +400,14 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = ESP_PRIV_FIRMWARE_VERSION;   pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
 	// send fw_version as a little endian 32bit value
-	TLV_UINT32_TO_UINT8(fw_version, pos);
+	TLV_UINT32_TO_UINT8((unsigned)fw_version, pos);
 	len += LENGTH_4_BYTE;
 
 	// send current transfer size
 	*pos = ESP_PRIV_TRANSFER_SIZE;      pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
 	// send our current transfer size as a little endian 32bit value
-	TLV_UINT32_TO_UINT8(spi_transfer_size, pos);
+	TLV_UINT32_TO_UINT8((unsigned)spi_transfer_size, pos);
 	len += LENGTH_4_BYTE;
 
 	/* TLVs end */
@@ -1024,7 +1024,7 @@ static void esp_spi_deinit(interface_handle_t *handle)
 static esp_err_t set_transfer_size(size_t transfer_size)
 {
 	// can only set to these values
-	if ((transfer_size == ESP_TRANSPORT_MAX_BUF_SIZE) ||
+	if ((transfer_size == ESP_TRANSPORT_SPI_MAX_BUF_SIZE) ||
 		(transfer_size == SPI_BUFFER_SIZE)) {
 		spi_transfer_size = transfer_size;
 		return ESP_OK;
