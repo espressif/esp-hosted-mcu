@@ -44,7 +44,7 @@
 static const char* TAG = "ota_littlefs";
 
 #ifndef CHUNK_SIZE
-#define CHUNK_SIZE 1500
+#define CHUNK_SIZE 1480
 #endif
 
 /* Function to parse ESP32 image header and get firmware info from file */

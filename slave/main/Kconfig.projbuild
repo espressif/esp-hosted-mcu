@@ -858,6 +858,18 @@ menu "Example Configuration"
 					ENABLE/DISABLE software UART checksum
 		endmenu
 
+		# transport size set at 1536 to be compatible with 128 byte L2 line cache size
+		# for backward compatibility, keep to 1600
+		# host can still set transport size with TLV
+		config ESP_TRANSPORT_SIZE_LEGACY
+			bool "Use Legacy Transport Size (OBSOLETE)"
+			depends on ESP_SPI_HOST_INTERFACE || ESP_SPI_HD_HOST_INTERFACE || ESP_UART_HOST_INTERFACE
+			default y
+			help
+				Use the legacy transport size for backward compatibility with older ESP-Hosted host code.
+				This setting will cause each transport buffer to be larger by 64 bytes.
+				For current ESP-Hosted host code, this setting can be disabled to save memory.
+
 		config ESP_GPIO_SLAVE_RESET
 			int
 			default ESP_SPI_GPIO_RESET if ESP_SPI_HOST_INTERFACE

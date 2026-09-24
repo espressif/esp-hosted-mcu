@@ -148,6 +148,10 @@ static int esp_spi_hd_read(interface_handle_t *if_handle, interface_buffer_handl
 static int32_t esp_spi_hd_write(interface_handle_t *handle, interface_buffer_handle_t *buf_handle);
 static void esp_spi_hd_deinit(interface_handle_t * handle);
 static esp_err_t esp_spi_hd_reset(interface_handle_t *handle);
+static esp_err_t set_transfer_size(size_t transfer_size);
+
+// initial value for transfer size. Can be changed via `set_transfer_size()`
+static volatile size_t spi_hd_transfer_size = SPI_HD_BUFFER_SIZE;
 
 if_ops_t if_ops = {
 	.init = esp_spi_hd_init,
@@ -155,6 +159,7 @@ if_ops_t if_ops = {
 	.read = esp_spi_hd_read,
 	.reset = esp_spi_hd_reset,
 	.deinit = esp_spi_hd_deinit,
+	.set_transfer_size = set_transfer_size,
 };
 
 #if H_USE_MEMPOOL
@@ -208,7 +213,8 @@ static inline void spi_hd_mempool_destroy(void)
 
 static inline void *spi_hd_buffer_tx_alloc(size_t nbytes, uint need_memset)
 {
-	MEMPOOL_ALLOC(buf_mp_tx_g, nbytes, need_memset);
+	if (nbytes > SPI_HD_BUFFER_SIZE) return NULL;
+	MEMPOOL_ALLOC(buf_mp_tx_g, SPI_HD_BUFFER_SIZE, need_memset);
 }
 
 static inline void spi_hd_buffer_tx_free(void *buf)
@@ -383,7 +389,7 @@ static void esp_spi_hd_get_bus_cfg(spi_bus_config_t * bus_cfg)
 	bus_cfg->data7_io_num = -1;
 
 	bus_cfg->sclk_io_num = GPIO_SCLK;
-	bus_cfg->max_transfer_sz = SPI_HD_BUFFER_SIZE;
+	bus_cfg->max_transfer_sz = spi_hd_transfer_size;
 #if (NUM_DATA_BITS == 4)
 	bus_cfg->flags = SPICOMMON_BUSFLAG_QUAD;
 #elif (NUM_DATA_BITS == 2)
@@ -474,7 +480,7 @@ static void spi_hd_rx_task(void* pvParameters)
 		buf = spi_hd_buffer_rx_alloc(MEMSET_REQUIRED);
 		rx_trans = spi_hd_trans_rx_alloc(MEMSET_REQUIRED);
 		rx_trans->data = buf;
-		rx_trans->len  = SPI_HD_BUFFER_SIZE;
+		rx_trans->len  = SPI_HD_BUFFER_SIZE; // this is the len of the buffer for transaction
 		res = spi_slave_hd_queue_trans(SPI_HOST, SPI_SLAVE_CHAN_RX,
 				rx_trans, portMAX_DELAY);
 		if (res) {
@@ -535,6 +541,13 @@ static void spi_hd_rx_task(void* pvParameters)
 			if (context.event_handler) {
 				context.event_handler(ESP_POWER_SAVE_OFF);
 			}
+		}
+		if (buf_handle.payload_len > spi_hd_transfer_size) {
+			ESP_LOGE(TAG, "%s: err: payload_len[%u] > transfer_size[%u]", __func__,
+					buf_handle.payload_len, (unsigned)spi_hd_transfer_size);
+			// return the transaction back to the rx queue
+			spi_hd_read_done(ret_trans);
+			continue;
 		}
 		if (buf_handle.payload_len < len+offset) {
 			ESP_LOGE(TAG, "%s: err: read_len[%u] < len[%u]+offset[%u]", __func__,
@@ -676,11 +689,11 @@ static interface_handle_t * esp_spi_hd_init(void)
 
 	// set our Max Tx/Rx buffer size
 	// host can use this to determine max size of data to transfer
-	value = SPI_HD_BUFFER_SIZE;
+	value = spi_hd_transfer_size;
 	spi_slave_hd_write_buffer(SPI_HOST, SPI_HD_REG_MAX_TX_BUF_LEN,
 			(uint8_t *)&value, sizeof(value));
 
-	value = SPI_HD_BUFFER_SIZE;
+	value = spi_hd_transfer_size;
 	spi_slave_hd_write_buffer(SPI_HOST, SPI_HD_REG_MAX_RX_BUF_LEN,
 			(uint8_t *)&value, sizeof(value));
 
@@ -800,6 +813,10 @@ static int32_t esp_spi_hd_write(interface_handle_t *handle, interface_buffer_han
 	}
 
 	total_len = buf_handle->payload_len + offset;
+	if (total_len > spi_hd_transfer_size) {
+		ESP_LOGE(TAG, "outgoing data too big: %" PRIu32, total_len);
+		return ESP_FAIL;
+	}
 
 	xSemaphoreTake(mempool_tx_sem, portMAX_DELAY);
 	sendbuf = spi_hd_buffer_tx_alloc(total_len, MEMSET_REQUIRED);
@@ -923,10 +940,8 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	/* TLV - Extended Capability */
 	*pos = ESP_PRIV_CAP_EXT;            pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
-	*pos = (ext_cap & 0xFF);            pos++;len++;
-	*pos = (ext_cap >> 8) & 0xFF;       pos++;len++;
-	*pos = (ext_cap >> 16) & 0xFF;      pos++;len++;
-	*pos = (ext_cap >> 24) & 0xFF;      pos++;len++;
+	TLV_UINT32_TO_UINT8(ext_cap, pos);
+	len += LENGTH_4_BYTE;
 
 	*pos = ESP_PRIV_TEST_RAW_TP;        pos++;len++;
 	*pos = LENGTH_1_BYTE;               pos++;len++;
@@ -949,10 +964,15 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = ESP_PRIV_FIRMWARE_VERSION;   pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
 	// send fw_version as a little endian 32bit value
-	*pos = (fw_version & 0xff);         pos++;len++;
-	*pos = (fw_version >> 8) & 0xff;    pos++;len++;
-	*pos = (fw_version >> 16) & 0xff;   pos++;len++;
-	*pos = (fw_version >> 24) & 0xff;   pos++;len++;
+	TLV_UINT32_TO_UINT8(fw_version, pos);
+	len += LENGTH_4_BYTE;
+
+	// send current transfer size
+	*pos = ESP_PRIV_TRANSFER_SIZE;      pos++;len++;
+	*pos = LENGTH_4_BYTE;               pos++;len++;
+	// send transfer size as a little endian 32bit value
+	TLV_UINT32_TO_UINT8((unsigned)spi_hd_transfer_size, pos);
+	len += LENGTH_4_BYTE;
 
 	/* TLVs end */
 
@@ -985,4 +1005,25 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 		spi_hd_buffer_tx_free(buf_handle.payload);
 		spi_hd_trans_tx_free(tx_trans);
 	}
+}
+
+static esp_err_t set_transfer_size(size_t transfer_size)
+{
+	/* transfer size can only be set to SPI_HD_BUFFER_SIZE or
+	 * to ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE */
+	if ((transfer_size == SPI_HD_BUFFER_SIZE) ||
+			(transfer_size == ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE)) {
+		spi_hd_transfer_size = transfer_size;
+
+		uint32_t buffer_size = transfer_size;
+		// set our Max Tx/Rx buffer size
+		spi_slave_hd_write_buffer(SPI_HOST, SPI_HD_REG_MAX_TX_BUF_LEN,
+				(uint8_t *)&buffer_size, sizeof(buffer_size));
+		spi_slave_hd_write_buffer(SPI_HOST, SPI_HD_REG_MAX_RX_BUF_LEN,
+				(uint8_t *)&buffer_size, sizeof(buffer_size));
+
+		return ESP_OK;
+	}
+	ESP_LOGE(TAG, "failed to set spi_hd_transfer_size to %u", (unsigned)transfer_size);
+	return ESP_FAIL;
 }

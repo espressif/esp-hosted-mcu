@@ -88,6 +88,17 @@ static uint8_t hosted_constructs_init_done = 0;
 #  error "SPI mode 0 at SLAVE is NOT supported"
 #endif
 /* SPI internal configs */
+
+
+/* On co-processor, SPI_BUFFER_SIZE only sets the buffer sizes used for the transaction,
+ * while the host sets the SPI transaction length.
+ * As long as actual data to send/receive to/from host is less than
+ * the transaction length, no data is lost or truncated on host or co-processor.
+ *
+ * According to https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/peripherals/spi_slave.html#transaction-data-and-master-slave-length-mismatches:
+ * - A transaction's length is determined by the clock and CS lines driven by the Host.
+ * - If the transmission length is shorter than the buffer length, only the data equal to the length of the buffer will be transmitted.
+ */
 #define SPI_BUFFER_SIZE            MAX_TRANSPORT_BUF_SIZE
 #define SPI_QUEUE_SIZE             3
 
@@ -154,6 +165,11 @@ static esp_err_t esp_spi_reset(interface_handle_t *handle);
 static void esp_spi_deinit(interface_handle_t *handle);
 static void esp_spi_read_done(void *handle);
 static void queue_next_transaction(void);
+static esp_err_t set_transfer_size(size_t transfer_size);
+
+/* Transfer size starts with the current buffer size to support older Hosts
+ * then switch to the new size once triggered by the TLV from the host */
+static volatile size_t spi_transfer_size = SPI_BUFFER_SIZE;
 
 if_ops_t if_ops = {
 	.init = esp_spi_init,
@@ -161,6 +177,7 @@ if_ops_t if_ops = {
 	.read = esp_spi_read,
 	.reset = esp_spi_reset,
 	.deinit = esp_spi_deinit,
+	.set_transfer_size = set_transfer_size,
 };
 
 #define SPI_MEMPOOL_NUM_BLOCKS     ((SPI_TX_QUEUE_SIZE+SPI_RX_QUEUE_SIZE)+SPI_QUEUE_SIZE*2)
@@ -223,13 +240,13 @@ static inline void spi_mempool_destroy(void)
 static inline void *spi_buffer_tx_alloc(uint need_memset)
 {
 	tx_buf_allocated++;
-	MEMPOOL_ALLOC(buf_mp_tx_g, SPI_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_tx_g, spi_transfer_size, need_memset);
 }
 
 static inline void *spi_buffer_rx_alloc(uint need_memset)
 {
 	rx_buf_allocated++;
-	MEMPOOL_ALLOC(buf_mp_rx_g, SPI_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_rx_g, spi_transfer_size, need_memset);
 }
 
 static inline spi_slave_transaction_t *spi_trans_alloc(uint need_memset)
@@ -359,10 +376,8 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	/* TLV - Extended Capability */
 	*pos = ESP_PRIV_CAP_EXT;            pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
-	*pos = (ext_cap) & 0xFF;            pos++;len++;
-	*pos = (ext_cap >> 8) & 0xFF;       pos++;len++;
-	*pos = (ext_cap >> 16) & 0xFF;      pos++;len++;
-	*pos = (ext_cap >> 24) & 0xFF;      pos++;len++;
+	TLV_UINT32_TO_UINT8(ext_cap, pos);
+	len += LENGTH_4_BYTE;
 
 	*pos = ESP_PRIV_TEST_RAW_TP;        pos++;len++;
 	*pos = LENGTH_1_BYTE;               pos++;len++;
@@ -385,10 +400,15 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = ESP_PRIV_FIRMWARE_VERSION;   pos++;len++;
 	*pos = LENGTH_4_BYTE;               pos++;len++;
 	// send fw_version as a little endian 32bit value
-	*pos = (fw_version & 0xff);         pos++;len++;
-	*pos = (fw_version >> 8) & 0xff;    pos++;len++;
-	*pos = (fw_version >> 16) & 0xff;   pos++;len++;
-	*pos = (fw_version >> 24) & 0xff;   pos++;len++;
+	TLV_UINT32_TO_UINT8((unsigned)fw_version, pos);
+	len += LENGTH_4_BYTE;
+
+	// send current transfer size
+	*pos = ESP_PRIV_TRANSFER_SIZE;      pos++;len++;
+	*pos = LENGTH_4_BYTE;               pos++;len++;
+	// send our current transfer size as a little endian 32bit value
+	TLV_UINT32_TO_UINT8((unsigned)spi_transfer_size, pos);
+	len += LENGTH_4_BYTE;
 
 	/* TLVs end */
 
@@ -533,8 +553,8 @@ static int process_spi_rx(interface_buffer_handle_t *buf_handle)
 		return -1;
 	}
 
-	if ((len+offset) > SPI_BUFFER_SIZE) {
-		ESP_LOGE(TAG, "rx_pkt len+offset[%u]>max[%u], dropping it", len+offset, SPI_BUFFER_SIZE);
+	if ((len+offset) > spi_transfer_size) {
+		ESP_LOGE(TAG, "rx_pkt len+offset[%u]>max[%u], dropping it", len+offset, spi_transfer_size);
 
 		return -1;
 	}
@@ -608,7 +628,7 @@ static void queue_next_transaction(void)
 	spi_trans->tx_buffer = tx_buffer;
 
 	/* Transaction len */
-	spi_trans->length = SPI_BUFFER_SIZE * SPI_BITS_PER_WORD;
+	spi_trans->length = spi_transfer_size * SPI_BITS_PER_WORD;
 
 	spi_slave_queue_trans(ESP_SPI_CONTROLLER, spi_trans, portMAX_DELAY);
 }
@@ -744,7 +764,7 @@ static interface_handle_t * esp_spi_init(void)
 		.sclk_io_num=GPIO_SCLK,
 		.quadwp_io_num = -1,
 		.quadhd_io_num = -1,
-		.max_transfer_sz = SPI_BUFFER_SIZE,
+		.max_transfer_sz = spi_transfer_size,
 #if 0
 		/*
 		 * Moving ESP32 SPI slave interrupts in flash, Keeping it in IRAM gives crash,
@@ -888,7 +908,7 @@ static int32_t esp_spi_write(interface_handle_t *handle, interface_buffer_handle
 		MAKE_SPI_DMA_ALIGNED(total_len);
 	}
 
-	if (unlikely(total_len > SPI_BUFFER_SIZE)) {
+	if (unlikely(total_len > spi_transfer_size)) {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 		ESP_LOGE(TAG, "Max frame length exceeded %ld.. drop it\n", total_len);
 #else
@@ -999,4 +1019,16 @@ static void esp_spi_deinit(interface_handle_t *handle)
 	handle->state = DEINIT;
 	ESP_LOGI(TAG, "SPI deinit requested. Signaling spi task to exit.");
 #endif
+}
+
+static esp_err_t set_transfer_size(size_t transfer_size)
+{
+	// can only set to these values
+	if ((transfer_size == ESP_TRANSPORT_SPI_MAX_BUF_SIZE) ||
+		(transfer_size == SPI_BUFFER_SIZE)) {
+		spi_transfer_size = transfer_size;
+		return ESP_OK;
+	}
+	ESP_LOGE(TAG, "failed to set spi_transfer_size to %u", (unsigned)transfer_size);
+	return ESP_FAIL;
 }

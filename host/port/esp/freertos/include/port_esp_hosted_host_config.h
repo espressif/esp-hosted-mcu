@@ -44,6 +44,12 @@
     #define H_MEMPOOL_PREFER_SPIRAM (0)
 #endif
 
+#if defined(CONFIG_CACHE_L2_CACHE_LINE_128B)
+    #define H_CACHE_L2_CACHE_LINE_128B (1)
+#else
+    #define H_CACHE_L2_CACHE_LINE_128B (0)
+#endif
+
 // to allow external code to override Hosted Functions if required
 #define H_WEAK_REF __attribute__((weak))
 

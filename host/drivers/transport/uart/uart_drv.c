@@ -46,11 +46,15 @@ static const char TAG[] = "H_UART_DRV";
 // UART is low throughput, so throttling should not be needed
 #define USE_DATA_THROTTLING (0)
 
+#define UART_BLOCK_SIZE         MAX_UART_BUFFER_SIZE
+
 static void h_uart_write_task(void const* pvParameters);
 static void h_uart_read_task(void const* pvParameters);
 #if USE_DATA_THROTTLING
 static int update_flow_ctrl(uint8_t *rxbuff);
 #endif
+
+static size_t curr_transfer_size = UART_BLOCK_SIZE;
 
 /* TODO to move this in transport drv */
 extern transport_channel_t *chan_arr[ESP_MAX_IF];
@@ -83,8 +87,8 @@ static inline void h_uart_mempool_create(int tx_q_size, int rx_q_size)
 		.pre_allocated_mem_size = 0,
 		// allocate enough blocks to handle full RX and possible peak tx requests
 		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
-		.block_size = MAX_UART_BUFFER_SIZE,
-		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.block_size = UART_BLOCK_SIZE,
+		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT,
 		.malloc = transport_util_malloc,
 		.calloc = transport_util_calloc,
 		.memset = g_h.funcs->_h_memset,
@@ -105,7 +109,7 @@ static inline void h_uart_mempool_destroy(void)
 
 static inline void *h_uart_buffer_alloc(uint need_memset)
 {
-	MEMPOOL_ALLOC(buf_mp_g, MAX_UART_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_g, curr_transfer_size, need_memset);
 }
 
 static inline void h_uart_buffer_free(void *buf)
@@ -150,9 +154,9 @@ static int h_uart_write_packet(interface_buffer_handle_t *buf_handle)
 		free_func = buf_handle->free_buf_handle;
 	}
 
-	if (buf_handle->payload_len > MAX_UART_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
+	if (buf_handle->payload_len > curr_transfer_size - sizeof(struct esp_payload_header)) {
 		ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
-				buf_handle->payload_len, MAX_UART_BUFFER_SIZE - sizeof(struct esp_payload_header));
+				buf_handle->payload_len, curr_transfer_size - sizeof(struct esp_payload_header));
 		result = ESP_FAIL;
 		goto done;
 	}
@@ -469,7 +473,7 @@ static void h_uart_read_task(void const* pvParameters)
 	create_debugging_tasks();
 
 	if (!uart_scratch_buf) {
-		uart_scratch_buf = g_h.funcs->_h_malloc(MAX_UART_BUFFER_SIZE);
+		uart_scratch_buf = g_h.funcs->_h_malloc(UART_BLOCK_SIZE);
 		assert(uart_scratch_buf);
 	}
 
@@ -492,7 +496,7 @@ static void h_uart_read_task(void const* pvParameters)
 			continue;
 		}
 		total_len = len + sizeof(struct esp_payload_header);
-		if (total_len > MAX_UART_BUFFER_SIZE) {
+		if (total_len > curr_transfer_size) {
 			ESP_LOGE(TAG, "incoming data too big: %d", total_len);
 			continue;
 		}
@@ -546,6 +550,8 @@ static void h_uart_read_task(void const* pvParameters)
 void *bus_init_internal(void)
 {
 	uint8_t prio_q_idx = 0;
+
+	curr_transfer_size = UART_BLOCK_SIZE;
 
 	sem_to_slave_queue = g_h.funcs->_h_create_semaphore(H_UART_TX_QUEUE_SIZE*MAX_PRIORITY_QUEUES);
 	assert(sem_to_slave_queue);

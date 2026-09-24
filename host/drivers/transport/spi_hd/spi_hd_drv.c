@@ -86,6 +86,9 @@ static void * spi_hd_bus_lock;
 #define SPI_HD_DRV_UNLOCK()
 #endif
 
+#define SPI_HD_BLOCK_SIZE         MAX_SPI_HD_BUFFER_SIZE
+#define SPI_HD_ALIGNMENT_IN_BYTES HOSTED_MEM_ALIGNMENT
+
 #define BUFFER_AVAILABLE                  1
 #define BUFFER_UNAVAILABLE                0
 
@@ -117,6 +120,9 @@ static uint32_t spi_hd_tx_buf_count = 0;
 /* Counter to hold the amount of bytes already received from spi hd slave */
 static uint32_t spi_hd_rx_byte_count = 0;
 
+/* current transfer size */
+static size_t curr_transfer_size = SPI_HD_BLOCK_SIZE;
+
 // one-time trigger to start write thread
 static bool spi_hd_start_write_thread = false;
 
@@ -134,8 +140,8 @@ static inline void spi_hd_mempool_create(int tx_q_size, int rx_q_size)
 		.pre_allocated_mem_size = 0,
 		// allocate enough blocks to handle full RX and possible peak tx requests
 		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
-		.block_size = MAX_SPI_HD_BUFFER_SIZE,
-		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.block_size = SPI_HD_BLOCK_SIZE,
+		.alignment_in_bytes = SPI_HD_ALIGNMENT_IN_BYTES,
 		.malloc = transport_util_malloc,
 		.calloc = transport_util_calloc,
 		.memset = g_h.funcs->_h_memset,
@@ -156,7 +162,7 @@ static inline void spi_hd_mempool_destroy(void)
 
 static inline void *spi_hd_buffer_alloc(uint need_memset)
 {
-	MEMPOOL_ALLOC(buf_mp_g, MAX_SPI_HD_BUFFER_SIZE, need_memset);
+	MEMPOOL_ALLOC(buf_mp_g, curr_transfer_size, need_memset);
 }
 
 static inline void spi_hd_buffer_free(void *buf)
@@ -297,9 +303,9 @@ static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle)
 		free_func = buf_handle->free_buf_handle;
 	}
 
-	if (buf_handle->payload_len > MAX_SPI_HD_BUFFER_SIZE - sizeof(struct esp_payload_header)) {
+	if (buf_handle->payload_len > curr_transfer_size - sizeof(struct esp_payload_header)) {
 		ESP_LOGE(TAG, "Pkt len [%u] > Max [%u]. Drop",
-				buf_handle->payload_len, MAX_SPI_HD_BUFFER_SIZE - sizeof(struct esp_payload_header));
+				buf_handle->payload_len, curr_transfer_size - sizeof(struct esp_payload_header));
 		result = ESP_FAIL;
 		goto done;
 	}
@@ -336,8 +342,8 @@ static int spi_hd_write_packet(interface_buffer_handle_t *buf_handle)
 		sizeof(struct esp_payload_header) + len));
 #endif
 
-	buf_needed = (len + sizeof(struct esp_payload_header) + MAX_SPI_HD_BUFFER_SIZE - 1)
-		/ MAX_SPI_HD_BUFFER_SIZE;
+	buf_needed = (len + sizeof(struct esp_payload_header) + curr_transfer_size - 1)
+		/ curr_transfer_size;
 
 	SPI_HD_DRV_LOCK();
 
@@ -628,9 +634,9 @@ static void spi_hd_read_task(void const* pvParameters)
 		}
 
 		/* Validate transfer size to prevent buffer overflow */
-		if (size_to_xfer > MAX_SPI_HD_BUFFER_SIZE) {
-			ESP_LOGE(TAG, "read_bytes[%"PRIu32"] > MAX_SPI_HD_BUFFER_SIZE[%d]. Ignoring read request",
-					size_to_xfer, MAX_SPI_HD_BUFFER_SIZE);
+		if (size_to_xfer > curr_transfer_size) {
+			ESP_LOGE(TAG, "read_bytes[%"PRIu32"] > curr_transfer_size[%u]. Ignoring read request",
+					size_to_xfer, (unsigned)curr_transfer_size);
 
 			SPI_HD_DRV_UNLOCK();
 			continue;
@@ -774,6 +780,8 @@ static void spi_hd_process_rx_task(void const* pvParameters)
 void * bus_init_internal(void)
 {
 	uint8_t prio_q_idx = 0;
+
+	curr_transfer_size = SPI_HD_BLOCK_SIZE;
 
 	SPI_HD_DRV_LOCK_CREATE();
 

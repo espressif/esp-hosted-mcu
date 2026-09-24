@@ -40,8 +40,15 @@
 
 #define MEMPOOL_ALIGNED(VAL, BYTES)      ((VAL) + (BYTES) -    \
 		((VAL) & (BYTES - 1)))
-#define MEMPOOL_ALIGNMENT_BYTES 64
 #define MEMPOOL_PADDING  5 // to cater for possible peak tx requests
+
+#define LENGTH_1_BYTE  1
+#define LENGTH_2_BYTES 2
+#define LENGTH_4_BYTES 4
+
+#define MAX_LEN_INIT_EVENT_FROM_CP 64
+
+#define TRANSPORT_BLOCK_SIZE ESP_TRANSPORT_MAX_BUF_SIZE
 
 DEFINE_LOG_TAG(transport);
 static char chip_type = ESP_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
@@ -50,6 +57,14 @@ transport_channel_t *chan_arr[ESP_MAX_IF];
 volatile uint8_t wifi_tx_throttling;
 void *bus_handle = NULL;
 
+/* Function to combine four little-endian uint8_t stored in consecutive locations into a uint32_t */
+static inline uint32_t tlv_uint8_to_uint32(uint8_t *ptr)
+{
+	return (uint32_t)ptr[0] +
+		((uint32_t)ptr[1] << 8) +
+		((uint32_t)ptr[2] << 16) +
+		((uint32_t)ptr[3] << 24);
+}
 
 static volatile uint8_t transport_state = TRANSPORT_INACTIVE;
 
@@ -287,8 +302,8 @@ static hosted_mempool_t * transport_drv_common_mempool_create(void)
 			.pre_allocated_mem = NULL,
 			.pre_allocated_mem_size = 0,
 			.num_blocks = H_TRANSPORT_QUEUE_SIZE + MEMPOOL_PADDING,
-			.block_size = ESP_TRANSPORT_MAX_BUF_SIZE,
-			.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+			.block_size = TRANSPORT_BLOCK_SIZE,
+			.alignment_in_bytes = HOSTED_MEM_ALIGNMENT,
 			.malloc = transport_util_malloc,
 			.calloc = transport_util_calloc,
 			.memset = g_h.funcs->_h_memset,
@@ -369,7 +384,7 @@ static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 	assert(h && h==chan_arr[ESP_STA_IF]->api_chan);
 
 	/*  Prepare transport buffer directly consumable */
-	copy_buff = mempool_alloc(chan_arr[ESP_STA_IF]->memp, MAX_TRANSPORT_BUFFER_SIZE, true);
+	copy_buff = mempool_alloc(chan_arr[ESP_STA_IF]->memp, TRANSPORT_BLOCK_SIZE, true);
 	if (!copy_buff) {
 		ESP_LOGW(TAG, "STA TX: mempool_alloc failed, dropping pkt (len=%u)", len);
 #if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
@@ -404,7 +419,7 @@ static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 	assert(h && h==chan_arr[ESP_AP_IF]->api_chan);
 
 	/*  Prepare transport buffer directly consumable */
-	copy_buff = mempool_alloc(chan_arr[ESP_AP_IF]->memp, MAX_TRANSPORT_BUFFER_SIZE, true);
+	copy_buff = mempool_alloc(chan_arr[ESP_AP_IF]->memp, TRANSPORT_BLOCK_SIZE, true);
 	if (!copy_buff) {
 		ESP_LOGW(TAG, "AP TX: mempool_alloc failed, dropping pkt (len=%u)", len);
 #if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
@@ -511,10 +526,7 @@ static uint32_t process_ext_capabilities(uint8_t * ptr)
 	// ptr address may be not be 32-bit aligned
 	uint32_t cap;
 
-	cap = (uint32_t)ptr[0] +
-		((uint32_t)ptr[1] << 8) +
-		((uint32_t)ptr[2] << 16) +
-		((uint32_t)ptr[3] << 24);
+	cap = tlv_uint8_to_uint32(ptr);
 	ESP_LOGI(TAG, "extended capabilities: 0x%"PRIx32,cap);
 
 	return cap;
@@ -552,11 +564,7 @@ static void print_ext_capabilities(uint8_t * ptr)
 	// ptr address may be not be 32-bit aligned
 	uint32_t cap;
 
-	cap = (uint32_t)ptr[0] +
-		((uint32_t)ptr[1] << 8) +
-		((uint32_t)ptr[2] << 16) +
-		((uint32_t)ptr[3] << 24);
-
+	cap = tlv_uint8_to_uint32(ptr);
 	ESP_LOGI(TAG, "Extended Features supported: [%" PRIX32 "]", cap);;
 #if H_SPI_HD_HOST_INTERFACE
 	if (cap & ESP_SPI_HD_INTERFACE_SUPPORT_1_DATA_LINE)
@@ -734,16 +742,25 @@ static int compare_fw_version(uint32_t slave_version)
 	}
 }
 
-esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
-		uint8_t raw_tp_direction, uint8_t low_thr_thesh, uint8_t high_thr_thesh)
+typedef struct slave_config {
+	uint8_t  host_cap;
+	uint8_t  firmware_chip_id;
+	uint8_t  raw_tp_direction;
+	uint8_t  low_thr_thesh;
+	uint8_t  high_thr_thesh;
+	uint32_t transport_size;
+} slave_config_t;
+
+static esp_err_t send_slave_config(slave_config_t *config)
 {
-#define LENGTH_1_BYTE 1
+	if (!config) return ESP_FAIL;
+
 	struct esp_priv_event *event = NULL;
 	uint8_t *pos = NULL;
 	uint16_t len = 0;
 	uint8_t *sendbuf = NULL;
 
-	sendbuf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(256, 64), MEMPOOL_ALIGNMENT_BYTES);
+	sendbuf = g_h.funcs->_h_malloc_align(MEMPOOL_ALIGNED(256, HOSTED_MEM_ALIGNMENT), HOSTED_MEM_ALIGNMENT);
 	assert(sendbuf);
 
 	/* Populate event data */
@@ -761,30 +778,45 @@ esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
 	ESP_LOGI(TAG, "Slave chip Id[%x]", ESP_PRIV_FIRMWARE_CHIP_ID);
 	*pos = HOST_CAPABILITIES;                          pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = host_cap;                                   pos++;len++;
+	*pos = config->host_cap;                           pos++;len++;
 
 	/* TLV - Capability */
 	*pos = RCVD_ESP_FIRMWARE_CHIP_ID;                  pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = firmware_chip_id;                           pos++;len++;
+	*pos = config->firmware_chip_id;                   pos++;len++;
 
 	*pos = SLV_CONFIG_TEST_RAW_TP;                     pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = raw_tp_direction;                           pos++;len++;
+	*pos = config->raw_tp_direction;                   pos++;len++;
 
-	*pos = SLV_CONFIG_THROTTLE_HIGH_THRESHOLD;           pos++;len++;
+	*pos = SLV_CONFIG_THROTTLE_HIGH_THRESHOLD;         pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = high_thr_thesh;                             pos++;len++;
+	*pos = config->high_thr_thesh;                     pos++;len++;
 
-	*pos = SLV_CONFIG_THROTTLE_LOW_THRESHOLD;           pos++;len++;
+	*pos = SLV_CONFIG_THROTTLE_LOW_THRESHOLD;          pos++;len++;
 	*pos = LENGTH_1_BYTE;                              pos++;len++;
-	*pos = low_thr_thesh;                              pos++;len++;
+	*pos = config->low_thr_thesh;                      pos++;len++;
+
+	if (config->transport_size) {
+		// we got the co-processor transfer size
+		if (config->transport_size != TRANSPORT_BLOCK_SIZE) {
+			ESP_LOGI(TAG, "setting co-processor transport size to %d", TRANSPORT_BLOCK_SIZE);
+			*pos = SLV_CONFIG_SET_TRANSFER_SIZE;             pos++;len++;
+			*pos = LENGTH_4_BYTES;                           pos++;len++;
+			*pos = (uint8_t)(TRANSPORT_BLOCK_SIZE);          pos++;len++;
+			*pos = (uint8_t)(TRANSPORT_BLOCK_SIZE >> 8);     pos++;len++;
+			*pos = (uint8_t)(TRANSPORT_BLOCK_SIZE >> 16);    pos++;len++;
+			*pos = (uint8_t)(TRANSPORT_BLOCK_SIZE >> 24);    pos++;len++;
+		} else {
+			ESP_LOGI(TAG, "co-processor transport size matches host transport size: %d", TRANSPORT_BLOCK_SIZE);
+		}
+	}
 
 	ESP_LOGI(TAG, "raw_tp_dir[%s], flow_ctrl: low[%u] high[%u]",
-			raw_tp_direction == ESP_TEST_RAW_TP__HOST_TO_ESP? "h2s":
-			raw_tp_direction == ESP_TEST_RAW_TP__ESP_TO_HOST? "s2h":
-			raw_tp_direction == ESP_TEST_RAW_TP__BIDIRECTIONAL? "bi-dir":
-			"-", low_thr_thesh, high_thr_thesh);
+			config->raw_tp_direction == ESP_TEST_RAW_TP__HOST_TO_ESP? "h2s":
+			config->raw_tp_direction == ESP_TEST_RAW_TP__ESP_TO_HOST? "s2h":
+			config->raw_tp_direction == ESP_TEST_RAW_TP__BIDIRECTIONAL? "bi-dir":
+			"-", config->low_thr_thesh, config->high_thr_thesh);
 
 	/* TLVs end */
 
@@ -809,6 +841,11 @@ static int transport_delayed_init(void)
 	return 0;
 }
 
+#define CHECK_TLV_LEN(tag_len, expected_len, string)                    \
+    if (tag_len != expected_len) {                                      \
+        ESP_LOGE(TAG, "bad %s tag_len %u", string, tag_len);            \
+        break;                                                          \
+    }
 
 static int process_init_event(uint8_t *evt_buf, uint16_t len)
 {
@@ -817,6 +854,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	uint8_t raw_tp_config = H_TEST_RAW_TP_DIR;
 	uint32_t ext_cap = 0;
 	uint32_t slave_fw_version = 0;
+	uint32_t transport_size = 0;
 
 	if (!evt_buf)
 		return ESP_FAIL;
@@ -832,30 +870,44 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 
 	pos = evt_buf;
 	ESP_LOGD(TAG, "Init event length: %u", len);
-	if (len > 64) {
-		ESP_LOGE(TAG, "Init event length: %u", len);
+	if (len > MAX_LEN_INIT_EVENT_FROM_CP) {
+		ESP_LOGE(TAG, "Init event length: %u, expected max is %d", len, MAX_LEN_INIT_EVENT_FROM_CP);
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI
-		ESP_LOGE(TAG, "Seems incompatible SPI mode try changing SPI mode. Asserting for now.");
+		ESP_LOGE(TAG, "May be due to incompatible SPI mode. Try changing SPI mode.");
 #endif
-		assert(len < 64);
+		assert(len < MAX_LEN_INIT_EVENT_FROM_CP);
 	}
 
 	while (len_left) {
+		if (len_left < 3) {
+			// remaining length is too short for a TLV (minimum is 3 bytes)
+			ESP_LOGW(TAG, "remaining data length is too short for a TLV: skipping remaining data");
+			break;
+		}
 		tag_len = *(pos + 1);
+		if (len_left < (tag_len + 2)) {
+			// mismatch between packet length and TLV length
+			ESP_LOGW(TAG, "mismatch between INIT data length and TLV length: skipping remaining data");
+			break;
+		}
 
 		if (*pos == ESP_PRIV_CAPABILITY) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_CAPABILITY");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 			process_capabilities(*(pos + 2));
 			print_capabilities(*(pos + 2));
 		} else if (*pos == ESP_PRIV_CAP_EXT) {
+			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_CAP_EXT");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 			ext_cap = process_ext_capabilities(pos + 2);
 			print_ext_capabilities(pos + 2);
 		} else if (*pos == ESP_PRIV_FIRMWARE_CHIP_ID) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_FIRMWARE_CHIP_ID");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 			chip_type = *(pos+2);
 			verify_host_config_for_slave(chip_type);
 		} else if (*pos == ESP_PRIV_TEST_RAW_TP) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TEST_RAW_TP");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
 #if TEST_RAW_TP
 			process_test_capabilities(*(pos + 2));
@@ -864,18 +916,18 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 				ESP_LOGW(TAG, "Slave enabled Raw Throughput Testing, but not enabled on Host");
 #endif
 		} else if (*pos == ESP_PRIV_RX_Q_SIZE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_RX_Q_SIZE");
 			ESP_LOGD(TAG, "slave rx queue size: %u", *(pos + 2));
 		} else if (*pos == ESP_PRIV_TX_Q_SIZE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TX_Q_SIZE");
 			ESP_LOGD(TAG, "slave tx queue size: %u", *(pos + 2));
 		} else if (*pos == ESP_PRIV_FIRMWARE_VERSION) {
+			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_FIRMWARE_VERSION");
 			// fw_version sent as a little-endian uint32_t
-			slave_fw_version =
-				*(pos + 2) |
-				(*(pos + 3) << 8) |
-				(*(pos + 4) << 16) |
-				(*(pos + 5) << 24);
+			slave_fw_version = tlv_uint8_to_uint32(pos + 2);
 			ESP_LOGD(TAG, "slave fw version: 0x%08" PRIx32, slave_fw_version);
 		} else if (*pos == ESP_PRIV_TRANS_SDIO_MODE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TRANS_SDIO_MODE");
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
 			uint8_t slave_sdio_mode = *(pos + 2);
 #if H_SDIO_HOST_RX_MODE == H_SDIO_HOST_STREAMING_MODE
@@ -892,6 +944,11 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 				assert(0);
 			}
 #endif
+		} else if (*pos == ESP_PRIV_TRANSFER_SIZE) {
+			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_TRANSFER_SIZE");
+			// transport_size sent as a little-endian uint32_t
+			transport_size = tlv_uint8_to_uint32(pos + 2);
+			ESP_LOGI(TAG, "got co-processor transport size: %" PRIu32, transport_size);
 		} else {
 			ESP_LOGD(TAG, "Unsupported EVENT: %2x", *pos);
 		}
@@ -901,6 +958,13 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 
 	// if ESP_PRIV_FIRMWARE_VERSION was not received, slave version will be 0.0.0
 	compare_fw_version(slave_fw_version);
+
+	if (!transport_size) {
+		// co-processor fw is older and may not be compatible with current transport size
+		ESP_LOGW(TAG, "Co-processor fw did not report transport size,");
+		ESP_LOGW(TAG, "and may not be compatible with host.");
+		ESP_LOGW(TAG, "Please update the co-processor firmware.");
+	}
 
 	if ((chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32) &&
 		(chip_type != ESP_PRIV_FIRMWARE_CHIP_ESP32S2) &&
@@ -953,9 +1017,15 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 
 	transport_driver_event_handler(TRANSPORT_TX_ACTIVE);
 
-	ESP_ERROR_CHECK(send_slave_config(0, chip_type, raw_tp_config,
-		H_WIFI_TX_DATA_THROTTLE_LOW_THRESHOLD,
-		H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD));
+	slave_config_t slave_config = {
+		.host_cap         = 0,
+		.firmware_chip_id = chip_type,
+		.raw_tp_direction = raw_tp_config,
+		.low_thr_thesh    = H_WIFI_TX_DATA_THROTTLE_LOW_THRESHOLD,
+		.high_thr_thesh   = H_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD,
+		.transport_size   = transport_size,
+	};
+	ESP_ERROR_CHECK(send_slave_config(&slave_config));
 
 	transport_delayed_init();
 

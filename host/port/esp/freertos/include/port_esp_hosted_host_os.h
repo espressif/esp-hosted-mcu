@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,6 +20,8 @@
 
 #include "port_esp_hosted_host_config.h"
 #include "esp_hosted_os_abstraction.h"
+#include "esp_hosted_transport.h"
+#include "esp_hosted_header.h"
 #include "esp_timer.h"
 #include "esp_event.h"
 #include "esp_heap_caps.h"
@@ -32,8 +34,7 @@ ESP_EVENT_DECLARE_BASE(WIFI_EVENT);
 
 #include "esp_dma_utils.h"
 
-#define MAX_PAYLOAD_SIZE (MAX_TRANSPORT_BUFFER_SIZE-H_ESP_PAYLOAD_HEADER_OFFSET)
-
+#define MAX_PAYLOAD_SIZE (MAX_TRANSPORT_BUFFER_SIZE - H_ESP_PAYLOAD_HEADER_OFFSET)
 
 typedef enum {
 	H_TIMER_TYPE_ONESHOT = 0,
@@ -93,6 +94,13 @@ enum {
 #define HOSTED_MEM_ALIGNMENT_4      4
 #define HOSTED_MEM_ALIGNMENT_32     32
 #define HOSTED_MEM_ALIGNMENT_64     64
+#define HOSTED_MEM_ALIGNMENT_128    128
+
+#if H_CACHE_L2_CACHE_LINE_128B
+#define HOSTED_MEM_ALIGNMENT        HOSTED_MEM_ALIGNMENT_128
+#else
+#define HOSTED_MEM_ALIGNMENT        HOSTED_MEM_ALIGNMENT_64
+#endif
 
 /** Enumeration **/
 enum hardware_type_e {

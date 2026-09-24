@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -39,15 +39,22 @@ typedef enum {
 	SLV_CONFIG_TEST_RAW_TP,
 	SLV_CONFIG_THROTTLE_HIGH_THRESHOLD,
 	SLV_CONFIG_THROTTLE_LOW_THRESHOLD,
+	SLV_CONFIG_SET_TRANSFER_SIZE,
 } SLAVE_CONFIG_PRIV_TAG_TYPE;
 
+// default transfer size - by default all are now 1536
 #define ESP_TRANSPORT_SDIO_MAX_BUF_SIZE   1536
-#define ESP_TRANSPORT_SPI_MAX_BUF_SIZE    1600
-#define ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE 1600
-#define ESP_TRANSPORT_UART_MAX_BUF_SIZE   1600
+#define ESP_TRANSPORT_SPI_MAX_BUF_SIZE    1536
+#define ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE 1536
+#define ESP_TRANSPORT_UART_MAX_BUF_SIZE   1536
+
+// legacy transport sizes for compatibility with older versions of co-processors
+#define ESP_TRANSPORT_SPI_LEGACY_MAX_BUF_SIZE    1600
+#define ESP_TRANSPORT_SPI_HD_LEGACY_MAX_BUF_SIZE 1600
+#define ESP_TRANSPORT_UART_LEGACY_MAX_BUF_SIZE   1600
 
 // max transport size based on all transports
-#define ESP_TRANSPORT_MAX_BUF_SIZE        1600
+#define ESP_TRANSPORT_MAX_BUF_SIZE        1536
 
 #define MAX_FRAGMENTABLE_PAYLOAD_SIZE     8192
 

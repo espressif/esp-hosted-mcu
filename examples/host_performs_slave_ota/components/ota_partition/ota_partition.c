@@ -40,7 +40,7 @@
 static const char* TAG = "ota_partition";
 
 #ifndef CHUNK_SIZE
-#define CHUNK_SIZE 1500
+#define CHUNK_SIZE 1480
 #endif
 
 /* Function to check if partition contains valid firmware data */

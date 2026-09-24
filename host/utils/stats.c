@@ -14,6 +14,7 @@
 #include "esp_hosted_transport_init.h"
 #include "esp_hosted_os_abstraction.h"
 #include "port_esp_hosted_host_os.h"
+#include "port_esp_hosted_host_config.h"
 
 // use mempool and zero copy for Tx
 #include "mempool.h"
@@ -39,6 +40,8 @@ static const char *TAG = "stats";
 /** Function declaration **/
 
 /** Exported Functions **/
+
+#define STATS_BUFFER_SIZE MAX_TRANSPORT_BUFFER_SIZE
 
 // disable usage of mempool for now
 #define DISABLE_MEMPOOL 1
@@ -115,7 +118,7 @@ static void raw_tp_tx_task(void const* pvParameters)
 	g_h.funcs->_h_sleep(5);
 
 #if !DISABLE_MEMPOOL
-	buf_mp_g = mempool_create(MAX_TRANSPORT_BUFFER_SIZE);
+	buf_mp_g = mempool_create(STATS_BUFFER_SIZE);
 #ifdef H_USE_MEMPOOL
 	assert(buf_mp_g);
 #endif
@@ -124,7 +127,7 @@ static void raw_tp_tx_task(void const* pvParameters)
 	while (1) {
 
 #if CONFIG_H_LOWER_MEMCOPY
-		raw_tp_tx_buf = (uint8_t*)g_h.funcs->_h_calloc(1, MAX_TRANSPORT_BUFFER_SIZE);
+		raw_tp_tx_buf = (uint8_t*)g_h.funcs->_h_calloc(1, STATS_BUFFER_SIZE);
 
 		ptr = (uint32_t*) raw_tp_tx_buf;
 		for (i=0; i<(TEST_RAW_TP__BUF_SIZE/4-1); i++, ptr++)
@@ -134,10 +137,10 @@ static void raw_tp_tx_task(void const* pvParameters)
 
 #else
 #if DISABLE_MEMPOOL
-		raw_tp_tx_buf = g_h.funcs->_h_malloc_align(MAX_TRANSPORT_BUFFER_SIZE, HOSTED_MEM_ALIGNMENT_64);
-		g_h.funcs->_h_memset(raw_tp_tx_buf, 0, MAX_TRANSPORT_BUFFER_SIZE);
+		raw_tp_tx_buf = g_h.funcs->_h_malloc_align(STATS_BUFFER_SIZE, HOSTED_MEM_ALIGNMENT);
+		g_h.funcs->_h_memset(raw_tp_tx_buf, 0, STATS_BUFFER_SIZE);
 #else
-		raw_tp_tx_buf = mempool_alloc(buf_mp_g, MAX_TRANSPORT_BUFFER_SIZE, true);
+		raw_tp_tx_buf = mempool_alloc(buf_mp_g, STATS_BUFFER_SIZE, true);
 #endif
 		ptr = (uint32_t*) (raw_tp_tx_buf + H_ESP_PAYLOAD_HEADER_OFFSET);
 		for (i=0; i<(TEST_RAW_TP__BUF_SIZE/4-1); i++, ptr++)

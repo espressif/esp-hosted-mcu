@@ -20,7 +20,7 @@
 
   #define MEMPOOL_ALLOC(pool, nbytes, need_memset) do {        \
     void *ptr = g_h.funcs->_h_malloc_align(nbytes,             \
-      HOSTED_MEM_ALIGNMENT_64);                                \
+      HOSTED_MEM_ALIGNMENT);                                   \
     if (ptr && need_memset)                                    \
       g_h.funcs->_h_memset(ptr, 0, nbytes);                    \
     return ptr;                                                \

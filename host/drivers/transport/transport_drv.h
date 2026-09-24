@@ -142,9 +142,6 @@ void bus_deinit_internal(void *bus_handle);
 
 void process_priv_communication(interface_buffer_handle_t *buf_handle);
 
-esp_err_t send_slave_config(uint8_t host_cap, uint8_t firmware_chip_id,
-		uint8_t raw_tp_direction, uint8_t low_thr_thesh, uint8_t high_thr_thesh);
-
 uint8_t is_transport_rx_ready(void);
 uint8_t is_transport_tx_ready(void);
 
