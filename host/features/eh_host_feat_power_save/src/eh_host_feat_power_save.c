@@ -28,7 +28,6 @@ static volatile int s_active    = 0;
 
 #if EH_HOST_TYPE_MCU
 static esp_timer_handle_t           s_auto_enter_timer = NULL;
-static eh_host_power_save_type_t  s_auto_enter_type  = EH_HOST_POWER_SAVE_TYPE_LIGHT_SLEEP;
 
 /* ISR state; 500ms grace filters sleep/wake glitches. */
 static volatile uint32_t s_last_wakeup_time_ms = 0;
@@ -301,7 +300,7 @@ static void auto_enter_cb(void *ctx)
 {
     (void)ctx;
     if (s_init_done && !s_active) {
-        eh_host_power_save_start(s_auto_enter_type);
+        eh_host_power_save_start(EH_HOST_POWER_SAVE_TYPE_DEEP_SLEEP);
     }
 }
 #endif

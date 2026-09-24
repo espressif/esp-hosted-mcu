@@ -1,9 +1,20 @@
 # Unreleased
 
-- Fix: host: `ESP_HOSTED_VERSION_*` report the component version
-- host: removed the slave-reset polarity Kconfig options; reset now always parks the pin HIGH
-- host/wifi: fixed a read past `ssid[32]` in the STA event logs
 # Releases
+
+# $${\color{green} \text{3.0.8}}$$
+
+- nw_split: the lwIP source-port hook now reaches the build, so co-processor sockets stay inside the configured split range
+- host/power_save: the auto-enter timer puts the host into deep sleep
+- host: `ESP_HOSTED_VERSION_*` report the component version
+- host: removed the slave-reset polarity Kconfig options; reset now always parks the pin HIGH
+- wifi: carry ssid and password at full width, and return the AP-record, station, iTWT, country 5G-mask, scan-coex and WPA3 fields the RPCs dropped
+- cp/rpc: bound the host-supplied scan record count before allocating
+- cp: deinit returns every resource, so init/deinit cycles no longer leak
+- throughput: host/sdio yields instead of busy-waiting the credit budget, and cp/wifi matches native buffers and retries TX when the pool is full
+- cp/transport: reserve the SDIO bus pins and the host-wake pin
+- host/transport: new Kconfig-gated packet stats for the SDIO datapath
+- newlib-nano: dropped the printf and scanf specifiers it cannot parse, across host, co-processor and examples
 
 # $${\color{green} \text{3.0.7}}$$
 

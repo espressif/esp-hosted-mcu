@@ -554,7 +554,6 @@ eh_cp_feat_nw_split_nw_stack_e eh_cp_feat_nw_split_filter_packet(void *frame_dat
 							return result;
 						}
 					} else {
-						ESP_LOGV(TAG, "Wakeup host: TCP pkt");
 						result = NW_STACK_INVALID;
 						ESP_LOGW(TAG, "host pkt dropped in power save (dst %u src %u)", dst_port, src_port);
 						return result;
