@@ -92,6 +92,27 @@ if ESP_HOSTED_CP_FEAT_HOST_PS
 			uart/spi/spi_hd wrap their whole body in this option, so at
 			the old default n three of four never unloaded at all.
 
+	config ESP_HOSTED_CP_FEAT_HOST_PS_IGNORE_NON_UNICAST
+		bool "Do not wake the host for multicast or broadcast IP"
+		default y if ESP_HOSTED_CP_FEAT_NW_SPLIT
+		default n
+		help
+			Keep the host asleep for IPv4 frames addressed to a multicast
+			group (224.0.0.0/4) or to the limited broadcast address, and for
+			IPv6 frames addressed to a multicast group (ff00::/8). Unicast
+			still wakes it. ARP, serial, RPC and flow control are unaffected,
+			so the host stays reachable.
+
+			Default y under network split, where the default route sends
+			unmatched frames to the host: a router's IGMP General Query then
+			reaches the host every query interval, and IPv6 router
+			advertisements reach it the same way, so the pair never stays
+			parked.
+
+			Default n otherwise, because a host that owns the whole IP stack
+			needs this traffic for mDNS discovery, SSDP and IGMP membership,
+			and a filtered host answers none of them.
+
 	config ESP_HOSTED_CP_FEAT_HOST_PS_PRINT_FULL_WAKEUP_PACKET
 		bool "Print the full wakeup packet"
 		default n
