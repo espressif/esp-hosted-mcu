@@ -1,8 +1,10 @@
 # Unreleased
 
-- cp/host_ps: under network split, a sleeping host is no longer woken by IPv4 or IPv6 multicast, or IPv4 broadcast
-
 # Releases
+
+# $${\color{green} \text{3.0.9}}$$
+
+- cp/host_ps: under network split, a sleeping host is no longer woken by IPv4 or IPv6 multicast, or IPv4 broadcast
 
 # $${\color{green} \text{3.0.8}}$$
 
