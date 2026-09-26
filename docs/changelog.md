@@ -2,6 +2,10 @@
 
 # Releases
 
+# $${\color{green} \text{3.0.9}}$$
+
+- cp/host_ps: under network split, a sleeping host is no longer woken by IPv4 or IPv6 multicast, or IPv4 broadcast
+
 # $${\color{green} \text{3.0.8}}$$
 
 - nw_split: the lwIP source-port hook now reaches the build, so co-processor sockets stay inside the configured split range

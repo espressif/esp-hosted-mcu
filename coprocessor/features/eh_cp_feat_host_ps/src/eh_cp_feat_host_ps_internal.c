@@ -154,6 +154,34 @@ int is_host_wakeup_needed(interface_buffer_handle_t *buf_handle)
 
 		case ESP_STA_IF:
 
+#if EH_CP_FEAT_HOST_PS_IGNORE_NON_UNICAST
+			  /* Test the IP address, not the MAC: the destination MAC is
+			   * rewritten to the host's own address before forwarding, so the
+			   * L2 multicast bit is always clear here. */
+			  {
+				  const uint16_t ethertype =
+					  (buf_handle->payload_len >= 14)
+					  ? (uint16_t)((buf_start[12] << 8) | buf_start[13]) : 0;
+				  bool non_unicast = false;
+
+				  if (ethertype == 0x0800 && buf_handle->payload_len >= 34) {
+					  const uint8_t *dst = buf_start + 14 + 16;
+					  non_unicast = ((dst[0] & 0xf0) == 0xe0) ||
+					                (dst[0] == 255 && dst[1] == 255 &&
+					                 dst[2] == 255 && dst[3] == 255);
+				  } else if (ethertype == 0x86dd && buf_handle->payload_len >= 54) {
+					  /* ff00::/8. IPv6 has no broadcast. */
+					  non_unicast = buf_start[14 + 24] == 0xff;
+				  }
+
+				  if (non_unicast) {
+					  strlcpy(reason, "sta non-unicast", sizeof(reason));
+					  wakup_needed = 0;
+					  goto end;
+				  }
+			  }
+#endif
+
 			  /* TODO(host-ps): when lwip split is disabled, inspect the
 			   * packet and decide whether host wake-up is required. */
 			  strlcpy(reason, "sta tx msg", sizeof(reason));
