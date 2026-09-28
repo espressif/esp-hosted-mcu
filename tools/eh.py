@@ -657,8 +657,8 @@ DEPS_DIR  = REPO_ROOT / ".deps"
 CONF_FILE = DEPS_DIR / "eh.conf"
 
 IDF_REPO        = "https://github.com/espressif/esp-idf.git"
-IDF_DEFAULT_REF = "v6.0.2"   # emu (P4 eco5 ROM) is validated on 5.5.4; SW_AGGR
-                             # comes from tools/idf_patches/ applied on top.
+IDF_DEFAULT_REF = "v6.1"     # carries the SDIO send-cap fix (tools/idf_patches/
+                             # is a no-op here) and SPI slave-HD 3-wire mode.
 IDF_PATCH_DIR   = REPO_ROOT / "tools" / "idf_patches"
 IDF_TARGETS     = "all"   # install toolchains for all supported chips
 # esp-emu's crate deps set a Rust floor (e.g. smoltcp 0.13 needs 1.91). Preflight
