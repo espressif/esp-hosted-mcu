@@ -50,10 +50,8 @@ static uint64_t get_reserved_pin_mask(void)
     add_pin(&mask, EH_CP_SPI_HD_PIN_CS);
     add_pin(&mask, EH_CP_SPI_HD_PIN_D0);
     add_pin(&mask, EH_CP_SPI_HD_PIN_D1);
-  #if (EH_CP_SPI_HD_NUM_DATA_LINES == 4)
     add_pin(&mask, EH_CP_SPI_HD_PIN_D2);
     add_pin(&mask, EH_CP_SPI_HD_PIN_D3);
-  #endif
     add_pin(&mask, EH_CP_SPI_HD_PIN_DATA_READY);
     add_pin(&mask, EH_CP_SPI_HD_PIN_RESET);
 #endif

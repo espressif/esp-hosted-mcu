@@ -77,6 +77,7 @@ menu "SPI Half-duplex Configuration"
 			default 7
 
 		config EH_TRANSPORT_CP_SPI_HD_GPIO_D1
+			depends on EH_TRANSPORT_CP_SPI_HD_2_DATA_LINES || EH_TRANSPORT_CP_SPI_HD_4_DATA_LINES
 			int "D1 GPIO pin"
 			default 21 if (ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD || ESP_HOSTED_C2_C5_MODULE_SUB_BOARD)
 			default 7 if ESP_HOSTED_P4_C5_CORE_BOARD

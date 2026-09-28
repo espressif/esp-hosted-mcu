@@ -827,7 +827,11 @@
   #define EH_HOST_PORT_SPI_HD_PORT_CLK                            NULL
 
   #define EH_HOST_PORT_SPI_HD_PIN_D0                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D0_GPIO
-  #define EH_HOST_PORT_SPI_HD_PIN_D1                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D1_GPIO
+  #if (CONFIG_ESP_HOSTED_HOST_SPI_HD_NUM_DATA_LINES >= 2)
+    #define EH_HOST_PORT_SPI_HD_PIN_D1                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D1_GPIO
+  #else
+    #define EH_HOST_PORT_SPI_HD_PIN_D1                              -1
+  #endif
   #if (CONFIG_ESP_HOSTED_HOST_SPI_HD_NUM_DATA_LINES == 4)
     #define EH_HOST_PORT_SPI_HD_PIN_D2                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D2_GPIO
     #define EH_HOST_PORT_SPI_HD_PIN_D3                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D3_GPIO

@@ -87,7 +87,6 @@ static const char *TAG = "eh_bus_spi_hd";
 
 static void show_config(void)
 {
-#if EH_HOST_PORT_SPI_HD_HOST_NUM_DATA_LINES == 4
 	ESP_LOGI(TAG, "transport[host]: SPI_HD %d-line "
 		"CLK=%d CS=%d D0=%d D1=%d D2=%d D3=%d DATA_READY=%d RESET=%d",
 		(int)EH_HOST_PORT_SPI_HD_HOST_NUM_DATA_LINES,
@@ -96,15 +95,6 @@ static void show_config(void)
 		EH_HOST_PORT_SPI_HD_PIN_D2,  EH_HOST_PORT_SPI_HD_PIN_D3,
 		EH_HOST_PORT_SPI_HD_PIN_DATA_READY,
 		EH_HOST_PORT_GPIO_PIN_RESET);
-#else
-	ESP_LOGI(TAG, "transport[host]: SPI_HD %d-line "
-		"CLK=%d CS=%d D0=%d D1=%d DATA_READY=%d RESET=%d",
-		(int)EH_HOST_PORT_SPI_HD_HOST_NUM_DATA_LINES,
-		EH_HOST_PORT_SPI_HD_PIN_CLK, EH_HOST_PORT_SPI_HD_PIN_CS,
-		EH_HOST_PORT_SPI_HD_PIN_D0,  EH_HOST_PORT_SPI_HD_PIN_D1,
-		EH_HOST_PORT_SPI_HD_PIN_DATA_READY,
-		EH_HOST_PORT_GPIO_PIN_RESET);
-#endif
 }
 
 #endif /* ESP_PLATFORM */
@@ -520,8 +510,8 @@ int eh_host_bus_init(void)
     spi_bus_config_t bus_cfg = {
         .data0_io_num    = EH_HOST_PORT_SPI_HD_PIN_D0,
         .data1_io_num    = EH_HOST_PORT_SPI_HD_PIN_D1,
-        .data2_io_num    = EH_HOST_PORT_SPI_HD_PIN_D2,   /* -1 unless 4-line */
-        .data3_io_num    = EH_HOST_PORT_SPI_HD_PIN_D3,   /* -1 unless 4-line */
+        .data2_io_num    = EH_HOST_PORT_SPI_HD_PIN_D2,
+        .data3_io_num    = EH_HOST_PORT_SPI_HD_PIN_D3,
         .data4_io_num    = -1,
         .data5_io_num    = -1,
         .data6_io_num    = -1,
@@ -553,7 +543,11 @@ int eh_host_bus_init(void)
         .mode            = EH_HOST_PORT_SPI_HD_MODE,
         .spics_io_num    = EH_HOST_PORT_SPI_HD_PIN_CS,
         .queue_size      = 4,
+#if EH_SPIHD_NUM_DATA_LINES == 1
+        .flags           = SPI_DEVICE_HALFDUPLEX | SPI_DEVICE_3WIRE,
+#else
         .flags           = SPI_DEVICE_HALFDUPLEX,
+#endif
         .duty_cycle_pos  = 128,
     };
 #ifdef CONFIG_IDF_TARGET_ESP32P4
