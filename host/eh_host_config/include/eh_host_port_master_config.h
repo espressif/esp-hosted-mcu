@@ -738,13 +738,8 @@
     #define EH_HOST_PORT_SDIO_PIN_CMD                             -1
     #define EH_HOST_PORT_SDIO_PIN_D0                              -1
     #define EH_HOST_PORT_SDIO_PIN_D1                              -1
-    #if (EH_HOST_PORT_SDIO_BUS_WIDTH == 4)
-      #define EH_HOST_PORT_SDIO_PIN_D2                            -1
-      #define EH_HOST_PORT_SDIO_PIN_D3                            -1
-    #else
-      #define EH_HOST_PORT_SDIO_PIN_D2                            -1
-      #define EH_HOST_PORT_SDIO_PIN_D3                            -1
-    #endif
+    #define EH_HOST_PORT_SDIO_PIN_D2                              -1
+    #define EH_HOST_PORT_SDIO_PIN_D3                              -1
   #endif
 
   #define EH_HOST_PORT_SDIO_TX_Q                                  CONFIG_ESP_HOSTED_HOST_SDIO_TX_Q_SIZE
@@ -827,12 +822,12 @@
   #define EH_HOST_PORT_SPI_HD_PORT_CLK                            NULL
 
   #define EH_HOST_PORT_SPI_HD_PIN_D0                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D0_GPIO
-  #if (CONFIG_ESP_HOSTED_HOST_SPI_HD_NUM_DATA_LINES >= 2)
+  #if (EH_HOST_PORT_SPI_HD_HOST_NUM_DATA_LINES >= 2)
     #define EH_HOST_PORT_SPI_HD_PIN_D1                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D1_GPIO
   #else
     #define EH_HOST_PORT_SPI_HD_PIN_D1                              -1
   #endif
-  #if (CONFIG_ESP_HOSTED_HOST_SPI_HD_NUM_DATA_LINES == 4)
+  #if (EH_HOST_PORT_SPI_HD_HOST_NUM_DATA_LINES == 4)
     #define EH_HOST_PORT_SPI_HD_PIN_D2                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D2_GPIO
     #define EH_HOST_PORT_SPI_HD_PIN_D3                              CONFIG_ESP_HOSTED_HOST_SPI_HD_D3_GPIO
   #else
