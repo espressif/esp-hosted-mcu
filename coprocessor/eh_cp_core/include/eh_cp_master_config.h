@@ -486,8 +486,10 @@
 #  define EH_CP_SDIO_TX_QUEUE_SIZE      CONFIG_EH_TRANSPORT_CP_SDIO_TX_Q_SIZE
 #  define EH_CP_SDIO_RX_QUEUE_SIZE      CONFIG_EH_TRANSPORT_CP_SDIO_RX_Q_SIZE
 #  ifdef CONFIG_EH_TRANSPORT_CP_SDIO_HIGH_SPEED
+#    define EH_CP_SDIO_HIGH_SPEED       1
 #    define EH_CP_SDIO_CLOCK_FREQ_KHZ   40000
 #  else
+#    define EH_CP_SDIO_HIGH_SPEED       0
 #    define EH_CP_SDIO_CLOCK_FREQ_KHZ   20000
 #  endif
 /* Stream-class modes (STREAM now; SW_AGGR later) set the legacy flag=1 —
@@ -511,14 +513,19 @@
 #  endif
 #  if CONFIG_EH_TRANSPORT_CP_SDIO_PSEND_PSAMPLE
 #    define EH_CP_SDIO_SAMPLING_PHASE   "psend_psample"
+#    define EH_CP_SDIO_TIMING           SDIO_SLAVE_TIMING_PSEND_PSAMPLE
 #  elif CONFIG_EH_TRANSPORT_CP_SDIO_NSEND_PSAMPLE
 #    define EH_CP_SDIO_SAMPLING_PHASE   "nsend_psample"
+#    define EH_CP_SDIO_TIMING           SDIO_SLAVE_TIMING_NSEND_PSAMPLE
 #  elif CONFIG_EH_TRANSPORT_CP_SDIO_PSEND_NSAMPLE
 #    define EH_CP_SDIO_SAMPLING_PHASE   "psend_nsample"
+#    define EH_CP_SDIO_TIMING           SDIO_SLAVE_TIMING_PSEND_NSAMPLE
 #  elif CONFIG_EH_TRANSPORT_CP_SDIO_NSEND_NSAMPLE
 #    define EH_CP_SDIO_SAMPLING_PHASE   "nsend_nsample"
+#    define EH_CP_SDIO_TIMING           SDIO_SLAVE_TIMING_NSEND_NSAMPLE
 #  else
 #    define EH_CP_SDIO_SAMPLING_PHASE   "default"
+#    define EH_CP_SDIO_TIMING           SDIO_SLAVE_TIMING_PSEND_PSAMPLE
 #  endif
 #endif
 
