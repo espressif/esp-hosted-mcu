@@ -38,6 +38,11 @@ def _ready(bench, t, wake=False):
     # wake=True asks the factory for a net-provisioned bench (emu: --net + the
     # `myssid` softap, caps gains `wifi_ap`) so a STA can actually associate.
     b = bench(EX, 'mcu_host', t, timeout='120s', wake=wake)
+    if t == 'spi_hd':
+        # Default build is 4-line; the host must switch up once the CP caps land.
+        r = eh_test_expect(b['host'], r'SPI-HD data lines: 4 ',
+                           fail=FAIL + [r'SPI-HD data lines: [12] '], timeout=60)
+        assert r.ok, f'[{t}] data-line switch: {r.matched}'
     r = eh_test_expect(b['host'], r'EH api_exerciser ready', fail=FAIL, timeout=60)
     assert r.ok, f'[{t}] ready: {r.matched}'
     return b['host'], b['caps']

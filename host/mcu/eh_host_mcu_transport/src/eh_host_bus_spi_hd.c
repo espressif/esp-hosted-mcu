@@ -17,6 +17,8 @@
 #include "eh_host_mcu_hci_internal.h"
 #include "eh_common_header.h"
 #include "eh_common_header_v2.h"
+#include "eh_common_caps.h"
+#include "eh_host_mcu_transport_init_event.h"
 
 #ifdef ESP_PLATFORM
 
@@ -108,8 +110,8 @@ static volatile uint8_t     s_running;
 static volatile uint8_t     s_isr_installed;
 static volatile uint8_t     s_datapath_open;
 static uint32_t             s_rx_byte_count;  /* RX wrap counter */
-/* Active data-line count: 1 during bring-up, EH_SPIHD_NUM_DATA_LINES after the
- * slave is ready (see spihd_wait_slave_ready). */
+/* Active data-line count: 1 during bring-up, raised by spihd_apply_cp_lines()
+ * to the widest mode both host and CP support. */
 static uint8_t              s_data_lines = 1;
 #endif
 
@@ -396,6 +398,28 @@ static int spihd_open_datapath(void)
     return rc;
 }
 
+/* Host picks the lines: its own count, lowered to what the CP advertises in
+ * the init event the core just parsed. */
+static void spihd_apply_cp_lines(void)
+{
+    uint32_t ext = eh_host_mcu_transport_get_ext_capabilities();
+    uint8_t lines = 1;
+    if (EH_SPIHD_NUM_DATA_LINES == 4 && (ext & EH_TRANSPORT_CP_SPI_HD_4_DATA_LINES)) {
+        lines = 4;
+    } else if (EH_SPIHD_NUM_DATA_LINES >= 2 &&
+               (ext & (EH_TRANSPORT_CP_SPI_HD_4_DATA_LINES |
+                       EH_TRANSPORT_CP_SPI_HD_2_DATA_LINES))) {
+        lines = 2;
+    }
+    if (lines == s_data_lines) {
+        return;
+    }
+    eh_host_port_mutex_lock(s_bus_lock);
+    s_data_lines = lines;
+    eh_host_port_mutex_unlock(s_bus_lock);
+    ESP_LOGI(TAG, "SPI-HD data lines: %u (host %d)", lines, EH_SPIHD_NUM_DATA_LINES);
+}
+
 /* RX worker: wait DR, read TX_BUF_LEN, clear via INT1, compute delta,
  * RDDMA, decode, dispatch. */
 static void eh_spihd_rx_task(void *arg)
@@ -478,6 +502,9 @@ static void eh_spihd_rx_task(void *arg)
                 eh_host_mcu_hci_rx_deliver(h.payload, h.payload_len);
             } else {
                 eh_host_mcu_transport_dispatch_frame(&h);
+                if (h.if_type == ESP_PRIV_IF) {
+                    spihd_apply_cp_lines();
+                }
             }
         }
     }
@@ -506,6 +533,7 @@ int eh_host_bus_init(void)
     }
     s_rx_byte_count = 0;
     s_spihd_tx_buf_count = 0;
+    s_data_lines = 1;
 
     spi_bus_config_t bus_cfg = {
         .data0_io_num    = EH_HOST_PORT_SPI_HD_PIN_D0,

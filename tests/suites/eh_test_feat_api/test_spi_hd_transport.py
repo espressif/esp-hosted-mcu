@@ -19,7 +19,9 @@ substrate that cannot provide the wire, the bench factory SKIPs; on the emu, if
 the resolved esp-emu lacks --hosted-spi-hd it SKIPs too.
 """
 import os
+import re
 import sys
+import time
 
 import pytest
 
@@ -45,29 +47,55 @@ def test_spi_hd_bringup(bench, transport):
     assert r.ok, f'[{transport}] SPI-HD bring-up to ready: {r.matched}'
 
 
-# The 4-line configs ('spi_hd' default and explicit 'spi_hd_4') are covered by
-# test_api_exerciser[spi_hd]; only the 1- and 2-line configs are unique here.
+# 'spi_hd' (Kconfig default) == explicit 'spi_hd_4'; each numbered config is
+# unique here: the emu trace proves the bus runs in that line mode.
 _HD_RPC_MODES = [
     pytest.param('spi_hd',   marks=pytest.mark.retired(
-        "4-line default == test_api_exerciser[spi_hd].")),
+        "4-line default == spi_hd_4 below.")),
     'spi_hd_1',
     'spi_hd_2',
-    pytest.param('spi_hd_4', marks=pytest.mark.retired(
-        "Explicit 4-line == default; covered by test_api_exerciser[spi_hd].")),
+    'spi_hd_4',
 ]
+
+# High nibble of the SPI-HD command byte = its line mode
+# (IDF spi_ll_get_slave_hd_command): 0x0_ 1-line, 0x5_ DIO, 0xA_ QIO.
+_CMD_MODE = {'1': '0', '2': '5', '4': 'A'}
+_EMU_SPI_TRACE = 'info,esp_emu::periph::esp32p4::gpspi_master=trace'
 
 
 @pytest.mark.system
 @pytest.mark.parametrize('transport', _HD_RPC_MODES)
-def test_spi_hd_rpc_roundtrip(bench, transport):
+def test_spi_hd_rpc_roundtrip(bench, transport, substrate, lab_tmp, monkeypatch):
     """A control-plane RPC (sys_fw_version) round-trips over SPI-HD: the request
-    leaves the host (WRDMA) and the CP's response returns (RDDMA). Unique
-    coverage = the 1-/2-line data-line configs (4-line is the exerciser's)."""
+    leaves the host (WRDMA) and the CP's response returns (RDDMA). The host
+    must settle on this build's line count once, and keep using it."""
+    lines = transport.rsplit('_', 1)[1] if transport != 'spi_hd' else '4'
+    emu = substrate.startswith('emu')
+    if emu:
+        monkeypatch.setenv('RUST_LOG', _EMU_SPI_TRACE)
     b = bench(EXAMPLE, 'mcu_host', transport, timeout='150s')
     host = b['host']
-    r = eh_test_expect(host, r'EH api_exerciser ready', fail=FAIL, timeout=120)
+    # Only a change is logged: 1-line never switches; 2/4-line switch once.
+    # Any other count, or a second switch, is a wrong or stale value.
+    if lines != '1':
+        r = eh_test_expect(host, rf'SPI-HD data lines: {lines} ',
+                           fail=FAIL + [rf'SPI-HD data lines: (?!{lines} )\d'],
+                           timeout=120)
+        assert r.ok, f'[{transport}] data-line switch to {lines}: {r.matched}'
+    settled = FAIL + [r'SPI-HD data lines: \d']
+    r = eh_test_expect(host, r'EH api_exerciser ready', fail=settled, timeout=120)
     assert r.ok, f'[{transport}] ready: {r.matched}'
     host.write('sys_fw_version')
     r = eh_test_expect(host, r'EH rc=0 cmd=sys_fw_version ver=\d+\.\d+\.\d+',
-                       fail=FAIL, timeout=20)
+                       fail=settled, timeout=20)
     assert r.ok, f'[{transport}] sys_fw_version round-trip: {r.matched}'
+
+    if emu:
+        # The RPC just ran: the latest transfers must all be in this line mode.
+        time.sleep(1)
+        log = (lab_tmp / f'host_{transport}.log').read_text(errors='replace')
+        cmds = re.findall(r'GPSPI2 master: xfer .*?cmd=0x([0-9A-F]{2})', log)[-10:]
+        assert cmds, f'[{transport}] no SPI master trace captured'
+        bad = [c for c in cmds if c[0] != _CMD_MODE[lines]]
+        assert not bad, (f'[{transport}] transfers not in {lines}-line mode: '
+                         f'cmd bytes {cmds}')
