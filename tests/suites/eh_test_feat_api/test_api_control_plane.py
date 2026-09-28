@@ -98,7 +98,7 @@ def _roundtrip(host, t, get_cmd, field, set_fmt, v1, v2):
 @pytest.mark.system
 @pytest.mark.parametrize('transport', [
     pytest.param('sdio', marks=pytest.mark.sanity),  # sanity: full RPC sweep on the reliable wire
-    'uart', 'spi_hd', 'spi_fd',
+    'sdio_1', 'uart', 'spi_hd', 'spi_fd',
 ])
 @pytest.mark.second_chance
 @pytest.mark.xdist_group("emu_heavy")  # serialize: spi_fd RPC stalls if the emu is CPU-starved under parallel load

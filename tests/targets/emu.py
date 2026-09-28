@@ -124,7 +124,7 @@ class EmuTarget(BenchProvider):
     # The emulator provides both wires, models the wake path (net stimulus), and
     # models CP GPIO (so GPIO reads back what was driven). It does NOT model
     # external-coex wiring, so coex config ops are drivable-only.
-    transports = frozenset({"sdio", "uart", "spi_fd",
+    transports = frozenset({"sdio", "sdio_1", "uart", "spi_fd",
                             "spi_hd", "spi_hd_1", "spi_hd_2", "spi_hd_4"})
     caps = frozenset({CAP_WAKE, CAP_GPIO_LOOPBACK, "wifi_ap",
                       CAP_WIFI_ITWT})  # emu CP = C6 (HE)
@@ -176,9 +176,10 @@ class EmuTarget(BenchProvider):
         elif uart:
             cp_ovl = ["CONFIG_EH_TRANSPORT_CP_UART=y"]
             host_bus_ovl = ["CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART=y"]
-        else:  # sdio
+        else:  # sdio (4-bit) or sdio_1 (1-bit host bus; the CP follows the host)
             cp_ovl = []
-            host_bus_ovl = []
+            host_bus_ovl = (["CONFIG_ESP_HOSTED_HOST_SDIO_BUS_WIDTH_1=y"]
+                            if transport == "sdio_1" else [])
         # Host also builds for the P4-C6 Function-EV board so its GPIOs (reset, SPI
         # signals) match the CP's FUNC_BOARD pinout; else the two sides disagree.
         host_board_ovl = (["CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y"]

@@ -210,7 +210,8 @@ def _transport_overlays(transport):
     real-HW build. sdio is the neutral default (no overlay). SPI/SPI-HD only
     select the bus — the board symbol (in *_board_ovl) supplies the pins/reset
     (host/Kconfig.ext defines them per board + CP target). spi_hd_{1,2,4}
-    additionally pin the data-line count on both ends. Kept in lockstep with
+    additionally pin the data-line count on both ends; sdio_1 pins the host's
+    SDIO bus to 1-bit. Kept in lockstep with
     tests/targets/emu.py so hw and emu build identical configs."""
     if transport == "uart":
         return (["CONFIG_EH_TRANSPORT_CP_UART=y"],
@@ -227,6 +228,8 @@ def _transport_overlays(transport):
             cp.append(f"CONFIG_EH_TRANSPORT_CP_SPI_HD_{suffix}=y")
             host.append(f"CONFIG_ESP_HOSTED_HOST_SPI_HD_{suffix}=y")
         return (cp, host)
+    if transport == "sdio_1":
+        return ([], ["CONFIG_ESP_HOSTED_HOST_SDIO_BUS_WIDTH_1=y"])
     return ([], [])  # sdio
 
 
