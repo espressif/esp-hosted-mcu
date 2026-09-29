@@ -27,6 +27,10 @@ menu "Configure host"
 
 	choice ESP_HOSTED_CP_TARGET
 		bool "Paired coprocessor (other side of bus)"
+		help
+			The Wi-Fi co-processor (ESP32, ESP32-S and ESP32-C series) is set by Wi-Fi Remote
+			and consumed here. You can change it, go to
+			Component config -> Wi-Fi Remote -> choose slave target (SLAVE_IDF_TARGET_ESP32XX)
 
 		default ESP_HOSTED_CP_TARGET_ESP32   if SLAVE_IDF_TARGET_ESP32
 		default ESP_HOSTED_CP_TARGET_ESP32S2 if SLAVE_IDF_TARGET_ESP32S2
@@ -63,6 +67,11 @@ menu "Configure host"
 			depends on SLAVE_IDF_TARGET_ESP32C61 || !ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE
 			bool "ESP32-C61"
 
+		comment "<<< Hint: To change to different Wi-Fi co-processor -"
+			depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE
+		comment "          'Component config -> Wi-Fi Remote' => 'choose slave target' >>>"
+			depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE
+
 		# BT-only — no Wi-Fi Remote dep.
 		config ESP_HOSTED_CP_TARGET_ESP32H2
 			bool "ESP32-H2"
@@ -70,8 +79,11 @@ menu "Configure host"
 			bool "ESP32-H4"
 	endchoice
 
-	# Show warning only when Wi-Fi Remote target symbols exist and mismatch
-	# the ESP-Hosted CP target selection.
+	comment "<<< Suggestion: ESP32-H2/H4 have no Wi-Fi: Disable Wi-Fi Remote using -"
+		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && (ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4)
+	comment "            Component config -> Wi-Fi Remote -> Enable Wi-Fi Remote component >>>"
+		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && (ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4)
+
 	comment "Conflict: Wi-Fi Remote SLAVE_IDF_TARGET differs from ESP-Hosted CP target"
 		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && ( \
 			(ESP_HOSTED_CP_TARGET_ESP32   && !SLAVE_IDF_TARGET_ESP32)   || \
@@ -81,9 +93,7 @@ menu "Configure host"
 			(ESP_HOSTED_CP_TARGET_ESP32C3 && !SLAVE_IDF_TARGET_ESP32C3) || \
 			(ESP_HOSTED_CP_TARGET_ESP32C5 && !SLAVE_IDF_TARGET_ESP32C5) || \
 			(ESP_HOSTED_CP_TARGET_ESP32C6 && !SLAVE_IDF_TARGET_ESP32C6) || \
-			(ESP_HOSTED_CP_TARGET_ESP32C61 && !SLAVE_IDF_TARGET_ESP32C61) || \
-			(ESP_HOSTED_CP_TARGET_ESP32H2) || \
-			(ESP_HOSTED_CP_TARGET_ESP32H4) )
+			(ESP_HOSTED_CP_TARGET_ESP32C61 && !SLAVE_IDF_TARGET_ESP32C61) )
 
 	config ESP_HOSTED_IDF_SLAVE_TARGET
 		string

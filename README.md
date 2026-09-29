@@ -18,10 +18,6 @@ This high-level block diagram shows ESP-Hosted's relationship with the host MCU 
 The host keeps the product logic. The ESP co-processor offloads the radio and network stack over your chosen transport bus. See [Architecture](docs/architecture.md) for the details.
 
 
-#### Release tracking
-
-Releases are published to the ESP Component Registry as [`espressif/esp_hosted`](https://components.espressif.com/components/espressif/esp_hosted).
-
 #### Cloning the repo
 
 ```bash
@@ -119,7 +115,7 @@ The following guide demonstrates a **Raspberry Pi** host with an **ESP32-C5** co
 | Buses | SDIO `\|` SDIO + UART `\|` SPI `\|` SPI + UART | All |
 
 - **Get started:** Follow the [Linux Host](docs/getting-started-linux.md) guide to set up the Wi-Fi station example. It provides a step-by-step Raspberry Pi walkthrough for setup and verification.
-- Using a different Linux platform? See the [Linux Porting](docs/porting.md#linux-host-porting) guide. 
+- Using a different Linux platform? See the [Linux Porting](docs/porting.md#linux-host-porting) guide.
 
 After verifying the Wi-Fi station example, move on to the [supported examples](#5-example-layout).
 
@@ -138,6 +134,9 @@ The following guide demonstrates an **ESP32-P4** host with an **ESP32-C6** co-pr
 - **Non-ESP MCU / RTOS?** See [MCU Porting](docs/porting.md#mcu-host-porting) guide.
 
 After verifying the Wi-Fi station example, move on to the [supported examples](#5-example-layout).
+
+> **Coming from ESP-Hosted 2.x?**
+> The old `slave/` project is now replaced by a `cp/` project in each example. Use the `cp/` from the same example as your host, or configure its features with `idf.py menuconfig` → **Component config → ESP-Hosted → Configure coprocessor → Features**.
 
 ## 5. Example Layout
 
@@ -195,7 +194,28 @@ Flash `cp/` to the ESP coprocessor, then build and run one host role (`mcu_host`
 - [MCU Transport Config](examples/system/mcu_transport_config/README.md) — configure transport pins and parameters.
 - [Memory Monitor](examples/mem_monitor/README.md) — track co-processor heap.
 
-## 6. References
+## 6. Releases and Timeline
+
+- Releases are published to the ESP Component Registry as [`espressif/esp_hosted`](https://components.espressif.com/components/espressif/esp_hosted).
+- Report 2.x.x and 3.x.x issues in the [GitHub issue tracker](https://github.com/espressif/esp-hosted-mcu/issues).
+
+### Release 3.x.x
+
+- Actively developed on the [`main`](https://github.com/espressif/esp-hosted-mcu/tree/main) branch.
+- Always use the latest release for new designs.
+
+### Release 2.x.x
+
+- Supported on the [`release/v2.x`](https://github.com/espressif/esp-hosted-mcu/tree/release/v2.x) branch.
+
+| Period              | Since 3.x.x    | 2.x.x support                                                      |
+| ------------------- | ------------ | ---------------------------------------------------------------- |
+| Jul 2026 – Jan 2027 | 0–6 months   | Bug and compatibility fixes, customer issues, selected backports |
+| Jan 2027 – Jul 2027 | 6–12 months  | Maintenance and compatibility fixes; no new features             |
+| Jul 2027 – Jul 2028 | 12–24 months | Critical and customer-blocking issues, security fixes            |
+| From Jul 2028       | 24+ months   | End of life                                                      |
+
+## 7. References
 
 ### Important links
 - [Host API Reference](docs/api-reference.md)
