@@ -521,6 +521,7 @@ static void process_capabilities(uint8_t cap)
 	ESP_LOGI(TAG, "capabilities: 0x%x",cap);
 }
 
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
 static uint32_t process_ext_capabilities(uint8_t * ptr)
 {
 	// ptr address may be not be 32-bit aligned
@@ -531,6 +532,7 @@ static uint32_t process_ext_capabilities(uint8_t * ptr)
 
 	return cap;
 }
+#endif
 
 void process_priv_communication(interface_buffer_handle_t *buf_handle)
 {
@@ -854,10 +856,17 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	uint8_t len_left = len, tag_len;
 	uint8_t *pos;
 	uint8_t raw_tp_config = H_TEST_RAW_TP_DIR;
-	uint32_t ext_cap = 0;
 	uint32_t slave_fw_version = 0;
 	uint32_t transport_size = 0;
-
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
+	uint32_t ext_cap = 0; // currently only used for SPI-HD transport
+#endif
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
+	// for backward compatibility with co-processors that don't send the ESP_PRIV_TRANS_SDIO_MODE TLV
+	uint8_t slave_sdio_mode = ESP_SDIO_MODE_PACKET;
+	uint8_t host_sdio_mode  = ESP_SDIO_MODE_UNKNOWN;
+	uint8_t slave_tx_queue_size = 0;
+#endif
 	if (!evt_buf)
 		return ESP_FAIL;
 
@@ -901,7 +910,9 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 		} else if (*pos == ESP_PRIV_CAP_EXT) {
 			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_CAP_EXT");
 			ESP_LOGI(TAG, "EVENT: %2x", *pos);
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
 			ext_cap = process_ext_capabilities(pos + 2);
+#endif
 			print_ext_capabilities(pos + 2);
 		} else if (*pos == ESP_PRIV_FIRMWARE_CHIP_ID) {
 			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_FIRMWARE_CHIP_ID");
@@ -923,6 +934,9 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 		} else if (*pos == ESP_PRIV_TX_Q_SIZE) {
 			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TX_Q_SIZE");
 			ESP_LOGD(TAG, "slave tx queue size: %u", *(pos + 2));
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
+			slave_tx_queue_size = *(pos + 2);
+#endif
 		} else if (*pos == ESP_PRIV_FIRMWARE_VERSION) {
 			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_FIRMWARE_VERSION");
 			// fw_version sent as a little-endian uint32_t
@@ -931,20 +945,15 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 		} else if (*pos == ESP_PRIV_TRANS_SDIO_MODE) {
 			CHECK_TLV_LEN(tag_len, LENGTH_1_BYTE, "ESP_PRIV_TRANS_SDIO_MODE");
 #if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
-			uint8_t slave_sdio_mode = *(pos + 2);
+			slave_sdio_mode = *(pos + 2);
 #if H_SDIO_HOST_RX_MODE == H_SDIO_HOST_STREAMING_MODE
-			uint8_t host_sdio_mode = 1;
+			host_sdio_mode = ESP_SDIO_MODE_STREAMING;
 #else
-			uint8_t host_sdio_mode = 0;
+			host_sdio_mode = ESP_SDIO_MODE_PACKET;
 #endif
 			ESP_LOGI(TAG, "SDIO mode: slave: %s, host: %s",
-					slave_sdio_mode ? "streaming" : "packet",
-					host_sdio_mode ? "streaming" : "packet");
-
-			if (slave_sdio_mode && !host_sdio_mode) {
-				ESP_LOGE(TAG, "SDIO mode mismatch: slave is in streaming mode, but host is in packet mode. Aborting.");
-				assert(0);
-			}
+					(slave_sdio_mode == ESP_SDIO_MODE_STREAMING) ? "streaming" : "packet",
+					(host_sdio_mode  == ESP_SDIO_MODE_STREAMING) ? "streaming" : "packet");
 #endif
 		} else if (*pos == ESP_PRIV_TRANSFER_SIZE) {
 			CHECK_TLV_LEN(tag_len, LENGTH_4_BYTES, "ESP_PRIV_TRANSFER_SIZE");
@@ -985,37 +994,22 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 		ESP_LOGI(TAG, "ESP board type is : %d \n\r", chip_type);
 	}
 
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SPI_HD
+	/* ext_cap is required to configure the interface on the host
+	 * should always be sent by the co-processor
+	 */
 	if (ext_cap) {
-#if H_SPI_HD_HOST_INTERFACE
-		// reconfigure SPI_HD interface based on host and slave capabilities
-		if (H_SPI_HD_HOST_NUM_DATA_LINES == 4) {
-			if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_4_DATA_LINES) {
-				ESP_LOGI(TAG, "configure SPI_HD interface to use 4 data lines");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_4_DATA_LINES);
-			} else if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_2_DATA_LINES) {
-				ESP_LOGI(TAG, "slave supports 2 data lines, downgrading from 4");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
-			} else {
-				ESP_LOGI(TAG, "slave supports 1 data line, downgrading from 4");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_1_DATA_LINE);
-			}
-		} else if (H_SPI_HD_HOST_NUM_DATA_LINES == 2) {
-			if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_4_DATA_LINES) {
-				ESP_LOGI(TAG, "slave supports 4 data lines, downgrading to 2");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
-			} else if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_2_DATA_LINES) {
-				ESP_LOGI(TAG, "configure SPI_HD interface to use 2 data lines");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
-			} else {
-				ESP_LOGI(TAG, "slave supports 1 data line, downgrading from 2");
-				g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_1_DATA_LINE);
-			}
-		} else {
-			ESP_LOGI(TAG, "configure SPI_HD interface to use 1 data line");
-			g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_1_DATA_LINE);
-		}
-#endif
+		ESP_ERROR_CHECK(bus_spi_hd_reconfigure_interface(ext_cap));
+	} else {
+		ESP_LOGE(TAG, "co-processor did not send ext_cap: SPI-HD transport configuration failed");
+		return ESP_FAIL;
 	}
+#endif
+
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
+	ESP_ERROR_CHECK(bus_sdio_check_mode(slave_sdio_mode));
+	ESP_ERROR_CHECK(bus_sdio_set_rx_buffer_size(slave_tx_queue_size, slave_sdio_mode));
+#endif // H_TRANSPORT_IN_USE == H_TRANSPORT_SDIO
 
 	transport_driver_event_handler(TRANSPORT_TX_ACTIVE);
 

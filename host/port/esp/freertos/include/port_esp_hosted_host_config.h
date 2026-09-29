@@ -290,6 +290,12 @@ enum {
     #define H_SDIO_HOST_RX_MODE H_SDIO_OPTIMIZATION_RX_NONE
   #endif
 
+  #ifdef CONFIG_ESP_HOSTED_SDIO_RX_DOUBLE_BUFFERING
+    #define H_SDIO_RX_DOUBLE_BUFFERING 1
+  #else
+    #define H_SDIO_RX_DOUBLE_BUFFERING 0
+  #endif
+
   // Pad transfer len for host operation
   #define H_SDIO_TX_LEN_TO_TRANSFER(x) ((x + 3) & (~3))
   #define H_SDIO_RX_LEN_TO_TRANSFER(x) ((x + 3) & (~3))

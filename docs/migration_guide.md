@@ -5,6 +5,28 @@ This migration guide documents key changes in ESP-Hosted that users must be awar
 2. [2.6.0 - ESP-Hosted Slave OTA](#coloryellow-text260---esp-hosted-slave-ota)
 3. [2.11.0 - ESP-Hosted Host Driver](#coloryellow-text2110---esp-hosted-host-driver)
 4. [2.12.4 - Custom Msg Callback - User Ptr](#coloryellow-text2124---custom-msg-callback---user-ptr)
+5. [Unreleased - Pre-allocation of SDIO Rx buffers on host](#coloryellow-textunreleased---pre-allocation-of-sdio-rx-buffers-on-host)
+
+# $${\color{yellow} \text{Unreleased - Pre-allocation of SDIO Rx buffers on host}}$$
+
+Previously, when using SDIO Streaming mode, the Host would allocate Rx buffers big enough to hold the received data during run-time. This can lead to failed allocations if heap space is tight on the host.
+
+Now, ESP-Hosted pre-allocates the Rx buffer during init (based on the number of Tx buffers configured on the co-processor), so there should be no read failures due to failed allocations during run-time. Double buffering can also be disabled to reduce heap memory required.
+
+Summary of change, with co-processor configured with 20 Tx buffers (the default):
+
+**Before**: buffers grow on demand, growing to a maximum of (20 * 1536) * 2 = 60 KB. May encounter issues if memory cannot be allocated.
+
+**After**: 60 KB with double buffering, 30 KB without double buffering pre-allocated. No further memory allocations required.
+
+> [!NOTE]
+> ESP-Hosted will still do run-time allocation of the Rx buffer if the number of Tx buffers configured on the co-processor is not known. This can happen if the co-processor is an older version that does not send that information. A warning will be emitted if this happens. In this condition, ESP-Hosted memory allocation attempt can still fail, resulting in a stuck system.
+
+To reduce memory usage:
+
+1. Reduce the number of SDIO Tx buffers on the co-processor
+2. Disable double buffering (can lower peak performance). See [Reducing heap usage further](sdio.md#reducing-heap-usage-further-and-preventing-allocation-issues-on-the-host) for more information.
+3. Switch to Packet Mode. This uses the host Rx Queue Mempool directly and does not allocate additional memory.
 
 # $${\color{yellow} \text{2.12.4 - Custom Msg Callback - User Ptr}}$$
 
