@@ -23,6 +23,9 @@
 #include "sdmmc_cmd.h"
 #include "soc/sdmmc_pins.h"
 #include "hal/sdmmc_ll.h"
+#if EH_HOST_PORT_SDIO_PWR_CTRL_LDO
+#include "sd_pwr_ctrl_by_on_chip_ldo.h"
+#endif
 
 static const char *TAG = "eh_host_port_sdio";
 
@@ -45,6 +48,10 @@ static const char *TAG = "eh_host_port_sdio";
 typedef struct  {
 	sdmmc_card_t *card;
 	struct eh_host_sdio_config config;
+#if EH_HOST_PORT_SDIO_PWR_CTRL_LDO
+	/* Created once: the LDO channel stays acquired across card init retries */
+	sd_pwr_ctrl_handle_t pwr_ctrl_handle;
+#endif
 } sdmmc_context_t;
 
 static sdmmc_context_t s_sdmmc_context = { 0 };
@@ -68,21 +75,25 @@ static void eh_host_port_sdio_workaround(int slot, sdmmc_slot_config_t *slot_con
 	}
 }
 
-static bool eh_host_port_sdio_enable_ldo(sdmmc_host_t *config)
+static bool eh_host_port_sdio_enable_ldo(sdmmc_context_t *context, sdmmc_host_t *config)
 {
 #if EH_HOST_PORT_SDIO_PWR_CTRL_LDO
 	// enable LDO Power for slot, if required
-	sd_pwr_ctrl_ldo_config_t ldo_config = {
-		.ldo_chan_id = EH_HOST_PORT_SDIO_PWR_CTRL_LDO_ID,
-	};
-	sd_pwr_ctrl_handle_t pwr_ctrl_handle = NULL;
+	if (!context->pwr_ctrl_handle) {
+		sd_pwr_ctrl_ldo_config_t ldo_config = {
+			.ldo_chan_id = EH_HOST_PORT_SDIO_PWR_CTRL_LDO_ID,
+		};
 
-	esp_err_t ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &pwr_ctrl_handle);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to create a new on-chip LDO power control driver");
-		return false;
+		esp_err_t ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &context->pwr_ctrl_handle);
+		if (ret != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to create a new on-chip LDO power control driver");
+			context->pwr_ctrl_handle = NULL;
+			return false;
+		}
 	}
-	config->pwr_ctrl_handle = pwr_ctrl_handle;
+	config->pwr_ctrl_handle = context->pwr_ctrl_handle;
+#else
+	(void)context;
 #endif
 	return true;
 }
@@ -309,6 +320,13 @@ int eh_host_port_sdio_deinit(void* ctx)
 	sdmmc_host_deinit();
 #endif
 
+#if EH_HOST_PORT_SDIO_PWR_CTRL_LDO
+	if (context->pwr_ctrl_handle) {
+		sd_pwr_ctrl_del_on_chip_ldo(context->pwr_ctrl_handle);
+		context->pwr_ctrl_handle = NULL;
+	}
+#endif
+
 	return ESP_OK;
 }
 
@@ -409,7 +427,7 @@ int eh_host_port_sdio_card_init(void *ctx, bool show_config)
 	sdmmc_host_t config = SDMMC_HOST_DEFAULT();
 	config.slot = sdio_config->slot; // override default slot set
 
-	if (!eh_host_port_sdio_enable_ldo(&config)) {
+	if (!eh_host_port_sdio_enable_ldo(context, &config)) {
 		goto fail;
 	}
 

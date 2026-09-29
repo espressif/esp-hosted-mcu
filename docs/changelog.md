@@ -1,5 +1,7 @@
 # Unreleased
 
+- host/sdio: card init retries no longer fail with `can't acquire the channel` on the on-chip LDO
+
 # Releases
 
 # $${\color{green} \text{3.0.9}}$$
