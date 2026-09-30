@@ -1,6 +1,10 @@
 # Unreleased
 
 - host/sdio: card init retries no longer fail with `can't acquire the channel` on the on-chip LDO
+- host/sdio: 1-bit SDIO host builds work again ([#245](https://github.com/espressif/esp-hosted-mcu/issues/245))
+- host/spi_hd: 2-line and 4-line builds now use 2/4 data lines; before, every transfer ran on 1 line
+- spi_hd: 1-line mode uses D0 only, as in 2.x; the co-processor needs ESP-IDF v6.0.3 / v6.1 or later
+- cp: the GPIO expander no longer touches the transport reset pin; SDIO speed and timing options now take effect
 
 # Releases
 
