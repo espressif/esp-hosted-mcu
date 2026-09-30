@@ -39,7 +39,11 @@ def test_ota_littlefs(bench, transport):
     logs no intermediate progress and UART is ~140s — and even that is scoped tight on
     the fast wires so a stall there fails in 60s (not 240s) off UART."""
     b = bench(EX, 'mcu_host', transport, timeout='300s',
-              overlay=['CONFIG_OTA_METHOD_LITTLEFS=y'],
+              # Host and staged CP image share one version, so the example's
+              # version gates would skip the OTA under test.
+              overlay=['CONFIG_OTA_METHOD_LITTLEFS=y',
+                       'CONFIG_OTA_VERSION_CHECK_HOST_SLAVE=n',
+                       'CONFIG_OTA_VERSION_CHECK_SLAVEFW_SLAVE=n'],
               cp_app_to_host='components/ota_littlefs/slave_fw_bin/cp_app.bin')
     host = b['host']
     # 1. host-side hosted link up

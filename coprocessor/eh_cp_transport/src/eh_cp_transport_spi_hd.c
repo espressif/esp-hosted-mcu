@@ -44,7 +44,6 @@ static const char TAG[] = "SPI_HD_DRIVER";
  * Mirrors upstream MCU's per-transport show_configuration() pattern. */
 static void show_config(void)
 {
-#if EH_CP_SPI_HD_NUM_DATA_LINES == 4
 	ESP_LOGI(TAG, "transport[cp]: SPI_HD %d-line mode=%d q=%d "
 		"CLK=%d CS=%d D0=%d D1=%d D2=%d D3=%d DATA_READY=%d",
 		(int)EH_CP_SPI_HD_NUM_DATA_LINES, (int)EH_CP_SPI_HD_MODE,
@@ -53,30 +52,22 @@ static void show_config(void)
 		(int)EH_CP_SPI_HD_PIN_D0,  (int)EH_CP_SPI_HD_PIN_D1,
 		(int)EH_CP_SPI_HD_PIN_D2,  (int)EH_CP_SPI_HD_PIN_D3,
 		(int)EH_CP_SPI_HD_PIN_DATA_READY);
-#else
-	ESP_LOGI(TAG, "transport[cp]: SPI_HD %d-line mode=%d q=%d "
-		"CLK=%d CS=%d D0=%d D1=%d DATA_READY=%d",
-		(int)EH_CP_SPI_HD_NUM_DATA_LINES, (int)EH_CP_SPI_HD_MODE,
-		(int)EH_CP_SPI_HD_Q_SIZE,
-		(int)EH_CP_SPI_HD_PIN_CLK, (int)EH_CP_SPI_HD_PIN_CS,
-		(int)EH_CP_SPI_HD_PIN_D0,  (int)EH_CP_SPI_HD_PIN_D1,
-		(int)EH_CP_SPI_HD_PIN_DATA_READY);
-#endif
 }
 
 /* SPI HD settings */
-#define NUM_DATA_BITS              CONFIG_EH_TRANSPORT_CP_SPI_HD_NUM_DATA_LINES
+#define NUM_DATA_BITS              EH_CP_SPI_HD_NUM_DATA_LINES
+#if (NUM_DATA_BITS == 1) && !defined(SPI_SLAVE_HD_3WIRE_MODE)
+#error "SPI-HD 1 data line needs ESP-IDF v6.0.3, v6.1 or later (SPI_SLAVE_HD_3WIRE_MODE)"
+#endif
 
 #define ESP_SPI_HD_MODE            CONFIG_EH_TRANSPORT_CP_SPI_HD_MODE_VALUE
-#define GPIO_CS                    CONFIG_EH_TRANSPORT_CP_SPI_HD_GPIO_CS
-#define GPIO_SCLK                  CONFIG_EH_TRANSPORT_CP_SPI_HD_GPIO_CLK
-#define GPIO_D0                    CONFIG_EH_TRANSPORT_CP_SPI_HD_GPIO_D0
-#define GPIO_D1                    CONFIG_EH_TRANSPORT_CP_SPI_HD_GPIO_D1
-#if (NUM_DATA_BITS == 4)
-#define GPIO_D2                    CONFIG_EH_TRANSPORT_CP_SPI_HD_GPIO_D2
-#define GPIO_D3                    CONFIG_EH_TRANSPORT_CP_SPI_HD_GPIO_D3
-#endif
-#define GPIO_DATA_READY            CONFIG_EH_TRANSPORT_CP_SPI_HD_GPIO_DATA_READY
+#define GPIO_CS                    EH_CP_SPI_HD_PIN_CS
+#define GPIO_SCLK                  EH_CP_SPI_HD_PIN_CLK
+#define GPIO_D0                    EH_CP_SPI_HD_PIN_D0
+#define GPIO_D1                    EH_CP_SPI_HD_PIN_D1
+#define GPIO_D2                    EH_CP_SPI_HD_PIN_D2
+#define GPIO_D3                    EH_CP_SPI_HD_PIN_D3
+#define GPIO_DATA_READY            EH_CP_SPI_HD_PIN_DATA_READY
 
 #define TX_MEMPOOL_NUM_BLOCKS      CONFIG_EH_TRANSPORT_CP_SPI_HD_Q_SIZE
 #define RX_MEMPOOL_NUM_BLOCKS      CONFIG_EH_TRANSPORT_CP_SPI_HD_Q_SIZE
@@ -381,13 +372,8 @@ static void esp_spi_hd_get_bus_cfg(spi_bus_config_t * bus_cfg)
 {
 	bus_cfg->data0_io_num = GPIO_D0;
 	bus_cfg->data1_io_num = GPIO_D1;
-#if (NUM_DATA_BITS == 4)
 	bus_cfg->data2_io_num = GPIO_D2;
 	bus_cfg->data3_io_num = GPIO_D3;
-#else
-	bus_cfg->data2_io_num = -1;
-	bus_cfg->data3_io_num = -1;
-#endif
 	/* bus_cfg is an uninitialized stack struct; octal signals must be marked
 	 * unused or spi_bus_initialize validates garbage GPIOs on S3/P4. */
 	bus_cfg->data4_io_num = -1;
@@ -401,7 +387,7 @@ static void esp_spi_hd_get_bus_cfg(spi_bus_config_t * bus_cfg)
 #elif (NUM_DATA_BITS == 2)
 	bus_cfg->flags = SPICOMMON_BUSFLAG_DUAL;
 #else
-	bus_cfg->flags = 0; /* 1-line: D0/D1 as MOSI/MISO, base command set */
+	bus_cfg->flags = 0;
 #endif
 	bus_cfg->intr_flags = 0;
 }
@@ -409,7 +395,11 @@ static void esp_spi_hd_get_bus_cfg(spi_bus_config_t * bus_cfg)
 static void esp_spi_hd_get_slot_cfg(spi_slave_hd_slot_config_t * slot_cfg)
 {
 	slot_cfg->spics_io_num = GPIO_CS;
+#if (NUM_DATA_BITS == 1)
+	slot_cfg->flags = SPI_SLAVE_HD_3WIRE_MODE;
+#else
 	slot_cfg->flags = 0;
+#endif
 	slot_cfg->mode = ESP_SPI_HD_MODE;
 	slot_cfg->command_bits = NUM_COMMAND_BITS;
 	slot_cfg->address_bits = NUM_ADDRESS_BITS;

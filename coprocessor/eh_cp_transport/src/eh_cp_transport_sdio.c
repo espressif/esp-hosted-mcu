@@ -119,18 +119,6 @@ static const uint16_t to_host_q_depth[MAX_PRIORITY_QUEUES] = {
 #define SDIO_DRIVER_TX_QUEUE_SIZE 8     /* IDF sdio_slave driver send-queue depth */
 #endif
 
-#if CONFIG_EH_TRANSPORT_CP_SDIO_PSEND_PSAMPLE
-  #define SDIO_SLAVE_TIMING SDIO_SLAVE_TIMING_PSEND_PSAMPLE
-#elif CONFIG_EH_TRANSPORT_CP_SDIO_NSEND_PSAMPLE
-  #define SDIO_SLAVE_TIMING SDIO_SLAVE_TIMING_NSEND_PSAMPLE
-#elif CONFIG_EH_TRANSPORT_CP_SDIO_PSEND_NSAMPLE
-  #define SDIO_SLAVE_TIMING SDIO_SLAVE_TIMING_PSEND_NSAMPLE
-#elif CONFIG_EH_TRANSPORT_CP_SDIO_NSEND_NSAMPLE
-  #define SDIO_SLAVE_TIMING SDIO_SLAVE_TIMING_NSEND_NSAMPLE
-#else
-  #error No SDIO Slave Timing configured
-#endif
-
 /* ===================== state ===================== */
 static const char *TAG = "SDIO_SLAVE";
 interface_context_t context;
@@ -826,7 +814,12 @@ static interface_handle_t *sdio_init(void)
 		.send_queue_size  = SDIO_DRIVER_TX_QUEUE_SIZE,
 		.recv_buffer_size = sdio_rx_buf_size,
 		.event_cb         = event_cb,
-		/* .flags and .timing left at default (0) on C5 */
+#if EH_CP_SDIO_HIGH_SPEED
+		.flags            = SDIO_SLAVE_FLAG_HIGH_SPEED,
+#else
+		.flags            = SDIO_SLAVE_FLAG_DEFAULT_SPEED,
+#endif
+		.timing           = EH_CP_SDIO_TIMING,
 	};
 
 	ret = sdio_slave_initialize(&config);

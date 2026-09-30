@@ -1,7 +1,7 @@
 # ESP-IDF patches
 
 ESP-Hosted applies a small patch on top of the pinned ESP-IDF (currently
-`v5.5.4`; see `IDF_DEFAULT_REF` in `tools/eh.py`) when required.
+`v6.1`; see `IDF_DEFAULT_REF` in `tools/eh.py`) when required.
 
 The patch is applied automatically by `eh.py install` or can be applied
 manually using `eh.py patch-idf`.
@@ -15,6 +15,7 @@ The SDIO fix is already present in the following ESP-IDF releases:
 - `v5.3` – `v5.3.4`
 - `v5.4`, `v5.4.2`, `v5.4.3`
 - `v5.5`, `v5.5.1`, `v5.5.2`
+- `v6.1`
 - `master`
 
 If you are using one of these versions (or any later release containing the

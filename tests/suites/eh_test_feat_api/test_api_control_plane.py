@@ -38,6 +38,11 @@ def _ready(bench, t, wake=False):
     # wake=True asks the factory for a net-provisioned bench (emu: --net + the
     # `myssid` softap, caps gains `wifi_ap`) so a STA can actually associate.
     b = bench(EX, 'mcu_host', t, timeout='120s', wake=wake)
+    if t == 'spi_hd':
+        # Default build is 4-line; the host must switch up once the CP caps land.
+        r = eh_test_expect(b['host'], r'SPI-HD data lines: 4 ',
+                           fail=FAIL + [r'SPI-HD data lines: [12] '], timeout=60)
+        assert r.ok, f'[{t}] data-line switch: {r.matched}'
     r = eh_test_expect(b['host'], r'EH api_exerciser ready', fail=FAIL, timeout=60)
     assert r.ok, f'[{t}] ready: {r.matched}'
     return b['host'], b['caps']
@@ -98,7 +103,7 @@ def _roundtrip(host, t, get_cmd, field, set_fmt, v1, v2):
 @pytest.mark.system
 @pytest.mark.parametrize('transport', [
     pytest.param('sdio', marks=pytest.mark.sanity),  # sanity: full RPC sweep on the reliable wire
-    'uart', 'spi_hd', 'spi_fd',
+    'sdio_1', 'uart', 'spi_hd', 'spi_fd',
 ])
 @pytest.mark.second_chance
 @pytest.mark.xdist_group("emu_heavy")  # serialize: spi_fd RPC stalls if the emu is CPU-starved under parallel load
