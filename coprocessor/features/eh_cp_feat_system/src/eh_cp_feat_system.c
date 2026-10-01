@@ -13,6 +13,7 @@
 #include "esp_log.h"
 #include "esp_event.h"
 #include "eh_cp_core.h"
+#include "eh_cp_host_ps_state.h"
 #include "eh_common_caps.h"
 #include "eh_cp_feat_system.h"
 #include "eh_cp_feat_system_event.h"
@@ -49,6 +50,10 @@ EH_CP_FEAT_REGISTER(eh_cp_feat_system_init,
 static void heartbeat_timer_cb(TimerHandle_t xTimer)
 {
 	(void)xTimer;
+	/* Skip while the host sleeps: the heartbeat would wake it. */
+	if (!eh_cp_host_ps_reachable()) {
+		return;
+	}
 	esp_event_post(EH_CP_FEAT_SYSTEM_EVENT,
 		       EH_CP_FEAT_SYSTEM_EVT_HEARTBEAT,
 		       NULL,

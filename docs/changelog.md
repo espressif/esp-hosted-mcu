@@ -6,6 +6,7 @@
 - spi_hd: 1-line mode uses D0 only, as in 2.x; the co-processor needs ESP-IDF v6.0.3 / v6.1 or later
 - cp: the GPIO expander no longer touches the transport reset pin; SDIO speed and timing options now take effect
 - bt (co-processor): drop `ESP_HOSTED_CP_BT_STACK_ENABLED`; a BT host stack on the co-processor now needs `ESP_HOSTED_CP_FEAT_BT=n`
+- cp/heartbeat: no heartbeat while the host is in power save, so it no longer wakes the host every interval
 
 # Releases
 
