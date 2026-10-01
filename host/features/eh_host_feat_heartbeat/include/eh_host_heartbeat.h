@@ -14,6 +14,7 @@
 extern "C" {
 #endif
 
+/* duration_sec is clamped to 10..3600 s; skipped while the host is in power save. */
 esp_err_t eh_host_heartbeat_configure(bool enable, int duration_sec);
 
 esp_err_t eh_host_heartbeat_register_event_handlers(void);
