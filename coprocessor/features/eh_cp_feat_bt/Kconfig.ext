@@ -7,8 +7,11 @@ menuconfig ESP_HOSTED_CP_FEAT_BT
 
 if ESP_HOSTED_CP_FEAT_BT
 
+	comment "⚠️  BT host stack is built on the coprocessor: the app owns BT, hosted BT is off"
+		depends on BT_ENABLED && !BT_CONTROLLER_ONLY
+
 	comment "⚠️  Enable [✓] ESP_HOSTED_CP_BT_ENABLED (Component config → ESP-Hosted CP)"
-		depends on !ESP_HOSTED_CP_BT_ENABLED
+		depends on !ESP_HOSTED_CP_BT_ENABLED && !(BT_ENABLED && !BT_CONTROLLER_ONLY)
 
 	config ESP_HOSTED_CP_FEAT_BT_READY
 		bool

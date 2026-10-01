@@ -1,17 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 //
 //
 #ifndef EH_CP_FEAT_BT_CORE_H
@@ -25,28 +16,7 @@
 #error "Bluetooth is enabled but this chip has no Bluetooth (CONFIG_SOC_BT_SUPPORTED is unset). Disable Bluetooth for this target."
 #endif
 
-#if defined(CONFIG_BT_ENABLED) && !defined(CONFIG_BT_CONTROLLER_ONLY) && !EH_CP_BT_STACK_ENABLED
-#error "BT Host is enabled. This consumes memory and is not needed by ESP-Hosted. Only BT Controller is sufficient."
-#error "============================================================================="
-#error "Option 1) Disable the BT Host stack (keep only the controller) — idf.py menuconfig:"
-#error "         Component config"
-#error "          └─ Bluetooth"
-#error "             └─ Host  ->  Disabled"
-#error "============================================================================="
-#error "Option 2) Handle Bluetooth yourself on the co-processor — enable"
-#error "         CONFIG_ESP_HOSTED_CP_BT_STACK_ENABLED via idf.py menuconfig:"
-#error "         Component config"
-#error "          └─ ESP-Hosted"
-#error "             └─ Configure coprocessor"
-#error "                └─ CP core"
-#error "                   └─ Core: Debug & Misc"
-#error "                      └─ Enable BT stack: Advanced option: Handle bluetooth on your own at coprocessor"
-#error "============================================================================="
-#endif
-
-
 #if EH_CP_FEAT_BT_READY
-
 
 #include "esp_bt.h"
 #ifdef CONFIG_BT_HCI_UART_NO

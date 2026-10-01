@@ -5,6 +5,17 @@ endif()
 
 add_subdirectory(eh_cp_transport ${CMAKE_BINARY_DIR}/eh_cp_transport)
 
+# Hosted BT needs the controller to itself, and _READY drops the feature
+# silently when a BT host stack is built here. Fail instead of building a CP
+# that drops every HCI frame from the host.
+if(CONFIG_ESP_HOSTED_CP_FEAT_BT AND CONFIG_BT_ENABLED AND NOT CONFIG_BT_CONTROLLER_ONLY)
+    message(FATAL_ERROR
+        "ESP_HOSTED_CP_FEAT_BT is enabled, but a BT host stack is built on the coprocessor.\n"
+        "Choose one:\n"
+        "  1) Hosted BT: Component config -> Bluetooth -> Host -> Disabled (controller only).\n"
+        "  2) Coprocessor app owns BT: set ESP_HOSTED_CP_FEAT_BT=n.")
+endif()
+
 foreach(pair
         rpc host_ps system nw_split cli peer_data
         rpc_ext_v1 rpc_ext_v2

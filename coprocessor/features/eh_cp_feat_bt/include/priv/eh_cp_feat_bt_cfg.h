@@ -11,13 +11,6 @@
 
 #include "eh_cp_master_config.h"
 
-/* BT stack */
-#ifdef CONFIG_ESP_HOSTED_CP_BT_STACK_ENABLED
-#  define EH_CP_BT_STACK_ENABLED                1
-#else
-#  define EH_CP_BT_STACK_ENABLED                0
-#endif
-
 /* UART — ESP32 */
 #ifdef CONFIG_ESP_HOSTED_BT_UART_TX_PIN_ESP32
 #  define EH_CP_BT_UART_TX_PIN_ESP32            CONFIG_ESP_HOSTED_BT_UART_TX_PIN_ESP32

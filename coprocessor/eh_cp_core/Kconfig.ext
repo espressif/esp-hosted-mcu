@@ -280,20 +280,15 @@ menu "CP core"
 
 		endmenu  # ESP-Hosted-CP Debugging
 
-		# Bluetooth stack configuration
-		if ESP_HOSTED_CP && BT_ENABLED && !BT_CONTROLLER_ONLY
-			config ESP_HOSTED_CP_BT_STACK_ENABLED
-				bool "Enable BT stack: Advanced option: Handle bluetooth on your own at coprocessor"
-				default n
-				help
-					Enable this option to handle bluetooth manually at the coprocessor.
-					WARN: Host cannot use bluetooth in coprocessor mode, if this is enabled
-		endif
-
 		config ESP_HOSTED_CP_BT_ENABLED
 			bool "Enable Bluetooth on coprocessor"
-			default y if BT_ENABLED && !ESP_HOSTED_CP_BT_STACK_ENABLED && SOC_BT_SUPPORTED
+			depends on !BT_ENABLED || BT_CONTROLLER_ONLY
+			default y if BT_ENABLED && SOC_BT_SUPPORTED
 			default n
+			help
+				Hands the BT controller to the host. Not available when a BT host
+				stack (Bluedroid or NimBLE) is built on the coprocessor: the
+				coprocessor app then owns Bluetooth.
 
 		config ESP_HOSTED_CP_AUTO_START_BT_ON_HOSTED_INIT
 			bool "Auto start Bluetooth on hosted init"
