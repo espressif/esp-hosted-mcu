@@ -16,6 +16,7 @@
 #include "eh_host.h"
 #include "eh_host_core.h"
 #include "eh_host_wifi.h"
+#include "eh_host_event.h"
 #include "eh_api_cmd.h"
 
 static const char *TAG = "api_exerciser";
@@ -33,6 +34,16 @@ static void eh_wifi_evt(void *arg, esp_event_base_t base, int32_t id, void *data
         fflush(stdout);
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         printf("EH event wifi_sta_disconnected\n");
+        fflush(stdout);
+    }
+}
+
+static void eh_host_evt(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+    (void)arg; (void)base;
+    if (id == EH_HOST_EVENT_CP_HEARTBEAT && data) {
+        printf("EH event cp_heartbeat %u\n",
+               (unsigned int)((eh_host_event_heartbeat_t *)data)->heartbeat);
         fflush(stdout);
     }
 }
@@ -56,6 +67,7 @@ void app_main(void)
     }
     /* Register before wifi_start so no STA_CONNECTED edge is missed. */
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &eh_wifi_evt, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(EH_HOST_EVENT, EH_HOST_EVENT_CP_HEARTBEAT, &eh_host_evt, NULL));
 
     if (eh_host_init(NULL) != 0) {
         ESP_LOGE(TAG, "eh_host_init failed");

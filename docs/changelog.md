@@ -7,6 +7,7 @@
 - cp: the GPIO expander no longer touches the transport reset pin; SDIO speed and timing options now take effect
 - bt (co-processor): drop `ESP_HOSTED_CP_BT_STACK_ENABLED`; a BT host stack on the co-processor now needs `ESP_HOSTED_CP_FEAT_BT=n`
 - cp/heartbeat: no heartbeat while the host is in power save, so it no longer wakes the host every interval
+- cp/heartbeat: interval is 1 s – 7 days; out-of-range is rejected, not clamped
 
 # Releases
 

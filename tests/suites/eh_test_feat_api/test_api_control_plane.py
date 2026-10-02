@@ -113,6 +113,20 @@ def test_control_plane(bench, transport, bench_gpio):
 
     # ── system ──────────────────────────────────────────────────────────
     _ok(host, t, 'sys_fw_version', r'ver=\d+\.\d+\.\d+')
+
+    # Heartbeat interval range is 1 s..7 days: outside is rejected, not
+    # clamped (2.x behaviour). A 1 s heartbeat must tick within a few seconds,
+    # which a clamp to 10 s would not.
+    for sec in (0, 604801):
+        host.write(f'sys_heartbeat 1 {sec}')
+        r = eh_test_expect(host, r'EH rc=-?[1-9]\d* cmd=sys_heartbeat', fail=FAIL, timeout=20)
+        assert r.ok, f'[{t}] sys_heartbeat {sec}s not rejected: {r.matched}'
+    _ok(host, t, 'sys_heartbeat 1 604800')
+    _ok(host, t, 'sys_heartbeat 1 1')
+    for _ in range(2):
+        r = eh_test_expect(host, r'EH event cp_heartbeat \d+', fail=FAIL, timeout=4)
+        assert r.ok, f'[{t}] no 1 s heartbeat: {r.matched}'
+    _ok(host, t, 'sys_heartbeat 0')
     _ok(host, t, 'sys_get_mac sta', r'mac=([0-9a-f]{2}:){5}[0-9a-f]{2}')
     _ok(host, t, 'sys_get_mac ap', r'mac=([0-9a-f]{2}:){5}[0-9a-f]{2}')
     # set_mac needs the iface stopped; on a started stack it may reject — assert

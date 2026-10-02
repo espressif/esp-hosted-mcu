@@ -340,8 +340,8 @@ esp_err_t enable_disable_feature(HostedFeature feature, bool enable)
 	return ret;
 }
 
-#define MIN_HEARTBEAT_INTERVAL      (10)
-#define MAX_HEARTBEAT_INTERVAL      (60*60)
+#define MIN_HEARTBEAT_INTERVAL      (1)
+#define MAX_HEARTBEAT_INTERVAL      (7*24*60*60)
 
 esp_err_t configure_heartbeat(bool enable, int hb_duration)
 {
@@ -353,10 +353,10 @@ esp_err_t configure_heartbeat(bool enable, int hb_duration)
 		stop_heartbeat();
 
 	} else {
-		if (duration < MIN_HEARTBEAT_INTERVAL)
-			duration = MIN_HEARTBEAT_INTERVAL;
-		if (duration > MAX_HEARTBEAT_INTERVAL)
-			duration = MAX_HEARTBEAT_INTERVAL;
+		if ((duration < MIN_HEARTBEAT_INTERVAL) ||
+				(duration > MAX_HEARTBEAT_INTERVAL)) {
+			return ESP_ERR_INVALID_ARG;
+		}
 
 		stop_heartbeat();
 
