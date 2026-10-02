@@ -721,6 +721,20 @@ typedef struct {
 
 /* ── raw transport throughput (mirrors kmod raw_tp_mode; CP needs
  *    CONFIG_ESP_RAW_THROUGHPUT_TRANSPORT=y) ─────────────────────────── */
+#if CONFIG_ESP_HOSTED_HOST_FEAT_HEARTBEAT_READY
+#include "eh_host_heartbeat.h"
+static int cmd_sys_heartbeat(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("usage: sys_heartbeat <0|1> [sec]\n");
+        return 0;
+    }
+    int sec = (argc >= 3) ? atoi(argv[2]) : 0;
+    eh_out_rc("sys_heartbeat", eh_host_heartbeat_configure(atoi(argv[1]) != 0, sec));
+    return 0;
+}
+#endif
+
 #if CONFIG_ESP_HOSTED_RAW_THROUGHPUT_TRANSPORT
 #include "eh_host_raw_tp_stats.h"
 static int cmd_raw_tp(int argc, char **argv)
@@ -822,6 +836,9 @@ static const eh_api_entry_t s_cmds[] = {
     { "coex_set_grant_delay",   cmd_coex_set_grant_delay,    "coex_set_grant_delay <us>" },
     { "coex_set_validate_high", cmd_coex_set_validate_high,  "coex_set_validate_high <0|1>" },
     { "coex_disable",           cmd_coex_disable,            "coex_disable" },
+#endif
+#if CONFIG_ESP_HOSTED_HOST_FEAT_HEARTBEAT_READY
+    { "sys_heartbeat",          cmd_sys_heartbeat,           "sys_heartbeat <0|1> [sec]" },
 #endif
 #if CONFIG_ESP_HOSTED_RAW_THROUGHPUT_TRANSPORT
     { "raw_tp",                 cmd_raw_tp,                  "raw_tp start tx|rx|both | raw_tp stop" },

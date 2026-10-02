@@ -29,8 +29,8 @@
 
 static const char* TAG = "mcu_sys_rpc";
 
-#define MIN_HEARTBEAT_INTERVAL      (10)
-#define MAX_HEARTBEAT_INTERVAL      (60*60)
+#define MIN_HEARTBEAT_INTERVAL      (1)
+#define MAX_HEARTBEAT_INTERVAL      (7*24*60*60)
 
 #define OTA_ACTIVATE_RESTART_TIMEOUT 2000
 
@@ -307,10 +307,10 @@ static esp_err_t configure_heartbeat(bool enable, int hb_duration)
 		eh_cp_feat_system_heartbeat_stop();
 
 	} else {
-		if (duration < MIN_HEARTBEAT_INTERVAL)
-			duration = MIN_HEARTBEAT_INTERVAL;
-		if (duration > MAX_HEARTBEAT_INTERVAL)
-			duration = MAX_HEARTBEAT_INTERVAL;
+		if ((duration < MIN_HEARTBEAT_INTERVAL) ||
+				(duration > MAX_HEARTBEAT_INTERVAL)) {
+			return ESP_ERR_INVALID_ARG;
+		}
 
 		eh_cp_feat_system_heartbeat_stop();
 		ret = eh_cp_feat_system_heartbeat_start(duration);
