@@ -65,7 +65,7 @@ target_link_options(eh_cp_core INTERFACE
     "LINKER:--undefined=__wrap_esp_event_loop_create_default"
 )
 
-if(CONFIG_ESP_WIFI_ENABLED)
+if(CONFIG_ESP_HOSTED_CP_FEAT_WIFI_READY)
     target_link_options(eh_cp_core INTERFACE
         "LINKER:--wrap=esp_netif_init"
         "LINKER:--wrap=esp_netif_create_default_wifi_sta"
