@@ -185,6 +185,13 @@ esp_err_t copy_wifi_sta_cfg_to_rpc_struct(void *payload, rpc_payload_type_t type
 	if (p_a_sta->vht_mcs8_enabled)
 		EH_CP_SET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
 #endif
+#if EH_CP_WIFI_GOT_STA_MAX_BW_NEG
+	if (p_a_sta->max_bandwidth_negotiation_enabled_2g)
+		EH_CP_SET_BIT(WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_2g_BIT, p_c_sta->he_bitmask);
+
+	if (p_a_sta->max_bandwidth_negotiation_enabled_5g)
+		EH_CP_SET_BIT(WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_5g_BIT, p_c_sta->he_bitmask);
+#endif
 
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
 #if EH_CP_WIFI_NEW_RESERVED_FIELDS

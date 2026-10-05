@@ -291,6 +291,30 @@ static bool wifi_init_config_changed(const wifi_init_config_t *new_cfg, const wi
 		changed = true;
 	}
 
+#ifdef WIFI_PRIVACY_ENHANCEMENTS_ENABLED
+	if (new_cfg->privacy_enhancements != cached_cfg->privacy_enhancements) {
+		ESP_LOGI(TAG, "WiFi init config: privacy_enhancements changed: %d -> %d",
+				cached_cfg->privacy_enhancements, new_cfg->privacy_enhancements);
+		changed = true;
+	}
+#endif
+
+#ifdef WIFI_RMAC_AUTO_RESET_INTERVAL
+	if (new_cfg->rmac_auto_reset_int != cached_cfg->rmac_auto_reset_int) {
+		ESP_LOGI(TAG, "WiFi init config: rmac_auto_reset_int changed: %u -> %u",
+				cached_cfg->rmac_auto_reset_int, new_cfg->rmac_auto_reset_int);
+		changed = true;
+	}
+#endif
+
+#ifdef WIFI_TASK_STACK_SIZE
+	if (new_cfg->wifi_task_stack_size != cached_cfg->wifi_task_stack_size) {
+		ESP_LOGI(TAG, "WiFi init config: wifi_task_stack_size changed: %d -> %d",
+				cached_cfg->wifi_task_stack_size, new_cfg->wifi_task_stack_size);
+		changed = true;
+	}
+#endif
+
 	return changed;
 }
 
@@ -409,6 +433,20 @@ static wifi_init_config_t * get_merged_init_config(wifi_init_config_t *dst_confi
 	USE_HOST_VALUE("espnow_max_encrypt",CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM, espnow_max_encrypt_num);
 	USE_HOST_VALUE("tx_hetb_queue", WIFI_TX_HETB_QUEUE_NUM, tx_hetb_queue_num);
 	USE_HOST_VALUE("dump_hesigb_enable", WIFI_DUMP_HESIGB_ENABLED, dump_hesigb_enable);
+	/* Each companion macro is defined exactly when its field exists. A host
+	 * without the field leaves its bit clear, and the CP default stays. */
+#ifdef WIFI_PRIVACY_ENHANCEMENTS_ENABLED
+	if (EH_CP_GET_BIT(WIFI_INIT_CONFIG_EXT_privacy_enhancements_BIT, src_config->ext_present_bitmask))
+		USE_HOST_VALUE_BOOL("privacy_enhance", WIFI_PRIVACY_ENHANCEMENTS_ENABLED, privacy_enhancements);
+#endif
+#ifdef WIFI_RMAC_AUTO_RESET_INTERVAL
+	if (EH_CP_GET_BIT(WIFI_INIT_CONFIG_EXT_rmac_auto_reset_int_BIT, src_config->ext_present_bitmask))
+		USE_HOST_VALUE("rmac_auto_reset_int", WIFI_RMAC_AUTO_RESET_INTERVAL, rmac_auto_reset_int);
+#endif
+#ifdef WIFI_TASK_STACK_SIZE
+	if (EH_CP_GET_BIT(WIFI_INIT_CONFIG_EXT_wifi_task_stack_size_BIT, src_config->ext_present_bitmask))
+		USE_HOST_VALUE("wifi_task_stack", WIFI_TASK_STACK_SIZE, wifi_task_stack_size);
+#endif
 	PRINT_FOOTER();
 
 	dst_config->magic = src_config->magic;
@@ -702,6 +740,10 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->vht_mu_beamformee_disabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled, p_c_sta->he_bitmask);
 		p_a_sta->vht_mcs8_enabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
 #endif
+#if EH_CP_WIFI_GOT_STA_MAX_BW_NEG
+		p_a_sta->max_bandwidth_negotiation_enabled_2g = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_2g_BIT, p_c_sta->he_bitmask);
+		p_a_sta->max_bandwidth_negotiation_enabled_5g = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_5g_BIT, p_c_sta->he_bitmask);
+#endif
 
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
 #if EH_CP_WIFI_NEW_RESERVED_FIELDS
@@ -876,6 +918,13 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 
 		if (p_a_sta->vht_mcs8_enabled)
 			EH_CP_SET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
+#endif
+#if EH_CP_WIFI_GOT_STA_MAX_BW_NEG
+		if (p_a_sta->max_bandwidth_negotiation_enabled_2g)
+			EH_CP_SET_BIT(WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_2g_BIT, p_c_sta->he_bitmask);
+
+		if (p_a_sta->max_bandwidth_negotiation_enabled_5g)
+			EH_CP_SET_BIT(WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_5g_BIT, p_c_sta->he_bitmask);
 #endif
 
 #if EH_CP_DECODE_WIFI_RESERVED_FIELD
@@ -1934,6 +1983,9 @@ esp_err_t req_wifi_scan_params(Rpc *req, Rpc *resp, void *priv_data)
 			config.scan_time.active.min = req_payload->config->scan_time->active->min;
 			config.scan_time.active.max = req_payload->config->scan_time->active->max;
 			EH_ASSIGN_NARROW(config.home_chan_dwell_time, req_payload->config->home_chan_dwell_time);
+#if EH_CP_WIFI_GOT_SCAN_MAX_OFFCHAN
+			EH_ASSIGN_NARROW(config.max_offchan_duration_ms, req_payload->config->max_offchan_duration_ms);
+#endif
 			ESP_LOGI(TAG, "rpc_wifi_scan_params_set: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu8 "]",
 				config.scan_time.passive, config.scan_time.active.min, config.scan_time.active.max, config.home_chan_dwell_time);
 			p_config = &config;
@@ -1953,6 +2005,9 @@ esp_err_t req_wifi_scan_params(Rpc *req, Rpc *resp, void *priv_data)
 		resp_payload->config->scan_time->active->min = config.scan_time.active.min;
 		resp_payload->config->scan_time->active->max = config.scan_time.active.max;
 		resp_payload->config->home_chan_dwell_time = config.home_chan_dwell_time;
+#if EH_CP_WIFI_GOT_SCAN_MAX_OFFCHAN
+		resp_payload->config->max_offchan_duration_ms = config.max_offchan_duration_ms;
+#endif
 
 		ESP_LOGI(TAG, "rpc_wifi_scan_params_get: passive [%" PRIu32 "], active_min [%" PRIu32 "], active_max [%" PRIu32 "], home_chan_dwell_time [%" PRIu8 "]",
 			config.scan_time.passive, config.scan_time.active.min, config.scan_time.active.max, config.home_chan_dwell_time);

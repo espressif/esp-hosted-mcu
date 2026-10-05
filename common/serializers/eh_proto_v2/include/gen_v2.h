@@ -1466,10 +1466,28 @@ struct  WifiInitConfig
    **< enable dump sigb field 
    */
   int32_t dump_hesigb_enable;
+  /*
+   * One bit per field below, set when the sender's wifi_init_config_t has the
+   * field. The receiver applies only the set ones and keeps its own default
+   * otherwise: a missing field would decode as 0. Bits: WIFI_INIT_CONFIG_EXT_*. 
+   */
+  uint32_t ext_present_bitmask;
+  /*
+   **< random MAC, sequence and token numbers 
+   */
+  protobuf_c_boolean privacy_enhancements;
+  /*
+   **< random MAC auto-reset interval in hours (1-24) 
+   */
+  int32_t rmac_auto_reset_int;
+  /*
+   **< Wi-Fi task stack size 
+   */
+  int32_t wifi_task_stack_size;
 };
 #define WIFI_INIT_CONFIG__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_init_config__descriptor) \
-, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  WifiCountry
@@ -1619,10 +1637,14 @@ struct  WifiScanDefaultParams
    **< Time spent at home channel between scanning consecutive channels.
    */
   uint32_t home_chan_dwell_time;
+  /*
+   **< Max accumulated off-channel scan time before returning home; 0 = IDF default 
+   */
+  uint32_t max_offchan_duration_ms;
 };
 #define WIFI_SCAN_DEFAULT_PARAMS__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&wifi_scan_default_params__descriptor) \
-, NULL, 0 }
+, NULL, 0, 0 }
 
 
 struct  WifiHeApInfo
@@ -1956,7 +1978,9 @@ struct  WifiStaConfig
    * uint32_t vht_su_beamformee_disabled: 1;                        **< Whether to disable support for operation as an VHT SU beamformee. * 
    * uint32_t vht_mu_beamformee_disabled: 1;                        **< Whether to disable support for operation as an VHT MU beamformee. * 
    * uint32_t vht_mcs8_enabled: 1;                                  **< Whether to support VHT-MCS8. The default value is 0. * 
-   * uint32_t he_reserved:19;                                       **< Reserved for future feature set * 
+   * uint32_t max_bandwidth_negotiation_enabled_2g: 1;              **< Whether to enable maximum bandwidth negotiation for the 2.4GHz band. * 
+   * uint32_t max_bandwidth_negotiation_enabled_5g: 1;              **< Whether to enable maximum bandwidth negotiation for the 5GHz band. * 
+   * uint32_t he_reserved:17;                                       **< Reserved for future feature set * 
    */
   uint32_t he_bitmask;
   /*

@@ -9,6 +9,8 @@
 
 #include "esp_idf_version.h"
 
+#include "eh_cp_idf_compat.h"
+
 #define EH_CP_SET_BIT(pos, val)         (val|=(1<<pos))
 
 #define EH_CP_GET_BIT(pos, val)         (((val) >> (pos)) & 1u)
@@ -106,12 +108,20 @@ enum {
 	WIFI_STA_CONFIG_2_vht_su_beamformee_disabled                         = 10,
 	WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled                         = 11,
 	WIFI_STA_CONFIG_2_vht_mcs8_enabled                                   = 12,
+#if EH_CP_WIFI_GOT_STA_MAX_BW_NEG
+	WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_2g_BIT           = 13,
+	WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_5g_BIT           = 14,
+	WIFI_STA_CONFIG_2_MAX_USED_BIT                                       = 15,
+#else
 	WIFI_STA_CONFIG_2_MAX_USED_BIT                                       = 13,
+#endif
 #endif
 };
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)
 #define WIFI_STA_CONFIG_2_RESERVED_BITMASK 0xFFFFFC00
+#elif EH_CP_WIFI_GOT_STA_MAX_BW_NEG
+#define WIFI_STA_CONFIG_2_RESERVED_BITMASK 0xFFFF8000
 #else
 #define WIFI_STA_CONFIG_2_RESERVED_BITMASK 0xFFFFE000
 #endif
@@ -123,6 +133,13 @@ enum {
     (num_out |= (reserved_in << WIFI_STA_CONFIG_2_MAX_USED_BIT));
 
 #endif
+
+/* WifiInitConfig.ext_present_bitmask */
+enum {
+	WIFI_INIT_CONFIG_EXT_privacy_enhancements_BIT = 0,
+	WIFI_INIT_CONFIG_EXT_rmac_auto_reset_int_BIT  = 1,
+	WIFI_INIT_CONFIG_EXT_wifi_task_stack_size_BIT = 2,
+};
 
 /* WIFI ITWT Setup Config bitmasks */
 

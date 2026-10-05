@@ -121,6 +121,10 @@ typedef struct {
     int32_t  rx_mgmt_buf_num;
     int32_t  tx_hetb_queue_num;
     int32_t  dump_hesigb_enable;
+    uint32_t ext_present_bitmask;             /* EH_HOST_WIFI_INIT_CONFIG_EXT_* */
+    bool     privacy_enhancements;
+    int32_t  rmac_auto_reset_int;
+    int32_t  wifi_task_stack_size;
 } eh_rpc_wifi_init_cfg_t;
 
 /* Req_WifiScanStart:
@@ -153,6 +157,7 @@ typedef struct {
     uint32_t active_min;
     uint32_t active_max;
     uint32_t home_chan_dwell_time;
+    uint32_t max_offchan_duration_ms;
 } eh_rpc_wifi_scan_params_t;
 
 typedef struct {
