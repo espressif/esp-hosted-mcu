@@ -843,8 +843,10 @@ static int transport_delayed_init(void)
 
 #define CHECK_TLV_LEN(tag_len, expected_len, string)                    \
     if (tag_len != expected_len) {                                      \
-        ESP_LOGE(TAG, "bad %s tag_len %u", string, tag_len);            \
-        break;                                                          \
+        ESP_LOGE(TAG, "bad %s tag_len %u, skipping", string, tag_len);  \
+        pos += (tag_len + 2);                                           \
+        len_left -= (tag_len + 2);                                      \
+        continue;                                                       \
     }
 
 static int process_init_event(uint8_t *evt_buf, uint16_t len)
