@@ -1,5 +1,6 @@
 # Unreleased - Main Branch
 
+- use `OTA_WITH_SEQUENTIAL_WRITES` instead of `OTA_SIZE_UNKNOWN` when calling `esp_ota_begin()` on the co-processor. This removes the pause at start of OTA (when erasing flash partition). This pause can range from 2 (for ESP32-C5) to 10 (ESP32-C6) seconds. For the ESP32, this pause can be more than 15 seconds, triggering an RPC call timeout, or causing the idle watchdog to trigger while erasing the flash. However, each `esp_ota_write()` now takes longer as it has to erase each flash sector before writing. Overall, OTA update using `OTA_WITH_SEQUENTIAL_WRITES` takes a few seconds longer than using `OTA_SIZE_UNKNOWN`, but the user OTA experience is 'smoother' as there is no pause at the beginning of OTA.
 - removed C99 formatting features (`%z`) not supported by Newlib Nano library
 - added support for 128 byte L2 cache line size
 
