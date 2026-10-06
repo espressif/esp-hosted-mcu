@@ -97,6 +97,7 @@ typedef struct {
 	/* Optional. Release a reader parked in read() so it returns. deinit does
 	 * this too, but the core needs it BEFORE it waits for recv_task to exit. */
 	void (*stop)(interface_handle_t *handle);
+	esp_err_t (*set_transfer_size)(size_t transfer_size);
 } if_ops_t;
 
 typedef struct {

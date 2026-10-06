@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "eh_tlv_tags.h"
+#include "eh_common_interface.h"   /* ESP_TRANSPORT_HOST_MAX_BUF_SIZE */
 #include "eh_host_mcu_transport_init_event.h"
 #include "eh_host_mcu_transport_send_caps.h"
 
@@ -59,6 +60,13 @@ int eh_host_transport_build_host_caps_pkt(uint8_t *out, size_t out_size,
     *p++ = EH_HOST_PRIV_SLV_CONFIG_THROTTLE_LOW;   evt_len++;
     *p++ = 1;                                       evt_len++;
     *p++ = low_threshold;                           evt_len++;
+
+    *p++ = EH_HOST_PRIV_SLV_CONFIG_SET_TRANSFER_SIZE;          evt_len++;
+    *p++ = 4;                                                  evt_len++;
+    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE);         evt_len++;
+    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE >> 8);    evt_len++;
+    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE >> 16);   evt_len++;
+    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE >> 24);   evt_len++;
 
     /* Echo RPC_VERSION (0x1A) only when the CP advertised it on the
      * inbound init event.  Older upstream CP firmware (esp-hosted /

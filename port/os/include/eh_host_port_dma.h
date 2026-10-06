@@ -17,6 +17,19 @@ extern "C" {
 
 #if EH_HOST_PORT_HAS_DMA
 
+#define HOSTED_MEM_ALIGNMENT_4      4
+#define HOSTED_MEM_ALIGNMENT_32     32
+#define HOSTED_MEM_ALIGNMENT_64     64
+
+/* A PSRAM buffer is reached through the L2 cache: addr and len must be
+ * whole lines, or the SPI/SDMMC driver rejects it. */
+#if defined(CONFIG_EH_HOST_PORT_DMA_PREFER_SPIRAM) && \
+    defined(CONFIG_CACHE_L2_CACHE_LINE_SIZE) && (CONFIG_CACHE_L2_CACHE_LINE_SIZE > 64)
+#define HOSTED_MEM_ALIGNMENT    CONFIG_CACHE_L2_CACHE_LINE_SIZE
+#else
+#define HOSTED_MEM_ALIGNMENT    HOSTED_MEM_ALIGNMENT_64
+#endif
+
 /* Allocate at least `n` bytes of DMA-capable memory.  Word-aligned
  * (minimum 4-byte boundary).  Returns NULL on failure. */
 void *eh_host_port_dma_alloc(size_t n);

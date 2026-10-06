@@ -89,6 +89,9 @@ static uint8_t hosted_constructs_init_done = 0;
 #  error "SPI mode 0 at SLAVE is NOT supported"
 #endif
 #define SPI_BUFFER_SIZE            MAX_TRANSPORT_BUF_SIZE
+
+static volatile size_t spi_transfer_size = SPI_BUFFER_SIZE;
+static esp_err_t spi_set_transfer_size(size_t n);
 #define SPI_DRIVER_QUEUE_SIZE      3
 
 #define GPIO_MASK_DATA_READY (1ULL << GPIO_DATA_READY)
@@ -196,6 +199,7 @@ if_ops_t if_ops = {
 	.reset = esp_spi_reset,
 	.deinit = esp_spi_deinit,
 	.stop = esp_spi_stop,
+	.set_transfer_size = spi_set_transfer_size,
 };
 
 #define TX_NUM_BLKS    (SPI_TX_TOTAL_QUEUE_SIZE+1+SPI_DRIVER_QUEUE_SIZE)
@@ -618,7 +622,7 @@ static void queue_next_transaction(void)
 	}
 
 	spi_trans->tx_buffer = tx_buffer;
-	spi_trans->length = SPI_BUFFER_SIZE * SPI_BITS_PER_WORD;
+	spi_trans->length = spi_transfer_size * SPI_BITS_PER_WORD;
 
 	spi_slave_queue_trans(ESP_SPI_CONTROLLER, spi_trans, portMAX_DELAY);
 }
@@ -904,7 +908,7 @@ static int32_t esp_spi_write(interface_handle_t *handle, interface_buffer_handle
 		return ESP_FAIL;
 	}
 
-	if (!buf_handle->payload_len || buf_handle->payload_len > (SPI_BUFFER_SIZE-sizeof(struct esp_payload_header))) {
+	if (!buf_handle->payload_len || buf_handle->payload_len > (spi_transfer_size-sizeof(struct esp_payload_header))) {
 		ESP_LOGE(TAG, "Invalid payload length:%d", buf_handle->payload_len);
 		return ESP_FAIL;
 	}
@@ -925,7 +929,7 @@ static int32_t esp_spi_write(interface_handle_t *handle, interface_buffer_handle
 		MAKE_SPI_DMA_ALIGNED(total_len);
 	}
 
-	if (unlikely(total_len > SPI_BUFFER_SIZE)) {
+	if (unlikely(total_len > spi_transfer_size)) {
 		ESP_LOGE(TAG, "Total length %" PRId32 " exceeds max %d", total_len, SPI_BUFFER_SIZE);
 		return ESP_FAIL;
 	}
@@ -1059,4 +1063,14 @@ static void esp_spi_deinit(interface_handle_t *handle)
 	handle->state = DEINIT;
 	ESP_LOGI(TAG, "SPI deinit requested. Signaling spi task to exit.");
 #endif
+}
+
+static esp_err_t spi_set_transfer_size(size_t n)
+{
+	if (n && n <= SPI_BUFFER_SIZE) {
+		spi_transfer_size = n;
+		return ESP_OK;
+	}
+	ESP_LOGE(TAG, "refusing transfer size %u", (unsigned)n);
+	return ESP_FAIL;
 }

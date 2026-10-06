@@ -58,10 +58,6 @@ struct hosted_mempool {
 #define MEMSET_REQUIRED                  1
 #define MEMSET_NOT_REQUIRED              0
 
-#define HOSTED_MEM_ALIGNMENT_4      4
-#define HOSTED_MEM_ALIGNMENT_32     32
-#define HOSTED_MEM_ALIGNMENT_64     64
-
 struct hosted_mempool * hosted_mempool_create(void *pre_allocated_mem,
 		size_t pre_allocated_mem_size, size_t num_blocks, size_t block_size);
 void hosted_mempool_destroy(struct hosted_mempool *mempool);

@@ -310,7 +310,7 @@ static inline void sdio_mempool_create(int tx_q_size, int rx_q_size)
 		.pre_allocated_mem_size = 0,
 		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
 		.block_size = MAX_SDIO_BUFFER_SIZE,
-		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT_64,
+		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT,
 		.malloc = transport_util_malloc,
 		.calloc = transport_util_calloc,
 		.memset = memset,
@@ -783,7 +783,7 @@ static void sdio_tx_aggregate_iter(void)
 	int pkt_prio = -1;
 
 	if (!sdio_tx_aggr_buf) {
-		sdio_tx_aggr_buf = eh_host_port_dma_alloc_aligned(cap, HOSTED_MEM_ALIGNMENT_64);
+		sdio_tx_aggr_buf = eh_host_port_dma_alloc_aligned(cap, HOSTED_MEM_ALIGNMENT);
 		assert(sdio_tx_aggr_buf);
 		sdio_tx_aggr_cap = cap;
 	}
@@ -1329,7 +1329,7 @@ static uint8_t * sdio_rx_get_buffer(uint32_t len)
 			*buf = NULL;
 			double_buf.buffer[index].buf_size = 0;
 		}
-		*buf = (uint8_t *)eh_host_port_dma_alloc_aligned(len, HOSTED_MEM_ALIGNMENT_64);
+		*buf = (uint8_t *)eh_host_port_dma_alloc_aligned(len, HOSTED_MEM_ALIGNMENT);
 		if (!*buf) {
 			ESP_LOGW(TAG, "dma_alloc(%lu) failed; dropping read",
 			         (unsigned long)len);
@@ -1548,7 +1548,7 @@ static void sdio_read_task(void *pvParameters)
 
 #if DO_COMBINED_REG_READ
     if (!reg_buf) {
-	    reg_buf = eh_host_port_dma_alloc_aligned(REG_BUF_LEN, HOSTED_MEM_ALIGNMENT_64);
+	    reg_buf = eh_host_port_dma_alloc_aligned(REG_BUF_LEN, HOSTED_MEM_ALIGNMENT);
 	    assert(reg_buf);
     }
 #endif

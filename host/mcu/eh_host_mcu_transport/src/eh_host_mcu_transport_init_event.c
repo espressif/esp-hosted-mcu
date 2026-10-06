@@ -14,7 +14,6 @@
 #include "eh_host_port_master_config.h"
 #if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
 #include "eh_host_port_dma.h"
-#include "eh_mempool.h"   /* HOSTED_MEM_ALIGNMENT_64 */
 #endif
 #include "eh_host_mcu_transport_init_event.h"
 #include "esp_log.h"
@@ -350,7 +349,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         uint32_t e2h = (uint32_t)s_sdio_buf_cfg.e2h_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK;
         uint32_t h2e = (uint32_t)s_sdio_buf_cfg.h2e_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK;
         uint32_t probe_sz = e2h > h2e ? e2h : h2e;
-        void *probe = eh_host_port_dma_alloc_aligned(probe_sz, HOSTED_MEM_ALIGNMENT_64);
+        void *probe = eh_host_port_dma_alloc_aligned(probe_sz, HOSTED_MEM_ALIGNMENT);
         if (!probe) {
             ESP_LOGE(TAG, "SDIO SW_AGGR advertised %u B buffers — host cannot "
                           "allocate; failing init (no silent degrade)",

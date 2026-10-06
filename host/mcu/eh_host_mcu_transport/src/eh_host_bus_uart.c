@@ -28,7 +28,8 @@
 
 #define EH_UART_TASK_STACK      4096
 #define EH_UART_TASK_PRIO       22
-#define EH_UART_MAX_BUF         ESP_TRANSPORT_UART_MAX_BUF_SIZE
+
+#define EH_UART_MAX_BUF         ESP_TRANSPORT_HOST_MAX_BUF_SIZE
 #define EH_UART_RX_BUF_SIZE     (EH_UART_MAX_BUF * 2)
 #define EH_UART_TX_BUF_SIZE     0   /* 0 -> driver ring; caller blocks */
 #define EH_UART_READ_TIMEOUT_MS 100
