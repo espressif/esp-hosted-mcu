@@ -522,9 +522,6 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	uint8_t *payload = NULL;
 	uint16_t payload_len = 0;
 
-#if EH_CP_FEAT_WIFI_READY
-#endif
-
 	/* Fields already decoded by transport via eh_frame_decode; don't re-parse. */
 	payload     = buf_handle->payload;
 	payload_len = buf_handle->payload_len;
