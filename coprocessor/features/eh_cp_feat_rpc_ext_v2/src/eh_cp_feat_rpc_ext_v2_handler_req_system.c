@@ -105,7 +105,7 @@ esp_err_t req_ota_begin_handler (Rpc *req,
 	}
 
 	ESP_LOGI(TAG, "Prepare partition for OTA\n");
-	ret = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &handle);
+	ret = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &handle);
 	if (ret) {
 		ESP_LOGE(TAG, "OTA begin failed[%d]", ret);
 		s_ota_status = OTA_FAILED;

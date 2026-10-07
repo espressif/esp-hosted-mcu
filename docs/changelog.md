@@ -1,5 +1,6 @@
 # Unreleased
 
+- cp/ota: OTA begin no longer erases the whole partition up front, so it no longer stalls for seconds or times out the RPC
 - host/sdio: card init retries no longer fail with `can't acquire the channel` on the on-chip LDO
 - host/sdio: 1-bit SDIO host builds work again ([#245](https://github.com/espressif/esp-hosted-mcu/issues/245))
 - host/spi_hd: 2-line and 4-line builds now use 2/4 data lines; before, every transfer ran on 1 line

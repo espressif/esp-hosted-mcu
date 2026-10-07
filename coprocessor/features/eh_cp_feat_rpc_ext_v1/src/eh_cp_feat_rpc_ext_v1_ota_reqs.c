@@ -61,7 +61,7 @@ esp_err_t req_ota_begin_handler (const CtrlMsg *req,
 
 	ESP_LOGI(TAG, "Prepare partition for OTA\n");
 
-	ret = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+	ret = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle);
 	if (ret) {
 		ESP_LOGE(TAG, "OTA update failed in OTA begin");
 		goto err;
