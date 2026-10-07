@@ -374,8 +374,6 @@ static void esp_spi_hd_get_bus_cfg(spi_bus_config_t * bus_cfg)
 	bus_cfg->data1_io_num = GPIO_D1;
 	bus_cfg->data2_io_num = GPIO_D2;
 	bus_cfg->data3_io_num = GPIO_D3;
-	/* bus_cfg is an uninitialized stack struct; octal signals must be marked
-	 * unused or spi_bus_initialize validates garbage GPIOs on S3/P4. */
 	bus_cfg->data4_io_num = -1;
 	bus_cfg->data5_io_num = -1;
 	bus_cfg->data6_io_num = -1;
@@ -618,8 +616,8 @@ static interface_handle_t * esp_spi_hd_init(void)
 	uint16_t prio_q_idx = 0;
 	uint8_t init_value[SOC_SPI_MAXIMUM_BUFFER_SIZE] = {0x0}; // used to init SPI shared registers
 
-	spi_bus_config_t bus_cfg;
-	spi_slave_hd_slot_config_t slave_hd_cfg;
+	spi_bus_config_t bus_cfg = {0};
+	spi_slave_hd_slot_config_t slave_hd_cfg = {0};
 
 	/* Configuration for data_ready line */
 	gpio_config_t io_data_ready_conf={
@@ -653,7 +651,10 @@ static interface_handle_t * esp_spi_hd_init(void)
 	/* Initialize SPI slave interface */
 
 	ret = spi_slave_hd_init(SPI_HOST, &bus_cfg, &slave_hd_cfg);
-	assert(ret == ESP_OK);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "spi_slave_hd_init failed: %s", esp_err_to_name(ret));
+		return NULL;
+	}
 
 	// initialise shared spi hd registers
 
@@ -808,8 +809,8 @@ static void esp_spi_hd_deinit(interface_handle_t * handle)
 
 static esp_err_t esp_spi_hd_reset(interface_handle_t *handle)
 {
-	spi_bus_config_t bus_cfg;
-	spi_slave_hd_slot_config_t slave_hd_cfg;
+	spi_bus_config_t bus_cfg = {0};
+	spi_slave_hd_slot_config_t slave_hd_cfg = {0};
 	esp_err_t ret = ESP_OK;
 
 	ret = spi_slave_hd_deinit(SPI_HOST);
