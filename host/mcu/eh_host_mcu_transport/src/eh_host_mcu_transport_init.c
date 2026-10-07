@@ -113,10 +113,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
                 /* Order: flip -> send -> delayed_init. Flip MUST precede send. */
                 eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_TX_ACTIVE);
 
-                /* 20-byte buffer: 2 evt hdr + 5 fixed host->slave TLVs (15)
-                 * + 3 for the optional RPC_VERSION echo (0x1A).  See
-                 * eh_host_mcu_transport_send_caps.h for the size contract. */
-                uint8_t caps_pkt[20];
+                uint8_t caps_pkt[EH_HOST_CAPS_PKT_MAX_SIZE];
                 int n = eh_host_transport_build_host_caps_pkt(
                             caps_pkt, sizeof(caps_pkt),
                             0, chip_id, (uint8_t)EH_HOST_PORT_TEST_RAW_TP_DIR,

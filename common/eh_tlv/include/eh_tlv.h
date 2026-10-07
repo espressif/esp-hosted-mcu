@@ -12,6 +12,9 @@
 #include <stdint.h>
 #include <string.h>
 
+/* Bytes one TLV takes on the wire: tag + len + value. */
+#define EH_TLV_SIZE(val_len) (2u + (val_len))
+
 typedef struct {
     uint8_t  *buf;
     uint16_t  pos;

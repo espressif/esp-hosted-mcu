@@ -182,7 +182,7 @@ void eh_host_raw_tp_deinit(void)
  * accepts it at any time (start/stop its flood); then drive our side. */
 static int raw_tp_send_dir_to_cp(uint8_t dir)
 {
-    uint8_t caps_pkt[20];
+    uint8_t caps_pkt[EH_HOST_CAPS_PKT_MAX_SIZE];
     int n = eh_host_transport_build_host_caps_pkt(
                 caps_pkt, sizeof(caps_pkt),
                 0, eh_host_mcu_transport_get_chip_id(), dir,

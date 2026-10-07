@@ -100,4 +100,8 @@ static inline eh_if_type_t eh_if_type_from_wire(uint8_t wire_if_type)
   #define ESP_TRANSPORT_UART_MAX_BUF_SIZE    1600
 #endif
 
+#ifndef ESP_TRANSPORT_HOST_MAX_BUF_SIZE
+  #define ESP_TRANSPORT_HOST_MAX_BUF_SIZE    1536
+#endif
+
 #endif /* __ESP_HOSTED_COMMON_INTERFACE__H */

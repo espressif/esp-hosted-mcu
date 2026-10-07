@@ -52,6 +52,9 @@
 
 #define BUFFER_SIZE                MAX_TRANSPORT_BUF_SIZE
 
+static volatile size_t uart_transfer_size = BUFFER_SIZE;
+static esp_err_t uart_set_transfer_size(size_t n);
+
 static const char TAG[] = "UART_DRIVER";
 
 // these values should match EH_TRANSPORT_CP_UART_PARITY values in Kconfig.projbuild
@@ -122,6 +125,7 @@ if_ops_t if_ops = {
 	.read = h_uart_read,
 	.reset = h_uart_reset,
 	.deinit = h_uart_deinit,
+	.set_transfer_size = uart_set_transfer_size,
 };
 
 static interface_handle_t if_handle_g;
@@ -345,8 +349,17 @@ static void uart_rx_task(void* pvParameters)
 
 		UPDATE_HEADER_RX_PKT_NO((struct esp_payload_header *)uart_scratch_buf);
 
-		if (total_len > BUFFER_SIZE) {
+		if (total_len > uart_transfer_size) {
 			ESP_LOGE(TAG, "incoming data too big: %d", total_len);
+			int left = total_len - (int)eh_frame_hdr_size();
+			while (left > 0) {
+				int chunk = (left > BUFFER_SIZE) ? BUFFER_SIZE : left;
+				int n = uart_read_bytes(HOSTED_UART, uart_scratch_buf, chunk,
+						portMAX_DELAY);
+				if (n <= 0)
+					break;
+				left -= n;
+			}
 			continue;
 		}
 
@@ -781,6 +794,11 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 	if (rc) { ESP_LOGE(TAG, "TLV v3 overflow"); goto out; }
 #endif
 
+	if (eh_tlv_add_u32_le(&tlv, EH_PRIV_TRANSFER_SIZE, (uint32_t)uart_transfer_size))
+		ESP_LOGW(TAG, "no room for transfer-size TLV");
+	else
+		ESP_LOGI(TAG, "advertising transfer size %u", (unsigned)uart_transfer_size);
+
 	len = eh_tlv_builder_len(&tlv);
 	event->event_len = len;
 	len += 2;
@@ -808,4 +826,14 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 
 out:
 	h_uart_buffer_tx_free(buf_handle.payload);
+}
+
+static esp_err_t uart_set_transfer_size(size_t n)
+{
+	if (n && n <= BUFFER_SIZE) {
+		uart_transfer_size = n;
+		return ESP_OK;
+	}
+	ESP_LOGE(TAG, "refusing transfer size %u", (unsigned)n);
+	return ESP_FAIL;
 }

@@ -25,14 +25,14 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_memory_utils.h"
+#include "eh_host_port_dma.h"
 
 static inline void *eh_spi_dma_alloc_zero(size_t n)
 {
-    /* 64-byte aligned + size rounded to 64: SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL
-     * promises the driver aligned buffers, and P4 cache-DMA writes back whole
-     * cache lines — an under-aligned/short buffer corrupts adjacent memory. */
-    size_t aligned = (n + 63u) & ~(size_t)63u;
-    void *p = eh_host_port_dma_alloc_aligned(aligned, 64);
+    /* ALIGN_MANUAL means the driver trusts us: addr and len must be whole lines. */
+    size_t aligned = (n + HOSTED_MEM_ALIGNMENT - 1u) & ~(size_t)(HOSTED_MEM_ALIGNMENT - 1u);
+    void *p = eh_host_port_dma_alloc_aligned(aligned, HOSTED_MEM_ALIGNMENT);
     if (p) memset(p, 0, aligned);
     return p;
 }
@@ -45,7 +45,12 @@ static inline void *eh_spi_dma_alloc_zero(size_t n)
 
 #define EH_SPI_TASK_STACK   4096
 #define EH_SPI_TASK_PRIO    22   /* above app tasks; below timer task */
-#define EH_SPI_MAX_BUF      ESP_TRANSPORT_SPI_MAX_BUF_SIZE
+
+#define EH_SPI_MAX_BUF      ESP_TRANSPORT_HOST_MAX_BUF_SIZE
+
+/* The driver checks the transaction length, not the allocation. */
+_Static_assert(EH_SPI_MAX_BUF % HOSTED_MEM_ALIGNMENT == 0,
+               "SPI transfer size must be a whole number of cache lines");
 
 /* HS/DR pull + interrupt edge follow the configured active level. The
  * master_config *_INTR_EDGE macros resolve to EH_GPIO_INTR_* which are not
@@ -128,6 +133,8 @@ static int eh_spi_xfer_once(uint8_t *tx_buf, uint8_t *rx_buf)
         .rx_buffer = rx_buf,
         .flags     = SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL,
     };
+    if (esp_ptr_dma_ext_capable(tx_buf) || esp_ptr_dma_ext_capable(rx_buf))
+        t.flags |= SPI_TRANS_DMA_USE_PSRAM;
 
     esp_err_t ret = spi_device_transmit(s_spi_dev, &t);
     if (ret != ESP_OK) {

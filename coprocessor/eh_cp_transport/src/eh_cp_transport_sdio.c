@@ -26,6 +26,7 @@
 #include "eh_cp_host_ps_state.h"
 #include "eh_caps.h"
 #include "eh_tlv.h"
+#include "eh_tlv_tags.h"
 #include "eh_tlv_defs.h"
 #include "eh_tlv_v1.h"
 #include "eh_tlv_v2.h"
@@ -708,6 +709,11 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 		return;
 	}
 #endif
+
+	if (eh_tlv_add_u32_le(&tlv, EH_PRIV_TRANSFER_SIZE, (uint32_t)MAX_TRANSPORT_BUF_SIZE))
+		ESP_LOGW(TAG, "no room for transfer-size TLV");
+	else
+		ESP_LOGI(TAG, "advertising transfer size %u", (unsigned)MAX_TRANSPORT_BUF_SIZE);
 
 	len = eh_tlv_builder_len(&tlv);
 	event->event_len = len;

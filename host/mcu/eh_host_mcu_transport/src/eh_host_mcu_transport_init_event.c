@@ -14,7 +14,6 @@
 #include "eh_host_port_master_config.h"
 #if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
 #include "eh_host_port_dma.h"
-#include "eh_mempool.h"   /* HOSTED_MEM_ALIGNMENT_64 */
 #endif
 #include "eh_host_mcu_transport_init_event.h"
 #include "esp_log.h"
@@ -35,6 +34,7 @@ static volatile uint8_t  s_chip_id      = EH_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
 static volatile uint8_t  s_capabilities = 0;
 static volatile uint32_t s_ext_caps     = 0;
 static volatile uint32_t s_fw_version   = 0;
+static volatile uint32_t s_cp_transfer_size = 0;
 static volatile uint8_t  s_slave_sdio_streaming_mode = 0; /* 0=packet, 1=streaming */
 static volatile bool     s_peer_advertised_rpc_version = false;
 /* Retained across a host deep-sleep */
@@ -46,6 +46,7 @@ uint32_t eh_host_mcu_transport_get_fw_version(void)      { return s_fw_version; 
 uint8_t  eh_host_mcu_transport_get_capabilities(void)    { return s_capabilities; }
 uint32_t eh_host_mcu_transport_get_ext_capabilities(void){ return s_ext_caps; }
 bool     eh_host_mcu_transport_peer_advertised_rpc_version(void) { return s_peer_advertised_rpc_version; }
+uint32_t eh_host_mcu_transport_get_cp_transfer_size(void) { return s_cp_transfer_size; }
 
 const struct eh_priv_sdio_buf_config *eh_host_mcu_transport_sdio_buf_config(void)
 {
@@ -279,6 +280,13 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
                 ESP_LOGD(TAG, "coprocessor firmware: 0x%08x", (unsigned int)s_fw_version);
             }
             break;
+        case EH_PRIV_TRANSFER_SIZE:
+            if (tlen >= 4) {
+                s_cp_transfer_size = le32(val);
+                ESP_LOGI(TAG, "coprocessor transport size: %u",
+                         (unsigned int)s_cp_transfer_size);
+            }
+            break;
         case EH_PRIV_TRANS_SDIO_MODE:
             if (tlen >= 1) {
                 s_slave_sdio_streaming_mode = val[0];
@@ -350,7 +358,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         uint32_t e2h = (uint32_t)s_sdio_buf_cfg.e2h_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK;
         uint32_t h2e = (uint32_t)s_sdio_buf_cfg.h2e_bufsz_512B * EH_SDIO_CFG_BUF_BLOCK;
         uint32_t probe_sz = e2h > h2e ? e2h : h2e;
-        void *probe = eh_host_port_dma_alloc_aligned(probe_sz, HOSTED_MEM_ALIGNMENT_64);
+        void *probe = eh_host_port_dma_alloc_aligned(probe_sz, HOSTED_MEM_ALIGNMENT);
         if (!probe) {
             ESP_LOGE(TAG, "SDIO SW_AGGR advertised %u B buffers — host cannot "
                           "allocate; failing init (no silent degrade)",

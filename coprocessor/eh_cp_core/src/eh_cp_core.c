@@ -38,6 +38,7 @@
 #include "eh_common_fw_version.h"
 #include "eh_cp_transport_test.h"
 #include "eh_cp_core.h"
+#include "eh_tlv.h"
 #if EH_CP_FEAT_BT_READY
 #include "eh_cp_feat_bt_core.h"
 #endif
@@ -294,7 +295,7 @@ static esp_err_t host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 	pos = evt_buf;
 	ESP_LOGD(TAG, "Init event length: %u", len);
 
-	while (len_left) {
+	while (len_left >= 2) {
 		tag_len = *(pos + 1);
 
 		/* TLV is type(1) + len(1) + value(tag_len). */
@@ -423,6 +424,18 @@ static esp_err_t host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 				ESP_LOGI(TAG, "RPC endpoint TLVs acknowledged by host");
 			}
 
+		} else if (*pos == SLV_CONFIG_SET_TRANSFER_SIZE) {
+
+			if (tag_len >= 4 && if_context && if_context->if_ops && if_context->if_ops->set_transfer_size) {
+				uint32_t transfer_size = eh_tlv_val_u32_le(pos + 2, tag_len);
+				if (if_context->if_ops->set_transfer_size(transfer_size) == ESP_OK)
+					ESP_LOGI(TAG, "Transfer size set to %" PRIu32, transfer_size);
+				else
+					ESP_LOGW(TAG, "Failed to set transfer size to %" PRIu32, transfer_size);
+			} else {
+				ESP_LOGD(TAG, "Transport does not implement set_transfer_size");
+			}
+
 		} else {
 
 			ESP_LOGD(TAG, "Unsupported H->S config: %2x", *pos);
@@ -431,6 +444,9 @@ static esp_err_t host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 
 		pos += (tag_len+2);
 		len_left -= (tag_len+2);
+	}
+	if (len_left == 1) {
+		ESP_LOGW(TAG, "TLV truncated: lone tag 0x%02x at end", *pos);
 	}
 
 	{
