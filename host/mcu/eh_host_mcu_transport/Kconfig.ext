@@ -15,6 +15,19 @@ if ESP_HOSTED_HOST_TRANSPORT_MCU
 		default y if (IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4) && (ESP_HOSTED_CP_TARGET_ESP32 || ESP_HOSTED_CP_TARGET_ESP32C5 || ESP_HOSTED_CP_TARGET_ESP32C6 || ESP_HOSTED_CP_TARGET_ESP32C61)
 		default n
 
+	# y if USB OTG is available for the (host SoC, CP target) pair.
+	# warning: verify that the SOC has enough USB endpoints to support the following
+	# combination before enabling as a USB OTG Host or Device:
+	# - USB-CDC-ACM
+	# - USB-BTH
+	# - USB-Networking (RNDIS/ECM/NCM)
+	# Currently, only the P4 and S31 have enough USB endpoints for this combination.
+	# S2 and S3 are enabled ONLY for USB OTG testing purposes.
+	config ESP_HOSTED_HOST_PRIV_USB_OTG_OPTION
+		bool
+		default y if (IDF_TARGET_ESP32P4) && (ESP_HOSTED_CP_TARGET_ESP32S31 || ESP_HOSTED_CP_TARGET_ESP32S2 || ESP_HOSTED_CP_TARGET_ESP32S3)
+		default n
+
 	choice ESP_HOSTED_HOST_TRANSPORT_BUS
 		prompt "Communication bus (co-processor <== bus ==> host)"
 		default ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO if ESP_HOSTED_HOST_PRIV_SDIO_OPTION
@@ -37,6 +50,13 @@ if ESP_HOSTED_HOST_TRANSPORT_MCU
 			bool "UART"
 			# A flash-resident ISR stalls during flash ops and the 128-byte RX FIFO overflows.
 			select UART_ISR_IN_IRAM if !RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH
+		config ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
+			bool "USB (OTG) (as Host) (Experimental)"
+			depends on ESP_HOSTED_HOST_PRIV_USB_OTG_OPTION
+			help
+				Host acts as USB OTG Host. ESP-Hosted frames, including RPC,
+				are carried over CDC-ACM.
+
 	endchoice
 
 	# _READY = bus selected AND parent transport compiled-in. Gates source pulls.
@@ -52,11 +72,15 @@ if ESP_HOSTED_HOST_TRANSPORT_MCU
 	config ESP_HOSTED_HOST_TRANSPORT_BUS_UART_READY
 		bool
 		default y if ESP_HOSTED_HOST_TRANSPORT_BUS_UART && ESP_HOSTED_HOST_TRANSPORT_MCU_READY
+	config ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST_READY
+		bool
+		default y if ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST && ESP_HOSTED_HOST_TRANSPORT_MCU_READY
 
 	orsource "Kconfig.host.spi"
 	orsource "Kconfig.host.sdio"
 	orsource "Kconfig.host.spi_hd"
 	orsource "Kconfig.host.uart"
+	orsource "Kconfig.host.usb_otg_host"
 
 	menu "Transport Test"
 		config ESP_HOSTED_RAW_THROUGHPUT_TRANSPORT

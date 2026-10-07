@@ -33,3 +33,7 @@ target_link_libraries(eh_host_feat_system PRIVATE
     eh_host_feat_rpc
     eh_proto_v2
 )
+
+if(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+    target_link_libraries(eh_host_feat_system PRIVATE eh_host_mcu_transport)
+endif()

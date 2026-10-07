@@ -30,6 +30,20 @@ endif()
 if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART_READY)
     list(APPEND EH_TRANSPORT_SRCS "src/eh_host_bus_uart.c")
 endif()
+if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST_READY)
+    list(APPEND EH_TRANSPORT_SRCS "src/eh_host_bus_usb.c")
+    if(CONFIG_ESP_HOSTED_HOST_USB_STACK_CDC_ACM)
+        if(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+            list(APPEND EH_TRANSPORT_SRCS
+                "src/eh_host_bus_usb_cdc_rndis.c"
+                "src/eh_host_bus_usb_rndis.c")
+        else()
+            list(APPEND EH_TRANSPORT_SRCS "src/eh_host_bus_usb_cdc_acm.c")
+        endif()
+    elseif(CONFIG_ESP_HOSTED_HOST_USB_STACK_CHERRYUSB)
+        list(APPEND EH_TRANSPORT_SRCS "src/eh_host_bus_usb_cherryusb.c")
+    endif()
+endif()
 
 add_library(eh_host_mcu_transport STATIC ${EH_TRANSPORT_SRCS})
 
@@ -71,5 +85,20 @@ if(ESP_PLATFORM)
     if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART_READY)
         target_link_libraries(eh_host_mcu_transport PRIVATE
             idf::esp_driver_uart idf::esp_driver_gpio)
+    endif()
+    if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST_READY)
+        target_link_libraries(eh_host_mcu_transport PRIVATE idf::esp_driver_gpio)
+        if(CONFIG_ESP_HOSTED_HOST_USB_STACK_CDC_ACM)
+            if(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+                target_link_libraries(eh_host_mcu_transport PRIVATE
+                    idf::espressif__iot_usbh_rndis)
+            else()
+                target_link_libraries(eh_host_mcu_transport PRIVATE
+                    idf::espressif__usb_host_cdc_acm)
+            endif()
+        elseif(CONFIG_ESP_HOSTED_HOST_USB_STACK_CHERRYUSB)
+            target_link_libraries(eh_host_mcu_transport PRIVATE
+                idf::cherry-embedded__cherryusb)
+        endif()
     endif()
 endif()

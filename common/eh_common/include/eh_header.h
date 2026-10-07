@@ -1,7 +1,7 @@
 /*
  * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
  *
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0
  */
 
 /* eh_header.h — back-compat redirect to eh_common_header.h. Do not add defs here. */

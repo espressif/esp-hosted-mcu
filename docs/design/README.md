@@ -18,6 +18,7 @@ Deep-dive design docs for engineers who want the internals — protocol sequence
 | [SPI Full-Duplex Design](spi-full-duplex.md) | The SPI-FD protocol: Handshake / Data-Ready GPIOs, fixed 1600-byte transactions, dummy frames. |
 | [SPI Half-Duplex Design](spi-half-duplex.md) | The MCU-only SPI-HD protocol: IO modes, commands, registers, timing. |
 | [UART Design](uart.md) | The UART protocol: length-prefixed framing, Wi-Fi + Bluetooth multiplexing, flow control. |
+| [USB OTG Host](usb-otg-host.md) | Experimental. MCU host CDC-ACM bus: shared USB host controller, DTR connect, session reset, USB suspend, stream RX, RX credits and throttle. USB RNDIS is [Not yet enabled.] |
 | [RPC Reference](rpc-reference.md) | Every implemented RPC request and event, with the release each was added. |
 | [Performance Tuning](performance.md) | Per-chip high-performance configs and per-transport optimization. |
 

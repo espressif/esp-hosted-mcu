@@ -63,10 +63,11 @@ typedef enum {
 } byte_length;
 
 typedef enum {
-	SDIO   = 0,
-	SPI    = 1,
-	SPI_HD = 2,
-	UART   = 3,
+	SDIO           = 0,
+	SPI            = 1,
+	SPI_HD         = 2,
+	UART           = 3,
+	USB_OTG_DEVICE = 4,
 } transport_layer;
 
 typedef enum {
@@ -87,6 +88,8 @@ typedef struct {
 #define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE
 #elif CONFIG_EH_TRANSPORT_CP_UART
 #define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_UART_MAX_BUF_SIZE
+#elif CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE
+#define MAX_TRANSPORT_BUF_SIZE ESP_TRANSPORT_USB_OTG_MAX_BUF_SIZE
 #endif
 
 #define BSSID_BYTES_SIZE       6

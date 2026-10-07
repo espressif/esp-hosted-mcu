@@ -83,7 +83,7 @@ flowchart TD
 
 ## Choosing the bus (co-processor and host)
 
-Both firmware images must select the **exact same transport** and matching pins. On an MCU host, Wi-Fi (and Bluetooth) can ride **SDIO**, **SPI Full-Duplex**, **SPI Half-Duplex**, or **UART**.
+Both firmware images must select the **exact same transport** and matching pins. On an MCU host, Wi-Fi (and Bluetooth) can ride **SDIO**, **SPI Full-Duplex**, **SPI Half-Duplex**, or **UART**. **USB OTG** is experimental; see [USB OTG Host](design/usb-otg-host.md).
 
 | Bus | Pins (signals + Reset + GND) | Throughput | Bluetooth | Wiring | Best for |
 | :--- | :--- | :--- | :--- | :--- | :--- |

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,6 +20,7 @@
 #define EH_HOST_TRANSPORT_SPI_HD 2
 #define EH_HOST_TRANSPORT_SPI    3
 #define EH_HOST_TRANSPORT_UART   4
+#define EH_HOST_TRANSPORT_USB_OTG 5
 #endif
 
 typedef enum {
@@ -115,6 +116,17 @@ struct eh_host_uart_config {
 	uint16_t rx_queue_size;
 };
 
+struct eh_host_usb_otg_config {
+	eh_gpio_pin_t pin_reset;
+	uint32_t connection_timeout_ms;
+	uint16_t vid;
+	uint16_t pid;
+	uint16_t tx_queue_size;
+	uint16_t rx_queue_size;
+	size_t out_buffer_size;
+	size_t in_buffer_size;
+};
+
 struct eh_host_transport_config {
 	uint8_t transport_in_use;
 	union {
@@ -122,6 +134,7 @@ struct eh_host_transport_config {
 		struct eh_host_spi_hd_config spi_hd;
 		struct eh_host_spi_config spi;
 		struct eh_host_uart_config uart;
+		struct eh_host_usb_otg_config usb_otg;
 	} u;
 };
 
@@ -131,6 +144,7 @@ struct eh_host_sdio_config eh_host_get_default_sdio_iomux_config(void);
 struct eh_host_spi_hd_config eh_host_get_default_spi_hd_config(void);
 struct eh_host_spi_config eh_host_get_default_spi_config(void);
 struct eh_host_uart_config eh_host_get_default_uart_config(void);
+struct eh_host_usb_otg_config eh_host_get_default_usb_otg_config(void);
 
 /* Convenience macros for backward compatibility and ease of use */
 #define INIT_DEFAULT_HOST_SDIO_CONFIG() eh_host_get_default_sdio_config()
@@ -138,6 +152,7 @@ struct eh_host_uart_config eh_host_get_default_uart_config(void);
 #define INIT_DEFAULT_HOST_SPI_HD_CONFIG() eh_host_get_default_spi_hd_config()
 #define INIT_DEFAULT_HOST_SPI_CONFIG() eh_host_get_default_spi_config()
 #define INIT_DEFAULT_HOST_UART_CONFIG() eh_host_get_default_uart_config()
+#define INIT_DEFAULT_HOST_USB_OTG_CONFIG() eh_host_get_default_usb_otg_config()
 
 /***
  * Generic Transport APIs
@@ -174,5 +189,9 @@ eh_host_transport_err_t eh_host_spi_set_config(struct eh_host_spi_config *config
 /* UART functions */
 eh_host_transport_err_t eh_host_uart_get_config(struct eh_host_uart_config **config);
 eh_host_transport_err_t eh_host_uart_set_config(struct eh_host_uart_config *config) __attribute__((warn_unused_result));
+
+/* USB OTG Host functions */
+eh_host_transport_err_t eh_host_usb_otg_get_config(struct eh_host_usb_otg_config **config);
+eh_host_transport_err_t eh_host_usb_otg_set_config(struct eh_host_usb_otg_config *config) __attribute__((warn_unused_result));
 
 #endif /* __EH_HOST_TRANSPORT_CONFIG_H__ */

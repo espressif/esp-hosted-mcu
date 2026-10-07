@@ -9,6 +9,7 @@ set(EH_HOST_PORT_IDF_SRCS
     "src/eh_host_port_dma.c"
     "src/eh_host_port_sync.c"
     "src/eh_host_port_queue.c"
+    "src/eh_host_port_stream_buffer.c"
     "src/eh_host_port_task.c"
     "src/eh_host_port_gpio.c"
     "src/eh_host_port_power.c"
@@ -18,6 +19,10 @@ set(EH_HOST_PORT_IDF_SRCS
 
 if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO)
     list(APPEND EH_HOST_PORT_IDF_SRCS "src/eh_host_port_sdio.c")
+endif()
+
+if(CONFIG_ESP_HOSTED_HOST_USB_STACK_CDC_ACM OR CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+    list(APPEND EH_HOST_PORT_IDF_SRCS "src/eh_host_port_usb.c")
 endif()
 
 add_library(eh_host_port_idf STATIC ${EH_HOST_PORT_IDF_SRCS})
@@ -54,6 +59,16 @@ if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO)
     target_link_libraries(eh_host_port_idf PRIVATE
         idf::sdmmc
         idf::esp_driver_sdmmc)
+endif()
+
+if(CONFIG_ESP_HOSTED_HOST_USB_STACK_CDC_ACM OR CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+    # Check idf::usb first: that is the IDF 5.5 in-tree USB Host Library.
+    # IDF 6 moves it to the managed component idf::espressif__usb.
+    if(TARGET idf::usb)
+        target_link_libraries(eh_host_port_idf PRIVATE idf::usb)
+    elseif(TARGET idf::espressif__usb)
+        target_link_libraries(eh_host_port_idf PRIVATE idf::espressif__usb)
+    endif()
 endif()
 
 # UART -> hal/uart_types.h lived 'hal' for idf < 6.x, later comes through esp_driver_uart

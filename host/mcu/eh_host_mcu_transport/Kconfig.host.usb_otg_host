@@ -1,0 +1,148 @@
+# SPDX-License-Identifier: Apache-2.0
+# USB OTG Host transport configuration.
+
+if ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
+
+	menu "USB OTG Host Configuration (Experimental)"
+
+		choice ESP_HOSTED_HOST_USB_STACK
+			prompt "USB Host stack"
+			default ESP_HOSTED_HOST_USB_STACK_CDC_ACM
+			help
+				Selects the USB host implementation that enumerates the
+				coprocessor CDC-ACM interface.
+
+			config ESP_HOSTED_HOST_USB_STACK_CDC_ACM
+				bool "ESP-IDF usb_host_cdc_acm"
+				help
+					Espressif USB Host Library and the usb_host_cdc_acm class driver.
+
+			config ESP_HOSTED_HOST_USB_STACK_CHERRYUSB
+				bool "CherryUSB"
+				select CHERRYUSB
+				select CHERRYUSB_HOST
+				select CHERRYUSB_HOST_CDC_ACM
+				help
+					CherryUSB host stack (DWC2) and its CDC-ACM serial driver.
+
+		endchoice
+
+		config ESP_HOSTED_HOST_USB_RNDIS
+			bool "USB RNDIS data plane"
+			depends on ESP_HOSTED_HOST_USB_STACK_CDC_ACM && IDF_TARGET_ESP32P4
+			# Present, but not selectable until the RNDIS data plane is ready.
+			depends on n
+			default n
+			help
+				Use the ESP-IoT-Solution RNDIS host driver for STA and AP
+				Ethernet frames. CDC-ACM remains the control plane for RPC,
+				HCI, power-save, and flow-control frames. Enable the matching
+				EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS option on the coprocessor.
+
+		config ESP_HOSTED_HOST_RESET_GPIO
+			int "Slave reset GPIO (RST/EN line)"
+			default 54 if ESP_HOSTED_P4_C5_CORE_BOARD || ESP_HOSTED_P4_C6_CORE_BOARD || ESP_HOSTED_P4_C61_CORE_BOARD
+			default 54 if ESP_HOSTED_P4X_C5_DEV_BOARD_FUNC_BOARD
+			default 9  if ESP32P4_EYE_C6_BOARD
+			default 54 if IDF_TARGET_ESP32P4
+			default 42 if IDF_TARGET_ESP32S3
+			default -1
+			range -1 100
+			help
+				GPIO used to reset the coprocessor during connect_to_slave.
+				Set to -1 if reset line is not connected.
+
+		config ESP_HOSTED_HOST_USB_CONNECTION_TIMEOUT_MS
+			int "USB device connection timeout (ms)"
+			default 5000
+			range 500 30000
+			help
+				Time to wait for the CDC-ACM device to be enumerated and opened.
+
+		config ESP_HOSTED_HOST_USB_VID
+			hex "USB Vendor ID (VID)"
+			default 0x303A if ESP_HOSTED_CP_TARGET_ESP32S31
+			default 0x0000
+			range 0x0000 0xFFFF
+			help
+				Vendor ID used to identify the coprocessor. 0x0000 matches
+				any vendor (CDC_HOST_ANY_VID). ESP32-S31 defaults to 0x303A.
+
+		config ESP_HOSTED_HOST_USB_PID
+			hex "USB Product ID (PID)"
+			default 0x4001 if ESP_HOSTED_CP_TARGET_ESP32S31
+			default 0x0000
+			range 0x0000 0xFFFF
+			help
+				Product ID used to identify the coprocessor. 0x0000 matches
+				any product (CDC_HOST_ANY_PID). ESP32-S31 defaults to 0x4001.
+
+		config ESP_HOSTED_HOST_USB_TX_Q_SIZE
+			int "USB Host TX queue size"
+			# Present, but not selectable until a host TX queue exists.
+			depends on n
+			default 20
+			range 4 100
+			help
+				Number of TX buffers for the CDC-ACM host transport.
+
+		config ESP_HOSTED_HOST_USB_RX_Q_SIZE
+			int "USB Host RX queue size"
+			default 6
+			range 4 100
+			help
+				Number of host RX buffers. Each buffer is one maximum USB frame.
+
+		config ESP_HOSTED_HOST_USB_OUT_BUF_SIZE
+			int "USB CDC OUT buffer size (bytes)"
+			default 2048
+			range 512 8192
+			help
+				Maximum USB bulk OUT transfer size.
+
+		config ESP_HOSTED_HOST_USB_IN_BUF_SIZE
+			int "USB CDC IN buffer size (bytes, 0 = MPS)"
+			default 0
+			range 0 8192
+			help
+				Maximum USB bulk IN transfer size. 0 uses endpoint Max Packet Size (MPS).
+
+		config ESP_HOSTED_HOST_USB_RX_TASK_STACK
+			int "USB RX task stack size"
+			default 4096
+			range 2048 16384
+			help
+				Stack size for the dedicated USB RX frame processing task.
+
+		config ESP_HOSTED_HOST_USB_RX_TASK_PRIO
+			int "USB RX task priority"
+			default 22
+			range 1 25
+			help
+				Priority of the USB RX frame processing task.
+
+		config ESP_HOSTED_HOST_USB_RNDIS_TX_Q_SIZE
+			int "USB RNDIS TX queue size"
+			depends on ESP_HOSTED_HOST_USB_RNDIS
+			default 20
+			range 4 100
+			help
+				Maximum number of Ethernet frames accepted from lwIP while the
+				RNDIS bulk OUT worker is busy. A full queue returns a TX error
+				to lwIP so it backs off instead of overrunning the coprocessor.
+
+		config ESP_HOSTED_HOST_USB_RNDIS_TX_TASK_STACK
+			int "USB RNDIS TX task stack size"
+			depends on ESP_HOSTED_HOST_USB_RNDIS
+			default 4096
+			range 2048 16384
+
+		config ESP_HOSTED_HOST_USB_RNDIS_TX_TASK_PRIO
+			int "USB RNDIS TX task priority"
+			depends on ESP_HOSTED_HOST_USB_RNDIS
+			default 22
+			range 1 25
+
+	endmenu
+
+endif

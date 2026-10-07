@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #pragma once
 
 #include <stdint.h>
@@ -24,6 +28,14 @@ struct pkt_stats_t {
 	uint32_t sta_rx_in;         /* frames read from the CP */
 	uint32_t sta_rx_out;        /* delivered to the stack */
 	uint32_t tx_credit_stalls;  /* TX aggregates that timed out waiting for CP credit */
+#if EH_HOST_USB_RNDIS
+	uint32_t usb_rndis_tx_queued;
+	uint32_t usb_rndis_tx_sent;
+	uint32_t usb_rndis_tx_rejected;
+	uint32_t usb_rndis_tx_failed;
+	uint32_t usb_rndis_rx_delivered;
+	uint32_t usb_rndis_rx_dropped;
+#endif
 };
 
 extern struct pkt_stats_t pkt_stats;

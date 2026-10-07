@@ -1,5 +1,8 @@
-// Copyright 2025 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __ESP_HOSTED_COMMON_HEADER__H
 #define __ESP_HOSTED_COMMON_HEADER__H
@@ -41,6 +44,9 @@ struct esp_payload_header {
 /* Field widths: throttle_cmd is 2 bits, rx_credit 6 bits (modulo 64). */
 #define THROTTLE_CMD_MASK                         0x03u
 #define RX_CREDIT_MASK                            0x3Fu
+#define EH_FRAME_FLOW_CTRL_NC                     0
+#define EH_FRAME_FLOW_CTRL_ON                     1
+#define EH_FRAME_FLOW_CTRL_OFF                    2
 
 #define EH_ESP_PAYLOAD_HEADER_OFFSET              sizeof(struct esp_payload_header)
 

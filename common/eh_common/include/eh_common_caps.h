@@ -72,6 +72,7 @@
 #define EH_PRIV_FIRMWARE_CHIP_ESP32C61      0x14u
 #define EH_PRIV_FIRMWARE_CHIP_ESP32C5       0x17u
 #define EH_PRIV_FIRMWARE_CHIP_ESP32H4       0x1Cu
+#define EH_PRIV_FIRMWARE_CHIP_ESP32S31      0x20u
 
 /* Bump when any bit above changes. */
 #define EH_CAPS_VERSION                   4u

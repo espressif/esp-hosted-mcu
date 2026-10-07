@@ -117,6 +117,22 @@ struct eh_host_uart_config eh_host_get_default_uart_config(void)
 }
 #endif
 
+#ifdef CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
+struct eh_host_usb_otg_config eh_host_get_default_usb_otg_config(void)
+{
+    return (struct eh_host_usb_otg_config) {
+        .pin_reset = {.port = EH_HOST_PORT_GPIO_PORT_RESET, .pin = EH_HOST_PORT_GPIO_PIN_RESET},
+        .connection_timeout_ms = EH_HOST_PORT_USB_CONNECTION_TIMEOUT_MS,
+        .vid = EH_HOST_PORT_USB_VID,
+        .pid = EH_HOST_PORT_USB_PID,
+        .tx_queue_size = 0,
+        .rx_queue_size = EH_HOST_PORT_USB_RX_QUEUE_SIZE,
+        .out_buffer_size = EH_HOST_PORT_USB_OUT_BUF_SIZE,
+        .in_buffer_size = EH_HOST_PORT_USB_IN_BUF_SIZE,
+    };
+}
+#endif
+
 
 
 #if EH_HOST_TRANSPORT_BUS_SPI && defined(ESP_PLATFORM)
@@ -178,5 +194,5 @@ void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 }
 #else
 /* non-IDF / no-transport stub */
-void eh_host_port_transport_check_max_freq(uint8_t chip_id) { (void)chip_id; }
+void eh_host_port_transport_check_max_freq(uint8_t chip_id) { (void)chip_id; (void)TAG; }
 #endif

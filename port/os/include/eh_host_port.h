@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /*
  * eh_host_port.h — umbrella public header for the port layer
  *
@@ -23,6 +27,7 @@
 /* ── OS primitive groups ──────────────────────────────────────────── */
 #include "eh_host_port_task.h"
 #include "eh_host_port_sync.h"
+#include "eh_host_port_stream_buffer.h"
 #include <stdlib.h>          /* malloc/calloc/free/realloc — libc directly */
 #include <string.h>          /* memcpy/memset/memmove — libc directly */
 #include "eh_host_port_dma.h"
@@ -31,5 +36,6 @@
 /* ── HAL groups ───────────────────────────────────────────────────── */
 #include "eh_host_port_gpio.h"
 #include "eh_host_port_power.h"
+#include "eh_host_port_usb.h"
 
 #endif /* EH_HOST_PORT_H_ */

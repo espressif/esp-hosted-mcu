@@ -47,6 +47,8 @@ eh_host_transport_err_t eh_host_transport_set_default_config(void)
 	EH_CHECK_OK(eh_host_spi_set_config(NULL));
 #elif H_TRANSPORT_IN_USE == H_TRANSPORT_UART
 	EH_CHECK_OK(eh_host_uart_set_config(NULL));
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_USB
+	EH_CHECK_OK(eh_host_usb_otg_set_config(NULL));
 #else
 	/* no MCU bus selected: mark shadow valid so init's seed-defaults is no-op */
 	s_transport_config.transport_in_use = H_TRANSPORT_NONE;
@@ -87,6 +89,10 @@ eh_host_transport_err_t eh_host_transport_get_reset_config(eh_gpio_pin_t *pin_co
 	case H_TRANSPORT_UART:
 		pin_config->port = s_transport_config.u.uart.pin_reset.port;
 		pin_config->pin  = s_transport_config.u.uart.pin_reset.pin;
+		break;
+	case H_TRANSPORT_USB:
+		pin_config->port = s_transport_config.u.usb_otg.pin_reset.port;
+		pin_config->pin  = s_transport_config.u.usb_otg.pin_reset.pin;
 		break;
 	case H_TRANSPORT_NONE:
 	default:
@@ -317,6 +323,34 @@ eh_host_transport_err_t eh_host_uart_set_config(struct eh_host_uart_config *conf
 	s_transport_config.u.uart = new_config;
 	s_transport_config_set = true;
 	s_transport_config.transport_in_use = H_TRANSPORT_UART;
+	return EH_HOST_TRANSPORT_RC_OK;
+}
+#endif
+
+#if H_TRANSPORT_IN_USE == H_TRANSPORT_USB
+/* USB OTG Host functions */
+eh_host_transport_err_t eh_host_usb_otg_get_config(struct eh_host_usb_otg_config **config)
+{
+	if (!config) {
+		return EH_HOST_TRANSPORT_RC_ERR_INVALID_ARG;
+	}
+	*config = &s_transport_config.u.usb_otg;
+	return EH_HOST_TRANSPORT_RC_OK;
+}
+
+eh_host_transport_err_t eh_host_usb_otg_set_config(struct eh_host_usb_otg_config *config)
+{
+	struct eh_host_usb_otg_config new_config = config ? *config : INIT_DEFAULT_HOST_USB_OTG_CONFIG();
+	eh_host_transport_err_t rc;
+
+	rc = check_settable(&s_transport_config.u.usb_otg, &new_config, sizeof(new_config));
+	if (rc != EH_HOST_TRANSPORT_RC_OK) {
+		return rc;
+	}
+
+	s_transport_config.u.usb_otg = new_config;
+	s_transport_config_set = true;
+	s_transport_config.transport_in_use = H_TRANSPORT_USB;
 	return EH_HOST_TRANSPORT_RC_OK;
 }
 #endif

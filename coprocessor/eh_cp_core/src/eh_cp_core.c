@@ -390,6 +390,8 @@ static esp_err_t host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 				frame_cfg = (eh_frame_cfg_t)EH_FRAME_CFG_CP_MCU_SPI_HD_DEFAULT;
 #elif CONFIG_EH_TRANSPORT_CP_UART
 				frame_cfg = (eh_frame_cfg_t)EH_FRAME_CFG_CP_MCU_UART_DEFAULT;
+#elif CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE
+				frame_cfg = (eh_frame_cfg_t)EH_FRAME_CFG_CP_MCU_USB_DEFAULT;
 #endif
 #else
 #if CONFIG_EH_TRANSPORT_CP_SDIO
@@ -400,6 +402,8 @@ static esp_err_t host_to_slave_reconfig(uint8_t *evt_buf, uint16_t len)
 				frame_cfg = (eh_frame_cfg_t)EH_FRAME_CFG_CP_LINUX_802_3_SPI_HD_DEFAULT;
 #elif CONFIG_EH_TRANSPORT_CP_UART
 				frame_cfg = (eh_frame_cfg_t)EH_FRAME_CFG_CP_LINUX_802_3_UART_DEFAULT;
+#elif CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE
+				frame_cfg = (eh_frame_cfg_t)EH_FRAME_CFG_CP_LINUX_802_3_USB_DEFAULT;
 #endif
 #endif
 				frame_cfg.checksum_enabled = EH_CP_CHECKSUM;
@@ -1070,6 +1074,8 @@ static void print_firmware_version(void)
 	const char *tp = "SPI-HD";
 #elif CONFIG_EH_TRANSPORT_CP_UART
 	const char *tp = "UART";
+#elif CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE
+	const char *tp = "USB-OTG";
 #else
 	const char *tp = "SDIO";
 #endif

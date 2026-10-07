@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /*
  * eh_host_port_types.h — opaque handles and shared type records
  *
@@ -34,6 +38,7 @@ typedef struct eh_host_port_cond         eh_host_port_cond_t;
 typedef struct eh_host_port_sem          eh_host_port_sem_t;
 typedef struct eh_host_port_event_group  eh_host_port_event_group_t;
 typedef struct eh_host_port_queue        eh_host_port_queue_t;
+typedef struct eh_host_port_stream_buffer eh_host_port_stream_buffer_t;
 
 /* Event-group bit-vector.  uint32_t mirrors FreeRTOS EventBits_t on
  * 32-bit-tick builds and the upstream RainMaker os_event_bits_t. */

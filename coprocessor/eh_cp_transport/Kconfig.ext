@@ -24,6 +24,16 @@ menu "CP transport"
 		depends on SOC_UART_SUPPORTED && ESP_HOSTED_CP_FOR_MCU
 		# A flash-resident ISR stalls during flash ops and the 128-byte RX FIFO overflows.
 		select UART_ISR_IN_IRAM if !RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH
+
+	config EH_TRANSPORT_CP_USB_OTG_DEVICE
+		bool "USB (OTG) (as Device) (Experimental)"
+		depends on SOC_USB_OTG_SUPPORTED
+		select TINYUSB_CDC_ENABLED
+		help
+			Coprocessor is a USB OTG device. ESP-Hosted frames, including RPC,
+			are carried on CDC ACM. TinyUSB CDC is enabled for this choice.
+			Do not also select the USB CDC console; it uses the same controller.
+
 	endchoice
 
 # Memory pool configuration
@@ -40,6 +50,7 @@ orsource "./Kconfig.cp.spi"
 orsource "./Kconfig.cp.sdio"
 orsource "./Kconfig.cp.spi_hd"
 orsource "./Kconfig.cp.uart"
+orsource "./Kconfig.cp.usb_otg_device"
 
 	menu "Transport Test"
 		config ESP_RAW_THROUGHPUT_TRANSPORT
