@@ -769,8 +769,8 @@ static void esp_spi_hd_deinit(interface_handle_t * handle)
 
 static esp_err_t esp_spi_hd_reset(interface_handle_t *handle)
 {
-	spi_bus_config_t bus_cfg;
-	spi_slave_hd_slot_config_t slave_hd_cfg;
+	spi_bus_config_t bus_cfg = { 0 };
+	spi_slave_hd_slot_config_t slave_hd_cfg = { 0 };
 	esp_err_t ret = ESP_OK;
 
 	ret = spi_slave_hd_deinit(SPI_HOST);
