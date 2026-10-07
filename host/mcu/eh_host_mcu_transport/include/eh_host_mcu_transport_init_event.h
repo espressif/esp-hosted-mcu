@@ -25,6 +25,9 @@ uint32_t eh_host_mcu_transport_get_ext_capabilities(void);
  * know the CP understands the tag. */
 bool eh_host_mcu_transport_peer_advertised_rpc_version(void);
 
+/* CP transport size from its 0x1C TLV; 0 if it did not report one. */
+uint32_t eh_host_mcu_transport_get_cp_transfer_size(void);
+
 /* CP's SDIO buf-config (0x1B) from the init event, or NULL if the CP did
  * not advertise one (rel-2 firmware). Struct in eh_common_sdio_cfg.h. */
 struct eh_priv_sdio_buf_config;

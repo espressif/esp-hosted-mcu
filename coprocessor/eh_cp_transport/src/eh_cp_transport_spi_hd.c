@@ -1001,6 +1001,11 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 	if (rc) { ESP_LOGE(TAG, "TLV v2 overflow"); spi_hd_buffer_tx_free(buf_handle.payload); xSemaphoreGive(mempool_tx_sem); return; }
 #endif
 
+	if (eh_tlv_add_u32_le(&tlv, EH_PRIV_TRANSFER_SIZE, (uint32_t)spi_hd_transfer_size))
+		ESP_LOGW(TAG, "no room for transfer-size TLV");
+	else
+		ESP_LOGI(TAG, "advertising transfer size %u", (unsigned)spi_hd_transfer_size);
+
 	len = eh_tlv_builder_len(&tlv);
 	event->event_len = len;
 	len += 2;

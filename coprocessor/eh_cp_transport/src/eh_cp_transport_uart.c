@@ -794,6 +794,11 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 	if (rc) { ESP_LOGE(TAG, "TLV v3 overflow"); goto out; }
 #endif
 
+	if (eh_tlv_add_u32_le(&tlv, EH_PRIV_TRANSFER_SIZE, (uint32_t)uart_transfer_size))
+		ESP_LOGW(TAG, "no room for transfer-size TLV");
+	else
+		ESP_LOGI(TAG, "advertising transfer size %u", (unsigned)uart_transfer_size);
+
 	len = eh_tlv_builder_len(&tlv);
 	event->event_len = len;
 	len += 2;

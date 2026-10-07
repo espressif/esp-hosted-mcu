@@ -34,6 +34,7 @@ static volatile uint8_t  s_chip_id      = EH_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
 static volatile uint8_t  s_capabilities = 0;
 static volatile uint32_t s_ext_caps     = 0;
 static volatile uint32_t s_fw_version   = 0;
+static volatile uint32_t s_cp_transfer_size = 0;
 static volatile uint8_t  s_slave_sdio_streaming_mode = 0; /* 0=packet, 1=streaming */
 static volatile bool     s_peer_advertised_rpc_version = false;
 /* Retained across a host deep-sleep */
@@ -45,6 +46,7 @@ uint32_t eh_host_mcu_transport_get_fw_version(void)      { return s_fw_version; 
 uint8_t  eh_host_mcu_transport_get_capabilities(void)    { return s_capabilities; }
 uint32_t eh_host_mcu_transport_get_ext_capabilities(void){ return s_ext_caps; }
 bool     eh_host_mcu_transport_peer_advertised_rpc_version(void) { return s_peer_advertised_rpc_version; }
+uint32_t eh_host_mcu_transport_get_cp_transfer_size(void) { return s_cp_transfer_size; }
 
 const struct eh_priv_sdio_buf_config *eh_host_mcu_transport_sdio_buf_config(void)
 {
@@ -276,6 +278,13 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
             if (tlen >= 4) {
                 s_fw_version = le32(val);
                 ESP_LOGD(TAG, "coprocessor firmware: 0x%08x", (unsigned int)s_fw_version);
+            }
+            break;
+        case EH_PRIV_TRANSFER_SIZE:
+            if (tlen >= 4) {
+                s_cp_transfer_size = le32(val);
+                ESP_LOGI(TAG, "coprocessor transport size: %u",
+                         (unsigned int)s_cp_transfer_size);
             }
             break;
         case EH_PRIV_TRANS_SDIO_MODE:

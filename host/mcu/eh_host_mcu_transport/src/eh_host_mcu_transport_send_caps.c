@@ -3,28 +3,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "eh_tlv.h"
 #include "eh_tlv_tags.h"
-#include "eh_common_interface.h"   /* ESP_TRANSPORT_HOST_MAX_BUF_SIZE */
+#include "eh_common_interface.h"
 #include "eh_host_mcu_transport_init_event.h"
 #include "eh_host_mcu_transport_send_caps.h"
 
 #define EH_HOST_PRIV_EVENT_INIT  0x22u
-
-/* Each TLV is 3 bytes (tag + len + 1-byte value). */
-#define EH_HOST_TLV_SIZE         3u
-
-/* Five host->slave caps TLVs (0x44..0x48) are always emitted. */
-#define EH_HOST_BASE_TLV_COUNT   5u
-
-/* RPC_VERSION (0x1A) is emitted only when the CP advertised it first;
- * older CP parsers don't tolerate unknown tags in the reverse direction. */
-#define EH_HOST_OPT_TLV_COUNT    1u
-
-#define EH_HOST_BASE_PKT_SIZE \
-    (2u /* evt hdr */ + EH_HOST_BASE_TLV_COUNT * EH_HOST_TLV_SIZE)
-
-#define EH_HOST_MAX_PKT_SIZE \
-    (EH_HOST_BASE_PKT_SIZE + EH_HOST_OPT_TLV_COUNT * EH_HOST_TLV_SIZE)
 
 int eh_host_transport_build_host_caps_pkt(uint8_t *out, size_t out_size,
                                           uint8_t host_cap,
@@ -33,7 +18,7 @@ int eh_host_transport_build_host_caps_pkt(uint8_t *out, size_t out_size,
                                           uint8_t low_threshold,
                                           uint8_t high_threshold)
 {
-    if (!out || out_size < EH_HOST_MAX_PKT_SIZE) return -1;
+    if (!out || out_size < EH_HOST_CAPS_PKT_MAX_SIZE) return -1;
 
     uint8_t *p = out;
     uint8_t  evt_len = 0;
@@ -61,12 +46,17 @@ int eh_host_transport_build_host_caps_pkt(uint8_t *out, size_t out_size,
     *p++ = 1;                                       evt_len++;
     *p++ = low_threshold;                           evt_len++;
 
-    *p++ = EH_HOST_PRIV_SLV_CONFIG_SET_TRANSFER_SIZE;          evt_len++;
-    *p++ = 4;                                                  evt_len++;
-    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE);         evt_len++;
-    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE >> 8);    evt_len++;
-    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE >> 16);   evt_len++;
-    *p++ = (uint8_t)(ESP_TRANSPORT_HOST_MAX_BUF_SIZE >> 24);   evt_len++;
+    /* Only when the CP reported a different size (0x1C). A CP that reports
+     * nothing keeps its own default, which is always >= ours. */
+    uint32_t cp_size = eh_host_mcu_transport_get_cp_transfer_size();
+    if (cp_size && cp_size != ESP_TRANSPORT_HOST_MAX_BUF_SIZE) {
+        eh_tlv_builder_t b;
+        eh_tlv_builder_init(&b, p, EH_TLV_SIZE(4));
+        eh_tlv_add_u32_le(&b, EH_HOST_PRIV_SLV_CONFIG_SET_TRANSFER_SIZE,
+                          ESP_TRANSPORT_HOST_MAX_BUF_SIZE);
+        p += b.pos;
+        evt_len += b.pos;
+    }
 
     /* Echo RPC_VERSION (0x1A) only when the CP advertised it on the
      * inbound init event.  Older upstream CP firmware (esp-hosted /
