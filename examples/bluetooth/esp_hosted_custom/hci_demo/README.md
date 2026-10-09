@@ -46,21 +46,79 @@ bluetooth/esp_hosted_custom/hci_demo/
 └── mcu_host/   # host: custom raw-HCI handler (no NimBLE / Bluedroid)
 ```
 
-## Kconfig
+> [!IMPORTANT]
+> **New here? Get a base example working first.** Follow
+> [Getting Started: MCU](https://github.com/espressif/esp-hosted/blob/master/docs/getting-started-mcu.md)
+> to wire the boards, install tools, choose a transport, and confirm the
+> host↔co-processor handshake. Host and co-processor must select the **same**
+> transport.
 
-The host enables the BT feature but **no** IDF BT host stack — that is what
-selects the custom path:
+## Co-processor (BT controller)
 
-```ini
+<!-- coprocessor-start -->
+The co-processor runs the BT controller only — no host stack — and exposes HCI
+over the hosted bus. Select the transport (must match the host):
+
+```bash
+cd examples/bluetooth/esp_hosted_custom/hci_demo/cp
+eh.py set-target esp32c6
+eh.py menuconfig
+```
+
+CP dependency config is **pre-set in `sdkconfig.defaults`** (do not remove):
+
+```text
+CONFIG_ESP_HOSTED_CP_FEAT_BT=y            # BT feature on the co-processor
+CONFIG_ESP_HOSTED_CP_BT_ENABLED=y
+CONFIG_ESP_HOSTED_CP_FEAT_BT_HCI_VHCI=y   # HCI over the hosted bus, not a UART
+CONFIG_BT_ENABLED=y
+CONFIG_BT_CONTROLLER_ONLY=y               # controller only — the host owns the stack
+CONFIG_ESP_HOSTED_CP_FEAT_WIFI=n          # not needed here
+```
+
+Then flash and monitor:
+
+```bash
+eh.py -p <cp_usb_serial_port> flash monitor
+```
+<!-- coprocessor-stop -->
+
+## MCU host (custom stack)
+
+<!-- esp_host-start -->
+Select the transport (must match the co-processor):
+
+```bash
+cd examples/bluetooth/esp_hosted_custom/hci_demo/mcu_host
+eh.py set-target esp32p4
+eh.py menuconfig
+```
+
+Host dependency config is **pre-set in `sdkconfig.defaults`** (do not remove).
+The host enables the BT feature but **no** IDF BT host stack — that absence is
+what selects the custom path:
+
+```text
 CONFIG_ESP_HOSTED_HOST_FEAT_BT=y      # HCI byte-pipe + CP controller lifecycle
 # (no CONFIG_BT_NIMBLE_ENABLED / CONFIG_BT_BLUEDROID_ENABLED)
 ```
 
-## Build & run
+Then flash and monitor:
 
-Flash `cp/` to a BLE-capable co-processor and `mcu_host/` to the host (paired to
-the same transport), then watch the host log for:
+```bash
+eh.py -p <host_usb_serial_port> flash monitor
+```
+
+### Verify
+
+The host sends an HCI Reset and prints the controller's Command Complete as it
+arrives on the custom `rx` callback. That round-trip (`tx` → CP controller →
+`rx`) is the proof the two-wire custom path works:
 
 ```text
 custom rx: HCI Reset Command Complete, status=0x00
 ```
+
+A `status` other than `0x00`, or no line at all, means the controller never
+answered — check that both sides selected the same transport.
+<!-- esp_host-stop -->
