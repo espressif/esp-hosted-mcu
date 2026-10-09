@@ -74,6 +74,19 @@ esp_err_t eh_host_wifi_init(const wifi_init_config_t *cfg)
     p->rx_mgmt_buf_num       = cfg->rx_mgmt_buf_num;
     p->tx_hetb_queue_num     = cfg->tx_hetb_queue_num;
     p->dump_hesigb_enable    = cfg->dump_hesigb_enable;
+    /* Each companion macro is defined exactly when its field exists. */
+#ifdef WIFI_PRIVACY_ENHANCEMENTS_ENABLED
+    p->privacy_enhancements  = cfg->privacy_enhancements;
+    EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_INIT_CONFIG_EXT_privacy_enhancements_BIT, p->ext_present_bitmask);
+#endif
+#ifdef WIFI_RMAC_AUTO_RESET_INTERVAL
+    p->rmac_auto_reset_int   = cfg->rmac_auto_reset_int;
+    EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_INIT_CONFIG_EXT_rmac_auto_reset_int_BIT, p->ext_present_bitmask);
+#endif
+#ifdef WIFI_TASK_STACK_SIZE
+    p->wifi_task_stack_size  = cfg->wifi_task_stack_size;
+    EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_INIT_CONFIG_EXT_wifi_task_stack_size_BIT, p->ext_present_bitmask);
+#endif
 
     eh_rpc_ctrl_cmd_t *r = NULL;
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiInit, req,
@@ -255,6 +268,12 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
         if (cfg->sta.vht_mcs8_enabled)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_2_vht_mcs8_enabled, hbm);
 #endif
+#if EH_HOST_WIFI_GOT_STA_MAX_BW_NEG
+        if (cfg->sta.max_bandwidth_negotiation_enabled_2g)
+            EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_2g_BIT, hbm);
+        if (cfg->sta.max_bandwidth_negotiation_enabled_5g)
+            EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_5g_BIT, hbm);
+#endif
 #if EH_HOST_DECODE_WIFI_RESERVED_FIELD
 #  if EH_HOST_WIFI_NEW_RESERVED_FIELD_NAMES
         EH_HOST_WIFI_STA_CONFIG_2_SET_RESERVED_VAL(cfg->sta.reserved2, hbm);
@@ -377,6 +396,12 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
                 EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled, hbm);
             out->sta.vht_mcs8_enabled =
                 EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_2_vht_mcs8_enabled, hbm);
+#endif
+#if EH_HOST_WIFI_GOT_STA_MAX_BW_NEG
+            out->sta.max_bandwidth_negotiation_enabled_2g =
+                EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_2g_BIT, hbm);
+            out->sta.max_bandwidth_negotiation_enabled_5g =
+                EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_5g_BIT, hbm);
 #endif
 #if EH_HOST_DECODE_WIFI_RESERVED_FIELD
 #  if EH_HOST_WIFI_NEW_RESERVED_FIELD_NAMES
@@ -1294,6 +1319,9 @@ esp_err_t eh_host_wifi_set_scan_parameters(const wifi_scan_default_params_t *con
     req->u.wifi_scan_params.active_min            = config->scan_time.active.min;
     req->u.wifi_scan_params.active_max            = config->scan_time.active.max;
     req->u.wifi_scan_params.home_chan_dwell_time  = config->home_chan_dwell_time;
+#if EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN
+    req->u.wifi_scan_params.max_offchan_duration_ms = config->max_offchan_duration_ms;
+#endif
     eh_rpc_ctrl_cmd_t *r = NULL;
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiScanParams, req,
                                          (void **)&r) != 0) return ESP_FAIL;
@@ -1318,6 +1346,10 @@ esp_err_t eh_host_wifi_get_scan_parameters(wifi_scan_default_params_t *config)
         config->scan_time.active.max = r->u.wifi_scan_params.active_max;
         config->home_chan_dwell_time =
             (uint8_t)r->u.wifi_scan_params.home_chan_dwell_time;
+#if EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN
+        config->max_offchan_duration_ms =
+            (uint16_t)r->u.wifi_scan_params.max_offchan_duration_ms;
+#endif
     }
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;

@@ -1,0 +1,543 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
+#
+# Every IDF Wi-Fi struct and API, and what ESP-Hosted does with it.
+# check_wifi_coverage.py fails when an IDF ref has a struct, a field of a
+# mapped struct, or an API that is neither defined by hosted nor classified here.
+#
+# headers: classifies every struct and API of one header that has no own entry.
+# apis:    classifies one API that hosted does not define. An API hosted defines
+#          is "supported" (or "stub" when it only returns ESP_ERR_NOT_SUPPORTED)
+#          without an entry; an entry other than local on such an API fails as STALE.
+#   {local: reason}        works on the host without RPC
+#   {unsupported: reason}  hosted does not offer it
+#   {gap: reason}          should work, does not yet; reported, does not fail
+#   {skip: reason}         never needed on the host, by design
+#
+# structs:
+# A struct is either mapped field by field (proto + fields), or marked as a
+# whole with one of:
+#   {unsupported: reason}      hosted does not offer the API or event
+#   {skip: reason}             never carried, by design
+#   {gap: reason}              should be carried, is not yet; reported, does not fail
+# Struct keys for field-by-field structs:
+#   proto:   rpc_v2.proto message for fields marked "carried"
+#   since:   first IDF version that has the struct; before it, absence is fine
+#   aliases: older names of the struct
+# Field values:
+#   carried                    proto field <proto>.<field name>
+#   {proto: msg.field}         field travels in another proto field
+#   {proto: ..., bit: NAME}    packed into a bitmask; NAME must exist in the CP
+#                              bitmask header, EH_HOST_NAME in the host one
+#   {skip: reason}             never carried, by design
+#   {gap: reason}              not carried yet; reported, does not fail
+# Reserved fields (reserved, reserved1, he_reserved, ...) and unnamed padding
+# are ignored. A field whose type is another struct listed here is one entry;
+# that struct is checked on its own.
+
+headers:
+  esp_wifi_default.h: {local: IDF netif helpers run on the host (esp_wifi builds wifi_default.c without local Wi-Fi)}
+  esp_wifi_netif.h: {local: IDF netif helpers run on the host (esp_wifi builds wifi_netif.c without local Wi-Fi)}
+  esp_wifi_ap_get_sta_list.h: {local: IDF netif helpers run on the host (esp_wifi builds wifi_default_ap.c without local Wi-Fi)}
+  smartconfig_ack.h: {unsupported: SmartConfig is not implemented in hosted}
+  esp_wpa2.h: {unsupported: deprecated WPA2-Enterprise API; hosted provides esp_eap_client_* instead}
+  esp_now.h: {unsupported: ESP-NOW is not implemented in hosted}
+  esp_smartconfig.h: {unsupported: SmartConfig is not implemented in hosted}
+  esp_mesh.h: {unsupported: ESP-MESH is not implemented in hosted}
+  esp_mesh_internal.h: {unsupported: ESP-MESH is not implemented in hosted}
+  esp_wps.h: {unsupported: WPS is not implemented in hosted}
+  esp_wnm.h: {unsupported: 802.11v WNM API is not implemented in hosted}
+  esp_rrm.h: {unsupported: 802.11k RRM API is not implemented in hosted}
+  esp_mbo.h: {unsupported: MBO API is not implemented in hosted}
+  esp_supplicant_utils.h: {unsupported: supplicant utility is not built on the host}
+  esp_wpa.h: {skip: the supplicant runs on the CP}
+
+apis:
+  esp_netif_create_default_wifi_nan: {unsupported: NAN is not implemented in hosted}
+  esp_wifi_set_default_wifi_nan_handlers: {unsupported: NAN is not implemented in hosted}
+  esp_netif_create_default_wifi_mesh_netifs: {unsupported: ESP-MESH is not implemented in hosted}
+  esp_wifi_set_okc_support: {gap: "RPC exists (eh_host_wifi_set_okc_support) but no esp_wifi_remote_set_okc_support glue"}
+  esp_supp_dpp_set_config: {gap: DPP multi-config is not carried}
+  esp_wifi_set_promiscuous: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_get_promiscuous: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_set_promiscuous_rx_cb: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_set_promiscuous_filter: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_get_promiscuous_filter: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_set_promiscuous_ctrl_filter: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_get_promiscuous_ctrl_filter: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_set_csi: {unsupported: CSI API is not implemented in hosted}
+  esp_wifi_set_csi_config: {unsupported: CSI API is not implemented in hosted}
+  esp_wifi_get_csi_config: {unsupported: CSI API is not implemented in hosted}
+  esp_wifi_set_csi_rx_cb: {unsupported: CSI API is not implemented in hosted}
+  esp_wifi_ftm_initiate_session: {unsupported: FTM API is not implemented in hosted}
+  esp_wifi_ftm_end_session: {unsupported: FTM API is not implemented in hosted}
+  esp_wifi_ftm_resp_set_offset: {unsupported: FTM API is not implemented in hosted}
+  esp_wifi_ftm_get_report: {unsupported: FTM API is not implemented in hosted}
+  esp_wifi_set_ant: {unsupported: antenna API is not implemented in hosted}
+  esp_wifi_get_ant: {unsupported: antenna API is not implemented in hosted}
+  esp_wifi_set_ant_gpio: {unsupported: antenna API is not implemented in hosted}
+  esp_wifi_get_ant_gpio: {unsupported: antenna API is not implemented in hosted}
+  esp_wifi_set_vendor_ie: {unsupported: vendor IE API is not implemented in hosted (RPC v1 only)}
+  esp_wifi_set_vendor_ie_cb: {unsupported: vendor IE API is not implemented in hosted (RPC v1 only)}
+  esp_wifi_80211_tx: {unsupported: raw 802.11 TX / TX rate API is not implemented in hosted}
+  esp_wifi_register_80211_tx_cb: {unsupported: raw 802.11 TX / TX rate API is not implemented in hosted}
+  esp_wifi_config_80211_tx: {unsupported: raw 802.11 TX / TX rate API is not implemented in hosted}
+  esp_wifi_config_80211_tx_rate: {unsupported: raw 802.11 TX / TX rate API is not implemented in hosted}
+  esp_wifi_config_11b_rate: {unsupported: raw 802.11 TX / TX rate API is not implemented in hosted}
+  esp_wifi_action_tx_req: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
+  esp_wifi_remain_on_channel: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
+  esp_wifi_set_event_mask: {unsupported: CP-side event filtering is not implemented in hosted}
+  esp_wifi_get_event_mask: {unsupported: CP-side event filtering is not implemented in hosted}
+  esp_wifi_set_rssi_threshold: {unsupported: RSSI-low event is not implemented in hosted}
+  esp_wifi_get_home_channel: {unsupported: API is not implemented in hosted}
+  esp_wifi_get_tsf_time: {unsupported: API is not implemented in hosted}
+  esp_wifi_statis_dump: {unsupported: API is not implemented in hosted}
+  esp_wifi_set_dynamic_cs: {unsupported: API is not implemented in hosted}
+  esp_wifi_coex_pwr_configure: {unsupported: API is not implemented in hosted}
+  esp_wifi_beacon_offset_sample_beacon: {unsupported: API is not implemented in hosted}
+  esp_wifi_connectionless_module_set_wake_interval: {unsupported: power-save control API is not implemented in hosted}
+  esp_wifi_force_wakeup_acquire: {unsupported: power-save control API is not implemented in hosted}
+  esp_wifi_force_wakeup_release: {unsupported: power-save control API is not implemented in hosted}
+
+structs:
+  esp_eap_fast_config:
+    proto: eap_fast_config
+    fields:
+      fast_provisioning: carried
+      fast_max_pac_list_len: carried
+      fast_pac_format_binary: carried
+
+  wifi_init_config_t:
+    proto: wifi_init_config
+    fields:
+      static_rx_buf_num: carried
+      dynamic_rx_buf_num: carried
+      tx_buf_type: carried
+      static_tx_buf_num: carried
+      dynamic_tx_buf_num: carried
+      rx_mgmt_buf_type: carried
+      rx_mgmt_buf_num: carried
+      cache_tx_buf_num: carried
+      csi_enable: carried
+      ampdu_rx_enable: carried
+      ampdu_tx_enable: carried
+      amsdu_tx_enable: carried
+      nvs_enable: carried
+      nano_enable: carried
+      rx_ba_win: carried
+      wifi_task_core_id: carried
+      beacon_max_len: carried
+      mgmt_sbuf_num: carried
+      feature_caps: carried
+      sta_disconnected_pm: carried
+      espnow_max_encrypt_num: carried
+      tx_hetb_queue_num: carried
+      dump_hesigb_enable: carried
+      magic: carried
+      privacy_enhancements:
+        proto: wifi_init_config.privacy_enhancements
+        bit: WIFI_INIT_CONFIG_EXT_privacy_enhancements_BIT
+      rmac_auto_reset_int:
+        proto: wifi_init_config.rmac_auto_reset_int
+        bit: WIFI_INIT_CONFIG_EXT_rmac_auto_reset_int_BIT
+      wifi_task_stack_size:
+        proto: wifi_init_config.wifi_task_stack_size
+        bit: WIFI_INIT_CONFIG_EXT_wifi_task_stack_size_BIT
+      osi_funcs: {skip: CP-local OS adapter table pointer}
+      wpa_crypto_funcs: {skip: CP-local crypto function table}
+
+  wifi_sta_config_t:
+    proto: wifi_sta_config
+    fields:
+      ssid: carried
+      password: carried
+      scan_method: carried
+      bssid_set: carried
+      bssid: carried
+      channel: carried
+      listen_interval: carried
+      sort_method: carried
+      threshold: carried
+      pmf_cfg: carried
+      rm_enabled: {proto: wifi_sta_config.bitmask, bit: WIFI_STA_CONFIG_1_rm_enabled}
+      btm_enabled: {proto: wifi_sta_config.bitmask, bit: WIFI_STA_CONFIG_1_btm_enabled}
+      mbo_enabled: {proto: wifi_sta_config.bitmask, bit: WIFI_STA_CONFIG_1_mbo_enabled}
+      ft_enabled: {proto: wifi_sta_config.bitmask, bit: WIFI_STA_CONFIG_1_ft_enabled}
+      owe_enabled: {proto: wifi_sta_config.bitmask, bit: WIFI_STA_CONFIG_1_owe_enabled}
+      transition_disable: {proto: wifi_sta_config.bitmask, bit: WIFI_STA_CONFIG_1_transition_disable}
+      disable_wpa3_compatible_mode: {proto: wifi_sta_config.bitmask, bit: WIFI_STA_CONFIG_1_disable_wpa3_compat}
+      sae_pwe_h2e: carried
+      sae_pk_mode: carried
+      failure_retry_cnt: carried
+      he_dcm_set: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_dcm_set_BIT}
+      he_dcm_max_constellation_tx: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_dcm_max_constellation_tx_BITS}
+      he_dcm_max_constellation_rx: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_dcm_max_constellation_rx_BITS}
+      he_mcs9_enabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_mcs9_enabled_BIT}
+      he_su_beamformee_disabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_su_beamformee_disabled_BIT}
+      he_trig_su_bmforming_feedback_disabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_trig_su_bmforming_feedback_disabled_BIT}
+      he_trig_mu_bmforming_partial_feedback_disabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT}
+      he_trig_cqi_feedback_disabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT}
+      vht_su_beamformee_disabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_vht_su_beamformee_disabled}
+      vht_mu_beamformee_disabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled}
+      vht_mcs8_enabled: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_vht_mcs8_enabled}
+      max_bandwidth_negotiation_enabled_2g: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_2g_BIT}
+      max_bandwidth_negotiation_enabled_5g: {proto: wifi_sta_config.he_bitmask, bit: WIFI_STA_CONFIG_2_max_bandwidth_negotiation_enabled_5g_BIT}
+      sae_h2e_identifier:
+        proto: wifi_sta_config.sae_h2e_identifier
+        note: CP get_config does not encode it yet; host to CP only
+
+  wifi_ap_config_t:
+    proto: wifi_ap_config
+    fields:
+      ssid: carried
+      password: carried
+      ssid_len: carried
+      channel: carried
+      authmode: carried
+      ssid_hidden: carried
+      max_connection: carried
+      beacon_interval: carried
+      csa_count: carried
+      dtim_period: carried
+      pairwise_cipher: carried
+      ftm_responder: carried
+      pmf_cfg: carried
+      sae_pwe_h2e: carried
+      transition_disable: carried
+      sae_ext: carried
+      bss_max_idle_cfg: carried
+      gtk_rekey_interval: carried
+      wpa3_compatible_mode: carried
+
+  wifi_scan_threshold_t:
+    proto: wifi_scan_threshold
+    fields:
+      rssi: carried
+      authmode: carried
+      rssi_5g_adjustment: carried
+
+  wifi_pmf_config_t:
+    proto: wifi_pmf_config
+    fields:
+      capable: carried
+      required: carried
+
+  wifi_bss_max_idle_config_t:
+    proto: wifi_bss_max_idle_config
+    since: "5.5"
+    fields:
+      period: carried
+      protected_keep_alive: carried
+
+  wifi_scan_config_t:
+    proto: wifi_scan_config
+    fields:
+      ssid: carried
+      bssid: carried
+      channel: carried
+      show_hidden: carried
+      scan_type: carried
+      scan_time: carried
+      home_chan_dwell_time: carried
+      channel_bitmap: carried
+      coex_background_scan: carried
+      max_scan_ap_num: {gap: not carried yet}
+
+  wifi_scan_time_t:
+    proto: wifi_scan_time
+    fields:
+      active: carried
+      passive: carried
+
+  wifi_active_scan_time_t:
+    proto: wifi_active_scan_time
+    fields:
+      min: carried
+      max: carried
+
+  wifi_scan_channel_bitmap_t:
+    proto: wifi_scan_channel_bitmap
+    fields:
+      ghz_2_channels: carried
+      ghz_5_channels: carried
+
+  wifi_scan_default_params_t:
+    proto: wifi_scan_default_params
+    fields:
+      scan_time: carried
+      home_chan_dwell_time: carried
+      max_offchan_duration_ms: carried
+
+  wifi_ap_record_t:
+    proto: wifi_ap_record
+    fields:
+      bssid: carried
+      ssid: carried
+      primary: carried
+      second: carried
+      rssi: carried
+      authmode: carried
+      pairwise_cipher: carried
+      group_cipher: carried
+      ant: carried
+      phy_11b: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_phy_11b_BIT}
+      phy_11g: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_phy_11g_BIT}
+      phy_11n: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_phy_11n_BIT}
+      phy_lr: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_phy_lr_BIT}
+      phy_11a: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_phy_11a_BIT}
+      phy_11ac: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_phy_11ac_BIT}
+      phy_11ax: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_phy_11ax_BIT}
+      wps: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_wps_BIT}
+      ftm_responder: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_ftm_responder_BIT}
+      ftm_initiator: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_ftm_initiator_BIT}
+      akm_dpp: {proto: wifi_ap_record.bitmask, bit: WIFI_SCAN_AP_REC_akm_dpp_BIT}
+      country: carried
+      he_ap: carried
+      bandwidth: carried
+      vht_ch_freq1: carried
+      vht_ch_freq2: carried
+
+  wifi_country_t:
+    proto: wifi_country
+    fields:
+      cc: carried
+      schan: carried
+      nchan: carried
+      max_tx_power: carried
+      policy: carried
+      wifi_5g_channel_mask: carried
+
+  wifi_he_ap_info_t:
+    proto: wifi_he_ap_info
+    fields:
+      bss_color: {proto: wifi_he_ap_info.bitmask, bit: WIFI_HE_AP_INFO_BSS_COLOR_BITS}
+      partial_bss_color: {proto: wifi_he_ap_info.bitmask, bit: WIFI_HE_AP_INFO_partial_bss_color_BIT}
+      bss_color_disabled: {proto: wifi_he_ap_info.bitmask, bit: WIFI_HE_AP_INFO_bss_color_disabled_BIT}
+      bssid_index: carried
+
+  wifi_sta_info_t:
+    proto: wifi_sta_info
+    fields:
+      mac: carried
+      rssi: carried
+      phy_11b: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_phy_11b_BIT}
+      phy_11g: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_phy_11g_BIT}
+      phy_11n: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_phy_11n_BIT}
+      phy_lr: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_phy_lr_BIT}
+      phy_11a: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_phy_11a_BIT}
+      phy_11ac: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_phy_11ac_BIT}
+      phy_11ax: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_phy_11ax_BIT}
+      is_mesh_child: {proto: wifi_sta_info.bitmask, bit: WIFI_STA_INFO_is_mesh_child_BIT}
+
+  wifi_sta_list_t:
+    proto: wifi_sta_list
+    fields:
+      sta: carried
+      num: carried
+
+  wifi_protocols_t:
+    proto: wifi_protocols
+    since: "5.4"
+    fields:
+      ghz_2g: carried
+      ghz_5g: carried
+
+  wifi_bandwidths_t:
+    proto: wifi_bandwidths
+    since: "5.4"
+    fields:
+      ghz_2g: carried
+      ghz_5g: carried
+
+  wifi_config_t:
+    proto: wifi_config
+    fields:
+      sta: carried
+      ap: carried
+      nan: {skip: NAN is not supported by hosted}
+
+  wifi_twt_config_t:
+    proto: wifi_twt_config
+    fields:
+      post_wakeup_event: carried
+      twt_enable_keep_alive: carried
+
+  wifi_itwt_setup_config_t:
+    proto: wifi_itwt_setup_config
+    since: "5.4"
+    fields:
+      setup_cmd: carried
+      min_wake_dura: carried
+      wake_invl_mant: carried
+      twt_id: carried
+      timeout_time_ms: carried
+      trigger: {proto: wifi_itwt_setup_config.bitmask_1, bit: WIFI_ITWT_CONFIG_1_trigger_BIT}
+      flow_type: {proto: wifi_itwt_setup_config.bitmask_1, bit: WIFI_ITWT_CONFIG_1_flow_type_BIT}
+      flow_id: {proto: wifi_itwt_setup_config.bitmask_1, bit: WIFI_ITWT_CONFIG_1_flow_id_BIT}
+      wake_invl_expn: {proto: wifi_itwt_setup_config.bitmask_1, bit: WIFI_ITWT_CONFIG_1_wake_invl_expn_BIT}
+      wake_duration_unit: {proto: wifi_itwt_setup_config.bitmask_1, bit: WIFI_ITWT_CONFIG_1_wake_duration_unit_BIT}
+
+  # ── events hosted forwards to the host ──
+
+  wifi_event_sta_connected_t:
+    proto: wifi_event_sta_connected
+    fields:
+      ssid: carried
+      ssid_len: carried
+      bssid: carried
+      channel: carried
+      authmode: carried
+      aid: carried
+
+  wifi_event_sta_disconnected_t:
+    proto: wifi_event_sta_disconnected
+    fields:
+      ssid: carried
+      ssid_len: carried
+      bssid: carried
+      reason: carried
+      rssi: carried
+
+  wifi_event_sta_scan_done_t:
+    proto: wifi_event_sta_scan_done
+    fields:
+      status: carried
+      number: carried
+      scan_id: carried
+
+  wifi_event_ap_staconnected_t:
+    proto: Rpc_Event_AP_StaConnected
+    fields:
+      mac: carried
+      aid: carried
+      is_mesh_child: carried
+
+  wifi_event_ap_stadisconnected_t:
+    proto: Rpc_Event_AP_StaDisconnected
+    fields:
+      mac: carried
+      aid: carried
+      is_mesh_child: carried
+      reason: carried
+
+  wifi_event_dpp_uri_ready_t:
+    since: "5.5"
+    fields:
+      uri: {proto: Rpc_Event_WifiDppUriReady.qrcode}
+      uri_data_len: {proto: Rpc_Event_WifiDppUriReady.qrcode, note: length of qrcode}
+
+  wifi_event_dpp_config_received_t:
+    since: "5.5"
+    fields:
+      wifi_cfg: {proto: Rpc_Event_WifiDppCfgRecvd.cfg, note: only sta ssid/password/bssid are filled}
+      total_conf: {gap: DPP multi-config is not carried}
+      configs: {gap: DPP multi-config is not carried}
+
+  wifi_event_dpp_failed_t:
+    since: "5.5"
+    fields:
+      failure_reason: {proto: Rpc_Event_WifiDppFail.reason}
+
+  wifi_event_sta_itwt_setup_t:
+    proto: Rpc_Event_StaItwtSetup
+    fields:
+      config: carried
+      status: carried
+      reason: carried
+      target_wake_time: carried
+
+  wifi_event_sta_itwt_teardown_t:
+    proto: Rpc_Event_StaItwtTeardown
+    fields:
+      flow_id: carried
+      status: carried
+
+  wifi_event_sta_itwt_suspend_t:
+    proto: Rpc_Event_StaItwtSuspend
+    fields:
+      status: carried
+      flow_id_bitmap: carried
+      actual_suspend_time_ms: carried
+
+  wifi_event_sta_itwt_probe_t:
+    proto: Rpc_Event_StaItwtProbe
+    fields:
+      status: carried
+      reason: carried
+
+  # ── whole structs: gaps ──
+
+  wifi_event_sta_authmode_change_t: {gap: event reaches the host without its payload}
+  wifi_event_home_channel_change_t: {gap: event reaches the host without its payload}
+  esp_dpp_config_data_t: {gap: DPP multi-config is not carried}
+
+  # ── whole structs: never carried, by design ──
+
+  wpa_crypto_funcs_t: {skip: CP-local function table}
+  mesh_crypto_funcs_t: {skip: CP-local function table}
+  wifi_twt_setup_config_t: {skip: old name of wifi_itwt_setup_config_t}
+
+  # ── whole structs: hosted does not offer the API or event ──
+
+  wifi_csi_config_t: {unsupported: CSI API is not implemented in hosted}
+  wifi_csi_acquire_config_t: {unsupported: CSI API is not implemented in hosted}
+  wifi_csi_info_t: {unsupported: CSI API is not implemented in hosted}
+  wifi_promiscuous_filter_t: {unsupported: promiscuous mode is not implemented in hosted}
+  wifi_promiscuous_pkt_t: {unsupported: promiscuous mode is not implemented in hosted}
+  wifi_pkt_rx_ctrl_t: {unsupported: promiscuous mode is not implemented in hosted}
+  esp_wifi_rxctrl_t: {unsupported: promiscuous mode is not implemented in hosted}
+  wifi_ftm_initiator_cfg_t: {unsupported: FTM API is not implemented in hosted}
+  wifi_ftm_report_entry_t: {unsupported: FTM API is not implemented in hosted}
+  wifi_event_ftm_report_t: {unsupported: FTM API is not implemented in hosted}
+  wifi_action_tx_req_t: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
+  wifi_roc_req_t: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
+  wifi_event_action_tx_status_t: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
+  wifi_event_roc_done_t: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
+  wifi_ant_config_t: {unsupported: antenna API is not implemented in hosted}
+  wifi_ant_gpio_config_t: {unsupported: antenna API is not implemented in hosted}
+  wifi_ant_gpio_t: {unsupported: antenna API is not implemented in hosted}
+  wifi_tx_rate_config_t: {unsupported: TX rate / TX info API is not implemented in hosted}
+  wifi_tx_info_t: {unsupported: TX rate / TX info API is not implemented in hosted}
+  esp_80211_tx_info_t: {unsupported: TX rate / TX info API is not implemented in hosted}
+  vendor_ie_data_t: {unsupported: vendor IE API is not implemented in hosted (RPC v1 only)}
+  wifi_reg_rule_t: {unsupported: regulatory API is not implemented in hosted}
+  wifi_regdomain_t: {unsupported: regulatory API is not implemented in hosted}
+  wifi_regulatory_t: {unsupported: regulatory API is not implemented in hosted}
+  wifi_btwt_setup_config_t: {unsupported: bTWT API is a stub in hosted}
+  esp_wifi_btwt_info_t: {unsupported: bTWT API is a stub in hosted}
+  wifi_event_sta_btwt_setup_t: {unsupported: bTWT API is a stub in hosted}
+  wifi_event_sta_btwt_teardown_t: {unsupported: bTWT API is a stub in hosted}
+  esp_wifi_htc_omc_t: {unsupported: HE OM control API is not implemented in hosted}
+  wifi_event_sta_twt_wakeup_t: {unsupported: event is not forwarded to the host}
+  wifi_event_sta_wps_er_pin_t: {unsupported: WPS is not implemented in hosted}
+  wifi_event_sta_wps_er_success_t: {unsupported: WPS is not implemented in hosted}
+  wifi_event_ap_wps_rg_pin_t: {unsupported: WPS is not implemented in hosted}
+  wifi_event_ap_wps_rg_fail_reason_t: {unsupported: WPS is not implemented in hosted}
+  wifi_event_ap_wps_rg_success_t: {unsupported: WPS is not implemented in hosted}
+  wifi_event_ap_probe_req_rx_t: {unsupported: event is not forwarded to the host}
+  wifi_event_ap_wrong_password_t: {unsupported: event is not forwarded to the host}
+  wifi_event_bss_rssi_low_t: {unsupported: event is not forwarded to the host}
+  wifi_event_neighbor_report_t: {unsupported: event is not forwarded to the host}
+  wifi_event_sta_beacon_offset_unstable_t: {unsupported: event is not forwarded to the host}
+  wifi_nan_config_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_sync_config_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_usd_config_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_publish_cfg_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_subscribe_cfg_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_followup_params_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_datapath_req_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_datapath_resp_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_datapath_end_req_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_wfa_ssi_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_credential_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_discovery_security_params_t: {unsupported: NAN is not implemented in hosted}
+  wifi_nan_pairing_cfg_t: {unsupported: NAN is not implemented in hosted}
+  nan_vendor_ie_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_nan_svc_match_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_nan_replied_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_nan_receive_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_ndp_indication_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_ndp_confirm_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_ndp_terminated_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_nan_cluster_join_t: {unsupported: NAN is not implemented in hosted}
+  wifi_event_nan_pairing_complete_t: {unsupported: NAN is not implemented in hosted}

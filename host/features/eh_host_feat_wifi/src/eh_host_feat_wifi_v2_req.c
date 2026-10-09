@@ -90,6 +90,10 @@ static int compose_req_wifi_init(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
     cfg->rx_mgmt_buf_num       = src->rx_mgmt_buf_num;
     cfg->tx_hetb_queue_num     = src->tx_hetb_queue_num;
     cfg->dump_hesigb_enable    = src->dump_hesigb_enable;
+    cfg->ext_present_bitmask   = src->ext_present_bitmask;
+    cfg->privacy_enhancements  = src->privacy_enhancements ? 1 : 0;
+    cfg->rmac_auto_reset_int   = src->rmac_auto_reset_int;
+    cfg->wifi_task_stack_size  = src->wifi_task_stack_size;
 
     p->cfg = cfg;
     return 0;
@@ -487,6 +491,7 @@ static int compose_req_wifi_scan_params(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
 
         cfg->scan_time            = st;
         cfg->home_chan_dwell_time = c->u.wifi_scan_params.home_chan_dwell_time;
+        cfg->max_offchan_duration_ms = c->u.wifi_scan_params.max_offchan_duration_ms;
         p->config         = cfg;
         p->is_config_null = 0;
     } else {

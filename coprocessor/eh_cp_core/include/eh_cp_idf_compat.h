@@ -41,6 +41,24 @@
 #  define EH_CP_WIFI_GOT_AP_REC_AKM_DPP          0
 #endif
 
+/* Fields IDF added without a companion macro; each first ships in the patch
+ * release after the commit on its branch: 5.5.6, 6.0.4, 6.1.1, 6.2.0. */
+/* wifi_sta_config_t::max_bandwidth_negotiation_enabled_2g/5g */
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 6) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 1, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1))
+#  define EH_CP_WIFI_GOT_STA_MAX_BW_NEG          1
+#else
+#  define EH_CP_WIFI_GOT_STA_MAX_BW_NEG          0
+#endif
+
+/* wifi_scan_default_params_t::max_offchan_duration_ms */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1)
+#  define EH_CP_WIFI_GOT_SCAN_MAX_OFFCHAN        1
+#else
+#  define EH_CP_WIFI_GOT_SCAN_MAX_OFFCHAN        0
+#endif
+
 /* wifi_country_t::wifi_5g_channel_mask: SoC capability, not an IDF version */
 #ifdef CONFIG_SOC_WIFI_SUPPORT_5G
 #  define EH_CP_WIFI_GOT_5G_CHANNEL_MASK        1

@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
+#
+# IDF refs for check_wifi_struct_coverage.py. The MR job reads the pinned SHAs,
+# so an IDF push never fails an unrelated MR. The scheduled job runs with
+# --live and reads the branch heads. Bump the SHAs after the live job passes.
+url: https://github.com/espressif/esp-idf.git
+refs:
+  - branch: release/v5.5
+    sha: 2553c5ad432927e09ccbbad3b954e1cbc4bd7655
+  - branch: release/v6.0
+    sha: 71722673c52153dc486770b80f99900e06b9266b
+  - branch: release/v6.1
+    sha: 9a97f6c54ec638111ce55cd36581b3c192f15207
+  - branch: master
+    sha: ddb3852ab5c7f9e6dbc268203ef9d612de391bf8

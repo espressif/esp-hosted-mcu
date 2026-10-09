@@ -14497,7 +14497,7 @@ void   rpc__free_unpacked
   assert(message->base.descriptor == &rpc__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor wifi_init_config__field_descriptors[24] =
+static const ProtobufCFieldDescriptor wifi_init_config__field_descriptors[28] =
 {
   {
     "static_rx_buf_num",
@@ -14787,6 +14787,54 @@ static const ProtobufCFieldDescriptor wifi_init_config__field_descriptors[24] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "ext_present_bitmask",
+    25,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, ext_present_bitmask),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "privacy_enhancements",
+    26,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, privacy_enhancements),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "rmac_auto_reset_int",
+    27,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, rmac_auto_reset_int),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "wifi_task_stack_size",
+    28,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiInitConfig, wifi_task_stack_size),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_init_config__field_indices_by_name[] = {
   7,   /* field[7] = ampdu_rx_enable */
@@ -14799,11 +14847,14 @@ static const unsigned wifi_init_config__field_indices_by_name[] = {
   1,   /* field[1] = dynamic_rx_buf_num */
   4,   /* field[4] = dynamic_tx_buf_num */
   18,   /* field[18] = espnow_max_encrypt_num */
+  24,   /* field[24] = ext_present_bitmask */
   16,   /* field[16] = feature_caps */
   19,   /* field[19] = magic */
   15,   /* field[15] = mgmt_sbuf_num */
   11,   /* field[11] = nano_enable */
   10,   /* field[10] = nvs_enable */
+  25,   /* field[25] = privacy_enhancements */
+  26,   /* field[26] = rmac_auto_reset_int */
   12,   /* field[12] = rx_ba_win */
   21,   /* field[21] = rx_mgmt_buf_num */
   20,   /* field[20] = rx_mgmt_buf_type */
@@ -14813,11 +14864,12 @@ static const unsigned wifi_init_config__field_indices_by_name[] = {
   2,   /* field[2] = tx_buf_type */
   22,   /* field[22] = tx_hetb_queue_num */
   13,   /* field[13] = wifi_task_core_id */
+  27,   /* field[27] = wifi_task_stack_size */
 };
 static const ProtobufCIntRange wifi_init_config__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 24 }
+  { 0, 28 }
 };
 const ProtobufCMessageDescriptor wifi_init_config__descriptor =
 {
@@ -14827,7 +14879,7 @@ const ProtobufCMessageDescriptor wifi_init_config__descriptor =
   "WifiInitConfig",
   "",
   sizeof(WifiInitConfig),
-  24,
+  28,
   wifi_init_config__field_descriptors,
   wifi_init_config__field_indices_by_name,
   1,  wifi_init_config__number_ranges,
@@ -15232,7 +15284,7 @@ const ProtobufCMessageDescriptor wifi_scan_config__descriptor =
   (ProtobufCMessageInit) wifi_scan_config__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor wifi_scan_default_params__field_descriptors[2] =
+static const ProtobufCFieldDescriptor wifi_scan_default_params__field_descriptors[3] =
 {
   {
     "scan_time",
@@ -15258,15 +15310,28 @@ static const ProtobufCFieldDescriptor wifi_scan_default_params__field_descriptor
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "max_offchan_duration_ms",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(WifiScanDefaultParams, max_offchan_duration_ms),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned wifi_scan_default_params__field_indices_by_name[] = {
   1,   /* field[1] = home_chan_dwell_time */
+  2,   /* field[2] = max_offchan_duration_ms */
   0,   /* field[0] = scan_time */
 };
 static const ProtobufCIntRange wifi_scan_default_params__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 3 }
 };
 const ProtobufCMessageDescriptor wifi_scan_default_params__descriptor =
 {
@@ -15276,7 +15341,7 @@ const ProtobufCMessageDescriptor wifi_scan_default_params__descriptor =
   "WifiScanDefaultParams",
   "",
   sizeof(WifiScanDefaultParams),
-  2,
+  3,
   wifi_scan_default_params__field_descriptors,
   wifi_scan_default_params__field_indices_by_name,
   1,  wifi_scan_default_params__number_ranges,

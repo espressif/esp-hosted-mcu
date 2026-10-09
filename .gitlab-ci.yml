@@ -59,7 +59,8 @@ pre_commit:
     # that this hook both rejects and mangles on auto-fix. Normalising all headers
     # to the canonical block is a tracked follow-up; until then this keeps the
     # gate green without weakening version/changelog/codespell.
-    SKIP: check-copyright
+    # wifi-coverage runs in its own job (wifi_coverage_check), with the report as an artifact.
+    SKIP: check-copyright,wifi-coverage
   script:
     - pip install pre-commit
     # Never --all-files: the copyright/license hook has a wide blast radius.
@@ -91,6 +92,36 @@ pipeline_rules_test:
     - if: '$CI_COMMIT_BRANCH =~ /^release/'
   script:
     - python3 tools/ci/test_pipeline_rules.py
+
+# IDF Wi-Fi structs, fields and APIs vs what hosted covers (tools/wifi_coverage).
+# Checks only the tracked IDF versions pinned in idf_refs.yml, so a new IDF
+# commit never fails an MR. Finding new IDF structs, fields or APIs is a manual run with --live.
+# WIFI_STRUCT_IDF_URL selects an IDF mirror when GitHub is slow from the runner.
+wifi_coverage_check:
+  stage: pre
+  image: espressif/idf:${IDF_VER}
+  tags: [build]
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - tools/wifi_coverage/**/*
+        - common/serializers/eh_proto_v2/src/proto/rpc_v2.proto
+        - common/eh_common/include/eh_rpc_bitmasks.h
+        - host/wifi_remote_glue/**/*
+        - coprocessor/features/eh_cp_feat_rpc_ext_v2/include/eh_cp_feat_rpc_ext_v2_bitmasks.h
+    - if: '$CI_COMMIT_BRANCH =~ /^release/'
+  script:
+    - python3 -c 'import pycparser' || pip install pycparser
+    - python3 tools/wifi_coverage/test_check_wifi_coverage.py
+    - python3 tools/wifi_coverage/check_wifi_coverage.py
+        --refs-file tools/wifi_coverage/idf_refs.yml --html wifi_coverage_report.html
+        ${WIFI_STRUCT_IDF_URL:+--url "$WIFI_STRUCT_IDF_URL"}
+  artifacts:
+    when: always
+    expire_in: 2 weeks
+    paths: [wifi_coverage_report.html]
 
 # ──────────────────────── build: affordable spread ────────────────────────
 # Cost model: each cell is one container paying install + export + ccache warm-up,

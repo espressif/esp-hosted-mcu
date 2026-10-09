@@ -440,6 +440,8 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
             }
             c->u.wifi_scan_params.home_chan_dwell_time =
                 r->config->home_chan_dwell_time;
+            c->u.wifi_scan_params.max_offchan_duration_ms =
+                r->config->max_offchan_duration_ms;
         }
         return 0;
     }

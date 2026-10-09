@@ -125,6 +125,28 @@
   #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP       0
 #endif
 
+/* Fields IDF added without a companion macro. The host's Wi-Fi types come from
+ * wifi-remote's injected headers: IDF >= 6.1 ships its own copy, which follows
+ * the IDF release (fields first in 6.1.1); older IDF and non-IDF hosts use the
+ * esp_wifi_remote component, which added the STA bits in 1.6.5. Non-IDF hosts
+ * report ESP_IDF_VERSION 99.0.0, so the IDF branch must not apply to them. */
+#if defined(ESP_PLATFORM) && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0)
+  #define EH_HOST_WIFI_GOT_STA_MAX_BW_NEG       (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1))
+  #define EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN     (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1))
+#else
+  #if defined(__has_include) && __has_include("esp_wifi_remote_version.h")
+    #include "esp_wifi_remote_version.h"
+  #endif
+  #if defined(ESP_WIFI_REMOTE_VERSION_MAJOR) && \
+      ((ESP_WIFI_REMOTE_VERSION_MAJOR << 16) | (ESP_WIFI_REMOTE_VERSION_MINOR << 8) | \
+        ESP_WIFI_REMOTE_VERSION_PATCH) >= ((1 << 16) | (6 << 8) | 5)
+    #define EH_HOST_WIFI_GOT_STA_MAX_BW_NEG     1
+  #else
+    #define EH_HOST_WIFI_GOT_STA_MAX_BW_NEG     0
+  #endif
+  #define EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN     0
+#endif
+
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
   #define EH_HOST_PRESENT_IN_ESP_IDF_6_0_0      1
 #else

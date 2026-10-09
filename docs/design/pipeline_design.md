@@ -120,6 +120,7 @@ nothing.
 | `premerge_check` | pre | `.rules_pre` | PRE | 1 | no (always on MR) |
 | `pre_commit` | pre | `.rules_pre` | PRE | 1 | no |
 | `pipeline_rules_test` | pre | inline: MR + changes to `.gitlab-ci.yml`/test/`decide_build.sh`, or `release/*` | PRE | 1 | — |
+| `wifi_coverage_check` | pre | inline: MR + changes to `tools/wifi_coverage/`, `host/wifi_remote_glue/`, `rpc_v2.proto` or the bitmask headers; `release/*`. Tracked IDF versions only (`idf_refs.yml`) | PRE | 1 | — |
 | `build_cp_super` | build | `.rules_pre` | PRE | 5 | self-skip: `cp` |
 | `build_host_v55_p4` | build | `.rules_pre` | PRE | 1 | self-skip: `host` |
 | `build_host_v55_h2` | build | `.rules_pre` | PRE | 1 | self-skip: `host` |
