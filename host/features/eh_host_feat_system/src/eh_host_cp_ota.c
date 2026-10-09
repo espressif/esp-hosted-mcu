@@ -36,7 +36,7 @@ esp_err_t eh_host_cp_ota_begin(void)
 esp_err_t eh_host_cp_ota_write(const uint8_t *ota_data, uint32_t ota_data_len)
 {
     if (!ota_data || ota_data_len == 0 ||
-        ota_data_len > EH_RPC_OTA_CHUNK_MAX) {
+        ota_data_len > EH_HOST_CP_OTA_CHUNK_MAX) {
         return ESP_FAIL;
     }
 

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "rpc_ext_v2_pack_priv.h"
+#include "eh_host_cp_ota.h"
 
 #if EH_HOST_FEAT_OTA_READY
 
@@ -16,7 +17,7 @@ static int compose_req_ota_write(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
                                  alloc_track_t *trk)
 {
     if (!c->u.ota_write.data || !c->u.ota_write.len) return -1;
-    if (c->u.ota_write.len > EH_RPC_OTA_CHUNK_MAX) return -1;
+    if (c->u.ota_write.len > EH_HOST_CP_OTA_CHUNK_MAX) return -1;
     ALLOC_PAYLOAD(RpcReqOTAWrite, req_ota_write, rpc__req__otawrite__init);
     p->ota_data.data = c->u.ota_write.data;
     p->ota_data.len  = c->u.ota_write.len;

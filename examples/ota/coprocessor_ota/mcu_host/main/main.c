@@ -151,6 +151,10 @@ static void activate_and_restart(void)
 				esp_err_to_name(deinit_rc));
 	}
 
+	/* Must outlast the coprocessor's OTA_ACTIVATE_RESTART_TIMEOUT plus its
+	 * boot, measured at ~600 ms.  Resetting it inside the pending-verify
+	 * window makes BOOTLOADER_APP_ROLLBACK revert the update, and the OTA
+	 * silently does not stick. */
 	vTaskDelay(pdMS_TO_TICKS(2000));
 	esp_restart();
 }

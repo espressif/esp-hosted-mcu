@@ -20,7 +20,6 @@ extern "C" {
 #define EH_RPC_PASSWORD_LEN             64u
 #define EH_RPC_COUNTRY_CC_LEN           3u
 #define EH_RPC_IP4_LEN                  4u
-#define EH_RPC_OTA_CHUNK_MAX            1536u
 #define EH_RPC_IDF_TARGET_LEN           32u   /* e.g. "esp32c6" */
 #define EH_RPC_SAE_H2E_IDENTIFIER_LEN   32u
 #define EH_RPC_ITWT_MAX_FLOWS           8u    /* wifi_event_sta_itwt_suspend_t */
