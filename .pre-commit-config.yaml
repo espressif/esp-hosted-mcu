@@ -14,6 +14,30 @@ repos:
       language: python
       files: ^idf_component.yml$
 
+    # The three gates below also run in the premerge_check CI job. They scan the
+    # whole tree themselves, so they take no filenames; the `files:` pattern only
+    # decides when it is worth running them.
+    - id: example-structure
+      name: EH Example Structure
+      entry: tools/check_example_structure.py
+      language: python
+      files: ^examples/
+      pass_filenames: false
+
+    - id: override-path-depth
+      name: EH Override Path Depth
+      entry: tools/check_override_path_depth.sh
+      language: script
+      files: ^examples/.*idf_component\.yml$
+      pass_filenames: false
+
+    - id: nano-printf-specifiers
+      name: EH Nano-printf Specifiers
+      entry: tools/check_nano_printf_specifiers.py
+      language: python
+      files: \.(c|h|cpp|hpp)$
+      pass_filenames: false
+
   # License/copyright headers. Scope is controlled by tools/check_copyright_config.yaml,
   # which ignores vendored/upstream trees and the GPL kmod. pre-commit only checks
   # staged files, so this never rewrites the whole tree in one go.

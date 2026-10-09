@@ -12,7 +12,8 @@
 #     main/idf_component.yml; no committed role README
 #   - a scenario has cp AND exactly one host (mcu_host | esp_host)
 #   - scenario README: exists, has a title and routing markers for the published
-#     roles present; routed content is registry-safe (no raw HTML, no relative links)
+#     roles present; routed content is registry-safe (no raw HTML, no relative
+#     links, eh.py not idf.py)
 #   - linux_802_3_host is GitHub-only: it must NOT carry main/idf_component.yml
 
 import re
@@ -27,6 +28,9 @@ LINUX_ROLE = "linux_802_3_host"
 SKID = ("build", "managed_components", "components", "common_components")
 
 _HTML = re.compile(r"</?(?:table|tr|td|th|div|span|img|a|h[1-6]|br|p|ul|ol|li)\b", re.I)
+# Routed content must say eh.py: the publisher rewrites it to idf.py, so a
+# source that already says idf.py silently skips that step.
+_IDFPY = re.compile(r"\bidf\.py\b")
 _RELLINK = re.compile(r"\]\(\.\.?/")
 
 
@@ -96,6 +100,8 @@ def check_readme(scenario, roles, add):
         add(f"{rel}/README.md: raw HTML inside routed block (won't render on the registry)")
     if _RELLINK.search(prose):
         add(f"{rel}/README.md: relative link inside routed block (dead on the registry)")
+    if _IDFPY.search(routed_text):
+        add(f"{rel}/README.md: idf.py inside routed block (write eh.py; publish rewrites it)")
 
 
 def main():
