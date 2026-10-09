@@ -3,6 +3,7 @@
 - wifi: support new IDF Wi-Fi fields `privacy_enhancements`, `rmac_auto_reset_int`, `wifi_task_stack_size`,
   `max_offchan_duration_ms` and `max_bandwidth_negotiation_enabled_2g/5g`
 - host/wifi: `max_bandwidth_negotiation_enabled_2g/5g` builds only where the IDF headers have them (IDF v5.5.6, v6.0.4, v6.1.1 or later)
+- wifi: `esp_wifi_set_okc_support()` now reaches the co-processor; it needs IDF v5.5 or later on both sides
 - cp: builds on IDF v5.3.4+ and v5.4.3+ no longer reference `esp_wifi_set_okc_support()`, which IDF has only from v5.5
 - cp: `esp_eap_client_set_eap_methods()` works on IDF v5.3.4+, v5.4.3+ and v5.5.1+; before, only on v5.4.3+ within v5.4
 - cp: `wifi_ap_config_t::transition_disable` is carried on IDF v5.3.3+ within v5.3, as on the host
