@@ -1,0 +1,6 @@
+# Coprocessor OTA from this console: carries a coprocessor image in a LittleFS
+# partition and streams it over the hosted link.
+CONFIG_RF_CERT_EXAMPLE_INTEGRATED_OTA=y
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"

@@ -36,21 +36,15 @@
 #include "eh_host_cli.h"
 #include "esp_phy_remote.h"
 
+#include "rf_cert_ota_cmd.h"
+
 static const char *TAG = "rf_cert_example";
 
 static void banner(void)
 {
-    int help_index = 1;
-
-    printf("\n ==================================================\n");
-    printf(" |            RF certification test               |\n");
-    printf(" |                                                |\n");
-    printf(" |  1. Print 'help' to gain overview of commands  |\n");
-    printf(" |     cert mode is already entered               |\n");
-    printf(" |  %d. Wi-Fi certification test                   |\n", ++help_index);
-    printf(" |  %d. Bluetooth certification test               |\n", ++help_index);
-    printf(" |                                                |\n");
-    printf(" =================================================\n\n");
+    printf("\n  RF certification test — conducted measurement only\n");
+    eh_host_feat_cli_rf_cert_overview();
+    rf_cert_ota_print_hint();
 }
 
 void app_main(void)
@@ -98,6 +92,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(esp_console_register_help_command());
     ESP_ERROR_CHECK(eh_host_feat_cli_register_commands());
+    rf_cert_ota_register();
 
     /* cert_test enters cert mode from app_main, so its console has no init
      * command; do the same, or a first test command fails INVALID_STATE. */

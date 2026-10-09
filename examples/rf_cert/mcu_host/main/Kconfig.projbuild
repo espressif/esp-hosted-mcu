@@ -1,0 +1,42 @@
+menu "RF certification test example"
+
+config RF_CERT_EXAMPLE_INTEGRATED_OTA
+	bool "Integrate coprocessor OTA (phy_cert_cp_ota)"
+	default n
+	help
+	  Carries a coprocessor image in a LittleFS partition on the host and
+	  streams it to the coprocessor over the hosted link.
+
+	  Use it to put production firmware on a coprocessor whose own UART is
+	  not reachable, once certification is done.
+
+	  Off, none of it is built and the LittleFS dependency is not even
+	  fetched; phy_cert_cp_ota still answers, with the steps to turn it on.
+
+	  sdkconfig.defaults.ota sets this and the partition table it needs.
+
+if RF_CERT_EXAMPLE_INTEGRATED_OTA
+
+config RF_CERT_EXAMPLE_OTA_REPORT_VERSION
+	bool "Report both firmware versions before sending"
+	default y
+	help
+	  Reads the project name and version out of the staged image's app
+	  descriptor and prints them next to what the coprocessor is running,
+	  so an operator can see which image is about to replace which.
+
+config RF_CERT_EXAMPLE_OTA_SKIP_IF_SAME
+	bool "Skip the update when the staged image matches what is running"
+	depends on RF_CERT_EXAMPLE_OTA_REPORT_VERSION
+	default y
+	help
+	  Compares the staged image's version against the coprocessor's and
+	  does nothing if they are equal, so repeating the command does not
+	  reflash the same firmware.
+
+	  Turn this off to send the image regardless — useful when the version
+	  string does not change between builds.
+
+endif
+
+endmenu
