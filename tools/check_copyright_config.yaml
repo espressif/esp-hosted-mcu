@@ -55,6 +55,8 @@ ignore:
     - common/serializers/eh_proto_v1/src/gen_v1.c
     - common/serializers/eh_proto_v2/include/gen_v2.h
     - common/serializers/eh_proto_v2/src/gen_v2.c
+    - common/serializers/eh_proto_v2/include/gen_v2_names.h
+    - common/serializers/eh_proto_v2/src/gen_v2_names.c
     - tools/vendor/
     - port/idf_components/esp_wifi_remote/
     # Upstream lwip / esp_netif-lwip glue (BSD-3-Clause).

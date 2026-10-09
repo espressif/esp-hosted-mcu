@@ -32,10 +32,13 @@ target_link_libraries(eh_host_core
         eh_host_feat_system
         eh_host_port_api
         eh_common
-        eh_host_autoinit
     PRIVATE
         eh_host_config
 )
+
+if(CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT)
+    target_link_libraries(eh_host_core PUBLIC eh_host_autoinit)
+endif()
 
 # Force-retain the defining TU: ESP_HOSTED_EVENT used by address only.
 target_link_options(eh_host_core INTERFACE

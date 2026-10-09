@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* External Coexistence host-feature lifecycle. */
 
 #include <stddef.h>
@@ -7,7 +11,10 @@
 #include "eh_host_cp_ext_coex.h"
 #include "eh_host_feat_cp_ext_coex_priv.h"
 
+#include "eh_host_port_master_config.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 
 static eh_host_feat_cp_ext_coex_state_t s_state;
 
@@ -29,4 +36,6 @@ int eh_host_feat_cp_ext_coex_deinit(void)
     return 0;
 }
 
+#if EH_HOST_AUTO_FEAT_INIT
 EH_HOST_FEAT_REGISTER(eh_host_feat_cp_ext_coex_init, eh_host_feat_cp_ext_coex_deinit, "ext_coex", 300);
+#endif

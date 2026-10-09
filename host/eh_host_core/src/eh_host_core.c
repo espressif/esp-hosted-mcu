@@ -15,7 +15,9 @@
 #include "eh_host_transport_config.h"
 #include "eh_host_feat_rpc.h"
 #include "eh_host_feat_system.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 #include "esp_event.h"
 #include "eh_host_event.h"
 #include "eh_host_port_sync.h"
@@ -366,7 +368,9 @@ int eh_host_deinit(void)
     /* Block re-entry while teardown runs. */
     s_init_state = INIT_RUNNING;
 
+#if EH_HOST_AUTO_FEAT_INIT
     eh_host_auto_deinit_features();
+#endif
     eh_host_feat_system_deinit();
     eh_host_feat_rpc_stop();
     eh_host_feat_rpc_deinit();

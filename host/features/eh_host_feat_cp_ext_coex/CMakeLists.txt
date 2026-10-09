@@ -25,7 +25,9 @@ if(CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX_AUTO_INIT)
 endif()
 
 
+if(CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT)
 target_link_libraries(eh_host_feat_cp_ext_coex PRIVATE eh_host_autoinit)
+endif()
 
 target_sources(eh_host_feat_cp_ext_coex PRIVATE
     "src/eh_host_cp_ext_coex.c"

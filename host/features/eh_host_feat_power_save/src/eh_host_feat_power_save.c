@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Host-side power-save lifecycle. */
 
 #include <errno.h>
@@ -336,7 +340,7 @@ int eh_host_power_save_timer_stop(void)
 #endif
 }
 
-#if EH_HOST_TYPE_MCU && CONFIG_ESP_HOSTED_HOST_FEAT_POWER_SAVE_AUTO_INIT
+#if EH_HOST_AUTO_FEAT_INIT && EH_HOST_TYPE_MCU && EH_HOST_FEAT_POWER_SAVE_AUTO_INIT
 /* Priority 100: runs early so other features can rely on s_init_done. */
 #include "eh_host_auto_init.h"
 EH_HOST_FEAT_REGISTER(eh_host_power_save_init,

@@ -23,6 +23,8 @@
 - host (Linux): builds again; `akm_dpp` is used only on ESP-IDF builds
 - bt/nimble: NimBLE host builds link on IDF 6.x
 - host/sdio: the max-frequency warning reports the clock in use after a runtime `set_config`
+- host: with `ESP_HOSTED_HOST_AUTO_FEAT_INIT=n`, no feature auto-init code is built or linked
+- proto: no protobuf names in flash (~38 KB smaller CP and host images); host logs show short RPC names
 
 # Releases
 

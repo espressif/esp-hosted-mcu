@@ -3,6 +3,9 @@
 
 syntax = "proto3";
 
+/* No descriptor names in flash; nothing reads them. */
+option optimize_for = CODE_SIZE;
+
 /* Enums similar to ESP IDF */
 enum Ctrl_VendorIEType {
 	Beacon = 0;

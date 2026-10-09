@@ -13,6 +13,12 @@ repos:
       entry: tools/check_changelog.py
       language: python
       files: ^idf_component.yml$
+    - id: rpc-id-names
+      name: EH RPC id names match rpc_v2.proto
+      entry: common/serializers/eh_proto_v2/src/proto/gen_rpc_id_names.py --check
+      language: python
+      files: ^common/serializers/eh_proto_v2/(src/proto/(rpc_v2\.proto|gen_rpc_id_names\.py)|src/gen_v2_names\.c|include/gen_v2_names\.h)$
+      pass_filenames: false
     - id: wifi-coverage
       name: EH Wi-Fi coverage (tracked IDF versions)
       entry: tools/wifi_coverage/check_wifi_coverage.py --refs-file tools/wifi_coverage/idf_refs.yml

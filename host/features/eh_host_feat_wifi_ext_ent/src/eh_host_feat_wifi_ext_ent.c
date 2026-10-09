@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* WiFi Enterprise / EAP host-feature: 23 RPCs (enable/disable +
  * EAP setters/clearers + flag/scalar setters). */
 
@@ -7,7 +11,6 @@
 #include "eh_host_port_master_config.h"
 #include "eh_host_feat_wifi_ext_ent.h"
 #include "eh_host_wifi_ent.h"
-#include "eh_host_auto_init.h"
 #include "eh_host_port.h"
 
 #if EH_HOST_FEAT_WIFI_EXT_ENT_READY

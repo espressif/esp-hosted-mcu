@@ -28,7 +28,9 @@ if(CONFIG_ESP_HOSTED_HOST_FEAT_MEM_MONITOR_AUTO_INIT)
 endif()
 
 
+if(CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT)
 target_link_libraries(eh_host_feat_mem_monitor PRIVATE eh_host_autoinit)
+endif()
 
 target_sources(eh_host_feat_mem_monitor PRIVATE
     "src/eh_host_mem_monitor.c"

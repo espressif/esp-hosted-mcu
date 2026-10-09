@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* WiFi feature lifecycle; owns sub-extension lifecycle (Ent/iTWT/DPP). */
 
 #include <stdbool.h>
@@ -7,7 +11,9 @@
 #include "eh_host_port_master_config.h"
 #include "eh_host_feat_wifi.h"
 #include "eh_host_feat_wifi_priv.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 #include "eh_host_feat_rpc_ext_v2.h"
 #include "eh_host_port.h"
 
@@ -61,4 +67,6 @@ int eh_host_feat_wifi_deinit(void)
     return eh_host_feat_rpc_ext_v2_unregister_wifi_event_handlers();
 }
 
+#if EH_HOST_AUTO_FEAT_INIT
 EH_HOST_FEAT_REGISTER(eh_host_feat_wifi_init, eh_host_feat_wifi_deinit, "wifi", 150);
+#endif

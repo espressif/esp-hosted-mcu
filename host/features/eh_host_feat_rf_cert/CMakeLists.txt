@@ -28,7 +28,9 @@ if(CONFIG_ESP_HOSTED_HOST_FEAT_RF_CERT_AUTO_INIT)
         "-Wl,--undefined=eh_host_feat_rf_cert_init")
 endif()
 
+if(CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT)
 target_link_libraries(eh_host_feat_rf_cert PRIVATE eh_host_autoinit)
+endif()
 
 target_sources(eh_host_feat_rf_cert PRIVATE
     "src/eh_host_phy_cert.c"

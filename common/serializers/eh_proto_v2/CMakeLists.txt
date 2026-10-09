@@ -9,6 +9,7 @@ set(srcs "")
 if(CONFIG_ESP_HOSTED_CP_FEAT_RPC_EXT_V2_READY OR CONFIG_ESP_HOSTED_HOST_FEAT_RPC_EXT_V2_READY)
     list(APPEND srcs
         "src/gen_v2.c"
+        "src/gen_v2_names.c"
         "src/eh_rpc_id_map_v2_asserts.c"
     )
 endif()

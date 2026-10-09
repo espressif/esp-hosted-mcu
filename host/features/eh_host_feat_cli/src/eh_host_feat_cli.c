@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Umbrella host-CLI registration; calls each per-feature register hook. */
 
 #include "eh_host_port_master_config.h"
@@ -6,7 +10,9 @@
 #include "esp_err.h"
 #include "esp_log.h"
 
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 #include "eh_host_cli.h"
 #include "eh_host_feat_cli_priv.h"
 
@@ -46,9 +52,11 @@ int eh_host_feat_cli_deinit(void)
     return 0;
 }
 
+#if EH_HOST_AUTO_FEAT_INIT
 EH_HOST_FEAT_REGISTER(eh_host_feat_cli_init,
                       eh_host_feat_cli_deinit,
                       "cli", 400);
+#endif
 
 #if !EH_HOST_FEAT_RF_CERT_READY
 void eh_host_feat_cli_rf_cert_overview(void) { }

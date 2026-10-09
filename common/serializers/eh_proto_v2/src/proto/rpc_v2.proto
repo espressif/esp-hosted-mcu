@@ -3,6 +3,9 @@
 
 syntax = "proto3";
 
+/* No descriptor names in flash; RPC id names come from gen_v2_names.c. */
+option optimize_for = CODE_SIZE;
+
 enum Rpc_WifiBw {
 	BW_Invalid = 0;
 	HT20 = 1;

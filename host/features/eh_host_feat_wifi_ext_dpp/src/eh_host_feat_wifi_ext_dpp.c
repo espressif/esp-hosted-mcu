@@ -1,10 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* DPP host-feature lifecycle: 5 RPCs. */
 
 #include "eh_host_port_master_config.h"
 #include "eh_host_feat_wifi_ext_dpp.h"
 #include "eh_host_wifi_dpp.h"
-#include "eh_host_auto_init.h"
 #include "eh_host_port.h"
 
 #if EH_HOST_FEAT_WIFI_EXT_DPP_READY
@@ -24,11 +27,6 @@ int eh_host_feat_wifi_ext_dpp_deinit(void)
 }
 
 /* ── Request passthroughs ───────────────────────────────────────── */
-
-
-
-
-
 
 /* No EH_HOST_FEAT_REGISTER — lifecycle managed by parent WiFi feature.
  * Mirrors the CP-side eh_cp_feat_wifi_ext_dpp.c pattern. */

@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* proto_ops singleton, ctrl_cmd allocator, msg_id pretty-name. */
 
 #include <string.h>
@@ -9,6 +13,7 @@
 
 #include "eh_rpc_id_map.h"
 #include "gen_v2.h"
+#include "gen_v2_names.h"
 
 eh_rpc_ctrl_cmd_t *eh_rpc_ctrl_cmd_alloc(void)
 {
@@ -146,13 +151,7 @@ static void proto_ops_free_ctrl_cmd(void *ctrl_cmd)
 
 static const char *proto_ops_msg_id_to_name(int32_t msg_id)
 {
-    const ProtobufCEnumDescriptor *d = &rpc_id__descriptor;
-    for (unsigned i = 0; i < d->n_values; ++i) {
-        if (d->values[i].value == msg_id) {
-            return d->values[i].name;
-        }
-    }
-    return NULL;
+    return eh_rpc_id_name_v2(msg_id);
 }
 
 static int proto_ops_pack_req_payload(const eh_host_rpc_tx_ctx_t *ctx,

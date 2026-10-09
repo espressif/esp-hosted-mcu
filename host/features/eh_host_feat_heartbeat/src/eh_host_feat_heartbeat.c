@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* CP-heartbeat configurator host-feature lifecycle. */
 
 #include <stdbool.h>
@@ -10,7 +14,10 @@
 #include "eh_host_feat_heartbeat.h"
 #include "eh_host_heartbeat.h"
 
+#include "eh_host_port_master_config.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 
 static struct {
     bool initialised;
@@ -34,4 +41,6 @@ esp_err_t eh_host_feat_heartbeat_deinit(void)
     return ESP_OK;
 }
 
+#if EH_HOST_AUTO_FEAT_INIT
 EH_HOST_FEAT_REGISTER(eh_host_feat_heartbeat_init, eh_host_feat_heartbeat_deinit, "heartbeat", 75);
+#endif
