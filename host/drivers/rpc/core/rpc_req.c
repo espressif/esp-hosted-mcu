@@ -418,7 +418,14 @@ int compose_rpc_req(Rpc *req, ctrl_cmd_t *app_req, int32_t *failure_status)
 			WifiScanTime *p_c_st = NULL;
 			wifi_scan_time_t *p_a_st = &p_a->scan_time;
 
-			RPC_REQ_COPY_STR(p_c->ssid, p_a->ssid, SSID_LENGTH);
+			// in wifi_scan_config_t, ssid is defined as `uint8_t *ssid`
+			// rpc_wrap.c::rpc_wifi_scan_start checks that ssid does not exceed SSID_LENGTH
+			if (p_a->ssid) {
+				size_t n = strnlen((char *)p_a->ssid, SSID_LENGTH);
+				n += 1; // add the string '\0' terminator
+				RPC_REQ_COPY_STR(p_c->ssid, p_a->ssid, n);
+			}
+
 			RPC_REQ_COPY_STR(p_c->bssid, p_a->bssid, MAC_SIZE_BYTES);
 			p_c->channel = p_a->channel;
 			p_c->show_hidden = p_a->show_hidden;

@@ -1531,7 +1531,13 @@ int rpc_wifi_get_scan_parameters(wifi_scan_default_params_t *config)
 
 int rpc_wifi_scan_start(const wifi_scan_config_t *config, bool block)
 {
-	// don't check: config can be NULL
+	// if wifi_scan_config_t::ssid is not null, check that its length does not exceed SSID_LENGTH
+	if (config && config->ssid) {
+		if (strnlen((char *)config->ssid, SSID_LENGTH + 1) > SSID_LENGTH) {
+			ESP_LOGE(TAG, "SSID is too long (maximum %u characters)", SSID_LENGTH);
+			return ESP_ERR_INVALID_ARG;
+		}
+	}
 
 	/* implemented synchronous */
 	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
