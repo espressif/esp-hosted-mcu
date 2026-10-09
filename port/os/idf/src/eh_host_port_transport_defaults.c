@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -143,10 +143,13 @@ void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 {
     (void)chip_id;
-    /* Read Kconfig freq, not SDMMC_FREQ_DEFAULT (would always alarm at 40MHz) */
-    if ((unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ < 40000u) {
-        ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 40000KHz",
-                 (unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ);
+    unsigned khz = (unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ;
+    struct eh_host_sdio_config *cfg;
+    if (EH_HOST_TRANSPORT_RC_OK == eh_host_sdio_get_config(&cfg) && cfg->clock_freq_khz) {
+        khz = (unsigned int)cfg->clock_freq_khz;
+    }
+    if (khz < 40000u) {
+        ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 40000KHz", khz);
     }
 }
 #elif EH_HOST_TRANSPORT_BUS_UART && defined(ESP_PLATFORM)

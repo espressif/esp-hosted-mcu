@@ -1843,13 +1843,19 @@ static void sdio_process_rx_task(void *pvParameters)
 
 static void check_if_max_freq_used(void)
 {
+	uint32_t clk_khz = EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ;
+	struct eh_host_sdio_config *psdio_config;
+	if (EH_HOST_TRANSPORT_RC_OK == eh_host_sdio_get_config(&psdio_config) &&
+	    psdio_config->clock_freq_khz) {
+		clk_khz = psdio_config->clock_freq_khz;
+	}
 #ifdef CONFIG_IDF_TARGET
-	if (EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ < 40000) {
-		ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 40000KHz", EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ);
+	if (clk_khz < 40000) {
+		ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 40000KHz", (unsigned)clk_khz);
 	}
 #else
-	if (EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ < 50000) {
-		ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 50000KHz", EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ);
+	if (clk_khz < 50000) {
+		ESP_LOGW(TAG, "SDIO clock freq set to [%u]KHz, Max possible (on PCB) is 50000KHz", (unsigned)clk_khz);
 	}
 #endif
 }
