@@ -90,7 +90,7 @@ typedef struct q_element {
 
 #define RPC_REQ_COPY_STR(DsT,SrC,MaxSizE) {                                   \
   if (SrC) {                                                                  \
-    RPC_REQ_COPY_BYTES(DsT, SrC, H_MIN(strlen((char*)SrC)+1,MaxSizE));        \
+    RPC_REQ_COPY_BYTES(DsT, SrC, MaxSizE);                                    \
   }                                                                           \
 }
 

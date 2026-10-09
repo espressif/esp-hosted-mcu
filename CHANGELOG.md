@@ -1,13 +1,16 @@
 # Unreleased - Main Branch
 
-- use `OTA_WITH_SEQUENTIAL_WRITES` instead of `OTA_SIZE_UNKNOWN` when calling `esp_ota_begin()` on the co-processor. This removes the pause at start of OTA (when erasing flash partition). This pause can range from 2 (for ESP32-C5) to 10 (ESP32-C6) seconds. For the ESP32, this pause can be more than 15 seconds, triggering an RPC call timeout, or causing the idle watchdog to trigger while erasing the flash. However, each `esp_ota_write()` now takes longer as it has to erase each flash sector before writing. Overall, OTA update using `OTA_WITH_SEQUENTIAL_WRITES` takes a few seconds longer than using `OTA_SIZE_UNKNOWN`, but the user OTA experience is 'smoother' as there is no pause at the beginning of OTA.
-- removed C99 formatting features (`%z`) not supported by Newlib Nano library
-- added support for 128 byte L2 cache line size
-
-> [!WARNING]
-> Using 128 byte L2 cache line size requires changing the transport buffer size on both the host and co-processor. Both the host and co-processor firmware must be updated.
-
 # Releases
+
+# $${\color{green} \text{2.13.0}}$$
+
+- remove the use of `strlen` in RPC calls to data that are not C strings in STA and AP configs
+- do OTA using `OTA_WITH_SEQUENTIAL_WRITES` instead of `OTA_SIZE_UNKNOWN`. This removes the pause at start of OTA (pause while erasing flash partition) giving a 'smoother' OTA experience
+- remove C99 formatting features (`%z`) not supported by Newlib Nano library
+- add support for 128 byte L2 cache line size
+  - host transport size is now set to 1536 bytes
+  - older co-processors with transport size of 1600 bytes (SPI, UART transports) can still operate with new host code
+  - update the co-processors to reduce the transport size to 1536 bytes, saving some memory
 
 # $${\color{green} \text{2.12.13}}$$
 

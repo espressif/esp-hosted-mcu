@@ -13,13 +13,9 @@
 #ifndef __ESP_HOSTED_HOST_FW_VERSION_H__
 #define __ESP_HOSTED_HOST_FW_VERSION_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define ESP_HOSTED_VERSION_MAJOR_1 2
-#define ESP_HOSTED_VERSION_MINOR_1 12
-#define ESP_HOSTED_VERSION_PATCH_1 13
+#define ESP_HOSTED_VERSION_MINOR_1 13
+#define ESP_HOSTED_VERSION_PATCH_1 0
 
 /**
  * Macro to convert version number into an integer
@@ -38,9 +34,5 @@ extern "C" {
 	(unsigned int)ESP_HOSTED_VERSION_PATCH(ver)
 
 #define ESP_HOSTED_VERSION_PRINTF_FMT "%u.%u.%u"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
