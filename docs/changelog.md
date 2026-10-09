@@ -2,6 +2,7 @@
 
 - wifi: support new IDF Wi-Fi fields `privacy_enhancements`, `rmac_auto_reset_int`, `wifi_task_stack_size`,
   `max_offchan_duration_ms` and `max_bandwidth_negotiation_enabled_2g/5g`
+- host/wifi: `max_bandwidth_negotiation_enabled_2g/5g` builds only where the IDF headers have them (IDF v5.5.6, v6.0.4, v6.1.1 or later)
 - cp/ota: OTA begin no longer erases the whole partition up front, so it no longer stalls for seconds or times out the RPC
 - host/sdio: card init retries no longer fail with `can't acquire the channel` on the on-chip LDO
 - host/sdio: 1-bit SDIO host builds work again ([#245](https://github.com/espressif/esp-hosted-mcu/issues/245))
