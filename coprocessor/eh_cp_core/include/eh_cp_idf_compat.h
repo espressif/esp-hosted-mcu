@@ -102,11 +102,11 @@
 #endif
 
 /* wifi_ap_config_t::transition_disable: IDF v5.3.3+ or v5.4.1+ */
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 3)) || \
-    (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 1))
-#  define EH_CP_WIFI_GOT_AP_TRANSITION_DISABLE   0
-#else
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 3) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 1))
 #  define EH_CP_WIFI_GOT_AP_TRANSITION_DISABLE   1
+#else
+#  define EH_CP_WIFI_GOT_AP_TRANSITION_DISABLE   0
 #endif
 
 /* WIFI_ENABLE_CACHE_TX_BUFFER: IDF < 5.3.3 fallback */
@@ -129,13 +129,13 @@
 #  define EH_CP_WIFI_ENTERPRISE                  0
 #endif
 
-/* esp_eap_client_set_eap_methods: compound IDF version check */
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 4)) || \
-    (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3)) || \
-    EH_CP_IDF_GE_5_5
-#  define EH_CP_WIFI_GOT_SET_EAP_METHODS         0
-#else
+/* esp_eap_client_set_eap_methods: IDF v5.3.4+, v5.4.3+ or v5.5.1+ */
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 3) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)) || \
+    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 1))
 #  define EH_CP_WIFI_GOT_SET_EAP_METHODS         1
+#else
+#  define EH_CP_WIFI_GOT_SET_EAP_METHODS         0
 #endif
 
 /* EAP set domain name: compound IDF version check */
@@ -147,8 +147,8 @@
 #  define EH_CP_WIFI_GOT_EAP_SET_DOMAIN_NAME     0
 #endif
 
-/* EAP OKC support: same version range as set_domain_name */
-#define EH_CP_WIFI_GOT_EAP_OKC                   EH_CP_WIFI_GOT_EAP_SET_DOMAIN_NAME
+/* esp_wifi_set_okc_support: IDF v5.5+, not in any 5.3/5.4 release */
+#define EH_CP_WIFI_GOT_EAP_OKC                   EH_CP_IDF_GE_5_5
 
 /* Supplicant callback DPP: removed from IDF v6.0 */
 #if defined(CONFIG_ESP_WIFI_DPP_SUPPORT) && \
