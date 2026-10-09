@@ -33,7 +33,8 @@ static esp_err_t cert_task_start(TaskFunction_t fn, const char *name,
 		uint32_t stack)
 {
 	if (s_test_armed) {
-		ESP_LOGE(TAG, "a test is already running; send cmdstop first");
+		/* No command name here: the host decides what its console calls this. */
+		ESP_LOGE(TAG, "a test is already running; stop it first");
 		return ESP_ERR_NOT_FINISHED;
 	}
 	if (xTaskCreate(fn, name, stack, NULL, CERT_TASK_PRIO, NULL) != pdPASS) {

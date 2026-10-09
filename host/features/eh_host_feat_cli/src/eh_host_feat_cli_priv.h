@@ -17,6 +17,7 @@ esp_err_t eh_host_feat_cli_host_ps_register(void);
 
 #if EH_HOST_FEAT_RF_CERT_READY
 esp_err_t eh_host_feat_cli_rf_cert_register(void);
+void eh_host_feat_cli_rf_cert_overview(void);
 #endif
 
 #ifdef __cplusplus

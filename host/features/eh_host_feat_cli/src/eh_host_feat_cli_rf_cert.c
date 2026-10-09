@@ -26,6 +26,7 @@
 #include "esp_log.h"
 
 #include "eh_host_phy_cert.h"
+#include "eh_host_cli.h"
 #include "eh_host_feat_cli_priv.h"
 
 #if EH_HOST_FEAT_GPIO_EXP_READY
@@ -128,7 +129,7 @@ static void report_rpc_error(const char *what, esp_err_t rc)
     if (rc == ESP_ERR_INVALID_STATE) {
         ESP_LOGE(RPC_TAG, "%s: coprocessor is not in RF cert mode", what);
     } else if (rc == ESP_ERR_NOT_FINISHED) {
-        ESP_LOGE(RPC_TAG, "%s: a test is already running; send cmdstop first",
+        ESP_LOGE(RPC_TAG, "%s: a test is already running; send phy_cert_cmdstop first",
                  what);
     } else if (rc == ESP_ERR_NOT_SUPPORTED) {
         ESP_LOGE(RPC_TAG, "%s: not supported by this coprocessor", what);
@@ -146,7 +147,7 @@ static int esp_phy_tx_contin_en_func(int argc, char **argv)
     }
 
     if (phy_args.enable->count == 1) {
-        report_rpc_error("tx_contin_en",
+        report_rpc_error("phy_cert_tx_contin_en",
                 eh_host_phy_cert_tx_contin_en(phy_args.enable->ival[0]));
     } else {
         ESP_LOGW(TAG, "Please enter the enable parameter");
@@ -167,7 +168,7 @@ static int esp_phy_cmdstop_func(int argc, char **argv)
         value = phy_args.enable->ival[0];
     }
 
-    report_rpc_error("cmdstop", eh_host_phy_cert_test_start_stop(value));
+    report_rpc_error("phy_cert_cmdstop", eh_host_phy_cert_test_start_stop(value));
     return 0;
 }
 
@@ -181,7 +182,7 @@ static int esp_phy_get_rx_result_func(int argc, char **argv)
 
     rc = eh_host_phy_cert_get_rx_result(&rx_result);
     if (rc != ESP_OK) {
-        report_rpc_error("get_rx_result", rc);
+        report_rpc_error("phy_cert_get_rx_result", rc);
         return 1;
     }
 
@@ -202,7 +203,7 @@ static int esp_phy_cbw40m_en_func(int argc, char **argv)
         return 1;
     }
     if (phy_args.enable->count == 1) {
-        report_rpc_error("cbw40m_en",
+        report_rpc_error("phy_cert_cbw40m_en",
                 eh_host_phy_cert_cbw40m_en(phy_args.enable->ival[0]));
     } else {
         ESP_LOGW(TAG, "Please enter the enable parameter");
@@ -266,7 +267,7 @@ static int esp_phy_wifi_tx_func(int argc, char **argv)
         ESP_LOGW(TAG, "Default packet_num is 0");
     }
 
-    report_rpc_error("esp_tx",
+    report_rpc_error("phy_cert_esp_tx",
             eh_host_phy_cert_wifi_tx(channel, rate, backoff, length_byte,
                                    packet_delay, packet_num));
     return 0;
@@ -296,7 +297,7 @@ static int esp_phy_wifi_rx_func(int argc, char **argv)
         ESP_LOGW(TAG, "Default rate is PHY_RATE_1M");
     }
 
-    report_rpc_error("esp_rx", eh_host_phy_cert_wifi_rx(channel, rate));
+    report_rpc_error("phy_cert_esp_rx", eh_host_phy_cert_wifi_rx(channel, rate));
     return 0;
 }
 
@@ -332,7 +333,7 @@ static int esp_phy_wifiscwout_func(int argc, char **argv)
         ESP_LOGW(TAG, "Default attenuation is 0");
     }
 
-    report_rpc_error("wifiscwout",
+    report_rpc_error("phy_cert_wifiscwout",
             eh_host_phy_cert_wifi_tx_tone(enable, channel, attenuation));
     return 0;
 }
@@ -384,7 +385,7 @@ static int esp_phy_wifi_11ax_tx_set_func(int argc, char **argv)
         }
     }
 
-    report_rpc_error("phy_11ax_tx_set",
+    report_rpc_error("phy_cert_phy_11ax_tx_set",
             eh_host_phy_cert_11ax_tx_set(he_format, pe, giltf_num, ru_index));
     return 0;
 }
@@ -453,7 +454,7 @@ static int esp_phy_ble_tx_func(int argc, char **argv)
         ESP_LOGW(TAG, "Default tx_num_in is 0");
     }
 
-    report_rpc_error("esp_ble_tx",
+    report_rpc_error("phy_cert_esp_ble_tx",
             eh_host_phy_cert_ble_tx(txpwr, channel, len, data_type, syncw,
                                   rate, tx_num_in));
     return 0;
@@ -491,7 +492,7 @@ static int esp_phy_ble_rx_func(int argc, char **argv)
         ESP_LOGW(TAG, "Default rate is PHY_BLE_RATE_1M");
     }
 
-    report_rpc_error("esp_ble_rx",
+    report_rpc_error("phy_cert_esp_ble_rx",
             eh_host_phy_cert_ble_rx(channel, syncw, rate));
     return 0;
 }
@@ -528,7 +529,7 @@ static int esp_phy_bt_tx_tone_func(int argc, char **argv)
         ESP_LOGW(TAG, "Default backoff is 0");
     }
 
-    report_rpc_error("bt_tx_tone",
+    report_rpc_error("phy_cert_bt_tx_tone",
             eh_host_phy_cert_bt_tx_tone(start, channel, attenuation));
     return 0;
 }
@@ -556,12 +557,12 @@ static void esp_phy_gpio_output_set(int number, int level)
     rc = eh_host_cp_gpio_config(&io_conf);
     if (rc != ESP_OK) {
         ESP_LOGE(TAG, "gpio number %d is invalid out gpio", number);
-        report_rpc_error("gpio_output_set", rc);
+        report_rpc_error("phy_cert_gpio_output_set", rc);
         return;
     }
 
     ESP_LOGI(TAG, "Set output gpio number %d level to %d", number, level);
-    report_rpc_error("gpio_output_set",
+    report_rpc_error("phy_cert_gpio_output_set",
             eh_host_cp_gpio_set_level(number, level));
 }
 
@@ -617,6 +618,71 @@ static int phy_cert_status_func(int argc, char **argv)
     printf("cert mode entered: %s\n",
            eh_host_phy_cert_query(EH_HOST_PHY_CERT_QUERY_INITED) == ESP_OK
                    ? "yes" : "no");
+    return 0;
+}
+
+/* ---- grouped overview ------------------------------------------------ */
+
+/* esp_console's own `help` lists every command flat, with its arguments.
+
+ *
+ * Only commands this feature registers are listed. An application that adds
+ * its own, such as the rf_cert example's coprocessor OTA, prints them after
+ * calling this.
+ * This adds the other half: what exists, grouped by radio, and the order a
+ * run goes in.  Colours follow CONFIG_LOG_COLORS so a console configured
+ * without them stays plain. */
+
+void eh_host_feat_cli_rf_cert_overview(void)
+{
+    printf("\n  %shelp%s lists every command; %shelp <command>%s gives its switches in detail.\n\n",
+           EH_CLI_C_CMD, EH_CLI_C_OFF, EH_CLI_C_CMD, EH_CLI_C_OFF);
+    printf("  %s%-*s%-*s%s%s\n", EH_CLI_C_LBL, 25, "command", 21, "switches", "what it does", EH_CLI_C_OFF);
+
+    eh_host_cli_box_open("Session");
+    eh_host_cli_box_row("phy_cert_query",      "",           "can the CP do this?");
+    eh_host_cli_box_row("phy_cert_init",       "",           "re-enter after a deinit");
+    eh_host_cli_box_row("phy_cert_deinit",     "",           "stop, power radio down");
+    eh_host_cli_box_row("phy_cert_commands",   "",           "this overview");
+    eh_host_cli_box_close();
+
+    eh_host_cli_box_open("Wi-Fi");
+    eh_host_cli_box_row("phy_cert_esp_tx",     "-n -r -p -l -d -c", "packet TX, -c 0 forever");
+    eh_host_cli_box_row("phy_cert_esp_rx",     "-n -r",      "packet RX, counts for PER");
+    eh_host_cli_box_row("phy_cert_wifiscwout", "-e -c -p",   "carrier wave on/off");
+    eh_host_cli_box_row("phy_cert_cbw40m_en",  "<0|1>",      "HT40 on/off");
+    eh_host_cli_box_row("phy_cert_tx_contin_en", "<0|1>",    "continuous TX on/off");
+    eh_host_cli_box_row("phy_cert_phy_11ax_tx_set", "-f -p -g -i", "11ax format, HE parts");
+    eh_host_cli_box_close();
+
+    eh_host_cli_box_open("Bluetooth LE");
+    eh_host_cli_box_row("phy_cert_esp_ble_tx", "-p -n -l -t -s -r -m", "packet TX, -m 0 forever");
+    eh_host_cli_box_row("phy_cert_esp_ble_rx", "-n -s -r",   "packet RX, counts for PER");
+    eh_host_cli_box_row("phy_cert_bt_tx_tone", "-e -n -p",   "carrier wave on/off");
+    eh_host_cli_box_close();
+
+    eh_host_cli_box_open("Any test");
+    eh_host_cli_box_row("phy_cert_cmdstop",    "[<val>]",    "end the running test");
+    eh_host_cli_box_row("phy_cert_get_rx_result", "",        "correct, total, RSSI, PER");
+#if EH_HOST_FEAT_GPIO_EXP_READY
+    eh_host_cli_box_row("phy_cert_gpio_output_set", "-n -l", "drive a coprocessor pin");
+#endif
+    eh_host_cli_box_close();
+
+    printf("\n  %sProcedure%s\n", EH_CLI_C_LBL, EH_CLI_C_OFF);
+    printf("    1. phy_cert_query           confirm support; cert mode is already on\n");
+    printf("    2. start a test             e.g. phy_cert_esp_tx -n 1 -r 0 -c 0\n");
+    printf("    3. measure                  on the analyser\n");
+    printf("    4. phy_cert_cmdstop         end it, then repeat from 2\n");
+    printf("    5. phy_cert_deinit          optional; phy_cert_init re-enters\n");
+    printf("\n  Restart clears the PHY's cert state, not this test firmware.\n");
+    printf("  When testing is done, put your production image on the coprocessor.\n");
+}
+
+static int cmd_overview(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    eh_host_feat_cli_rf_cert_overview();
     return 0;
 }
 
@@ -680,6 +746,9 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
 
     phy_args.enable = arg_int0(NULL, NULL, "<enable>", "enable");
     phy_args.end = arg_end(1);
+
+    REG_ONE("phy_cert_commands", "Show the commands grouped by radio, and the order a run goes in.",
+        &cmd_overview, NULL);
 
     REG("phy_cert_tx_contin_en", IDF_NAME("tx_contin_en"),
         "TX Continuous mode, 1: enable, 0: disable",
