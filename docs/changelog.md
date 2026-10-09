@@ -21,6 +21,7 @@
 - examples/zigbee: builds on IDF 6.1
 - cp/wifi: new `ESP_HOSTED_CP_FEAT_WIFI_EXT_EAP_FAST`; EAP-FAST needs the internal TLS client
 - host (Linux): builds again; `akm_dpp` is used only on ESP-IDF builds
+- bt/nimble: NimBLE host builds link on IDF 6.x
 
 # Releases
 

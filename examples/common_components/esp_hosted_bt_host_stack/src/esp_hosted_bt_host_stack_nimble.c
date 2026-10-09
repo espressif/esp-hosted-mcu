@@ -122,11 +122,8 @@ int ble_transport_to_ll_cmd_impl(void *buf)
     return ret;
 }
 
-#if !defined(CONFIG_IDF_TARGET_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3) \
-    && !defined(CONFIG_IDF_TARGET_ESP32S3)
-void ble_transport_ll_init(void)   { }
-void ble_transport_ll_deinit(void) { }
-#endif
+void __attribute__((weak)) ble_transport_ll_init(void)   { }
+void __attribute__((weak)) ble_transport_ll_deinit(void) { }
 
 esp_err_t eh_bt_bind_nimble(void)
 {
