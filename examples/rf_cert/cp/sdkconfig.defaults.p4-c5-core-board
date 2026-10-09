@@ -1,0 +1,2 @@
+# ESP32-P4 + ESP32-C5 core board — coprocessor (C5) side.
+CONFIG_ESP_HOSTED_P4_C5_CORE_BOARD=y

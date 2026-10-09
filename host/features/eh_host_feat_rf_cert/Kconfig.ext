@@ -1,0 +1,47 @@
+menuconfig ESP_HOSTED_HOST_FEAT_RF_CERT
+	bool "RF Certification Test"
+	default n
+	depends on ESP_HOSTED_HOST && ESP_HOSTED_HOST_FEAT_RPC
+	depends on ESP_HOSTED_HOST_FEAT_RPC_EXT_V2_READY
+	help
+	  Gives host callers the coprocessor's PHY certification test APIs
+	  over RPC: Wi-Fi and BLE packet TX, RX with packet-error
+	  statistics, and carrier-wave tone.
+
+	  The coprocessor must be built with
+	  CONFIG_ESP_HOSTED_CP_FEAT_RF_CERT and CONFIG_ESP_PHY_ENABLE_CERT_TEST.
+	  Ask the coprocessor at run time with
+	  eh_host_phy_cert_query(EH_HOST_PHY_CERT_QUERY_CONFIGURED).
+
+	  For conducted RF measurement only.  Do not enable this in shipped
+	  firmware.
+
+if ESP_HOSTED_HOST_FEAT_RF_CERT
+
+	config ESP_HOSTED_HOST_FEAT_RF_CERT_CLI_IDF_NAMES
+		bool "Also register the ESP-IDF cert_test command names"
+		default n
+		help
+		  Registers each console command a second time under the name
+		  the ESP-IDF phy/cert_test example uses: esp_tx, esp_rx,
+		  wifiscwout, cmdstop and the rest, plus the legacy fcc_le_tx
+		  and rw_le_rx_per.
+
+		  Turn this on to run a script written against cert_test
+		  without editing it.  Off, the console has only the
+		  phy_cert_* names, which cannot collide with other features.
+
+	config ESP_HOSTED_HOST_FEAT_RF_CERT_AUTO_INIT
+		bool "Auto-initialize RF-cert feature at boot"
+		default y
+		depends on ESP_HOSTED_HOST_AUTO_FEAT_INIT
+		help
+		  When enabled, eh_host_feat_rf_cert_init() runs during the
+		  linker-section auto-init walk.  This only sets up the host
+		  side; it does not put the coprocessor into cert mode.
+
+endif # ESP_HOSTED_HOST_FEAT_RF_CERT
+
+config ESP_HOSTED_HOST_FEAT_RF_CERT_READY
+	bool
+	default y if ESP_HOSTED_HOST_FEAT_RF_CERT && ESP_HOSTED_HOST_FEAT_RPC_READY && ESP_HOSTED_HOST_FEAT_RPC_EXT_V2_READY

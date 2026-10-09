@@ -133,6 +133,7 @@ menu "Configure coprocessor"
 		orsource "features/eh_cp_feat_cp_ext_coex/Kconfig.ext"
 		orsource "features/eh_cp_feat_cli/Kconfig.ext"
 		orsource "features/eh_cp_feat_openthread/Kconfig.ext"
+		orsource "features/eh_cp_feat_rf_cert/Kconfig.ext"
 	endmenu
 
 endmenu

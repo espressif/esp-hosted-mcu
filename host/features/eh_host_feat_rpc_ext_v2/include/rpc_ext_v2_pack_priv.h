@@ -39,6 +39,7 @@ compose_fn rpc_ext_v2_pick_req_ota(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_peer_data(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_nw_split(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_gpio_exp(int32_t msg_id);
+compose_fn rpc_ext_v2_pick_req_rf_cert(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_ext_coex(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_feature_control(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_wifi(int32_t msg_id);

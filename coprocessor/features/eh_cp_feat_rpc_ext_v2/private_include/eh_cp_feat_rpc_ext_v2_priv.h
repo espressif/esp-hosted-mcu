@@ -426,6 +426,30 @@ esp_err_t req_gpio_input_enable(Rpc *req, Rpc *resp, void *priv_data);
 esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data);
 #endif
 
+/* RF Certification Test RPC Request Handlers */
+#if EH_CP_FEAT_RF_CERT_READY
+/* Radio-agnostic */
+esp_err_t req_phy_get_rx_result(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_cmd_stop(Rpc *req, Rpc *resp, void *priv_data);
+#if EH_CP_FEAT_RF_CERT_WIFI
+esp_err_t req_phy_wifi_tx(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_wifi_rx(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_wifi_tx_tone(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_tx_contin_en(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_cbw40m_en(Rpc *req, Rpc *resp, void *priv_data);
+#if EH_CP_FEAT_RF_CERT_HE
+esp_err_t req_phy_wifi_11ax_tx_set(Rpc *req, Rpc *resp, void *priv_data);
+#endif
+#endif
+#if EH_CP_FEAT_RF_CERT_BLE
+esp_err_t req_phy_ble_tx(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_ble_rx(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_bt_tx_tone(Rpc *req, Rpc *resp, void *priv_data);
+#endif
+esp_err_t req_feature_control_rf_cert(RpcReqFeatureControl *req_payload,
+                                      RpcRespFeatureControl *resp_payload);
+#endif
+
 /* Conditional WiFi RPC Request Handlers */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
 esp_err_t req_wifi_set_protocols(Rpc *req, Rpc *resp, void *priv_data);

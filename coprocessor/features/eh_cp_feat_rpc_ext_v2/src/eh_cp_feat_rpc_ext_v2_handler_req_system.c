@@ -32,7 +32,12 @@ static const char* TAG = "mcu_sys_rpc";
 #define MIN_HEARTBEAT_INTERVAL      (1)
 #define MAX_HEARTBEAT_INTERVAL      (7*24*60*60)
 
-#define OTA_ACTIVATE_RESTART_TIMEOUT 2000
+/* Long enough for the activate response to reach the host before the reboot,
+ * which is one RPC round trip.  It is also the floor under every host's
+ * post-activate wait: the host must outlast this plus the coprocessor's boot,
+ * or it resets the coprocessor inside the pending-verify window and
+ * BOOTLOADER_APP_ROLLBACK reverts the update. */
+#define OTA_ACTIVATE_RESTART_TIMEOUT 500
 
 
 #define IFACE_MAC_SIZE              8 // 6 for MAC-48, 8 for EIU-64, 2 for EFUSE_EXT
@@ -283,7 +288,7 @@ esp_err_t req_ota_activate_handler (Rpc *req,
 		ret = -2;
 		goto err;
 	}
-	ESP_LOGE(TAG, "**** OTA activation initiated, ESP32 will reboot in 2 sec ****");
+	ESP_LOGW(TAG, "OTA activated; rebooting in %d ms", (int)OTA_ACTIVATE_RESTART_TIMEOUT);
 	resp_payload->resp = SUCCESS;
 	return ESP_OK;
 err:
@@ -433,6 +438,13 @@ esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data)
 		return req_feature_control_openthread(req_payload, resp_payload);
 #else
 		ESP_LOGE(TAG, "Openthread is not enabled");
+		resp_payload->resp = FAILURE;
+#endif
+	} else if (req_payload->feature == RPC_FEATURE__Feature_Rf_Cert) {
+#if EH_CP_FEAT_RF_CERT_READY
+		return req_feature_control_rf_cert(req_payload, resp_payload);
+#else
+		ESP_LOGE(TAG, "RF cert test is not enabled");
 		resp_payload->resp = FAILURE;
 #endif
 	} else {

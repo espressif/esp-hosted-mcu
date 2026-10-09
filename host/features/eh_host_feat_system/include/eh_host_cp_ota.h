@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "eh_host_feat_rpc_io_ops.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,7 +16,11 @@ extern "C" {
 
 esp_err_t eh_host_cp_ota_begin(void);
 
-/* ota_data_len up to EH_RPC_OTA_CHUNK_MAX (1536); buffer is copied. */
+#define EH_HOST_CP_OTA_PROTO_OVERHEAD   16u
+#define EH_HOST_CP_OTA_CHUNK_MAX \
+    (EH_HOST_RPC_SERIAL_MAX_PAYLOAD_BYTES - EH_HOST_CP_OTA_PROTO_OVERHEAD)
+
+/* ota_data_len up to EH_HOST_CP_OTA_CHUNK_MAX; buffer is copied. */
 esp_err_t eh_host_cp_ota_write(const uint8_t *ota_data, uint32_t ota_data_len);
 
 esp_err_t eh_host_cp_ota_end(void);

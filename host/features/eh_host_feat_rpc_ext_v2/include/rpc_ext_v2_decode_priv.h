@@ -27,6 +27,7 @@ int rpc_ext_v2_parse_event_nw_split(const Rpc *rpc,
                                         eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_resp_ota(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_resp_gpio_exp(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
+int rpc_ext_v2_parse_resp_rf_cert(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_resp_ext_coex(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_resp_feature_control(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 

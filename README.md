@@ -180,6 +180,7 @@ Flash `cp/` to the ESP coprocessor, then build and run one host role (`mcu_host`
 
 ### Peripherals & control
 - [GPIO Expander](examples/gpio_expander/README.md) — drive co-processor GPIOs remotely.
+- [RF Certification Test](examples/rf_cert/README.md) — drive the co-processor's Wi-Fi and BLE PHY cert tests from a host console (off by default).
 - [Peer Data Transfer](examples/peer_data_transfer/README.md) — send custom control/data payloads.
 - [External Coexistence](examples/ext_coex/README.md) — coordinate with external radios.
 

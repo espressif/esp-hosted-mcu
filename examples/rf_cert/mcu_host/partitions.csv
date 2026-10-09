@@ -1,0 +1,11 @@
+# RF cert host — the shared dual-OTA host layout, plus a LittleFS
+# partition holding the coprocessor image that phy_cert_cp_ota streams over
+# the hosted link.  8 MB: dual 1.75 MB app slots leave no room at 4 MB.
+#
+# Name,     Type, SubType, Offset,   Size
+nvs,        data, nvs,     0x9000,   0x4000
+otadata,    data, ota,     0xd000,   0x2000
+phy_init,   data, phy,     0xf000,   0x1000
+ota_0,      app,  ota_0,   0x10000,  0x1C0000
+ota_1,      app,  ota_1,   0x1D0000, 0x1C0000
+cp_fw,      data, littlefs, 0x390000, 0x100000

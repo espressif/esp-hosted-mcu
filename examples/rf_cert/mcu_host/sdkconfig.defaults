@@ -1,0 +1,18 @@
+# RF Certification Test Example — host (MCU)
+
+CONFIG_ESP_HOSTED=y
+CONFIG_ESP_HOSTED_HOST_FEAT_RPC=y
+CONFIG_ESP_HOSTED_HOST_FEAT_RPC_EXT_V2=y
+CONFIG_ESP_HOSTED_HOST_FEAT_SYSTEM=y
+
+# The RF cert feature, and the CLI that carries its commands.
+CONFIG_ESP_HOSTED_HOST_FEAT_RF_CERT=y
+CONFIG_ESP_HOSTED_HOST_FEAT_CLI=y
+
+# gpio_output_set drives a coprocessor pin, so it needs the GPIO expander.
+CONFIG_ESP_HOSTED_HOST_FEAT_GPIO_EXP=y
+
+# The CLI registers its commands during the feature auto-init walk, which
+# runs before this app creates the REPL. Turn that off so the app can
+# register them itself, after esp_console is up.
+CONFIG_ESP_HOSTED_HOST_FEAT_CLI_AUTO_INIT=n

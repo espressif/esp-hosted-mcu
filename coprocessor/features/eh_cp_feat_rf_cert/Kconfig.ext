@@ -1,0 +1,59 @@
+menuconfig ESP_HOSTED_CP_FEAT_RF_CERT
+	bool "RF Certification Test"
+	depends on ESP_HOSTED_CP
+	depends on SOC_WIFI_SUPPORTED || SOC_BT_SUPPORTED
+	default n
+	help
+	  Gives the host the ESP-IDF PHY certification test APIs over RPC:
+	  Wi-Fi packet TX/RX with packet-error statistics, BLE TX/RX, and
+	  carrier-wave tone on both radios.
+
+	  These drive the PHY directly.  They do not use the Bluetooth
+	  controller or any host stack, so they are not reachable through the
+	  ESP-Hosted HCI path.  For controller-level BLE testing use HCI
+	  Direct Test Mode instead.
+
+	  Only the parts the chip supports are built: Wi-Fi commands need
+	  SOC_WIFI_SUPPORTED, BLE commands need SOC_BT_SUPPORTED, and the
+	  802.11ax command needs SOC_WIFI_HE_SUPPORT.
+
+	  For conducted RF measurement only.  Do not enable this in shipped
+	  firmware.  A host can put the radio into continuous transmit, which
+	  is a regulatory problem.  The feature also costs about 45 KB of
+	  static RAM and 44 KB of flash while it is enabled, whether or not a
+	  test runs.
+
+	  Cert mode takes the radio.  Enter it before the host calls
+	  esp_wifi_init(), and restart the coprocessor to leave it.
+
+comment "⚠️  Enable [✓] ESP_PHY_ENABLE_CERT_TEST  (Component config → PHY)"
+	depends on ESP_HOSTED_CP_FEAT_RF_CERT && !ESP_PHY_ENABLE_CERT_TEST
+
+config ESP_HOSTED_CP_FEAT_RF_CERT_READY
+	bool
+	default y if ESP_HOSTED_CP_FEAT_RF_CERT && ESP_PHY_ENABLE_CERT_TEST
+
+if ESP_HOSTED_CP_FEAT_RF_CERT
+
+	# Per-radio capability gates.  Not user options: they follow the chip.
+	config ESP_HOSTED_CP_FEAT_RF_CERT_WIFI
+		bool
+		default y if ESP_HOSTED_CP_FEAT_RF_CERT_READY && SOC_WIFI_SUPPORTED
+
+	config ESP_HOSTED_CP_FEAT_RF_CERT_BLE
+		bool
+		default y if ESP_HOSTED_CP_FEAT_RF_CERT_READY && SOC_BT_SUPPORTED
+
+	config ESP_HOSTED_CP_FEAT_RF_CERT_HE
+		bool
+		default y if ESP_HOSTED_CP_FEAT_RF_CERT_WIFI && SOC_WIFI_HE_SUPPORT
+
+	config ESP_HOSTED_CP_FEAT_RF_CERT_AUTO_INIT
+		bool "Enter RF cert mode at boot"
+		default n
+		depends on ESP_HOSTED_CP_AUTO_FEAT_INIT
+		help
+		  Cert mode takes the radio before normal Wi-Fi use.  Keep this
+		  off and let the host enter cert mode with Req_FeatureControl.
+
+endif # ESP_HOSTED_CP_FEAT_RF_CERT

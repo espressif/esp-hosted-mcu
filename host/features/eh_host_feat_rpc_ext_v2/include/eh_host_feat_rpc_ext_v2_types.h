@@ -20,7 +20,6 @@ extern "C" {
 #define EH_RPC_PASSWORD_LEN             64u
 #define EH_RPC_COUNTRY_CC_LEN           3u
 #define EH_RPC_IP4_LEN                  4u
-#define EH_RPC_OTA_CHUNK_MAX            1536u
 #define EH_RPC_IDF_TARGET_LEN           32u   /* e.g. "esp32c6" */
 #define EH_RPC_SAE_H2E_IDENTIFIER_LEN   32u
 #define EH_RPC_ITWT_MAX_FLOWS           8u    /* wifi_event_sta_itwt_suspend_t */
@@ -360,6 +359,65 @@ typedef struct {
     int32_t  gpio_num;
 } eh_rpc_gpio_num_t;
 
+/* ---- RF certification test (PHY cert test) mirrors ---- */
+typedef struct {
+    uint32_t chan;          /* 1..14 */
+    uint32_t rate;          /* esp_phy_wifi_rate_t */
+    int32_t  backoff;       /* TX power attenuation, unit 0.25 dB */
+    uint32_t length_byte;   /* PSDU length */
+    uint32_t packet_delay;  /* us */
+    uint32_t packet_num;    /* 0 = continuous */
+} eh_rpc_phy_wifi_tx_t;
+
+typedef struct {
+    uint32_t chan;
+    uint32_t rate;
+} eh_rpc_phy_wifi_rx_t;
+
+typedef struct {
+    uint32_t start;         /* 1 = transmit, 0 = stop */
+    uint32_t chan;
+    uint32_t backoff;
+} eh_rpc_phy_tone_t;
+
+typedef struct {
+    uint32_t rx_correct_count;
+    int32_t  rx_rssi;
+    uint32_t rx_total_count;
+    uint32_t rx_result_flag;
+} eh_rpc_phy_rx_result_t;
+
+typedef struct {
+    bool en;
+} eh_rpc_phy_flag_t;
+
+typedef struct {
+    uint32_t value;     /* 3 before a test, 0 to end it */
+} eh_rpc_phy_cmd_stop_t;
+
+typedef struct {
+    uint32_t he_format;
+    uint32_t pe;
+    uint32_t giltf_num;
+    uint32_t ru_index;
+} eh_rpc_phy_11ax_t;
+
+typedef struct {
+    uint32_t txpwr;
+    uint32_t chan;      /* 0..39 */
+    uint32_t len;       /* 0..255 */
+    uint32_t data_type;
+    uint32_t syncw;
+    uint32_t rate;
+    uint32_t tx_num;    /* 0 = continuous */
+} eh_rpc_phy_ble_tx_t;
+
+typedef struct {
+    uint32_t chan;
+    uint32_t syncw;
+    uint32_t rate;
+} eh_rpc_phy_ble_rx_t;
+
 /* RpcReqExtCoex mirror; `cmd` selects which fields are used. */
 typedef struct {
     RpcExtCoexCmd      cmd;
@@ -583,6 +641,15 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_gpio_direction_t    gpio_direction;
         eh_rpc_gpio_pull_t         gpio_pull;
         eh_rpc_gpio_num_t          gpio_num;
+        eh_rpc_phy_wifi_tx_t       phy_wifi_tx;
+        eh_rpc_phy_wifi_rx_t       phy_wifi_rx;
+        eh_rpc_phy_tone_t          phy_tone;
+        eh_rpc_phy_rx_result_t     phy_rx_result;
+        eh_rpc_phy_flag_t          phy_flag;
+        eh_rpc_phy_cmd_stop_t      phy_cmd_stop;
+        eh_rpc_phy_11ax_t          phy_11ax;
+        eh_rpc_phy_ble_tx_t        phy_ble_tx;
+        eh_rpc_phy_ble_rx_t        phy_ble_rx;
         eh_rpc_ext_coex_cfg_t      ext_coex;
         eh_rpc_feature_ctrl_t      feat_ctrl;
         eh_rpc_peer_data_blob_t    peer_data;

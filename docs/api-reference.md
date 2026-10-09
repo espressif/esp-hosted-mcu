@@ -142,6 +142,28 @@ Header: `eh_host_cp_gpio.h` · compat `esp_hosted_cp_gpio.h`
 `eh_host_cp_gpio_config()`, `_set_level`/`_get_level`, `_set_direction`,
 `_input_enable`, `_set_pull_mode`, `_reset_pin` — each aliased `esp_hosted_cp_gpio_*`.
 
+## RF certification test
+Header: `eh_host_phy_cert.h` · ESP-IDF-shaped `esp_phy_remote.h`
+
+Every call mirrors an `esp_phy_cert_test.h` API — `esp_phy_X` becomes
+`eh_host_phy_cert_X` — and takes that header's argument types. Each returns
+`esp_err_t`, where ESP-IDF returns `void`: an RPC can fail where a local call
+cannot.
+
+Lifecycle: `eh_host_phy_cert_init()`, `_deinit()`, `_query()`.
+Shared: `_test_start_stop()`, `_get_rx_result()`.
+Wi-Fi: `_wifi_tx()`, `_wifi_rx()`, `_wifi_tx_tone()`, `_tx_contin_en()`,
+`_cbw40m_en()`, `_11ax_tx_set()`.
+BLE: `_ble_tx()`, `_ble_rx()`, `_bt_tx_tone()` — PHY-direct, not HCI DTM.
+
+`esp_phy_remote.h` aliases each one as `esp_phy_remote_X`, the way
+`esp_wifi_remote_*` aliases `esp_wifi_*`.
+
+The ESP-IDF `phy/cert_test` console commands come with `CONFIG_ESP_HOSTED_HOST_FEAT_CLI`.
+
+Off by default and never for shipped firmware — see
+[RF Certification Test](features/rf-cert-test.md).
+
 ## External coexistence
 Header: `eh_host_cp_ext_coex.h` · compat `esp_hosted_cp_ext_coex.h`
 
