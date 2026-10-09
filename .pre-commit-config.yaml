@@ -13,6 +13,13 @@ repos:
       entry: tools/check_changelog.py
       language: python
       files: ^idf_component.yml$
+    - id: wifi-coverage
+      name: EH Wi-Fi coverage (tracked IDF versions)
+      entry: tools/wifi_coverage/check_wifi_coverage.py --refs-file tools/wifi_coverage/idf_refs.yml
+      language: python
+      additional_dependencies: [pycparser, pyyaml]
+      files: ^(tools/wifi_coverage/|host/wifi_remote_glue/|common/serializers/eh_proto_v2/src/proto/rpc_v2\.proto$|common/eh_common/include/eh_rpc_bitmasks\.h$|coprocessor/features/eh_cp_feat_rpc_ext_v2/include/eh_cp_feat_rpc_ext_v2_bitmasks\.h$)
+      pass_filenames: false
 
     # The three gates below also run in the premerge_check CI job. They scan the
     # whole tree themselves, so they take no filenames; the `files:` pattern only
