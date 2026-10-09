@@ -691,7 +691,7 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		if (p_c_sta->threshold) {
 			EH_ASSIGN_NARROW(p_a_sta->threshold.rssi, p_c_sta->threshold->rssi);
 			p_a_sta->threshold.authmode = p_c_sta->threshold->authmode;
-#if EH_CP_IDF_GE_5_4
+#if EH_CP_WIFI_GOT_RSSI_5G_ADJ
 			EH_ASSIGN_NARROW(p_a_sta->threshold.rssi_5g_adjustment, p_c_sta->threshold->rssi_5g_adjustment);
 #endif
 		}
@@ -735,7 +735,7 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->he_trig_mu_bmforming_partial_feedback_disabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT, p_c_sta->he_bitmask);
 		p_a_sta->he_trig_cqi_feedback_disabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
 
-#if EH_CP_IDF_GE_5_5
+#if EH_CP_WIFI_GOT_STA_VHT_CFG
 		p_a_sta->vht_su_beamformee_disabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
 		p_a_sta->vht_mu_beamformee_disabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_vht_mu_beamformee_disabled, p_c_sta->he_bitmask);
 		p_a_sta->vht_mcs8_enabled = EH_CP_GET_BIT(WIFI_STA_CONFIG_2_vht_mcs8_enabled, p_c_sta->he_bitmask);
@@ -786,7 +786,7 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 #if EH_CP_WIFI_GOT_AP_TRANSITION_DISABLE
 		p_a_ap->transition_disable = p_c_ap->transition_disable;
 #endif
-#if EH_CP_IDF_GE_5_5
+#if EH_CP_WIFI_GOT_AP_SAE_EXT
 		p_a_ap->sae_ext = (p_c_ap->sae_ext);
 #if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
 		p_a_ap->wpa3_compatible_mode = (p_c_ap->wpa3_compatible_mode) & 1u;
@@ -840,7 +840,7 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 		RPC_ALLOC_ELEMENT(WifiScanThreshold, p_c_sta->threshold, wifi_scan_threshold__init);
 		p_c_sta->threshold->rssi = p_a_sta->threshold.rssi;
 		p_c_sta->threshold->authmode = p_a_sta->threshold.authmode;
-#if EH_CP_IDF_GE_5_4
+#if EH_CP_WIFI_GOT_RSSI_5G_ADJ
 		p_c_sta->threshold->rssi_5g_adjustment = p_a_sta->threshold.rssi_5g_adjustment;
 #endif
 		RPC_ALLOC_ELEMENT(WifiPmfConfig, p_c_sta->pmf_cfg, wifi_pmf_config__init);
@@ -909,7 +909,7 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 		if (p_a_sta->he_trig_cqi_feedback_disabled)
 			EH_CP_SET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
 
-#if EH_CP_IDF_GE_5_5
+#if EH_CP_WIFI_GOT_STA_VHT_CFG
 		if (p_a_sta->vht_su_beamformee_disabled)
 			EH_CP_SET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
 
@@ -963,7 +963,7 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 #if EH_CP_WIFI_GOT_AP_TRANSITION_DISABLE
 		p_c_ap->transition_disable = p_a_ap->transition_disable;
 #endif
-#if EH_CP_IDF_GE_5_5
+#if EH_CP_WIFI_GOT_AP_SAE_EXT
 		p_c_ap->sae_ext = p_a_ap->sae_ext;
 #if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
 		p_c_ap->wpa3_compatible_mode = p_a_ap->wpa3_compatible_mode;
@@ -1037,7 +1037,7 @@ esp_err_t req_wifi_get_config(Rpc *req, Rpc *resp, void *priv_data)
 #if EH_CP_WIFI_GOT_AP_TRANSITION_DISABLE
 		p_c_ap->transition_disable = p_a_ap->transition_disable;
 #endif
-#if EH_CP_IDF_GE_5_5
+#if EH_CP_WIFI_GOT_AP_SAE_EXT
 		p_c_ap->sae_ext = p_a_ap->sae_ext;
 #if EH_CP_WIFI_GOT_AP_WPA3_COMPATIBLE_MODE
 		p_c_ap->wpa3_compatible_mode = p_a_ap->wpa3_compatible_mode;
@@ -1085,7 +1085,7 @@ esp_err_t req_wifi_scan_start(Rpc *req, Rpc *resp, void *priv_data)
 
 		EH_ASSIGN_NARROW(p_a->channel, p_c->channel);
 		p_a->show_hidden = p_c->show_hidden;
-#if EH_CP_IDF_GE_5_4
+#if EH_CP_WIFI_GOT_COEX_BG_SCAN
 		p_a->coex_background_scan = p_c->coex_background_scan;
 #endif
 		p_a->scan_type = p_c->scan_type;
@@ -1719,7 +1719,7 @@ esp_err_t req_wifi_sta_get_negotiated_phymode(Rpc *req, Rpc *resp, void *priv_da
 	return ESP_OK;
 }
 
-#if EH_CP_IDF_GE_5_4
+#if EH_CP_WIFI_DUALBAND
 esp_err_t req_wifi_set_protocols(Rpc *req, Rpc *resp, void *priv_data)
 {
 	RPC_TEMPLATE(RpcRespWifiSetProtocols, resp_wifi_set_protocols,
@@ -1875,7 +1875,7 @@ esp_err_t req_wifi_get_band_mode(Rpc *req, Rpc *resp, void *priv_data)
 
 	return ESP_OK;
 }
-#endif // EH_CP_IDF_GE_5_4
+#endif // EH_CP_WIFI_DUALBAND
 
 
 /* WiFi RPC handlers will be copied here */

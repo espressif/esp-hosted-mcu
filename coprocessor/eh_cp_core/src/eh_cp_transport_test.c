@@ -4,6 +4,7 @@
  */
 
 #include "eh_cp_transport_test.h"
+#include "eh_cp_idf_compat.h"
 #include <unistd.h>
 #include "esp_log.h"
 #include <string.h>
@@ -61,17 +62,17 @@ static void ehtc_utils_raw_tp_timer_func(void* arg)
 
 	actual_bandwidth_tx = ((double)test_raw_tp_tx_len * 8.0) / TEST_RAW_TP__TIMEOUT;
 	actual_bandwidth_rx = ((double)test_raw_tp_rx_len * 8.0) / TEST_RAW_TP__TIMEOUT;
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if EH_CP_IDF_V5_API
     ESP_LOGI(TAG,"%lu-%lu sec       Rx: %.2f Tx: %.2f kbps",
 	         (unsigned long)s_raw_tp_timer_count,
 	         (unsigned long)(s_raw_tp_timer_count + TEST_RAW_TP__TIMEOUT),
 	         actual_bandwidth_rx / div, actual_bandwidth_tx / div);
-#else /* ESP_IDF_VERSION */
+#else
     ESP_LOGI(TAG,"%u-%u sec       Rx: %.2f Tx: %.2f kbps",
 	         s_raw_tp_timer_count,
 	         s_raw_tp_timer_count + TEST_RAW_TP__TIMEOUT,
 	         actual_bandwidth_rx / div, actual_bandwidth_tx / div);
-#endif /* ESP_IDF_VERSION */
+#endif
 	s_raw_tp_timer_count += TEST_RAW_TP__TIMEOUT;
 	test_raw_tp_rx_len = test_raw_tp_tx_len = 0;
 }

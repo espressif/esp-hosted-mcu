@@ -12,7 +12,7 @@
 #include "driver/sdmmc_host.h"
 
 #include "esp_log.h"
-#include "esp_idf_version.h"
+#include "eh_host_port_idf_ver.h"
 
 #include "eh_host_port_master_config.h"
 #include "eh_host_port.h"
@@ -314,7 +314,7 @@ int eh_host_port_sdio_deinit(void* ctx)
 	/* Deinit only our SDMMC slot; the host may be shared with an SD card.
 	 * Older IDF deinitializes the whole host (slot-only deinit is unavailable).
 	 */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if EH_HOST_GOT_SDMMC_DEINIT_SLOT
 	sdmmc_host_deinit_slot(context->config.slot);
 #else
 	sdmmc_host_deinit();

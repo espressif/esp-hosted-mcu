@@ -6,26 +6,7 @@
 #ifndef __PORT_ESP_HOSTED_HOST_WIFI_CONFIG_H__
 #define __PORT_ESP_HOSTED_HOST_WIFI_CONFIG_H__
 
-/* On non-IDF builds, supply ESP_IDF_VERSION_VAL ourselves so version-
- * gated IDF code sees all features "present". */
-#if defined(__has_include)
-#  if __has_include("esp_idf_version.h")
-#    include "esp_idf_version.h"
-#  endif
-#endif
-
-#ifndef ESP_IDF_VERSION_VAL
-#  define ESP_IDF_VERSION_VAL(major, minor, patch) \
-       (((major) << 16) | ((minor) << 8) | (patch))
-#endif
-
-#ifndef ESP_IDF_VERSION
-   /* Linux / non-IDF default: pretend we're on the newest IDF so every
-    * feature gate compiled below evaluates the "latest" branch. CONFIG_*
-    * symbols (CONFIG_ESP_WIFI_* plus Hosted Wi-Fi feature toggles) that gate
-    * actual code paths still drive whether the code is compiled in. */
-#  define ESP_IDF_VERSION ESP_IDF_VERSION_VAL(99, 0, 0)
-#endif
+#include "eh_host_port_idf_ver.h"
 
 #if CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_ITWT && CONFIG_SLAVE_SOC_WIFI_HE_SUPPORT
   #define EH_HOST_WIFI_HE_SUPPORT 1
@@ -33,19 +14,12 @@
   #define EH_HOST_WIFI_HE_SUPPORT 0
 #endif
 
-// HE support (structs, API) changed after ESP-IDF v5.3
-#if EH_HOST_WIFI_HE_SUPPORT && (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 0))
-  #define EH_HOST_WIFI_HE_GREATER_THAN_ESP_IDF_5_3 1
-#else
-  #define EH_HOST_WIFI_HE_GREATER_THAN_ESP_IDF_5_3 0
-#endif
+/* HE support (structs, API) changed after ESP-IDF v5.3 */
+#define EH_HOST_WIFI_HE_GREATER_THAN_ESP_IDF_5_3 \
+    (EH_HOST_WIFI_HE_SUPPORT && EH_HOST_IDF_GE(5, 3, 1))
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
-  /* dual band API support available */
-  #define EH_HOST_WIFI_DUALBAND_SUPPORT 1
-#else
-  #define EH_HOST_WIFI_DUALBAND_SUPPORT 0
-#endif
+/* dual band API */
+#define EH_HOST_WIFI_DUALBAND_SUPPORT           EH_HOST_IDF_GE(5, 4, 0)
 
 #ifdef CONFIG_ESP_WIFI_REMOTE_EAP_ENABLED
   #define EH_HOST_WIFI_ENTERPRISE_SUPPORT 1
@@ -54,13 +28,7 @@
 #endif
 
 /* ESP-IDF 5.5.0 breaking change: reserved/he_reserved renamed to reserved1/reserved2 */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
-  #define EH_HOST_WIFI_NEW_RESERVED_FIELD_NAMES 1
-  #define EH_HOST_PRESENT_IN_ESP_IDF_5_5_0      1
-#else
-  #define EH_HOST_WIFI_NEW_RESERVED_FIELD_NAMES 0
-  #define EH_HOST_PRESENT_IN_ESP_IDF_5_5_0      0
-#endif
+#define EH_HOST_WIFI_NEW_RESERVED_FIELD_NAMES   EH_HOST_IDF_GE(5, 5, 0)
 
 /* wifi_country_t::wifi_5g_channel_mask: slave SoC capability, not an IDF version */
 #ifdef CONFIG_SLAVE_SOC_WIFI_SUPPORT_5G
@@ -69,25 +37,11 @@
   #define EH_HOST_WIFI_GOT_5G_CHANNEL_MASK      0
 #endif
 
-/* wifi_ap_config_t::wpa3_compatible_mode: IDF v6.0+ */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-  #define EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE   1
-#else
-  #define EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE   0
-#endif
+/* wifi_ap_config_t::wpa3_compatible_mode */
+#define EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE     EH_HOST_IDF_GE(6, 0, 0)
 
-/* wifi_sta_config_t::disable_wpa3_compatible_mode: IDF v6.0+ */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-  #define EH_HOST_GOT_WPA3_COMPATIBLE_MODE      1
-#else
-  #define EH_HOST_GOT_WPA3_COMPATIBLE_MODE      0
-#endif
-
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
-  #define EH_HOST_PRESENT_IN_ESP_IDF_5_4_0      1
-#else
-  #define EH_HOST_PRESENT_IN_ESP_IDF_5_4_0      0
-#endif
+/* wifi_sta_config_t::disable_wpa3_compatible_mode */
+#define EH_HOST_GOT_WPA3_COMPATIBLE_MODE        EH_HOST_IDF_GE(6, 0, 0)
 
 /* User-controllable reserved field decoding - works regardless of IDF version */
 #ifdef CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_DECODE_RESERVED_FIELD
@@ -96,49 +50,33 @@
   #define EH_HOST_DECODE_WIFI_RESERVED_FIELD 0
 #endif
 
-/*
- * wifi_twt_config_t::twt_enable_keep_alive only found in
- * IDF v5.3.2 and above
- */
-#if ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 3, 1)
-#define EH_HOST_GOT_TWT_ENABLE_KEEP_ALIVE 1
-#else
-#define EH_HOST_GOT_TWT_ENABLE_KEEP_ALIVE 0
-#endif
+/* wifi_twt_config_t::twt_enable_keep_alive */
+#define EH_HOST_GOT_TWT_ENABLE_KEEP_ALIVE       EH_HOST_IDF_GE(5, 3, 2)
 
-/* wifi_ap_config_t::transition_disable only found in
- * IDF v5.3.3 and above, or
- * IDF v5.4.1 and above
- */
-#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 3) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
-    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 1))
-  #define EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 1
-#else
-  #define EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE 0
-#endif
+/* wifi_ap_config_t::transition_disable */
+#define EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE \
+    (EH_HOST_IDF_GE_LT(5, 3, 3,  5, 4, 0) || EH_HOST_IDF_GE(5, 4, 1))
 
-/* wifi_ap_record_t::akm_dpp: IDF v6.0.3+. release/v5.5 has it too, but no 5.5
- * tag does, so the field stays absent there rather than guess a patch number. */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 3)
-  #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP       1
-#else
-  #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP       0
-#endif
+/* wifi_ap_record_t::akm_dpp; release/v5.5 has it, no v5.5 tag does yet */
+#define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP         EH_HOST_IDF_GE(6, 0, 3)
 
-/* Fields IDF added without a companion macro. IDF's own headers have the STA
- * bits from 5.5.6, 6.0.4 and 6.1.1 (none on 5.3/5.4), and the scan field from
- * 6.1.1. Below IDF 6.1, a host with Wi-Fi disabled takes its Wi-Fi types from
- * the esp_wifi_remote component instead. Its idf_vX.Y headers have the STA bits
- * from 1.6.5, but its idf_tag_vX.Y.Z headers follow the tag, so both checks
- * must pass. Non-IDF hosts report ESP_IDF_VERSION 99.0.0 and use
- * esp_wifi_remote headers, so only its version applies to them. */
-#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 6) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)) || \
-    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 1, 0)) || \
-    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1))
-  #define EH_HOST_WIFI_IDF_GOT_STA_MAX_BW_NEG   1
-#else
-  #define EH_HOST_WIFI_IDF_GOT_STA_MAX_BW_NEG   0
-#endif
+/* wifi_scan_threshold_t::rssi_5g_adjustment */
+#define EH_HOST_WIFI_GOT_RSSI_5G_ADJ            EH_HOST_IDF_GE(5, 4, 0)
+
+/* wifi_scan_config_t::coex_background_scan */
+#define EH_HOST_WIFI_GOT_COEX_BG_SCAN           EH_HOST_IDF_GE(5, 4, 0)
+
+/* wifi_sta_config_t: vht_su/mu_beamformee_disabled, vht_mcs8_enabled */
+#define EH_HOST_WIFI_GOT_STA_VHT_CFG            EH_HOST_IDF_GE(5, 5, 0)
+
+/* wifi_ap_config_t: sae_ext, bss_max_idle_cfg, gtk_rekey_interval */
+#define EH_HOST_WIFI_GOT_AP_SAE_EXT             EH_HOST_IDF_GE(5, 5, 0)
+
+/* max_bandwidth_negotiation_*: esp_wifi_remote idf_tag_* headers follow the IDF tag, so check both */
+#define EH_HOST_WIFI_IDF_GOT_STA_MAX_BW_NEG \
+    (EH_HOST_IDF_GE_LT(5, 5, 6,  6, 0, 0) || \
+     EH_HOST_IDF_GE_LT(6, 0, 4,  6, 1, 0) || \
+     EH_HOST_IDF_GE(6, 1, 1))
 
 #if defined(__has_include)
   #if __has_include("esp_wifi_remote_version.h")
@@ -156,42 +94,32 @@
 #if !defined(ESP_PLATFORM)
   #define EH_HOST_WIFI_GOT_STA_MAX_BW_NEG       EH_HOST_WIFI_REMOTE_GOT_STA_MAX_BW_NEG
   #define EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN     0
-#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0) || \
+#elif EH_HOST_IDF_GE(6, 1, 0) || \
       defined(CONFIG_ESP_WIFI_ENABLED) || defined(CONFIG_ESP_HOST_WIFI_ENABLED)
   #define EH_HOST_WIFI_GOT_STA_MAX_BW_NEG       EH_HOST_WIFI_IDF_GOT_STA_MAX_BW_NEG
-  #define EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN     (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 1))
+  #define EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN     EH_HOST_IDF_GE(6, 1, 1)
 #else
   #define EH_HOST_WIFI_GOT_STA_MAX_BW_NEG       (EH_HOST_WIFI_IDF_GOT_STA_MAX_BW_NEG && \
                                                  EH_HOST_WIFI_REMOTE_GOT_STA_MAX_BW_NEG)
   #define EH_HOST_WIFI_GOT_SCAN_MAX_OFFCHAN     0
 #endif
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-  #define EH_HOST_PRESENT_IN_ESP_IDF_6_0_0      1
-#else
-  #define EH_HOST_PRESENT_IN_ESP_IDF_6_0_0      0
-#endif
+/* esp_eap_client_set_eap_methods(); not in v5.5.0 */
+#define EH_HOST_GOT_SET_EAP_METHODS_API \
+    (EH_HOST_IDF_GE_LT(5, 3, 4,  5, 4, 0) || \
+     EH_HOST_IDF_GE_LT(5, 4, 3,  5, 5, 0) || \
+     EH_HOST_IDF_GE(5, 5, 1))
 
-#if ((ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
-     (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 3) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)) || \
-     (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 1)))
-  #define EH_HOST_GOT_SET_EAP_METHODS_API 1
-#else
-  #define EH_HOST_GOT_SET_EAP_METHODS_API 0
-#endif
+/* esp_eap_client_set_domain_name() */
+#define EH_HOST_GOT_EAP_SET_DOMAIN_NAME \
+    (EH_HOST_IDF_GE_LT(5, 3, 4,  5, 4, 0) || EH_HOST_IDF_GE(5, 4, 3))
 
-#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 4) && ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)) || \
-    (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 3))
-  #define EH_HOST_GOT_EAP_SET_DOMAIN_NAME 1
-#else
-  #define EH_HOST_GOT_EAP_SET_DOMAIN_NAME 0
-#endif
+/* Host-side RPC only; the IDF API and its esp_wifi_remote hook need v5.5 */
+#define EH_HOST_GOT_EAP_OKC_SUPPORT             EH_HOST_IDF_GE(5, 4, 3)
 
-#if (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 3))
-#define EH_HOST_GOT_EAP_OKC_SUPPORT 0
-#else
-#define EH_HOST_GOT_EAP_OKC_SUPPORT 1
-#endif
+/* esp_wifi_remote_set_okc_support() hook */
+#define EH_HOST_WIFI_REMOTE_GOT_OKC_HOOK        EH_HOST_IDF_GE(5, 5, 0)
+
 /**
  * Wi-Fi Easy Connect (DPP) events is returned to user via
  * Wi-Fi DPP events.
@@ -200,25 +128,19 @@
  * Version check still needed as function declaration for
  * `esp_supp_dpp_init()` changed between IDF 5.5 and IDF 6.0
  */
-#if CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_DPP && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
-#define EH_HOST_SUPP_DPP_SUPPORT 1
+#if CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_DPP
+#define EH_HOST_CFG_WIFI_DPP 1
 #else
-#define EH_HOST_SUPP_DPP_SUPPORT 0
+#define EH_HOST_CFG_WIFI_DPP 0
 #endif
+
+#define EH_HOST_SUPP_DPP_SUPPORT (EH_HOST_CFG_WIFI_DPP && EH_HOST_IDF_LT(6, 0, 0))
 
 // Wi-Fi DPP Events: only in IDF v5.5 and above
-#if CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_DPP && (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0))
-#define EH_HOST_WIFI_DPP_SUPPORT 1
-#else
-#define EH_HOST_WIFI_DPP_SUPPORT 0
-#endif
+#define EH_HOST_WIFI_DPP_SUPPORT (EH_HOST_CFG_WIFI_DPP && EH_HOST_IDF_GE(5, 5, 0))
 
 // for generic DPP support
-#if EH_HOST_SUPP_DPP_SUPPORT || EH_HOST_WIFI_DPP_SUPPORT
-#define EH_HOST_DPP_SUPPORT 1
-#else
-#define EH_HOST_DPP_SUPPORT 0
-#endif
+#define EH_HOST_DPP_SUPPORT      (EH_HOST_SUPP_DPP_SUPPORT || EH_HOST_WIFI_DPP_SUPPORT)
 
 // this sets the maximum length of the URI we can receive to generate
 // the QR code

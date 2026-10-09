@@ -158,7 +158,7 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
             if (sta->threshold) {
                 c->u.wifi_cfg.threshold_rssi = (int8_t)sta->threshold->rssi;
                 c->u.wifi_cfg.authmode       = sta->threshold->authmode;
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_4_0
+#if EH_HOST_WIFI_GOT_RSSI_5G_ADJ
                 c->u.wifi_cfg.threshold_rssi_5g_adjustment =
                     sta->threshold->rssi_5g_adjustment;
 #endif
@@ -205,7 +205,7 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #if EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
             c->u.wifi_cfg.transition_disable = ap->transition_disable;
 #endif
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
+#if EH_HOST_WIFI_GOT_AP_SAE_EXT
             c->u.wifi_cfg.sae_ext = ap->sae_ext;
             c->u.wifi_cfg.wpa3_compatible_mode = ap->wpa3_compatible_mode;
             if (ap->bss_max_idle_cfg) {

@@ -15,7 +15,7 @@
 
 #include "esp_log.h"
 #include "eh_log.h"
-#include "esp_idf_version.h"
+#include "eh_cp_idf_compat.h"
 #include "driver/uart.h"
 
 #include "endian.h"
@@ -101,7 +101,7 @@ static void show_config(void)
 // ESP32 UART transport can overflow IRAM on IDF v5.x; the ringbuf funcs must be
 // placed in flash. Fail loudly at compile time (upstream MCU guard) rather than
 // let it surface as a cryptic IRAM link overflow.
-#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)) && (ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0))
+#if EH_CP_UART_CHECK_RINGBUF_IRAM
 #if CONFIG_IDF_TARGET_ESP32 && (!CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH || !CONFIG_RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH)
 #error "ESP32 UART transport can fail to link from lack of IRAM. Enable CONFIG_RINGBUF_PLACE_FUNCTIONS_INTO_FLASH and CONFIG_RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH."
 #endif

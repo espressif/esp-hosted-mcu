@@ -294,7 +294,7 @@ static esp_err_t ctrl_ntfy_StationDisconnectFromESPSoftAP(CtrlMsg *ntfy,
 	ntfy_payload->resp = FAILURE;
 	ntfy_payload->aid = evt->aid;
 	ntfy_payload->is_mesh_child = evt->is_mesh_child;
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 1)
+#if EH_CP_WIFI_GOT_AP_STADISCONN_REASON
 	ntfy_payload->reason = evt->reason;
 #endif
 

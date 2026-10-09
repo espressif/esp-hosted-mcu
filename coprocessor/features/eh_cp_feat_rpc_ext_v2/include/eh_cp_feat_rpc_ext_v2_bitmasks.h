@@ -102,7 +102,7 @@ enum {
 	WIFI_STA_CONFIG_2_he_trig_su_bmforming_feedback_disabled_BIT         = 7,
 	WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT = 8,
 	WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT                  = 9,
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)
+#if !EH_CP_WIFI_GOT_STA_VHT_CFG
 	WIFI_STA_CONFIG_2_MAX_USED_BIT                                       = 10,
 #else
 	WIFI_STA_CONFIG_2_vht_su_beamformee_disabled                         = 10,
@@ -118,7 +118,7 @@ enum {
 #endif
 };
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)
+#if !EH_CP_WIFI_GOT_STA_VHT_CFG
 #define WIFI_STA_CONFIG_2_RESERVED_BITMASK 0xFFFFFC00
 #elif EH_CP_WIFI_GOT_STA_MAX_BW_NEG
 #define WIFI_STA_CONFIG_2_RESERVED_BITMASK 0xFFFF8000

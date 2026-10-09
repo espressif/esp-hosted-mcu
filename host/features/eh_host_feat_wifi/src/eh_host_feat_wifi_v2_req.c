@@ -174,7 +174,7 @@ static int compose_req_wifi_set_config(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
         wifi_scan_threshold__init(thr);
         thr->rssi     = cfg->threshold_rssi;
         thr->authmode = cfg->authmode;
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_4_0
+#if EH_HOST_WIFI_GOT_RSSI_5G_ADJ
         thr->rssi_5g_adjustment = cfg->threshold_rssi_5g_adjustment;
 #endif
         sta->threshold = thr;
@@ -230,7 +230,7 @@ static int compose_req_wifi_set_config(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
 #if EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
         ap->transition_disable = cfg->transition_disable;
 #endif
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
+#if EH_HOST_WIFI_GOT_AP_SAE_EXT
         ap->sae_ext = cfg->sae_ext;
         ap->wpa3_compatible_mode = cfg->wpa3_compatible_mode;
         /* nested wifi_bss_max_idle_config */

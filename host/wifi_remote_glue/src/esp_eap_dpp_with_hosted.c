@@ -90,7 +90,7 @@ esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods)
 #endif
 
 /* The forwarder hook exists from IDF v5.5, later than the RPC */
-#if EH_HOST_GOT_EAP_OKC_SUPPORT && EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
+#if EH_HOST_GOT_EAP_OKC_SUPPORT && EH_HOST_WIFI_REMOTE_GOT_OKC_HOOK
 void esp_wifi_remote_set_okc_support(bool enable)
 { (void)eh_host_wifi_set_okc_support(enable); }
 #endif
