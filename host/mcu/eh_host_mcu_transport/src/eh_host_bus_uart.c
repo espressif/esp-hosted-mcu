@@ -1,5 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* MCU UART bus driver. RX = task + blocking uart_read_bytes. */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+/* MCU UART bus driver. RX = task blocked on the UART driver's event queue. */
 
 #include "eh_host_port_master_config.h"
 
@@ -13,6 +17,7 @@
 #include "esp_event.h"
 #include "eh_host_event.h"
 #include "eh_host_mcu_transport_priv.h"
+#include "eh_host_mcu_transport_state.h"
 #include "eh_frame.h"
 #include "eh_host_mcu_hci_internal.h"
 #include "eh_common_header.h"
@@ -22,6 +27,7 @@
 
 #include "eh_host_port.h"
 #include "eh_host_port_power.h"
+#include "eh_host_transport_config.h"
 #include "driver/uart.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -32,7 +38,8 @@
 #define EH_UART_MAX_BUF         ESP_TRANSPORT_HOST_MAX_BUF_SIZE
 #define EH_UART_RX_BUF_SIZE     (EH_UART_MAX_BUF * 2)
 #define EH_UART_TX_BUF_SIZE     0   /* 0 -> driver ring; caller blocks */
-#define EH_UART_READ_TIMEOUT_MS 100
+#define EH_UART_EVT_QUEUE_LEN   20
+#define EH_UART_EVT_STOP        UART_EVENT_MAX
 
 static const char *TAG = "eh_bus_uart";
 
@@ -56,6 +63,8 @@ static void show_config(void)
 static eh_host_port_task_t      *s_rx_task;
 static eh_host_port_mutex_t     *s_bus_lock;
 static volatile uint8_t     s_running;
+static QueueHandle_t        s_uart_q;
+static eh_host_port_sem_t  *s_rx_open;
 static volatile uint8_t     s_driver_installed;
 #endif
 
@@ -108,6 +117,45 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
     return (int)total;
 }
 
+/* Read everything buffered in the driver and dispatch each complete frame. */
+static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
+{
+    size_t avail = 0;
+    uart_get_buffered_data_len((uart_port_t)EH_HOST_PORT_UART_PORT, &avail);
+    while (avail > 0) {
+        size_t room = cap - *acc_len;
+        if (room == 0) {
+            /* Accumulator full but no complete frame — framing lost. */
+            ESP_LOGW(TAG, "accumulator full; resyncing");
+            memmove(acc, acc + 1, *acc_len - 1);
+            *acc_len -= 1;
+            room = 1;
+        }
+        int n = uart_read_bytes((uart_port_t)EH_HOST_PORT_UART_PORT,
+                                acc + *acc_len, avail < room ? avail : room, 0);
+        if (n <= 0) return;
+        *acc_len += (size_t)n;
+        avail -= (size_t)n;
+
+        for (;;) {
+            int consumed = eh_uart_try_decode_one(acc, *acc_len);
+            if (consumed == 0) break;
+            if (consumed < 0) {
+                memmove(acc, acc + 1, *acc_len - 1);
+                *acc_len -= 1;
+                if (*acc_len == 0) break;
+                continue;
+            }
+            if ((size_t)consumed >= *acc_len) {
+                *acc_len = 0;
+            } else {
+                memmove(acc, acc + consumed, *acc_len - (size_t)consumed);
+                *acc_len -= (size_t)consumed;
+            }
+        }
+    }
+}
+
 static void eh_uart_rx_task(void *arg)
 {
     (void)arg;
@@ -125,37 +173,22 @@ static void eh_uart_rx_task(void *arg)
 
     ESP_LOGI(TAG, "UART RX task started (acc_cap=%u)", (unsigned int)cap);
 
-    while (s_running) {
-        size_t room = cap - acc_len;
-        if (room == 0) {
-            /* Accumulator full but no complete frame — framing lost. */
-            ESP_LOGW(TAG, "accumulator full; resyncing");
-            memmove(acc, acc + 1, acc_len - 1);
-            acc_len -= 1;
-            room = 1;
-        }
-        int n = uart_read_bytes((uart_port_t)EH_HOST_PORT_UART_PORT,
-                                acc + acc_len, room,
-                                pdMS_TO_TICKS(EH_UART_READ_TIMEOUT_MS));
-        if (!s_running) break;
-        if (n <= 0) continue;
-        acc_len += (size_t)n;
+    /* Don't read before connect has reset or resumed the CP. */
+    eh_host_port_sem_wait_ms(s_rx_open, EH_HOST_PORT_WAIT_FOREVER);
 
-        for (;;) {
-            int consumed = eh_uart_try_decode_one(acc, acc_len);
-            if (consumed == 0) break;
-            if (consumed < 0) {
-                memmove(acc, acc + 1, acc_len - 1);
-                acc_len -= 1;
-                if (acc_len == 0) break;
-                continue;
-            }
-            if ((size_t)consumed >= acc_len) {
-                acc_len = 0;
-            } else {
-                memmove(acc, acc + consumed, acc_len - (size_t)consumed);
-                acc_len -= (size_t)consumed;
-            }
+    while (s_running) {
+        uart_event_t ev;
+        if (xQueueReceive(s_uart_q, &ev, portMAX_DELAY) != pdTRUE) continue;
+        if (ev.type == EH_UART_EVT_STOP) break;
+        if (ev.type == UART_FIFO_OVF) {
+            /* Bytes were lost: drop the partial frame and resync. */
+            ESP_LOGW(TAG, "RX FIFO overflow; resyncing");
+            uart_flush_input((uart_port_t)EH_HOST_PORT_UART_PORT);
+            acc_len = 0;
+            continue;
+        }
+        if (ev.type == UART_DATA || ev.type == UART_BUFFER_FULL) {
+            eh_uart_rx_drain(acc, cap, &acc_len);
         }
     }
 
@@ -203,13 +236,17 @@ int eh_host_bus_init(void)
     }
     ret = uart_driver_install((uart_port_t)EH_HOST_PORT_UART_PORT,
                               EH_UART_RX_BUF_SIZE, EH_UART_TX_BUF_SIZE,
-                              0, NULL, 0);
+                              EH_UART_EVT_QUEUE_LEN, &s_uart_q, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "uart_driver_install failed: %d", (int)ret);
         goto fail;
     }
     s_driver_installed = 1;
 
+    s_rx_open = eh_host_port_sem_create();
+    if (!s_rx_open) {
+        goto fail_drv;
+    }
     s_running = 1;
     {
         eh_host_port_task_create_cfg_t tcfg = {
@@ -226,8 +263,10 @@ int eh_host_bus_init(void)
     return 0;
 
 fail_drv:
+    if (s_rx_open) { eh_host_port_sem_destroy(s_rx_open); s_rx_open = NULL; }
     uart_driver_delete((uart_port_t)EH_HOST_PORT_UART_PORT);
     s_driver_installed = 0;
+    s_uart_q = NULL;
 fail:
     if (s_bus_lock) { eh_host_port_mutex_destroy(s_bus_lock); s_bus_lock = NULL; }
     eh_frame_deinit();
@@ -255,10 +294,19 @@ int eh_host_bus_connect_to_slave(void)
          * wake-toggle loop, fires ESP_POWER_SAVE_OFF and resumes servicing RPCs
          * — otherwise the post-wake wifi re-init RPC never gets answered. Matches
          * the SDIO wake path's bus_notify_slave_ps_exit(). */
+        eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_RX_ACTIVE);
+        eh_host_port_sem_post(s_rx_open);
         eh_host_bus_inform_slave_ps_exit();
         return 0;
     }
 #endif
+    /* Drop what the CP instance about to be reset sent (e.g. its boot INIT);
+     * without a reset pin that INIT is the only one, so keep it. */
+    eh_gpio_pin_t rst_pin = { .port = NULL, .pin = -1 };
+    if (eh_host_transport_get_reset_config(&rst_pin) == EH_HOST_TRANSPORT_RC_OK &&
+        rst_pin.pin >= 0) {
+        uart_flush_input((uart_port_t)EH_HOST_PORT_UART_PORT);
+    }
     eh_host_port_err_t rst = eh_host_port_reset_slave();
     if (rst == EH_HOST_PORT_OK) {
         ESP_LOGI(TAG, "Slave reset issued; bringing up UART");
@@ -267,6 +315,8 @@ int eh_host_bus_connect_to_slave(void)
     } else {
         ESP_LOGW(TAG, "Slave reset failed (rc=%d); continuing", (int)rst);
     }
+    eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_RX_ACTIVE);
+    eh_host_port_sem_post(s_rx_open);
     return 0;
 #else
     return -1;
@@ -278,6 +328,11 @@ int eh_host_bus_deinit(void)
 #ifdef ESP_PLATFORM
     s_running = 0;
     if (s_rx_task) {
+        /* Wake the RX task wherever it waits; it exits at a frame boundary. */
+        uart_event_t stop = { .type = EH_UART_EVT_STOP };
+        xQueueReset(s_uart_q);
+        xQueueSend(s_uart_q, &stop, 0);
+        eh_host_port_sem_post(s_rx_open);
         eh_host_port_task_join(s_rx_task);
         eh_host_port_task_destroy(s_rx_task);
         s_rx_task = NULL;
@@ -285,7 +340,9 @@ int eh_host_bus_deinit(void)
     if (s_driver_installed) {
         uart_driver_delete((uart_port_t)EH_HOST_PORT_UART_PORT);
         s_driver_installed = 0;
+        s_uart_q = NULL;
     }
+    if (s_rx_open) { eh_host_port_sem_destroy(s_rx_open); s_rx_open = NULL; }
     if (s_bus_lock) { eh_host_port_mutex_destroy(s_bus_lock); s_bus_lock = NULL; }
 #endif
     eh_frame_deinit();

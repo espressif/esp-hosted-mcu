@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* MCU SPI (full-duplex) bus driver. */
 
 #include "eh_host_port_master_config.h"
@@ -13,6 +17,7 @@
 #include "esp_event.h"
 #include "eh_host_event.h"
 #include "eh_host_mcu_transport_priv.h"
+#include "eh_host_mcu_transport_state.h"
 #include "eh_frame.h"
 #include "eh_host_mcu_hci_internal.h"
 #include "eh_common_header.h"
@@ -188,6 +193,10 @@ static void eh_spi_rx_task(void *arg)
         eh_host_port_sem_wait_ms(s_trans_ready_sem, 100);
         if (!s_running) {
             break;
+        }
+        /* Don't clock before connect has reset or resumed the CP. */
+        if (!eh_host_mcu_transport_state_is_rx_ready()) {
+            continue;
         }
 
         /* Transact only when the slave asserts handshake (== ready to be
@@ -426,10 +435,12 @@ int eh_host_bus_connect_to_slave(void)
 #if EH_HOST_FEAT_POWER_SAVE_READY
     if (eh_host_port_wakeup_reason_get() != EH_HOST_PORT_WAKEUP_UNKNOWN) {
         ESP_LOGI(TAG, "Host woke up from power save");
+        eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_RX_ACTIVE);
         if (eh_host_bus_inform_slave_ps_exit() == 0) {
             return 0;
         }
         ESP_LOGW(TAG, "could not inform slave of wake; resetting instead");
+        eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_INACTIVE);  /* not across the reset */
     }
 #endif
     eh_host_port_err_t rst = eh_host_port_reset_slave();
@@ -439,6 +450,9 @@ int eh_host_bus_connect_to_slave(void)
         ESP_LOGW(TAG, "RST pin not configured; SPI bring-up without reset");
     } else {
         ESP_LOGW(TAG, "Slave reset failed (rc=%d); continuing", (int)rst);
+    }
+    if (!eh_host_mcu_transport_state_is_rx_ready()) {
+        eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_RX_ACTIVE);
     }
     return 0;
 }
