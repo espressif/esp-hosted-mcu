@@ -112,7 +112,7 @@ void process_hci_rx_pkt(uint8_t *payload, uint16_t payload_len)
 #if EH_CP_BT_HCI
 #if SOC_ESP_NIMBLE_CONTROLLER
 
-#if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0)
+#if EH_CP_GOT_BLE_HCI_TRANS
 #include "ble_hci_trans.h"
 
 typedef enum {
@@ -182,7 +182,7 @@ ble_hs_rx_data(struct os_mbuf *om, void *arg)
 	os_mbuf_free_chain(om);
 	return 0;
 }
-#endif // ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0)
+#endif // EH_CP_GOT_BLE_HCI_TRANS
 
 #endif /* SOC_ESP_NIMBLE_CONTROLLER */
 #endif /* EH_CP_BT_HCI */
@@ -295,7 +295,7 @@ esp_err_t eh_cp_bt_enable(void)
 	}
 
 #if EH_CP_BT_HCI
-#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0))
+#if SOC_ESP_NIMBLE_CONTROLLER && EH_CP_GOT_BLE_HCI_TRANS
     ble_hci_trans_cfg_hs((ble_hci_trans_rx_cmd_fn *)ble_hs_hci_rx_evt,NULL,
                          (ble_hci_trans_rx_acl_fn *)ble_hs_rx_data,NULL);
 #else
@@ -322,7 +322,7 @@ esp_err_t eh_cp_bt_disable(void)
 
 #if EH_CP_BT_HCI
 // unregister callback functions
-#if SOC_ESP_NIMBLE_CONTROLLER && (ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 3, 0))
+#if SOC_ESP_NIMBLE_CONTROLLER && EH_CP_GOT_BLE_HCI_TRANS
     ble_hci_trans_cfg_hs(NULL, NULL,
                          NULL, NULL);
 #else

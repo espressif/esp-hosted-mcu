@@ -28,7 +28,7 @@
 
 static const char TAG[] = "ehcp_pcom_pserial";
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if EH_CP_IDF_V5_API
   #define QUEUE_HANDLE QueueHandle_t
 #else
   #define QUEUE_HANDLE xQueueHandle

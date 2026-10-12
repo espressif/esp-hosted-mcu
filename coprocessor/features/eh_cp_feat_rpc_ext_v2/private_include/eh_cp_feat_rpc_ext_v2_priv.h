@@ -15,7 +15,7 @@
 #include "esp_err.h"
 #include "esp_wifi_types.h"
 #include "esp_event.h"
-#include "esp_idf_version.h"
+#include "eh_cp_idf_compat.h"
 #include "eh_cp_master_config.h"
 
 /* Component headers */
@@ -451,7 +451,7 @@ esp_err_t req_feature_control_rf_cert(RpcReqFeatureControl *req_payload,
 #endif
 
 /* Conditional WiFi RPC Request Handlers */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if EH_CP_WIFI_DUALBAND
 esp_err_t req_wifi_set_protocols(Rpc *req, Rpc *resp, void *priv_data);
 esp_err_t req_wifi_get_protocols(Rpc *req, Rpc *resp, void *priv_data);
 esp_err_t req_wifi_set_bandwidths(Rpc *req, Rpc *resp, void *priv_data);

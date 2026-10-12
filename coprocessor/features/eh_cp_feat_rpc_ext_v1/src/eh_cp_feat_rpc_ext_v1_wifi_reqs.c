@@ -21,7 +21,7 @@
 
 static const char* TAG = "rpc_linux_802_3_wifi_req";
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#if EH_CP_WIFI_DUALBAND
 // 5G band support only available in ESP-IDF 5.4 or later
 
 #if CONFIG_SOC_WIFI_SUPPORT_5G || CONFIG_SOC_WIFI_HE_SUPPORT_5G
@@ -1007,7 +1007,7 @@ esp_err_t req_get_ap_scan_list_handler (const CtrlMsg *req,
 
 		credentials.ecn = ap_info[i].authmode;
 		results[i]->sec_prot = credentials.ecn;
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if EH_CP_IDF_V5_API
 		ESP_LOGI(TAG, "SSID      \t\t%s\nRSSI      \t\t%ld\nChannel   \t\t%lu\nBSSID     \t\t%s\nAuth mode \t\t%d\n",
 #else
 		ESP_LOGI(TAG,"\nSSID      \t\t%s\nRSSI      \t\t%d\nChannel   \t\t%d\nBSSID     \t\t%s\nAuth mode \t\t%d\n",

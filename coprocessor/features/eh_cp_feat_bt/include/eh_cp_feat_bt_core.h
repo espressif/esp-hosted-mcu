@@ -9,7 +9,7 @@
 #define EH_CP_FEAT_BT_CORE_H
 
 #include "esp_err.h"
-#include "esp_idf_version.h"
+#include "eh_cp_idf_compat.h"
 #include "priv/eh_cp_feat_bt_cfg.h"
 
 #if defined(CONFIG_BT_ENABLED) && !defined(CONFIG_SOC_BT_SUPPORTED)
@@ -26,7 +26,7 @@
 // include only if BT component enabled and soc supports BT
 #include "esp_bt.h"
 
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
+#if !EH_CP_IDF_V5_API
   #include "driver/periph_ctrl.h"
   #define DISABLE_INTR_ON_GPIO GPIO_PIN_INTR_DISABLE
 #else

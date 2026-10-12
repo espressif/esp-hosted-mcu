@@ -211,7 +211,7 @@ esp_err_t eh_cp_feat_rpc_ext_v2_rpc_req_dispatcher(Rpc *req, Rpc *resp, void *pr
             ret = req_wifi_sta_get_negotiated_phymode(req, resp, priv_data);
             break;
 
-#if EH_CP_IDF_GE_5_4
+#if EH_CP_WIFI_DUALBAND
         case RPC_ID__Req_WifiSetProtocols:
             ret = req_wifi_set_protocols(req, resp, priv_data);
             break;

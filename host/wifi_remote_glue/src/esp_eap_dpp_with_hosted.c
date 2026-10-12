@@ -11,6 +11,7 @@
 #include "eh_host_port_master_config.h"
 #include "eh_host_port_wifi.h"
 
+#include "eh_host_wifi.h"
 #if EH_HOST_FEAT_WIFI_EXT_ENT_READY
 #include "eh_host_wifi_ent.h"
 #endif
@@ -86,6 +87,12 @@ esp_err_t esp_eap_client_remote_set_domain_name(const char *domain_name)
 #if EH_HOST_GOT_SET_EAP_METHODS_API
 esp_err_t esp_eap_client_remote_set_eap_methods(esp_eap_method_t methods)
 { return eh_host_wifi_ent_set_eap_methods(methods); }
+#endif
+
+/* The forwarder hook exists from IDF v5.5, later than the RPC */
+#if EH_HOST_GOT_EAP_OKC_SUPPORT && EH_HOST_WIFI_REMOTE_GOT_OKC_HOOK
+void esp_wifi_remote_set_okc_support(bool enable)
+{ (void)eh_host_wifi_set_okc_support(enable); }
 #endif
 
 #endif /* EH_HOST_FEAT_WIFI_EXT_ENT_READY */

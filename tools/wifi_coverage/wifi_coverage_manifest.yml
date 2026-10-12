@@ -56,7 +56,6 @@ apis:
   esp_netif_create_default_wifi_nan: {unsupported: NAN is not implemented in hosted}
   esp_wifi_set_default_wifi_nan_handlers: {unsupported: NAN is not implemented in hosted}
   esp_netif_create_default_wifi_mesh_netifs: {unsupported: ESP-MESH is not implemented in hosted}
-  esp_wifi_set_okc_support: {gap: "RPC exists (eh_host_wifi_set_okc_support) but no esp_wifi_remote_set_okc_support glue"}
   esp_supp_dpp_set_config: {gap: DPP multi-config is not carried}
   esp_wifi_set_promiscuous: {unsupported: promiscuous mode is not implemented in hosted}
   esp_wifi_get_promiscuous: {unsupported: promiscuous mode is not implemented in hosted}

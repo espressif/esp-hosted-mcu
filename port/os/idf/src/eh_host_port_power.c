@@ -11,7 +11,7 @@
 #ifdef ESP_PLATFORM
 #include "esp_system.h"
 #include "esp_sleep.h"
-#include "esp_idf_version.h"
+#include "eh_host_port_idf_ver.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
@@ -193,7 +193,7 @@ eh_host_port_wakeup_reason_t eh_host_port_wakeup_reason_get(void)
     if (esp_reset_reason() != ESP_RST_DEEPSLEEP) {
         return EH_HOST_PORT_WAKEUP_UNKNOWN;
     }
-#if defined(ESP_IDF_VERSION) && (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0))
+#if EH_HOST_GOT_WAKEUP_CAUSES_BITMAP
     /* IDF >=6.0 bitmap API: bit-position is BIT(enum_val), not the enum
      * value itself — see esp_hw_support/sleep_modes.c uses of BIT(...). */
     uint32_t causes = (uint32_t)esp_sleep_get_wakeup_causes();

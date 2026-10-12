@@ -178,7 +178,7 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
 #if EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
         req->u.wifi_cfg.transition_disable = cfg->ap.transition_disable;
 #endif
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
+#if EH_HOST_WIFI_GOT_AP_SAE_EXT
         req->u.wifi_cfg.sae_ext                            = cfg->ap.sae_ext;
 #if EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE
         req->u.wifi_cfg.wpa3_compatible_mode               = cfg->ap.wpa3_compatible_mode;
@@ -206,7 +206,7 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
         req->u.wifi_cfg.listen_interval   = cfg->sta.listen_interval;
         req->u.wifi_cfg.sort_method       = cfg->sta.sort_method;
         req->u.wifi_cfg.threshold_rssi    = cfg->sta.threshold.rssi;
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_4_0
+#if EH_HOST_WIFI_GOT_RSSI_5G_ADJ
         req->u.wifi_cfg.threshold_rssi_5g_adjustment =
             cfg->sta.threshold.rssi_5g_adjustment;
 #endif
@@ -260,7 +260,7 @@ esp_err_t eh_host_wifi_set_config(wifi_interface_t iface, wifi_config_t *cfg)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT, hbm);
         if (cfg->sta.he_trig_cqi_feedback_disabled)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, hbm);
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
+#if EH_HOST_WIFI_GOT_STA_VHT_CFG
         if (cfg->sta.vht_su_beamformee_disabled)
             EH_HOST_RPC_SET_BIT(EH_HOST_WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, hbm);
         if (cfg->sta.vht_mu_beamformee_disabled)
@@ -321,7 +321,7 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
 #if EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE
             out->ap.transition_disable = (r->u.wifi_cfg.transition_disable) & 1u;
 #endif
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
+#if EH_HOST_WIFI_GOT_AP_SAE_EXT
             out->ap.sae_ext = (r->u.wifi_cfg.sae_ext);
 #if EH_HOST_GOT_AP_WPA3_COMPATIBLE_MODE
             out->ap.wpa3_compatible_mode = (r->u.wifi_cfg.wpa3_compatible_mode) & 1u;
@@ -341,7 +341,7 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
             out->sta.listen_interval    = (uint16_t)r->u.wifi_cfg.listen_interval;
             out->sta.sort_method        = (wifi_sort_method_t)r->u.wifi_cfg.sort_method;
             out->sta.threshold.rssi     = (int8_t)r->u.wifi_cfg.threshold_rssi;
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_4_0
+#if EH_HOST_WIFI_GOT_RSSI_5G_ADJ
             EH_ASSIGN_NARROW(out->sta.threshold.rssi_5g_adjustment, r->u.wifi_cfg.threshold_rssi_5g_adjustment);
 #endif
             out->sta.pmf_cfg.capable    = r->u.wifi_cfg.pmf_capable;
@@ -389,7 +389,7 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
                 EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_2_he_trig_mu_bmforming_partial_feedback_disabled_BIT, hbm);
             out->sta.he_trig_cqi_feedback_disabled =
                 EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, hbm);
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_5_0
+#if EH_HOST_WIFI_GOT_STA_VHT_CFG
             out->sta.vht_su_beamformee_disabled =
                 EH_HOST_RPC_GET_BIT(EH_HOST_WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, hbm);
             out->sta.vht_mu_beamformee_disabled =
@@ -510,7 +510,7 @@ esp_err_t eh_host_wifi_scan_start(const wifi_scan_config_t *cfg, bool block)
         }
         p->channel              = cfg->channel;
         p->show_hidden          = cfg->show_hidden;
-#if EH_HOST_PRESENT_IN_ESP_IDF_5_4_0
+#if EH_HOST_WIFI_GOT_COEX_BG_SCAN
         p->coex_background_scan = cfg->coex_background_scan;
 #endif
         p->scan_type            = (int32_t)cfg->scan_type;

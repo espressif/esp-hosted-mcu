@@ -1,0 +1,3 @@
+# Each MR adds its own lines to the changelog; union merge keeps both sides
+# instead of conflicting when MRs land in a different order.
+docs/changelog.md merge=union

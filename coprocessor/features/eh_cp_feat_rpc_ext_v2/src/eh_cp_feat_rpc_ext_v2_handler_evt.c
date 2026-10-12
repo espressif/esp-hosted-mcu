@@ -107,7 +107,7 @@ esp_err_t copy_wifi_sta_cfg_to_rpc_struct(void *payload, rpc_payload_type_t type
 	p_c_sta->sort_method = p_a_sta->sort_method;
 	p_c_sta->threshold->rssi = p_a_sta->threshold.rssi;
 	p_c_sta->threshold->authmode = p_a_sta->threshold.authmode;
-#if EH_CP_IDF_GE_5_4
+#if EH_CP_WIFI_GOT_RSSI_5G_ADJ
 	p_c_sta->threshold->rssi_5g_adjustment = p_a_sta->threshold.rssi_5g_adjustment;
 #endif
 	p_c_sta->pmf_cfg->capable = p_a_sta->pmf_cfg.capable;
@@ -175,7 +175,7 @@ esp_err_t copy_wifi_sta_cfg_to_rpc_struct(void *payload, rpc_payload_type_t type
 	if (p_a_sta->he_trig_cqi_feedback_disabled)
 		EH_CP_SET_BIT(WIFI_STA_CONFIG_2_he_trig_cqi_feedback_disabled_BIT, p_c_sta->he_bitmask);
 
-#if EH_CP_IDF_GE_5_5
+#if EH_CP_WIFI_GOT_STA_VHT_CFG
 	if (p_a_sta->vht_su_beamformee_disabled)
 		EH_CP_SET_BIT(WIFI_STA_CONFIG_2_vht_su_beamformee_disabled, p_c_sta->he_bitmask);
 
