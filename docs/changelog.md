@@ -25,6 +25,8 @@
 - host/sdio: the max-frequency warning reports the clock in use after a runtime `set_config`
 - host: with `ESP_HOSTED_HOST_AUTO_FEAT_INIT=n`, no feature auto-init code is built or linked
 - proto: no protobuf names in flash (~38 KB smaller CP and host images); host logs show short RPC names
+- host/uart, host/spi: data the co-processor sent before its reset is no longer taken as the new link
+- host/uart: replies are read as they arrive; no 100 ms read timeout per short reply
 
 # Releases
 

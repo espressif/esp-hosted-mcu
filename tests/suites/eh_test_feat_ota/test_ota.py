@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Coprocessor OTA — emulator, self-contained via LittleFS.
 
 The host flashes a new CP firmware image over the hosted link (begin → write* →
@@ -35,9 +37,8 @@ def test_ota_littlefs(bench, transport):
 
     Checked PER-PHASE (host-init → transfer-start → complete → activate) so a hang
     fails fast at the phase that stalled instead of waiting out one long timeout with
-    no clue where it stuck. Only the transfer itself keeps a long wait — the firmware
-    logs no intermediate progress and UART is ~140s — and even that is scoped tight on
-    the fast wires so a stall there fails in 60s (not 240s) off UART."""
+    no clue where it stuck. The transfer logs no progress; every wire, UART included,
+    completes it well inside 60s, so a stall or a slow-read regression fails there."""
     b = bench(EX, 'mcu_host', transport, timeout='300s',
               # Host and staged CP image share one version, so the example's
               # version gates would skip the OTA under test.
@@ -52,10 +53,8 @@ def test_ota_littlefs(bench, transport):
     # 2. image found + verified in LittleFS, transfer begins (fails fast on missing/bad image)
     r = eh_test_expect(host, r'Starting OTA from LittleFS', fail=FAIL, timeout=30)
     assert r.ok, f'[{transport}] OTA transfer-start (image staged/verified): {r.matched}'
-    # 3. the transfer — no progress logging, UART ~140s so it needs the long wait; the
-    #    fast wires (~25s) fail a stall in 60s instead of 240s
-    xfer_timeout = 200 if transport == 'uart' else 60
-    r = eh_test_expect(host, r'OTA completed successfully', fail=FAIL, timeout=xfer_timeout)
+    # 3. the transfer (no progress logging)
+    r = eh_test_expect(host, r'OTA completed successfully', fail=FAIL, timeout=60)
     assert r.ok, f'[{transport}] OTA transfer/complete: {r.matched}'
     # 4. new image activated on the slave
     r = eh_test_expect(host, r'New firmware activated', fail=FAIL, timeout=20)
