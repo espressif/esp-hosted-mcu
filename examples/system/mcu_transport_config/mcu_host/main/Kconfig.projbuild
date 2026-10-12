@@ -1,0 +1,28 @@
+menu "Example Configuration"
+
+    config EXAMPLE_MANUAL_ENABLE_WIFI_STA
+        bool "Stage 2: bring up Wi-Fi STA"
+        default y
+        help
+            After the hosted link is up, manually init the host Wi-Fi feature and
+            connect a station to obtain an IP. Disable to demonstrate transport
+            configuration + core link only.
+
+    config EXAMPLE_WIFI_SSID
+        string "Wi-Fi SSID"
+        default "myssid"
+        help
+            SSID the STA connects to (defaults match the emulator SoftAP).
+
+    config EXAMPLE_WIFI_PASSWORD
+        string "Wi-Fi password"
+        default "mypassword"
+
+    config EXAMPLE_MANUAL_ENABLE_BLE_ADV
+        bool "Stage 3: bring up BLE advertising"
+        default y
+        help
+            After the hosted link is up, set up the NimBLE host over the hosted HCI
+            (controller on the coprocessor) and start advertising. Disable to skip BLE.
+
+endmenu

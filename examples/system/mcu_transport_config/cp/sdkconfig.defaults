@@ -6,12 +6,22 @@ CONFIG_ESP_HOSTED_CP=y
 CONFIG_ESP_HOSTED_CP_FOR_MCU=y
 CONFIG_ESP_HOSTED_CP_RPC_V2=y
 
-#Disable enterprise support by default
-CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT=n
+# ── Board: selects board-specific GPIO presets (SDIO slave pins + host-wakeup) ──
+# Default: ESP32-P4-Function-EV-Board (current MP board) — sets host-wakeup GPIO to 2.
+CONFIG_ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD=y
+# Alternative: ESP32-P4 x ESP32-C5 Function EV board:
+# CONFIG_ESP_HOSTED_P4X_C5_DEV_BOARD_FUNC_BOARD=y
 
-# BT Configuration
-CONFIG_BT_ENABLED=n
-#CONFIG_BT_CONTROLLER_ONLY=y
+# Underlying IDF support for the WiFi Enterprise/DPP ext features enabled below.
+CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT=y
+CONFIG_ESP_WIFI_DPP_SUPPORT=y
+
+# BLE controller on the coprocessor, exposed to the host over VHCI (BLE stage).
+CONFIG_ESP_HOSTED_CP_FEAT_BT=y
+CONFIG_ESP_HOSTED_CP_BT_ENABLED=y
+CONFIG_ESP_HOSTED_CP_FEAT_BT_HCI_VHCI=y
+CONFIG_BT_ENABLED=y
+CONFIG_BT_CONTROLLER_ONLY=y
 
 # OTA
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
@@ -23,3 +33,31 @@ CONFIG_FREERTOS_HZ=1000
 CONFIG_ESP_WIFI_NVS_ENABLED=y
 
 CONFIG_ESP_HOSTED_CP_FEAT_WIFI=y
+
+# ── Full-capability peer ─────────────────────────────────────────────
+# Enable the CP-side feature set so a host can be extended to any of these
+# without reflashing the coprocessor. THIS host example exercises only
+# transport + Wi-Fi STA + BLE; the rest stay dormant RPC surfaces until a
+# host actually calls them.
+CONFIG_ESP_HOSTED_CP_FEAT_PEER_DATA=y
+CONFIG_ESP_HOSTED_CP_FEAT_GPIO_EXP=y
+CONFIG_ESP_HOSTED_CP_FEAT_CLI=y
+CONFIG_ESP_HOSTED_CP_FEAT_DEBUG=y
+#CONFIG_ESP_HOSTED_CP_FEAT_DEBUG_HEAP_STATS=y
+CONFIG_ESP_HOSTED_CP_FEAT_DEBUG_MEM_MONITOR=y
+
+# Host power-save peer (host drives it; dormant until requested). The wake-GPIO
+# comes from the board selection above (P4-Function-EV-Board → GPIO 2); uncomment
+# and set explicitly only for a custom board.
+CONFIG_ESP_HOSTED_CP_FEAT_HOST_PS=y
+# CONFIG_ESP_HOSTED_CP_FEAT_HOST_PS_HOST_WAKEUP_GPIO=2
+
+# Wi-Fi capability extensions (iTWT is default-on for Wi-Fi-6 SoCs).
+CONFIG_ESP_HOSTED_CP_FEAT_WIFI_EXT_ITWT=y
+CONFIG_ESP_HOSTED_CP_FEAT_WIFI_EXT_DPP=y
+CONFIG_ESP_HOSTED_CP_FEAT_WIFI_EXT_ENT=y
+
+# Network split is intentionally NOT enabled here: enabling CP_FEAT_NW_SPLIT
+# relocates the network stack to the coprocessor (CP-side DHCP + port
+# reservations), which is incompatible with this example's host-owned esp_netif
+# STA. Network split has its own dedicated examples under examples/network_split/.

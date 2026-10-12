@@ -265,6 +265,7 @@ int eh_host_init(const eh_host_init_cfg_t *cfg)
             goto fail;
         }
     }
+    eh_host_transport_config_set_in_use(true);
 #endif
 
     {
@@ -325,6 +326,9 @@ rollback:
     if (rpc_inited)      eh_host_feat_rpc_deinit();
     if (vserial_up_done) vserial_down(s_role);
 fail:
+#if EH_HOST_TYPE_MCU
+    eh_host_transport_config_set_in_use(false);
+#endif
     s_init_failed_rc = rc;
     s_init_state     = INIT_FAILED;
     eh_host_port_mutex_unlock(s_init_lock);
@@ -375,6 +379,9 @@ int eh_host_deinit(void)
     eh_host_feat_rpc_stop();
     eh_host_feat_rpc_deinit();
     vserial_down(s_role);
+#if EH_HOST_TYPE_MCU
+    eh_host_transport_config_set_in_use(false);
+#endif
     esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_DOWN, NULL, 0, 0);
     /* No event-loop teardown: default loop is shared with other components. */
 

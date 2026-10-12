@@ -123,6 +123,10 @@ struct eh_host_uart_config eh_host_get_default_uart_config(void)
 void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 {
     unsigned mhz = (unsigned int)EH_HOST_PORT_SPI_FD_CLK_MHZ;
+    struct eh_host_spi_config *cfg;
+    if (EH_HOST_TRANSPORT_RC_OK == eh_host_spi_get_config(&cfg) && cfg->clk_mhz) {
+        mhz = (unsigned int)cfg->clk_mhz;
+    }
     unsigned max_mhz = (chip_id == EH_PRIV_FIRMWARE_CHIP_ESP32) ? 10u : 40u;
     if (mhz < max_mhz) {
         ESP_LOGW(TAG, "SPI FD clock in-use: [%u]MHz. Can optimize in 1MHz steps till Max[%u]MHz",
@@ -134,6 +138,10 @@ void eh_host_port_transport_check_max_freq(uint8_t chip_id)
 {
     (void)chip_id;
     unsigned mhz = (unsigned int)EH_HOST_PORT_SPI_HD_CLK_MHZ;
+    struct eh_host_spi_hd_config *cfg;
+    if (EH_HOST_TRANSPORT_RC_OK == eh_host_spi_hd_get_config(&cfg) && cfg->clk_mhz) {
+        mhz = (unsigned int)cfg->clk_mhz;
+    }
     if (mhz < 40u) {
         ESP_LOGW(TAG, "SPI HD clock in-use: [%u]MHz. Can optimize in 1MHz steps till Max[%u]MHz",
                  mhz, 40u);
@@ -158,6 +166,10 @@ void eh_host_port_transport_check_max_freq(uint8_t chip_id)
     (void)chip_id;
     /* 921600 is the practical stable ceiling (docs/design/uart.md, performance.md). */
     unsigned baud = (unsigned int)EH_HOST_PORT_UART_BAUD_RATE;
+    struct eh_host_uart_config *cfg;
+    if (EH_HOST_TRANSPORT_RC_OK == eh_host_uart_get_config(&cfg) && cfg->baud_rate) {
+        baud = (unsigned int)cfg->baud_rate;
+    }
     if (baud < 921600u) {
         ESP_LOGW(TAG, "UART baud [%u] is below 921600, the reliable rate for this link "
                       "(software flow control only). The UART peripheral itself can reach "

@@ -445,6 +445,7 @@ int eh_host_port_sdio_card_init(void *ctx, bool show_config)
 		ESP_LOGE(TAG, "sdmmc_card_init failed");
 		goto fail;
 	}
+	ESP_LOGI(TAG, "bus applied: clk_khz=%d", context->card->real_freq_khz);
 
 	if (esp_log_level_get(TAG) >= ESP_LOG_DEBUG) {
 		// output CIS info from the slave

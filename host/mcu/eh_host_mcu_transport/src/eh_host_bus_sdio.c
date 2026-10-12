@@ -132,24 +132,23 @@ static const char TAG[] = "eh_sdio";
 
 static void show_config(void)
 {
-#if EH_HOST_PORT_SDIO_BUS_WIDTH == 4
-	ESP_LOGI(TAG, "transport[host]: SDIO %d-bit %u kHz "
-		"CLK=%d CMD=%d D0=%d D1=%d D2=%d D3=%d RESET=%d",
-		EH_HOST_PORT_SDIO_BUS_WIDTH,
-		(unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ,
-		EH_HOST_PORT_SDIO_PIN_CLK, EH_HOST_PORT_SDIO_PIN_CMD,
-		EH_HOST_PORT_SDIO_PIN_D0,  EH_HOST_PORT_SDIO_PIN_D1,
-		EH_HOST_PORT_SDIO_PIN_D2,  EH_HOST_PORT_SDIO_PIN_D3,
-		EH_HOST_PORT_GPIO_PIN_RESET);
-#else
-	ESP_LOGI(TAG, "transport[host]: SDIO %d-bit %u kHz "
-		"CLK=%d CMD=%d D0=%d D1=%d RESET=%d",
-		EH_HOST_PORT_SDIO_BUS_WIDTH,
-		(unsigned int)EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ,
-		EH_HOST_PORT_SDIO_PIN_CLK, EH_HOST_PORT_SDIO_PIN_CMD,
-		EH_HOST_PORT_SDIO_PIN_D0,  EH_HOST_PORT_SDIO_PIN_D1,
-		EH_HOST_PORT_GPIO_PIN_RESET);
-#endif
+	struct eh_host_sdio_config *c = NULL;
+	if (eh_host_sdio_get_config(&c) != EH_HOST_TRANSPORT_RC_OK || !c) {
+		return;
+	}
+	if (c->bus_width == 4) {
+		ESP_LOGI(TAG, "transport[host]: SDIO %d-bit %u kHz "
+			"CLK=%d CMD=%d D0=%d D1=%d D2=%d D3=%d RESET=%d",
+			(int)c->bus_width, (unsigned int)c->clock_freq_khz,
+			c->pin_clk.pin, c->pin_cmd.pin, c->pin_d0.pin, c->pin_d1.pin,
+			c->pin_d2.pin, c->pin_d3.pin, c->pin_reset.pin);
+	} else {
+		ESP_LOGI(TAG, "transport[host]: SDIO %d-bit %u kHz "
+			"CLK=%d CMD=%d D0=%d D1=%d RESET=%d",
+			(int)c->bus_width, (unsigned int)c->clock_freq_khz,
+			c->pin_clk.pin, c->pin_cmd.pin, c->pin_d0.pin, c->pin_d1.pin,
+			c->pin_reset.pin);
+	}
 }
 
 /* When enabled, read all required slave regs in one transfer. */

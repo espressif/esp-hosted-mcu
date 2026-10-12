@@ -147,6 +147,8 @@ eh_host_transport_err_t eh_host_transport_get_config(struct eh_host_transport_co
 eh_host_transport_err_t eh_host_transport_get_reset_config(eh_gpio_pin_t *pin_config);
 
 bool eh_host_transport_is_config_valid(void);
+/* Called by the host core: the config is frozen from init until deinit. */
+void eh_host_transport_config_set_in_use(bool in_use);
 
 /***
  * Transport dependent APIs.

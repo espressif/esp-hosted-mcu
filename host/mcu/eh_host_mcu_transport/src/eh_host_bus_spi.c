@@ -26,6 +26,7 @@
 
 #include "eh_host_port.h"
 #include "eh_host_port_power.h"
+#include "eh_host_transport_config.h"
 #include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_log.h"
@@ -77,16 +78,17 @@ _Static_assert(EH_SPI_MAX_BUF % HOSTED_MEM_ALIGNMENT == 0,
 
 static const char *TAG = "eh_bus_spi";
 
+static struct eh_host_spi_config s_cfg;   /* transport config, snapshotted at bus init */
+
 static void show_config(void)
 {
 	ESP_LOGI(TAG, "transport[host]: SPI mode=%d %u MHz "
 		"MOSI=%d MISO=%d CLK=%d CS=%d HANDSHAKE=%d DATA_READY=%d RESET=%d",
-		(int)EH_HOST_PORT_SPI_MODE,
-		(unsigned int)EH_HOST_PORT_SPI_FD_CLK_MHZ,
-		EH_HOST_PORT_SPI_GPIO_MOSI_Pin,      EH_HOST_PORT_SPI_GPIO_MISO_Pin,
-		EH_HOST_PORT_SPI_GPIO_SCLK_Pin,      EH_HOST_PORT_SPI_GPIO_CS_Pin,
-		EH_HOST_PORT_SPI_GPIO_HANDSHAKE_Pin, EH_HOST_PORT_SPI_GPIO_DATA_READY_Pin,
-		EH_HOST_PORT_GPIO_PIN_RESET);
+		(int)s_cfg.mode, (unsigned int)s_cfg.clk_mhz,
+		s_cfg.pin_mosi.pin,      s_cfg.pin_miso.pin,
+		s_cfg.pin_sclk.pin,      s_cfg.pin_cs.pin,
+		s_cfg.pin_handshake.pin, s_cfg.pin_data_ready.pin,
+		s_cfg.pin_reset.pin);
 }
 
 #endif /* ESP_PLATFORM */
@@ -111,7 +113,7 @@ static void eh_spi_gpio_isr_cb(const eh_host_port_gpio_desc_t *gpio, void *ctx)
     /* Latch a DR edge so a short pulse between worker polls is not lost to
      * binary-semaphore coalescing; the worker clears it once it services an
      * HS-gated transaction. */
-    if (gpio && gpio->pin == EH_HOST_PORT_SPI_GPIO_DATA_READY_Pin) {
+    if (gpio && gpio->pin == s_cfg.pin_data_ready.pin) {
         s_dr_pending = 1;
     }
     if (s_trans_ready_sem) eh_host_port_sem_post_from_isr(s_trans_ready_sem);
@@ -203,7 +205,7 @@ static void eh_spi_rx_task(void *arg)
          * clocked). DR alone is not sufficient: clocking with HS inactive
          * drives the bus while the slave is unprepared and loses the frame.
          * (upstream spi_drv.c:472 gates the whole transaction on HS active). */
-        const eh_host_port_gpio_desc_t hs_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_GPIO_HANDSHAKE_Pin };
+        const eh_host_port_gpio_desc_t hs_pin = { .port = 0, .pin = s_cfg.pin_handshake.pin };
         if (eh_host_port_gpio_get(&hs_pin) != EH_HOST_PORT_HS_VAL_ACTIVE) {
             /* HS not asserted: nothing to clock. A latched DR (s_dr_pending)
              * is deliberately left set — it is serviced by an HS-gated
@@ -266,9 +268,9 @@ static int eh_spi_peripheral_init(void)
     esp_err_t ret;
 
     spi_bus_config_t buscfg = {
-        .mosi_io_num   = EH_HOST_PORT_SPI_GPIO_MOSI_Pin,
-        .miso_io_num   = EH_HOST_PORT_SPI_GPIO_MISO_Pin,
-        .sclk_io_num   = EH_HOST_PORT_SPI_GPIO_SCLK_Pin,
+        .mosi_io_num   = s_cfg.pin_mosi.pin,
+        .miso_io_num   = s_cfg.pin_miso.pin,
+        .sclk_io_num   = s_cfg.pin_sclk.pin,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = EH_SPI_MAX_BUF,
@@ -278,10 +280,10 @@ static int eh_spi_peripheral_init(void)
         .command_bits       = 0,
         .address_bits       = 0,
         .dummy_bits         = 0,
-        .clock_speed_hz     = EH_HOST_PORT_SPI_FD_CLK_MHZ * 1000 * 1000,
+        .clock_speed_hz     = (int)s_cfg.clk_mhz * 1000 * 1000,
         .duty_cycle_pos     = 128,
-        .mode               = EH_HOST_PORT_SPI_MODE,
-        .spics_io_num       = EH_HOST_PORT_SPI_GPIO_CS_Pin,
+        .mode               = s_cfg.mode,
+        .spics_io_num       = s_cfg.pin_cs.pin,
         .cs_ena_posttrans   = 3,
         .queue_size         = 3,
     };
@@ -301,10 +303,13 @@ static int eh_spi_peripheral_init(void)
         spi_bus_free(EH_SPI_HOST_ID);
         return -1;
     }
+    int khz = 0;
+    spi_device_get_actual_freq(s_spi_dev, &khz);
+    ESP_LOGI(TAG, "bus applied: clk_khz=%d", khz);
 
     /* Strong drive on CLK/CS to stay clean at 10+ MHz. */
-    const eh_host_port_gpio_desc_t cs_pin  = { .port = 0, .pin = EH_HOST_PORT_SPI_GPIO_CS_Pin };
-    const eh_host_port_gpio_desc_t clk_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_GPIO_SCLK_Pin };
+    const eh_host_port_gpio_desc_t cs_pin  = { .port = 0, .pin = s_cfg.pin_cs.pin };
+    const eh_host_port_gpio_desc_t clk_pin = { .port = 0, .pin = s_cfg.pin_sclk.pin };
     eh_host_port_gpio_set_drive(&cs_pin,  EH_HOST_PORT_GPIO_DRIVE_STRONG);
     eh_host_port_gpio_set_drive(&clk_pin, EH_HOST_PORT_GPIO_DRIVE_STRONG);
     return 0;
@@ -312,8 +317,8 @@ static int eh_spi_peripheral_init(void)
 
 static int eh_spi_gpio_isr_install(void)
 {
-    const eh_host_port_gpio_desc_t hs_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_GPIO_HANDSHAKE_Pin };
-    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_GPIO_DATA_READY_Pin };
+    const eh_host_port_gpio_desc_t hs_pin = { .port = 0, .pin = s_cfg.pin_handshake.pin };
+    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = s_cfg.pin_data_ready.pin };
 
     eh_host_port_gpio_config_cfg_t in_cfg = { .dir = EH_HOST_PORT_GPIO_DIR_INPUT };
     in_cfg.gpio = hs_pin;
@@ -349,8 +354,8 @@ static int eh_spi_gpio_isr_install(void)
 static void eh_spi_gpio_isr_uninstall(void)
 {
     if (!s_isr_installed) return;
-    const eh_host_port_gpio_desc_t hs_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_GPIO_HANDSHAKE_Pin };
-    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_GPIO_DATA_READY_Pin };
+    const eh_host_port_gpio_desc_t hs_pin = { .port = 0, .pin = s_cfg.pin_handshake.pin };
+    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = s_cfg.pin_data_ready.pin };
     eh_host_port_gpio_intr_disable(&hs_pin);
     eh_host_port_gpio_intr_disable(&dr_pin);
     s_isr_installed = 0;
@@ -375,6 +380,16 @@ int eh_host_bus_init(void)
     }
 
 #ifdef ESP_PLATFORM
+    struct eh_host_spi_config *bus_cfg = NULL;
+    if (eh_host_spi_get_config(&bus_cfg) != EH_HOST_TRANSPORT_RC_OK || !bus_cfg) {
+        eh_frame_deinit();
+        return -1;
+    }
+    s_cfg = *bus_cfg;
+    if (!s_cfg.tx_queue_size) {
+        s_cfg.tx_queue_size = EH_HOST_PORT_SPI_TX_Q;
+        ESP_LOGW(TAG, "spi tx queue size 0: using %u", (unsigned)s_cfg.tx_queue_size);
+    }
     show_config();
 
     /* Declared up front so the failure gotos below never jump over an
@@ -393,7 +408,7 @@ int eh_host_bus_init(void)
     s_bus_lock = eh_host_port_mutex_create();
     if (!s_bus_lock)                      goto fail_sem;
 
-    s_tx_q = eh_host_port_queue_create(EH_HOST_PORT_SPI_TX_Q, sizeof(uint8_t *));
+    s_tx_q = eh_host_port_queue_create(s_cfg.tx_queue_size, sizeof(uint8_t *));
     if (!s_tx_q)                          goto fail_lock;
 
     /* Preallocated zeroed dummy TX reused for every RX-only transaction. */
@@ -583,7 +598,7 @@ int eh_host_bus_is_tx_ready(void)
 #ifdef ESP_PLATFORM
     const eh_host_port_gpio_desc_t hs_pin = {
         .port = 0,
-        .pin  = EH_HOST_PORT_SPI_GPIO_HANDSHAKE_Pin,
+        .pin  = s_cfg.pin_handshake.pin,
     };
     int level = eh_host_port_gpio_get(&hs_pin);
     return (level == EH_HOST_PORT_HS_VAL_ACTIVE) ? 1 : 0;
