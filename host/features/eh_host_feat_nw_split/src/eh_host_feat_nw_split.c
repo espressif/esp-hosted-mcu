@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "esp_err.h"
@@ -312,6 +313,55 @@ static esp_netif_t *create_static_sta_netif(void)
 #endif /* NETIF_INTERNAL_STATIC */
 #endif
 
+#if CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT_NETIF_INTERNAL_DHCP
+/* The host runs the only DHCP client. Give the CP stack the same lease, so it
+ * answers ARP for the shared address and serves the CP port range. The CP
+ * accepts it only when its own DHCP client is off (DHCP owner = HOST), so a
+ * wrong CP owner shows up here, at association, even before any lease. */
+static void nw_split_push_lease(const esp_netif_ip_info_t *lease)
+{
+    char ip[16], nm[16], gw[16], dns[16] = "0.0.0.0";
+    esp_netif_dns_info_t d = {0};
+
+    snprintf(ip, sizeof(ip), IPSTR, IP2STR(&lease->ip));
+    snprintf(nm, sizeof(nm), IPSTR, IP2STR(&lease->netmask));
+    snprintf(gw, sizeof(gw), IPSTR, IP2STR(&lease->gw));
+    if (lease->ip.addr != 0 &&
+        esp_netif_get_dns_info(s_state.netif, ESP_NETIF_DNS_MAIN, &d) == ESP_OK &&
+        d.ip.type == ESP_IPADDR_TYPE_V4) {
+        snprintf(dns, sizeof(dns), IPSTR, IP2STR(&d.ip.u_addr.ip4));
+    }
+    if (eh_host_nw_split_set_status(WIFI_IF_STA, 1, lease->ip.addr != 0, ip, nm, gw,
+                                    lease->ip.addr != 0, dns, ESP_NETIF_DNS_MAIN) != ESP_OK) {
+        ESP_LOGE(NW_SPLIT_TAG, "CP rejected the host lease %s: INTERNAL_DHCP needs the "
+                 "CP built with CONFIG_ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP_HOST", ip);
+    }
+}
+
+static void on_host_sta_connected(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+    (void)arg;
+    (void)base;
+    (void)id;
+    (void)data;
+    const esp_netif_ip_info_t none = {0};
+
+    nw_split_push_lease(&none);
+}
+
+static void on_host_got_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+    (void)arg;
+    (void)base;
+    (void)id;
+    const ip_event_got_ip_t *evt = (const ip_event_got_ip_t *)data;
+
+    if (evt && evt->esp_netif == s_state.netif) {
+        nw_split_push_lease(&evt->ip_info);
+    }
+}
+#endif
+
 int eh_host_feat_nw_split_init(void)
 {
     if (s_state.initialised) {
@@ -373,6 +423,11 @@ int eh_host_feat_nw_split_init(void)
                                      on_nw_split_link_down, NULL);
     esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED,
                                      on_nw_split_sta_connected, NULL);
+#else
+    esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED,
+                                     on_host_sta_connected, NULL);
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                                     on_host_got_ip, NULL);
 #endif
 
     if (eh_host_nw_split_register_event_handlers() != ESP_OK) {
@@ -401,6 +456,11 @@ int eh_host_feat_nw_split_deinit(void)
                                        on_nw_split_link_down);
     (void)esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED,
                                        on_nw_split_sta_connected);
+#else
+    (void)esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED,
+                                       on_host_sta_connected);
+    (void)esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                                       on_host_got_ip);
 #endif
 #if CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_STA_AUTO_RECONNECT_ON_DISCONNECT
     (void)esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED,

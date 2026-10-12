@@ -86,6 +86,24 @@ The trigger string is `WAKEUP_HOST_STRING "wakeup-host"` and the detector is `ho
 
 ---
 
+## IP address owner
+
+The host and the co-processor use one MAC address and one IPv4 address. Only one side can run a DHCP client. If both sides run a client, a release from one side can free the lease of the other side.
+
+Set the host netif mode (`ESP_HOSTED_HOST_FEAT_NW_SPLIT_NETIF_*`) and the co-processor DHCP owner (`ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP_*`) as a pair:
+
+| Host netif mode | Co-processor DHCP owner | DHCP client | Host address |
+| :--- | :--- | :--- | :--- |
+| `APP_EXTERNAL` | `BOTH` or `COPROCESSOR` | Co-processor | From the co-processor status event |
+| `INTERNAL_STATIC` | `BOTH` or `COPROCESSOR` | Co-processor | From the co-processor status event |
+| `INTERNAL_DHCP` | `HOST` | Host | From the host DHCP client. The host sends the lease to the co-processor. |
+
+The host posts `IP_EVENT_STA_GOT_IP` one time for each association. This also applies when the access point gives the same lease again after a reconnect.
+
+If you use `INTERNAL_DHCP` with a different co-processor DHCP owner, the co-processor refuses the host lease. The host then logs an error that names `ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP_HOST`.
+
+---
+
 ## Enable / disable
 
 Enable **Network Split** on both sides in `eh.py menuconfig`, then bring the link up. With auto-init (`…_AUTO_INIT`) the router starts as part of `esp_hosted_init()`.

@@ -462,6 +462,30 @@ static int is_local_udp_port_open(uint16_t port)
 	return found;
 }
 
+/* True for an IPv4 UDP datagram to the DHCP client port. RFC 2131 lets the
+ * server unicast or broadcast its reply, so this looks past the L2 address. */
+static bool nw_split_is_dhcp_client_reply(const void *frame_data, uint16_t frame_length)
+{
+	const struct eth_hdr *ethhdr = (const struct eth_hdr *)frame_data;
+
+	if (ethhdr->type != PP_HTONS(ETHTYPE_IP) ||
+	    frame_length < SIZEOF_ETH_HDR + IP_HLEN) {
+		return false;
+	}
+	const struct ip_hdr *iphdr =
+		(const struct ip_hdr *)((const u8_t *)frame_data + SIZEOF_ETH_HDR);
+	uint16_t ihl = IPH_HL(iphdr) * 4;
+
+	if (IPH_PROTO(iphdr) != IP_PROTO_UDP ||
+	    (IPH_OFFSET(iphdr) & PP_HTONS(IP_OFFMASK)) != 0 ||
+	    frame_length < SIZEOF_ETH_HDR + ihl + UDP_HLEN) {
+		return false;
+	}
+	const struct udp_hdr *udphdr = (const struct udp_hdr *)((const u8_t *)iphdr + ihl);
+
+	return lwip_ntohs(udphdr->dest) == LWIP_IANA_PORT_DHCP_CLIENT;
+}
+
 /* Filter and route packet based on port number and power saving state */
 eh_cp_feat_nw_split_nw_stack_e eh_cp_feat_nw_split_filter_packet(void *frame_data, uint16_t frame_length)
 {
@@ -483,6 +507,15 @@ eh_cp_feat_nw_split_nw_stack_e eh_cp_feat_nw_split_filter_packet(void *frame_dat
     #else
     is_host_power_saving = 0;
     #endif
+
+	/* With DHCP owner HOST the host runs the only DHCP client, so a broadcast
+	 * OFFER/ACK must reach it; the broadcast rule below would keep it on the
+	 * co-processor. With COPROCESSOR or BOTH the co-processor runs the client, and
+	 * the host client that esp_netif starts by default must not see the OFFER. */
+	if (g_dhcp_owner == NW_STACK_HOST &&
+	    nw_split_is_dhcp_client_reply(frame_data, frame_length)) {
+		return NW_STACK_HOST;
+	}
 
 	/* Check if the frame is a MAC broadcast */
 	if (ethhdr->dest.addr[0] & 0x01) {
@@ -1019,15 +1052,17 @@ static esp_err_t nw_split_set_config(uint8_t iface, const char *ip, const char *
 		return ret;
 	}
 
-	/* Set DNS configuration */
+	/* Set DNS configuration; 0.0.0.0 means no DNS server (set_dns_info rejects it). */
 	esp_netif_dns_info_t dns_info = {0};
 	dns_info.ip.u_addr.ip4.addr = esp_ip4addr_aton(dns_ip);
 	dns_info.ip.type = ESP_IPADDR_TYPE_V4;
 
-	ret = esp_netif_set_dns_info(netif, (esp_netif_dns_type_t)dns_type, &dns_info);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to set DNS info: %s", esp_err_to_name(ret));
-		return ret;
+	if (dns_info.ip.u_addr.ip4.addr != 0) {
+		ret = esp_netif_set_dns_info(netif, (esp_netif_dns_type_t)dns_type, &dns_info);
+		if (ret != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to set DNS info: %s", esp_err_to_name(ret));
+			return ret;
+		}
 	}
 
 	ESP_LOGI(TAG, "Network configuration set successfully");
@@ -1045,6 +1080,11 @@ static esp_netif_t *eh_cp_feat_nw_split_init_coprocessor_netif(eh_cp_feat_nw_spl
 	esp_netif_t *existing = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
 	if (existing) {
 		ESP_LOGI(TAG, "Reusing existing WIFI_STA_DEF netif");
+		/* The DHCP owner applies to the netif whoever created it: with owner HOST
+		 * the host runs the only client, and the CP takes the lease it pushes. */
+		if (config->default_nw_stack_dhcp == NW_STACK_HOST) {
+			(void)esp_netif_dhcpc_stop(existing);
+		}
 		coprocessor_sta_netif = existing;
 		return coprocessor_sta_netif;
 	}
