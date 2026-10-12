@@ -24,7 +24,6 @@ target_link_libraries(eh_host_feat_wifi_ext_itwt
 
 
 
-target_link_libraries(eh_host_feat_wifi_ext_itwt PRIVATE eh_host_autoinit)  # eh_host_auto_init.h (EH_HOST_FEAT_REGISTER)
 
 target_sources(eh_host_feat_wifi_ext_itwt PRIVATE
     "src/eh_host_wifi_itwt.c"

@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Bus-agnostic dispatcher. Holds RX cb registration; forwards _init/_deinit
  * /_tx to the single compiled-in bus backend. */
 
@@ -20,12 +24,15 @@
 #include "eh_host_mcu_transport_init_event.h"
 #include "eh_host_mcu_transport_send_caps.h"
 #include "eh_host_mcu_transport_state.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 #include "eh_host_port_task.h"
 #include "eh_host_raw_tp_stats.h"
 #include "eh_host_pkt_stats.h"
 #include "esp_log.h"
 
+#if EH_HOST_AUTO_FEAT_INIT
 /* Once per bring-up; cleared in eh_host_mcu_transport_deinit() so a reinit
  * re-runs feature auto-init. */
 static int s_auto_init_started;
@@ -35,6 +42,7 @@ static void auto_init_features_task(void *arg)
     (void)arg;
     eh_host_auto_init_features();
 }
+#endif
 
 /* esp_priv_event header bytes [0]=event_type [1]=event_len. */
 #define EH_PRIV_EVENT_INIT          0x22u
@@ -123,6 +131,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
                     eh_host_transport_tx(ESP_PRIV_IF, 0,
                                                 caps_pkt, (uint16_t)n, 0);
                 }
+#if EH_HOST_AUTO_FEAT_INIT
                 /* Worker; running inline self-deadlocks against our own RX task. */
                 if (!s_auto_init_started && eh_host_auto_init_count() > 0) {
                     s_auto_init_started = 1;
@@ -140,6 +149,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
                         s_auto_init_started = 0;
                     }
                 }
+#endif
             }
             return;
         }
@@ -250,9 +260,11 @@ int eh_host_mcu_transport_deinit(void)
     s_inited = 0;
     s_rx.cb  = NULL;
     s_rx.ctx = NULL;
+#if EH_HOST_AUTO_FEAT_INIT
     /* Re-arm auto-init so the next INIT event re-spawns feature init; without
      * this the second bring-up skips it and CP async events go unhandled. */
     s_auto_init_started = 0;
+#endif
     eh_host_port_mutex_unlock(s_mtx);
     eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_INACTIVE);
     return eh_host_bus_deinit();

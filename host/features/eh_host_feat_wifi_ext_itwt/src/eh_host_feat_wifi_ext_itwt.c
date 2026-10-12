@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* iTWT host-feature: 6 RPCs + 4 single-slot event subscribers. */
 
 #include "eh_host_port_master_config.h"
 #include "eh_host_feat_wifi_ext_itwt.h"
 #include "eh_host_wifi_itwt.h"
 #include "eh_host_wifi_itwt_priv.h"
-#include "eh_host_auto_init.h"
 #include "eh_host_port.h"
 
 #if EH_HOST_FEAT_WIFI_EXT_ITWT_READY

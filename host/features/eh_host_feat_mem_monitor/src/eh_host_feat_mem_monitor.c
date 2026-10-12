@@ -1,11 +1,17 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Mem-monitor lifecycle: init/deinit register Event_MemMonitor handler. */
 
 #include "esp_err.h"
 
 #include "eh_host_port_master_config.h"
 #include "eh_host_feat_mem_monitor.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 #include "eh_host_mem_monitor.h"
 #include "eh_host_port.h"
 
@@ -30,7 +36,7 @@ int eh_host_feat_mem_monitor_deinit(void)
     return 0;
 }
 
-#if EH_HOST_FEAT_MEM_MONITOR_AUTO_INIT
+#if EH_HOST_AUTO_FEAT_INIT && EH_HOST_FEAT_MEM_MONITOR_AUTO_INIT
 EH_HOST_FEAT_REGISTER(eh_host_feat_mem_monitor_init,
                       eh_host_feat_mem_monitor_deinit,
                       "mem_monitor", 400);

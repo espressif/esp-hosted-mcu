@@ -25,7 +25,9 @@ if(CONFIG_ESP_HOSTED_HOST_FEAT_HEARTBEAT_AUTO_INIT)
 endif()
 
 
+if(CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT)
 target_link_libraries(eh_host_feat_heartbeat PRIVATE eh_host_autoinit)
+endif()
 
 target_sources(eh_host_feat_heartbeat PRIVATE
     "src/eh_host_heartbeat.c"

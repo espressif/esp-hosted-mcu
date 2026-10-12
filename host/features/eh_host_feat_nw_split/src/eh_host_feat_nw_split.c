@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Network-Split host feature: configurable STA netif ownership. */
 
 #include <stdbool.h>
@@ -19,7 +23,10 @@
 #include "esp_wifi_netif.h"
 #include "eh_host_feat_nw_split.h"
 #include "eh_host_nw_split.h"
+#include "eh_host_port_master_config.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 #include "eh_host_event.h"
 #include "eh_host_wifi.h"
 #include "eh_host_wifi_priv.h"
@@ -344,6 +351,8 @@ esp_err_t eh_host_nw_split_bind_mac(const uint8_t mac[6], uint16_t mtu)
     return esp_netif_set_mac(s_state.netif, mac_copy);
 }
 
+#if EH_HOST_AUTO_FEAT_INIT
 EH_HOST_FEAT_REGISTER(eh_host_feat_nw_split_init,
                       eh_host_feat_nw_split_deinit,
                       "nw_split", 200);
+#endif

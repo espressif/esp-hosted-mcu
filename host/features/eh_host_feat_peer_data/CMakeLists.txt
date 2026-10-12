@@ -26,7 +26,9 @@ if(CONFIG_ESP_HOSTED_HOST_FEAT_PEER_DATA_AUTO_INIT)
 endif()
 
 
+if(CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT)
 target_link_libraries(eh_host_feat_peer_data PRIVATE eh_host_autoinit)
+endif()
 
 target_sources(eh_host_feat_peer_data PRIVATE
     "src/eh_host_peer_data.c"

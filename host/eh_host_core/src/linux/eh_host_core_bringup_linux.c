@@ -1,13 +1,19 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <errno.h>
 #include <inttypes.h>
 
 #include "sdkconfig.h"
+#include "eh_host_port_master_config.h"
+#if EH_HOST_AUTO_FEAT_INIT
 #include "eh_host_auto_init.h"
+#endif
 #include "eh_host_core.h"
 #include "eh_host_feat_rpc.h"
-#include "eh_host_port_master_config.h"
 #include "eh_host_port_power.h"
 #include "eh_host_port_task.h"
 #include "esp_log.h"
@@ -23,7 +29,9 @@ static const char *TAG = "eh_reconfigure";
 int eh_host_core_bringup(void)
 {
     if (eh_host_feat_rpc_is_running()) {
+#if EH_HOST_AUTO_FEAT_INIT
         eh_host_auto_init_features();
+#endif
         return 0;
     }
 

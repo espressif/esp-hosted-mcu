@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Needs protoc + protoc-gen-c from protobuf-c 1.5.2 (the version the committed files use).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROTO_FILE="${SCRIPT_DIR}/rpc_v2.proto"
@@ -53,6 +54,10 @@ sed -i.bak \
     "${OUT_C}"
 rm -f "${OUT_C}.bak"
 
+python3 "${SCRIPT_DIR}/gen_rpc_id_names.py"
+
 echo "Generated successfully:"
 echo "  ${OUT_H}"
 echo "  ${OUT_C}"
+echo "  ${ROOT_DIR}/src/gen_v2_names.c"
+echo "  ${ROOT_DIR}/include/gen_v2_names.h"

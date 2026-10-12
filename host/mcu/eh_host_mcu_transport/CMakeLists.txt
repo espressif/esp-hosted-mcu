@@ -46,10 +46,11 @@ target_link_libraries(eh_host_mcu_transport
         eh_mempool
         eh_host_config
         eh_tlv
-    PRIVATE
-        # mcu_transport's RX dispatch calls auto-init walker after caps_tx.
-        eh_host_autoinit
 )
+
+if(CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT)
+    target_link_libraries(eh_host_mcu_transport PRIVATE eh_host_autoinit)
+endif()
 
 # IDF component-requirements walker can't evaluate EH_HOST_* gates, so explicitly
 # link per-bus peripheral drivers; missing one fails at CMake configure time.
