@@ -28,6 +28,7 @@
 - host/uart, host/spi: data the co-processor sent before its reset is no longer taken as the new link
 - host/uart: replies are read as they arrive; no 100 ms read timeout per short reply
 - host: SPI, SPI-HD and UART now use the transport config set with `esp_hosted_*_set_config()` (they used the Kconfig values); a new config is accepted after `esp_hosted_deinit()`
+- examples: a P4 host defaults to the P4 Function EV board with a C6 co-processor, and to the P4X Function EV board with a C5 co-processor
 
 # Releases
 

@@ -117,6 +117,9 @@ menu "Configure host"
 
 	choice ESP_HOSTED_DEV_BOARD  # ignore: multiple-definition
 		prompt "Select PCB Board (Optional)"
+		# Current MP boards for P4 hosts; examples inherit them.
+		default ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD if IDF_TARGET_ESP32P4 && ESP_HOSTED_HOST_TYPE_MCU && ESP_HOSTED_CP_TARGET_ESP32C6
+		default ESP_HOSTED_P4X_C5_DEV_BOARD_FUNC_BOARD if IDF_TARGET_ESP32P4 && ESP_HOSTED_HOST_TYPE_MCU && ESP_HOSTED_CP_TARGET_ESP32C5
 		default ESP_HOSTED_P4_DEV_BOARD_NONE
 
 		config ESP_ESP32C5_SPI_RASPI_MATING_BOARD  # ignore: multiple-definition
