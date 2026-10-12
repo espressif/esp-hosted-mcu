@@ -43,18 +43,17 @@
 
 static const char *TAG = "eh_bus_uart";
 
+static struct eh_host_uart_config s_cfg;   /* transport config, snapshotted at bus init */
+
+/* Config encodings: parity 0/1/2 = none/even/odd, stop bits 0/1/2 = 1/1.5/2. */
 static void show_config(void)
 {
-	ESP_LOGI(TAG, "transport[host]: UART port=%d %u bps %d%c%d "
+	static const char *const stop[] = { "1", "1.5", "2" };
+	ESP_LOGI(TAG, "transport[host]: UART port=%d %u bps %d%c%s "
 		"TX=%d RX=%d RESET=%d",
-		(int)EH_HOST_PORT_UART_PORT,
-		(unsigned int)EH_HOST_PORT_UART_BAUD_RATE,
-		(int)EH_HOST_PORT_UART_NUM_DATA_BITS,
-		(EH_HOST_PORT_UART_PARITY == 0) ? 'N' :
-		(EH_HOST_PORT_UART_PARITY == 2) ? 'E' : 'O',
-		(int)EH_HOST_PORT_UART_STOP_BITS,
-		EH_HOST_PORT_UART_PIN_TX, EH_HOST_PORT_UART_PIN_RX,
-		EH_HOST_PORT_GPIO_PIN_RESET);
+		(int)s_cfg.port, (unsigned int)s_cfg.baud_rate, (int)s_cfg.num_data_bits,
+		"NEO"[s_cfg.parity], stop[s_cfg.stop_bits],
+		s_cfg.pin_tx.pin, s_cfg.pin_rx.pin, s_cfg.pin_reset.pin);
 }
 
 #endif /* ESP_PLATFORM */
@@ -121,7 +120,7 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
 static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
 {
     size_t avail = 0;
-    uart_get_buffered_data_len((uart_port_t)EH_HOST_PORT_UART_PORT, &avail);
+    uart_get_buffered_data_len((uart_port_t)s_cfg.port, &avail);
     while (avail > 0) {
         size_t room = cap - *acc_len;
         if (room == 0) {
@@ -131,7 +130,7 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
             *acc_len -= 1;
             room = 1;
         }
-        int n = uart_read_bytes((uart_port_t)EH_HOST_PORT_UART_PORT,
+        int n = uart_read_bytes((uart_port_t)s_cfg.port,
                                 acc + *acc_len, avail < room ? avail : room, 0);
         if (n <= 0) return;
         *acc_len += (size_t)n;
@@ -183,7 +182,7 @@ static void eh_uart_rx_task(void *arg)
         if (ev.type == UART_FIFO_OVF) {
             /* Bytes were lost: drop the partial frame and resync. */
             ESP_LOGW(TAG, "RX FIFO overflow; resyncing");
-            uart_flush_input((uart_port_t)EH_HOST_PORT_UART_PORT);
+            uart_flush_input((uart_port_t)s_cfg.port);
             acc_len = 0;
             continue;
         }
@@ -208,33 +207,40 @@ int eh_host_bus_init(void)
     }
 
 #ifdef ESP_PLATFORM
+    struct eh_host_uart_config *cfg_in = NULL;
+    if (eh_host_uart_get_config(&cfg_in) != EH_HOST_TRANSPORT_RC_OK || !cfg_in) {
+        goto fail;
+    }
+    s_cfg = *cfg_in;
     show_config();
     s_bus_lock = eh_host_port_mutex_create();
     if (!s_bus_lock) {
         goto fail;
     }
 
+    static const uart_parity_t parity[] = { UART_PARITY_DISABLE, UART_PARITY_EVEN, UART_PARITY_ODD };
+    static const uart_stop_bits_t stop[] = { UART_STOP_BITS_1, UART_STOP_BITS_1_5, UART_STOP_BITS_2 };
     uart_config_t ucfg = {
-        .baud_rate  = EH_HOST_PORT_UART_BAUD_RATE,
-        .data_bits  = UART_DATA_8_BITS,
-        .parity     = UART_PARITY_DISABLE,
-        .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
+        .baud_rate  = (int)s_cfg.baud_rate,
+        .data_bits  = (uart_word_length_t)(UART_DATA_5_BITS + (s_cfg.num_data_bits - 5)),
+        .parity     = parity[s_cfg.parity],
+        .stop_bits  = stop[s_cfg.stop_bits],
+        .flow_ctrl  = (uart_hw_flowcontrol_t)s_cfg.flow_ctrl,
+        .source_clk = (uart_sclk_t)s_cfg.clk_src,
     };
-    esp_err_t ret = uart_param_config((uart_port_t)EH_HOST_PORT_UART_PORT, &ucfg);
+    esp_err_t ret = uart_param_config((uart_port_t)s_cfg.port, &ucfg);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "uart_param_config failed: %d", (int)ret);
         goto fail;
     }
-    ret = uart_set_pin((uart_port_t)EH_HOST_PORT_UART_PORT,
-                       EH_HOST_PORT_UART_PIN_TX, EH_HOST_PORT_UART_PIN_RX,
+    ret = uart_set_pin((uart_port_t)s_cfg.port,
+                       s_cfg.pin_tx.pin, s_cfg.pin_rx.pin,
                        UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "uart_set_pin failed: %d", (int)ret);
         goto fail;
     }
-    ret = uart_driver_install((uart_port_t)EH_HOST_PORT_UART_PORT,
+    ret = uart_driver_install((uart_port_t)s_cfg.port,
                               EH_UART_RX_BUF_SIZE, EH_UART_TX_BUF_SIZE,
                               EH_UART_EVT_QUEUE_LEN, &s_uart_q, 0);
     if (ret != ESP_OK) {
@@ -242,6 +248,9 @@ int eh_host_bus_init(void)
         goto fail;
     }
     s_driver_installed = 1;
+    uint32_t baud = 0;
+    uart_get_baudrate((uart_port_t)s_cfg.port, &baud);
+    ESP_LOGI(TAG, "bus applied: baud=%lu", (unsigned long)baud);
 
     s_rx_open = eh_host_port_sem_create();
     if (!s_rx_open) {
@@ -264,7 +273,7 @@ int eh_host_bus_init(void)
 
 fail_drv:
     if (s_rx_open) { eh_host_port_sem_destroy(s_rx_open); s_rx_open = NULL; }
-    uart_driver_delete((uart_port_t)EH_HOST_PORT_UART_PORT);
+    uart_driver_delete((uart_port_t)s_cfg.port);
     s_driver_installed = 0;
     s_uart_q = NULL;
 fail:
@@ -305,7 +314,7 @@ int eh_host_bus_connect_to_slave(void)
     eh_gpio_pin_t rst_pin = { .port = NULL, .pin = -1 };
     if (eh_host_transport_get_reset_config(&rst_pin) == EH_HOST_TRANSPORT_RC_OK &&
         rst_pin.pin >= 0) {
-        uart_flush_input((uart_port_t)EH_HOST_PORT_UART_PORT);
+        uart_flush_input((uart_port_t)s_cfg.port);
     }
     eh_host_port_err_t rst = eh_host_port_reset_slave();
     if (rst == EH_HOST_PORT_OK) {
@@ -338,7 +347,7 @@ int eh_host_bus_deinit(void)
         s_rx_task = NULL;
     }
     if (s_driver_installed) {
-        uart_driver_delete((uart_port_t)EH_HOST_PORT_UART_PORT);
+        uart_driver_delete((uart_port_t)s_cfg.port);
         s_driver_installed = 0;
         s_uart_q = NULL;
     }
@@ -392,7 +401,7 @@ int eh_host_bus_tx(interface_buffer_handle_t *bh)
         goto out;
     }
     eh_host_port_mutex_lock(s_bus_lock);
-    int written = uart_write_bytes((uart_port_t)EH_HOST_PORT_UART_PORT,
+    int written = uart_write_bytes((uart_port_t)s_cfg.port,
                                    (const char *)buf, len);
     eh_host_port_mutex_unlock(s_bus_lock);
     rc = (written == (int)len) ? 0 : -1;

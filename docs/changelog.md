@@ -27,6 +27,7 @@
 - proto: no protobuf names in flash (~38 KB smaller CP and host images); host logs show short RPC names
 - host/uart, host/spi: data the co-processor sent before its reset is no longer taken as the new link
 - host/uart: replies are read as they arrive; no 100 ms read timeout per short reply
+- host: SPI, SPI-HD and UART now use the transport config set with `esp_hosted_*_set_config()` (they used the Kconfig values); a new config is accepted after `esp_hosted_deinit()`
 
 # Releases
 

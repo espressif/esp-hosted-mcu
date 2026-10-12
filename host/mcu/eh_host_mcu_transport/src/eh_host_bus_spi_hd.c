@@ -1,5 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* MCU SPI half-duplex bus driver. 1/2/4 data lines, selected by Kconfig. */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+/* MCU SPI half-duplex bus driver. 1/2/4 data lines, from the transport config. */
 
 #include "eh_host_port_master_config.h"
 
@@ -25,6 +29,7 @@
 #include "eh_host_port.h"
 #include "eh_host_port_power.h"
 #include "eh_host_port_dma.h"
+#include "eh_host_transport_config.h"
 #include "eh_mempool.h"
 #include "driver/spi_master.h"
 #include "esp_err.h"
@@ -74,7 +79,6 @@
  * decodes the line mode from the command opcode, so the opcode (spihd_cmd)
  * and the per-transaction flags must agree — apply EH_SPIHD_LINE_FLAGS to
  * every transaction. Mirrors upstream port_esp_hosted_host_spi_hd.c. */
-#define EH_SPIHD_NUM_DATA_LINES     EH_HOST_PORT_SPI_HD_HOST_NUM_DATA_LINES
 
 /* DR pull + interrupt edge follow the CP-side configured active level. */
 #if EH_HOST_PORT_SPI_HD_DATAREADY_ACTIVE_HIGH
@@ -87,16 +91,18 @@
 
 static const char *TAG = "eh_bus_spi_hd";
 
+static struct eh_host_spi_hd_config s_cfg;   /* transport config, snapshotted at bus init */
+
 static void show_config(void)
 {
-	ESP_LOGI(TAG, "transport[host]: SPI_HD %d-line "
+	ESP_LOGI(TAG, "transport[host]: SPI_HD %d-line mode=%d %u MHz "
 		"CLK=%d CS=%d D0=%d D1=%d D2=%d D3=%d DATA_READY=%d RESET=%d",
-		(int)EH_HOST_PORT_SPI_HD_HOST_NUM_DATA_LINES,
-		EH_HOST_PORT_SPI_HD_PIN_CLK, EH_HOST_PORT_SPI_HD_PIN_CS,
-		EH_HOST_PORT_SPI_HD_PIN_D0,  EH_HOST_PORT_SPI_HD_PIN_D1,
-		EH_HOST_PORT_SPI_HD_PIN_D2,  EH_HOST_PORT_SPI_HD_PIN_D3,
-		EH_HOST_PORT_SPI_HD_PIN_DATA_READY,
-		EH_HOST_PORT_GPIO_PIN_RESET);
+		(int)s_cfg.num_data_lines, (int)s_cfg.mode, (unsigned int)s_cfg.clk_mhz,
+		s_cfg.pin_clk.pin, s_cfg.pin_cs.pin,
+		s_cfg.pin_d0.pin,  s_cfg.pin_d1.pin,
+		s_cfg.pin_d2.pin,  s_cfg.pin_d3.pin,
+		s_cfg.pin_data_ready.pin,
+		s_cfg.pin_reset.pin);
 }
 
 #endif /* ESP_PLATFORM */
@@ -331,7 +337,7 @@ static void eh_spihd_dr_isr_cb(const eh_host_port_gpio_desc_t *gpio, void *ctx)
 
 static int eh_spihd_dr_isr_install(void)
 {
-    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_HD_PIN_DATA_READY };
+    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = s_cfg.pin_data_ready.pin };
     eh_host_port_gpio_config_cfg_t in_cfg = {
         .gpio = dr_pin,
         .dir  = EH_HOST_PORT_GPIO_DIR_INPUT,
@@ -353,7 +359,7 @@ static int eh_spihd_dr_isr_install(void)
 static void eh_spihd_dr_isr_uninstall(void)
 {
     if (!s_isr_installed) return;
-    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = EH_HOST_PORT_SPI_HD_PIN_DATA_READY };
+    const eh_host_port_gpio_desc_t dr_pin = { .port = 0, .pin = s_cfg.pin_data_ready.pin };
     eh_host_port_gpio_intr_disable(&dr_pin);
     s_isr_installed = 0;
 }
@@ -404,9 +410,9 @@ static void spihd_apply_cp_lines(void)
 {
     uint32_t ext = eh_host_mcu_transport_get_ext_capabilities();
     uint8_t lines = 1;
-    if (EH_SPIHD_NUM_DATA_LINES == 4 && (ext & EH_TRANSPORT_CP_SPI_HD_4_DATA_LINES)) {
+    if (s_cfg.num_data_lines == 4 && (ext & EH_TRANSPORT_CP_SPI_HD_4_DATA_LINES)) {
         lines = 4;
-    } else if (EH_SPIHD_NUM_DATA_LINES >= 2 &&
+    } else if (s_cfg.num_data_lines >= 2 &&
                (ext & (EH_TRANSPORT_CP_SPI_HD_4_DATA_LINES |
                        EH_TRANSPORT_CP_SPI_HD_2_DATA_LINES))) {
         lines = 2;
@@ -417,7 +423,7 @@ static void spihd_apply_cp_lines(void)
     eh_host_port_mutex_lock(s_bus_lock);
     s_data_lines = lines;
     eh_host_port_mutex_unlock(s_bus_lock);
-    ESP_LOGI(TAG, "SPI-HD data lines: %u (host %d)", lines, EH_SPIHD_NUM_DATA_LINES);
+    ESP_LOGI(TAG, "SPI-HD data lines: %u (host %d)", lines, (int)s_cfg.num_data_lines);
 }
 
 /* RX worker: wait DR, read TX_BUF_LEN, clear via INT1, compute delta,
@@ -525,6 +531,11 @@ int eh_host_bus_init(void)
     }
 
 #ifdef ESP_PLATFORM
+    struct eh_host_spi_hd_config *cfg_in = NULL;
+    if (eh_host_spi_hd_get_config(&cfg_in) != EH_HOST_TRANSPORT_RC_OK || !cfg_in) {
+        goto fail;
+    }
+    s_cfg = *cfg_in;
     show_config();
     s_dr_sem   = eh_host_port_sem_create();
     s_bus_lock = eh_host_port_mutex_create();
@@ -536,24 +547,19 @@ int eh_host_bus_init(void)
     s_data_lines = 1;
 
     spi_bus_config_t bus_cfg = {
-        .data0_io_num    = EH_HOST_PORT_SPI_HD_PIN_D0,
-        .data1_io_num    = EH_HOST_PORT_SPI_HD_PIN_D1,
-        .data2_io_num    = EH_HOST_PORT_SPI_HD_PIN_D2,
-        .data3_io_num    = EH_HOST_PORT_SPI_HD_PIN_D3,
+        .data0_io_num    = s_cfg.pin_d0.pin,
+        .data1_io_num    = s_cfg.pin_d1.pin,
+        .data2_io_num    = s_cfg.pin_d2.pin,
+        .data3_io_num    = s_cfg.pin_d3.pin,
         .data4_io_num    = -1,
         .data5_io_num    = -1,
         .data6_io_num    = -1,
         .data7_io_num    = -1,
-        .sclk_io_num     = EH_HOST_PORT_SPI_HD_PIN_CLK,
+        .sclk_io_num     = s_cfg.pin_clk.pin,
         .max_transfer_sz = EH_SPIHD_MAX_BUF,
-        .flags           = SPICOMMON_BUSFLAG_MASTER
-#if EH_SPIHD_NUM_DATA_LINES == 4
-                           | SPICOMMON_BUSFLAG_QUAD,
-#elif EH_SPIHD_NUM_DATA_LINES == 2
-                           | SPICOMMON_BUSFLAG_DUAL,
-#else
-                           ,
-#endif
+        .flags           = SPICOMMON_BUSFLAG_MASTER |
+                           ((s_cfg.num_data_lines == 4) ? SPICOMMON_BUSFLAG_QUAD :
+                            (s_cfg.num_data_lines == 2) ? SPICOMMON_BUSFLAG_DUAL : 0),
         .intr_flags      = 0,
     };
     esp_err_t ret = spi_bus_initialize(EH_SPIHD_HOST_ID, &bus_cfg,
@@ -567,15 +573,12 @@ int eh_host_bus_init(void)
         .command_bits    = 8,
         .address_bits    = 8,
         .dummy_bits      = 0,   /* per-transaction via SPI_TRANS_VARIABLE_DUMMY */
-        .clock_speed_hz  = EH_HOST_PORT_SPI_HD_CLK_MHZ * 1000 * 1000,
-        .mode            = EH_HOST_PORT_SPI_HD_MODE,
-        .spics_io_num    = EH_HOST_PORT_SPI_HD_PIN_CS,
+        .clock_speed_hz  = (int)s_cfg.clk_mhz * 1000 * 1000,
+        .mode            = s_cfg.mode,
+        .spics_io_num    = s_cfg.pin_cs.pin,
         .queue_size      = 4,
-#if EH_SPIHD_NUM_DATA_LINES == 1
-        .flags           = SPI_DEVICE_HALFDUPLEX | SPI_DEVICE_3WIRE,
-#else
-        .flags           = SPI_DEVICE_HALFDUPLEX,
-#endif
+        .flags           = SPI_DEVICE_HALFDUPLEX |
+                           ((s_cfg.num_data_lines == 1) ? SPI_DEVICE_3WIRE : 0),
         .duty_cycle_pos  = 128,
     };
 #ifdef CONFIG_IDF_TARGET_ESP32P4
@@ -587,6 +590,9 @@ int eh_host_bus_init(void)
         ESP_LOGE(TAG, "spi_bus_add_device failed: %d", (int)ret);
         goto fail_bus;
     }
+    int khz = 0;
+    spi_device_get_actual_freq(s_spi_dev, &khz);
+    ESP_LOGI(TAG, "bus applied: clk_khz=%d", khz);
 
     int ps_wake = 0;
 #if EH_HOST_FEAT_POWER_SAVE_READY
