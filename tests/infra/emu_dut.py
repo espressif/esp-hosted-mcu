@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Shared process-backed DUT handle for emulated / userspace benches.
 
 Exposes the pytest-embedded Dut surface the HW helpers use (expect / expect_exact
@@ -113,7 +115,7 @@ class EmuDut:
                     hit_end = (idx + len(w)) if exact else m.end()
                     with self._lock:
                         self._cursor += hit_end
-                    return w
+                    return w if exact else m   # like pytest-embedded: the match for a regex
             time.sleep(0.05)
         raise TimeoutError(f'[{self.name}] timeout ({timeout}s) waiting for {success!r}')
 

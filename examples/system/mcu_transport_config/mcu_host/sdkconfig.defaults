@@ -1,43 +1,46 @@
+# Manual (auto-init-off) full bring-up — HOST (MCU)
 CONFIG_ESP_HOSTED=y
 
-# Defer init so app_main can call esp_hosted_xxx_set_config() before bring-up.
+# The point of this example: the app owns every init call. Turn BOTH auto-inits
+# off — the pre-app_main constructor AND the feature auto-init walk — so
+# transport set_config runs before init and each feature is init'd explicitly.
 CONFIG_ESP_HOSTED_AUTO_CALL_INIT_BEFORE_APP_MAIN=n
+CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT=n
 
-# Transport Interface - Choose one based on your setup
-# Uncomment the transport you want to use:
+# Host features the app initialises manually (heartbeat needs RPC + RPC_EXT_V2).
+CONFIG_ESP_HOSTED_HOST_FEAT_RPC=y
+CONFIG_ESP_HOSTED_HOST_FEAT_RPC_EXT_V2=y
+CONFIG_ESP_HOSTED_HOST_FEAT_SYSTEM=y
+CONFIG_ESP_HOSTED_HOST_FEAT_WIFI=y
+CONFIG_ESP_HOSTED_HOST_FEAT_BT=y
+CONFIG_ESP_HOSTED_HOST_FEAT_HEARTBEAT=y
 
-# SDIO Interface (default for this example)
+# Transport = SDIO. The build default clock is 25000 kHz; main.c sets 20000, then 40000.
 CONFIG_ESP_HOSTED_HOST_SDIO_CLK_KHZ=25000
 CONFIG_ESP_HOSTED_HOST_SDIO_BUS_WIDTH=4
-CONFIG_ESP_HOSTED_HOST_SDIO_TX_Q_SIZE=10
-CONFIG_ESP_HOSTED_HOST_SDIO_RX_Q_SIZE=10
 
-# SPI Interface (uncomment to use instead of SDIO)
-# CONFIG_ESP_HOSTED_SPI_HOST_INTERFACE=y
-# CONFIG_ESP_HOSTED_SPI_CLK_FREQ=10
-# CONFIG_ESP_HOSTED_SPI_MODE=0
-# CONFIG_ESP_HOSTED_SPI_TX_Q_SIZE=10
-# CONFIG_ESP_HOSTED_SPI_RX_Q_SIZE=10
+# Wi-Fi routed to the coprocessor. Pin the remote Wi-Fi profile to the iperf ESP32-P4
+# reference (esp_wifi_remote WIFI_RMT_* knobs) so the host requests exactly what the
+# CP is built for (CP esp32c6 ESP_WIFI_* matches these) — no re-init on wifi bring-up.
+CONFIG_ESP_WIFI_REMOTE_LIBRARY_HOSTED=y
+CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16
+CONFIG_WIFI_RMT_DYNAMIC_RX_BUFFER_NUM=32
+CONFIG_WIFI_RMT_DYNAMIC_TX_BUFFER_NUM=32
+CONFIG_WIFI_RMT_AMPDU_TX_ENABLED=y
+CONFIG_WIFI_RMT_TX_BA_WIN=16
+CONFIG_WIFI_RMT_AMPDU_RX_ENABLED=y
+CONFIG_WIFI_RMT_RX_BA_WIN=16
 
-# SPI Half-Duplex Interface (uncomment to use instead of SDIO)
-# CONFIG_ESP_HOSTED_SPI_HD_HOST_INTERFACE=y
-# CONFIG_ESP_HOSTED_SPI_HD_CLK_FREQ=20
-# CONFIG_ESP_HOSTED_SPI_HD_INTERFACE_NUM_DATA_LINES=4
-# CONFIG_ESP_HOSTED_SPI_HD_TX_Q_SIZE=10
-# CONFIG_ESP_HOSTED_SPI_HD_RX_Q_SIZE=10
-
-# UART Interface (uncomment to use instead of SDIO)
-# CONFIG_ESP_HOSTED_UART_HOST_INTERFACE=y
-# CONFIG_ESP_HOSTED_UART_BAUDRATE=921600
-# CONFIG_ESP_HOSTED_UART_TX_Q_SIZE=50
-# CONFIG_ESP_HOSTED_UART_RX_Q_SIZE=50
-
-# FreeRTOS
-CONFIG_FREERTOS_HZ=1000
-
-# WiFi Configuration
-CONFIG_ESP_WIFI_ENABLED=y
-
-# Bluetooth Configuration (optional)
+# NimBLE host; BLE controller runs on the coprocessor (no on-chip controller).
 CONFIG_BT_ENABLED=y
-CONFIG_BT_BLUEDROID_ENABLED=y
+CONFIG_BT_CONTROLLER_DISABLED=y
+CONFIG_BT_BLUEDROID_ENABLED=n
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_TRANSPORT_UART=n
+CONFIG_BT_NIMBLE_42_FEATURE_SUPPORT=y
+CONFIG_BT_NIMBLE_50_FEATURE_SUPPORT=y
+CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=y
+CONFIG_BT_NIMBLE_ROLE_CENTRAL=n
+
+CONFIG_FREERTOS_HZ=1000
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
