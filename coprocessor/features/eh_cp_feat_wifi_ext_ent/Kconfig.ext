@@ -8,6 +8,24 @@ config ESP_HOSTED_CP_FEAT_WIFI_EXT_ENT
 comment "⚠️  Enable [✓] ESP_WIFI_ENTERPRISE_SUPPORT  (Component config → Wi-Fi → Enterprise)"
     depends on ESP_HOSTED_CP_FEAT_WIFI_EXT_ENT && !ESP_WIFI_ENTERPRISE_SUPPORT
 
+config ESP_HOSTED_CP_FEAT_WIFI_EXT_EAP_FAST
+    bool "EAP-FAST method"
+    depends on ESP_HOSTED_CP_FEAT_WIFI_EXT_ENT
+    default n
+    help
+        Build EAP-FAST into the CP supplicant. IDF compiles EAP-FAST only with the
+        internal TLS client (ESP_WIFI_MBEDTLS_TLS_CLIENT=n) — FAST's PAC-Opaque needs
+        a TLS SessionTicket hook the mbedTLS client lacks. Without that, the method
+        stays unregistered and the peer NAKs FAST (reason 23). The internal TLS
+        client is TLS 1.0-1.2 only (no TLS 1.3), for ALL enterprise methods.
+
+comment "⚠️  EAP-FAST needs the INTERNAL TLS client — disable [ ] ESP_WIFI_MBEDTLS_TLS_CLIENT (Component config → Wi-Fi). Internal TLS is TLS 1.0-1.2 only."
+    depends on ESP_HOSTED_CP_FEAT_WIFI_EXT_EAP_FAST && ESP_WIFI_MBEDTLS_TLS_CLIENT
+
 config ESP_HOSTED_CP_FEAT_WIFI_EXT_ENT_READY
     bool
     default y if ESP_HOSTED_CP_FEAT_WIFI_EXT_ENT && ESP_WIFI_ENTERPRISE_SUPPORT
+
+config ESP_HOSTED_CP_FEAT_WIFI_EXT_EAP_FAST_READY
+    bool
+    default y if ESP_HOSTED_CP_FEAT_WIFI_EXT_EAP_FAST && ESP_WIFI_ENTERPRISE_SUPPORT && !ESP_WIFI_MBEDTLS_TLS_CLIENT

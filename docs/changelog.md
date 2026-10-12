@@ -18,6 +18,10 @@
 - cp/heartbeat: interval is 1 s – 7 days; out-of-range is rejected, not clamped
 - rf-cert: new optional feature giving the host the ESP-IDF PHY certification test APIs over RPC, for Wi-Fi and BLE. Off by default
 - rf-cert: new console with the ESP-IDF `phy/cert_test` command set, and `examples/rf_cert`
+- examples/zigbee: builds on IDF 6.1
+- cp/wifi: new `ESP_HOSTED_CP_FEAT_WIFI_EXT_EAP_FAST`; EAP-FAST needs the internal TLS client
+- host (Linux): builds again; `akm_dpp` is used only on ESP-IDF builds
+- bt/nimble: NimBLE host builds link on IDF 6.x
 
 # Releases
 

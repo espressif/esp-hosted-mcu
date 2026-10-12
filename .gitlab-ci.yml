@@ -47,6 +47,23 @@ premerge_check:
     - bash tools/check_override_path_depth.sh
     - python3 tools/check_nano_printf_specifiers.py
 
+# Dead-gate guard: fail if a Kconfig `depends on`/`select`/`if` or a CMake
+# `if(CONFIG_...)` names an ESP_HOSTED_*/EH_* symbol that no Kconfig defines — a
+# silently-dead gate (renames leave these with no build error). Known, deferred gates
+# are listed in the checker's KNOWN table. Cheap + IDF-independent.
+kconfig_symbols_check:
+  stage: pre
+  image: espressif/idf:${IDF_VER}
+  tags: [build]
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^release/'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - python3 tools/check_kconfig_symbols.py --strict
+
 pre_commit:
   stage: pre
   image: espressif/idf:${IDF_VER}

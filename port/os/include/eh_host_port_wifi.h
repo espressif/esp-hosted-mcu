@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -57,8 +57,13 @@
 #define EH_HOST_GOT_AP_CONFIG_PARAM_TRANSITION_DISABLE \
     (EH_HOST_IDF_GE_LT(5, 3, 3,  5, 4, 0) || EH_HOST_IDF_GE(5, 4, 1))
 
-/* wifi_ap_record_t::akm_dpp; release/v5.5 has it, no v5.5 tag does yet */
+/* wifi_ap_record_t::akm_dpp; release/v5.5 has it, no v5.5 tag does yet. Non-IDF hosts
+ * get wifi_ap_record_t from vendored esp_wifi_remote, which has no akm_dpp. */
+#if defined(ESP_PLATFORM)
 #define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP         EH_HOST_IDF_GE(6, 0, 3)
+#else
+#define EH_HOST_WIFI_GOT_AP_REC_AKM_DPP         0
+#endif
 
 /* wifi_scan_threshold_t::rssi_5g_adjustment */
 #define EH_HOST_WIFI_GOT_RSSI_5G_ADJ            EH_HOST_IDF_GE(5, 4, 0)
