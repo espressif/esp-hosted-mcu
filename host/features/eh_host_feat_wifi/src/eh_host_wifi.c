@@ -98,7 +98,18 @@ esp_err_t eh_host_wifi_init(const wifi_init_config_t *cfg)
     return (esp_err_t)status;
 }
 esp_err_t eh_host_wifi_deinit(void)  { return eh_rpc_do_empty_request(RPC_ID__Req_WifiDeinit); }
-esp_err_t eh_host_wifi_start(void)   { return eh_rpc_do_empty_request(RPC_ID__Req_WifiStart); }
+static void sta_app_started(void);
+
+esp_err_t eh_host_wifi_start(void)
+{
+    esp_err_t rc = eh_rpc_do_empty_request(RPC_ID__Req_WifiStart);
+
+    if (rc == ESP_OK) {
+        sta_app_started();
+    }
+    return rc;
+}
+
 esp_err_t eh_host_wifi_stop(void)    { return eh_rpc_do_empty_request(RPC_ID__Req_WifiStop); }
 esp_err_t eh_host_wifi_restore(void) { return eh_rpc_do_empty_request(RPC_ID__Req_WifiRestore); }
 
@@ -656,6 +667,19 @@ static volatile bool s_rx_admit[2];
 static bool s_sta_netif_started;
 static bool s_ap_netif_started;
 
+/* The app sees STA events only after its esp_wifi_start(), as with a local
+ * radio. A CP that kept its link (host deep-sleep wake) replays STA_CONNECTED
+ * and the IP status before the app has registered handlers; until the app
+ * starts, the CP link is only recorded, then posted once on the start. */
+static eh_host_port_mutex_t       *s_sta_mtx;
+static bool                        s_app_sta_started;
+static bool                        s_cp_sta_connected;
+static wifi_event_sta_connected_t  s_cp_conn_evt;
+static volatile uint32_t           s_cp_sta_down_gen;   /* bumped per CP disconnect/stop */
+
+static void sta_lock(void)   { if (s_sta_mtx) eh_host_port_mutex_lock(s_sta_mtx); }
+static void sta_unlock(void) { if (s_sta_mtx) eh_host_port_mutex_unlock(s_sta_mtx); }
+
 bool eh_host_wifi_rx_admitted(bool is_ap)
 {
     return s_rx_admit[is_ap ? 1 : 0];
@@ -664,14 +688,6 @@ bool eh_host_wifi_rx_admitted(bool is_ap)
 void eh_host_wifi_admit_rx(bool is_ap, bool admit)
 {
     s_rx_admit[is_ap ? 1 : 0] = admit;
-}
-
-/* 1. Record when nw_split starts the STA netif itself.
- * 2. Prevent a later CP STA_START from starting it again.
- * 3. Avoid netif_add asserting on an already-added netif. */
-void eh_host_wifi_note_sta_netif_started(bool started)
-{
-    s_sta_netif_started = started;
 }
 
 static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
@@ -694,19 +710,20 @@ static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
     ESP_LOGD(EH_HOST_WIFI_TAG,
              "rx RPC StaConnected ssid=\"%.32s\" aid=%u ch=%u auth=%u",
              (const char *)evt.ssid, evt.aid, evt.channel, evt.authmode);
-    /* On a host-power-save wake the CP replays the connected state before it
-     * relays STA_START, so the netif would be upped (by STA_CONNECTED) before it
-     * is added (by STA_START) → wlanif_input faults on a NULL netif->input. Post
-     * STA_START first if not yet started so esp_netif adds the netif before this
-     * ups it. The latch dedups the real STA_START that follows. */
-    if (!s_sta_netif_started) {
-        s_sta_netif_started = true;
-        wifi_event_post_logged(WIFI_EVENT_STA_START, NULL, 0);
+    sta_lock();
+    s_cp_conn_evt = evt;
+    s_cp_sta_connected = true;
+    /* A replay while CONNECTED is already shown (rx admitted) is not a new link. */
+    if (s_app_sta_started && !s_rx_admit[0]) {
+        /* STA_START first, so esp_netif adds the netif before STA_CONNECTED ups it. */
+        if (!s_sta_netif_started) {
+            s_sta_netif_started = true;
+            wifi_event_post_logged(WIFI_EVENT_STA_START, NULL, 0);
+        }
+        s_rx_admit[0] = true;
+        wifi_event_post_logged(WIFI_EVENT_STA_CONNECTED, &evt, sizeof(evt));
     }
-    /* Associated → the STA netif is up and bound; admit DATA RX.
-     * however, do not treat this flag alone as "safe to deliver". */
-    s_rx_admit[0] = true;
-    wifi_event_post_logged(WIFI_EVENT_STA_CONNECTED, &evt, sizeof(evt));
+    sta_unlock();
 }
 
 static void wifi_sta_disconnected_handler(const void *ctrl_cmd, void *ctx)
@@ -728,9 +745,15 @@ static void wifi_sta_disconnected_handler(const void *ctrl_cmd, void *ctx)
     ESP_LOGI(EH_HOST_WIFI_TAG,
              "rx RPC StaDisconnected ssid=\"%.32s\" reason=%u rssi=%d",
              (const char *)evt.ssid, evt.reason, evt.rssi);
+    sta_lock();
+    s_cp_sta_down_gen++;
+    s_cp_sta_connected = false;
     /* Link down → stop admitting DATA RX before any netif teardown. */
     s_rx_admit[0] = false;
-    wifi_event_post_logged(WIFI_EVENT_STA_DISCONNECTED, &evt, sizeof(evt));
+    if (s_app_sta_started) {
+        wifi_event_post_logged(WIFI_EVENT_STA_DISCONNECTED, &evt, sizeof(evt));
+    }
+    sta_unlock();
 }
 
 static void wifi_scan_done_handler(const void *ctrl_cmd, void *ctx)
@@ -852,25 +875,23 @@ static void wifi_event_no_args_handler(const void *ctrl_cmd, void *ctx)
 
     switch (evt_id) {
     case WIFI_EVENT_STA_START:
-        if (!s_sta_netif_started) {
+        sta_lock();
+        if (s_app_sta_started && !s_sta_netif_started) {
             s_sta_netif_started = true;
             wifi_event_post_logged(evt_id, NULL, 0);
         }
+        sta_unlock();
         break;
     case WIFI_EVENT_STA_STOP:
+        sta_lock();
+        s_cp_sta_down_gen++;
+        s_cp_sta_connected = false;
         s_rx_admit[0] = false;  /* link down: deny DATA RX either way */
-#if CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT_NETIF_INTERNAL_STATIC
-        /* L2 = bus: the host's real L2 is the transport channel, still up. A
-         * relayed radio STOP must NOT tear the netif down — action_stop clears
-         * netif->input, and a following re-association delivers its IP/status
-         * before the late STA_START relay re-adds it, so the IP is dropped and
-         * the host is left addressless (the flaky wake+AP-switch failure). Keep
-         * the netif and the started-latch; treat STOP as link-down only. */
-        ESP_LOGD(EH_HOST_WIFI_TAG, "STA_STOP: link-down only, keeping bus-backed netif");
-#else
         s_sta_netif_started = false;
-        wifi_event_post_logged(evt_id, NULL, 0);
-#endif
+        if (s_app_sta_started) {
+            wifi_event_post_logged(evt_id, NULL, 0);
+        }
+        sta_unlock();
         break;
     case WIFI_EVENT_AP_START:
         if (!s_ap_netif_started) {
@@ -895,9 +916,44 @@ static void wifi_event_no_args_handler(const void *ctrl_cmd, void *ctx)
     }
 }
 
+/* The app started Wi-Fi: post the CP link it has not seen yet, once. A CP that
+ * kept its link reports no new STA_CONNECTED, so ask for it; a CP disconnect
+ * during the query is newer, and the answer is dropped. */
+static void sta_app_started(void)
+{
+    uint32_t gen = s_cp_sta_down_gen;
+    wifi_ap_record_t ap;
+    bool kept = (eh_host_wifi_sta_get_ap_info(&ap) == ESP_OK);
+
+    sta_lock();
+    if (kept && !s_cp_sta_connected && gen == s_cp_sta_down_gen) {
+        memset(&s_cp_conn_evt, 0, sizeof(s_cp_conn_evt));
+        memcpy(s_cp_conn_evt.ssid, ap.ssid, sizeof(s_cp_conn_evt.ssid));
+        s_cp_conn_evt.ssid_len = (uint8_t)strnlen((const char *)ap.ssid, sizeof(ap.ssid));
+        memcpy(s_cp_conn_evt.bssid, ap.bssid, sizeof(s_cp_conn_evt.bssid));
+        s_cp_conn_evt.channel  = ap.primary;
+        s_cp_conn_evt.authmode = ap.authmode;
+        s_cp_sta_connected = true;
+    }
+    s_app_sta_started = true;
+    if (!s_sta_netif_started) {
+        s_sta_netif_started = true;
+        wifi_event_post_logged(WIFI_EVENT_STA_START, NULL, 0);
+    }
+    if (s_cp_sta_connected && !s_rx_admit[0]) {
+        s_rx_admit[0] = true;
+        wifi_event_post_logged(WIFI_EVENT_STA_CONNECTED, &s_cp_conn_evt, sizeof(s_cp_conn_evt));
+    }
+    sta_unlock();
+}
+
 int eh_host_feat_rpc_ext_v2_register_wifi_event_handlers(void)
 {
     int rc = 0;
+
+    if (!s_sta_mtx) {
+        s_sta_mtx = eh_host_port_mutex_create();
+    }
     rc |= eh_host_feat_rpc_register_event(
         RPC_ID__Event_StaConnected,    wifi_sta_connected_handler,    NULL);
     rc |= eh_host_feat_rpc_register_event(
@@ -931,6 +987,8 @@ int eh_host_feat_rpc_ext_v2_unregister_wifi_event_handlers(void)
      * app never (re)connects (no STA_STOP arrives when the slave just reboots). */
     s_sta_netif_started = false;
     s_ap_netif_started = false;
+    s_app_sta_started = false;
+    s_cp_sta_connected = false;
     s_rx_admit[0] = false;  /* teardown → deny RX until the iface re-associates */
     s_rx_admit[1] = false;
 

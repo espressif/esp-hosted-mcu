@@ -226,22 +226,12 @@ static void on_cp_dhcp_status(void *arg, esp_event_base_t base, int32_t id, void
         return;
     }
 
-    /* The netif input may not be attached yet: the CP relays this IP status
-     * before the STA_START that re-adds the netif, and on slow transports that
-     * STA_START can be lost or arrive after a sticky started-latch has already
-     * suppressed it — leaving the host addressless. Stash the status AND
-     * self-drive the re-add: posting STA_START runs esp_netif's action_start
-     * (re-installs netif->input), then on_nw_split_sta_start re-drives this
-     * stash in order. AUTO_CONNECT_ON_START is off here, so STA_START has no
-     * reconnect side-effect. Recovery no longer depends on the CP's relay. */
+    /* The netif is added on STA_START, which the app sees only after its
+     * esp_wifi_start(). A status that arrives earlier (CP replay on a host wake)
+     * waits here; on_nw_split_sta_start applies it. */
     if (!nw_split_netif_added()) {
         s_state.pending = *e;
         s_state.status_pending = true;
-        ESP_LOGD(NW_SPLIT_TAG, "netif input not attached; stashing IP " IPSTR
-                 " and self-driving STA_START", IP2STR(&e->ipv4.ip));
-        (void)esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, 0);
-        /* Own the latch: a relayed STA_START must not start the netif again. */
-        eh_host_wifi_note_sta_netif_started(true);
         return;
     }
 
@@ -362,6 +352,17 @@ static void on_host_got_ip(void *arg, esp_event_base_t base, int32_t id, void *d
 }
 #endif
 
+/* The app, its Wi-Fi layer (e.g. wifi-cmd) and this feature may each create the
+ * default STA netif, in any order: the later callers get the existing one. */
+esp_netif_t *__real_esp_netif_create_default_wifi_sta(void);
+esp_netif_t *__wrap_esp_netif_create_default_wifi_sta(void);
+esp_netif_t *__wrap_esp_netif_create_default_wifi_sta(void)
+{
+    esp_netif_t *n = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+
+    return n ? n : __real_esp_netif_create_default_wifi_sta();
+}
+
 int eh_host_feat_nw_split_init(void)
 {
     if (s_state.initialised) {
@@ -379,25 +380,26 @@ int eh_host_feat_nw_split_init(void)
     s_state.owns_netif = false;
     s_state.custom_netif = false;
 #else
-    if (esp_netif_get_handle_from_ifkey("WIFI_STA_DEF") != NULL) {
-        ESP_LOGE(NW_SPLIT_TAG,
-                 "INTERNAL mode conflict: WIFI_STA_DEF already exists");
-        return ESP_ERR_INVALID_STATE;
-    }
-
+    /* A WIFI_STA_DEF the app (or its Wi-Fi layer) already created is used as is:
+     * the DHCP-flag paths above keep its client unbound when the CP owns DHCP. */
+    s_state.netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (s_state.netif) {
+        s_state.owns_netif = false;
+        s_state.custom_netif = false;
+    } else {
 #if CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT_NETIF_INTERNAL_STATIC
-    s_state.netif = create_static_sta_netif();
-    s_state.custom_netif = true;
+        s_state.netif = create_static_sta_netif();
+        s_state.custom_netif = true;
 #else
-    s_state.netif = esp_netif_create_default_wifi_sta();
-    s_state.custom_netif = false;
+        s_state.netif = esp_netif_create_default_wifi_sta();
+        s_state.custom_netif = false;
 #endif
-
-    if (!s_state.netif) {
-        ESP_LOGE(NW_SPLIT_TAG, "netif create failed");
-        return ESP_ERR_NO_MEM;
+        if (!s_state.netif) {
+            ESP_LOGE(NW_SPLIT_TAG, "netif create failed");
+            return ESP_ERR_NO_MEM;
+        }
+        s_state.owns_netif = true;
     }
-    s_state.owns_netif = true;
 #endif
 
 #if CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_STA_AUTO_CONNECT_ON_START
