@@ -13,8 +13,8 @@ import struct
 import subprocess
 import time
 
-from infra import build_fw, lab
-from infra.emu_dut import EmuDut, emu_bin, settle_check
+from infra import build_fw, lab, sandbox
+from infra.emu_dut import EmuDut, emu_bin, quiet, settle_check
 
 from .base import (CAP_GPIO_LOOPBACK, CAP_NET, CAP_WAKE, CAP_WIFI_ITWT,
                    Bench, BenchProvider, BenchSpec)
@@ -306,27 +306,48 @@ class EmuTarget(BenchProvider):
         # prewarm pass never starts a peer with no emu to answer it.
         if pre_launch is not None:
             pre_launch()
-        cp = EmuDut("cp", [str(emu), "--chip", spec.cp_target, "--firmware", cp_flash,
-                           "--elf", cp_fw["elf"], *cp_bridge, *spinel_cp, *thread_arg,
-                           *ble_arg, *net_arg, *ssid_arg, "--timeout", timeout],
-                    lab_tmp / f"cp_{spec.transport}.log")
-        # Deterministic ordering: wait for the slave socket before the host connects
-        # (polls; returns the instant it appears — no fixed sleep).
-        end = time.time() + 10
-        while not os.path.exists(sock) and time.time() < end and cp.proc.poll() is None:
-            time.sleep(0.05)
-        host = EmuDut("host", [str(emu), "--chip", spec.host_target, "--firmware", host_flash,
+        # Admission control: hold one live-emu-pair slot for this bench's lifetime so
+        # total concurrent pairs never oversubscribe the box (the cause of the spi_fd /
+        # power-save under-load 5s-RPC flake), regardless of --jobs. Released in down().
+        emu_slot = lab.acquire_emu_slot()
+        try:
+            # Optional isolation (EH_SANDBOX; default none = identity): both emus need
+            # WORK read-write (the bridge socket lives there); only the CP owns --net
+            # user (hostfwd), so it shares the host net when forwarding, host does not.
+            cp = EmuDut("cp", sandbox.wrap(
+                            [str(emu), "--chip", spec.cp_target, "--firmware", cp_flash,
+                             "--elf", cp_fw["elf"], *cp_bridge, *spinel_cp, *thread_arg,
+                             *ble_arg, *net_arg, *ssid_arg, "--timeout", timeout],
+                            rw_paths=[lab.WORK], net=bool(fwd)),
+                        lab_tmp / f"cp_{spec.transport}.log")
+            # Deterministic ordering: wait for the slave socket before the host connects
+            # (polls; returns the instant it appears — no fixed sleep).
+            end = time.time() + 10
+            while not os.path.exists(sock) and time.time() < end and cp.proc.poll() is None:
+                time.sleep(0.05)
+            host = EmuDut("host", sandbox.wrap(
+                              [str(emu), "--chip", spec.host_target, "--firmware", host_flash,
                                "--elf", host_fw["elf"], *host_bridge, *spinel_host, "--timeout", timeout],
-                      lab_tmp / f"host_{spec.transport}.log")
+                              rw_paths=[lab.WORK], net=False),
+                          lab_tmp / f"host_{spec.transport}.log")
+        except BaseException:
+            lab.release_emu_slot(emu_slot)  # never leak the slot if a DUT fails to launch
+            raise
 
         def down():
-            settle_check(host, cp)  # post-success crash catch (late panic / wake fault)
-            host.stop()
-            cp.stop()
+            # settle_check RAISES on a late crash (real signal); the finally still runs
+            # each stop() in isolation and releases the scarce emu-pair slot LAST and
+            # UNCONDITIONALLY — a leaked slot shrinks R4's global anti-starvation cap.
             try:
-                os.unlink(sock)
-            except OSError:
-                pass
+                settle_check(host, cp)  # post-success crash catch (late panic / wake fault)
+            finally:
+                quiet(host.stop)
+                quiet(cp.stop)
+                lab.release_emu_slot(emu_slot)  # free the pair slot for a waiting bench
+                try:
+                    os.unlink(sock)
+                except OSError:
+                    pass
 
         caps = self.caps | ({CAP_NET} if fwd else frozenset())
         return Bench(duts=[host, cp], net=Net(port, fwd) if fwd else None,

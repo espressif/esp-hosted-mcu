@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """LinuxTarget — the userspace Linux-host substrate: the real vserial c_app (no
 kernel module, no mock) talking to an emulated C6 CP through the vserial↔eh_frame
 shim over a PTY:
@@ -13,7 +15,7 @@ import sys
 import time
 
 from infra import build_fw, lab
-from infra.emu_dut import EmuDut, emu_bin, settle_check
+from infra.emu_dut import EmuDut, emu_bin, quiet, settle_check
 
 from .base import Bench, BenchProvider, BenchSpec
 
@@ -64,9 +66,9 @@ class LinuxTarget(BenchProvider):
             time.sleep(0.05)
 
         # 2) shim: connects to the CP socket, presents a PTY the vserial host opens
-        shim = subprocess.Popen([sys.executable, str(_SHIM), sock, pty],
+        shim = lab.track(subprocess.Popen([sys.executable, str(_SHIM), sock, pty],
                                 stdout=open(lab_tmp / "shim.log", "w"),
-                                stderr=subprocess.STDOUT)
+                                stderr=subprocess.STDOUT))
         end = time.time() + 10
         while not os.path.exists(pty) and time.time() < end and shim.poll() is None:
             time.sleep(0.05)
@@ -76,13 +78,17 @@ class LinuxTarget(BenchProvider):
         host = EmuDut("host", ["stdbuf", "-oL", capp["bin"]], lab_tmp / "host.log", env=env)
 
         def down():
-            settle_check(cp, host)  # post-success crash catch
-            cp.stop()
-            host.stop()
-            shim.terminate()
+            # settle_check RAISES on a late crash (real signal); the finally still runs
+            # each proc-stop in isolation so one failing stop can't leak the others.
             try:
-                os.unlink(sock)
-            except OSError:
-                pass
+                settle_check(cp, host)  # post-success crash catch
+            finally:
+                quiet(cp.stop)
+                quiet(host.stop)
+                quiet(shim.terminate)
+                try:
+                    os.unlink(sock)
+                except OSError:
+                    pass
 
         return Bench(duts=[host, cp], net=None, teardown=down)

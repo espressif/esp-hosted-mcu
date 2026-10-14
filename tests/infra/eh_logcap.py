@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Per-test log archiver — freezes each run's CP/host/build logs into the record.
 
 The bench fixtures tee each emulator/host subprocess to `lab_tmp/*.log` (the
@@ -18,8 +20,10 @@ import pytest
 
 from infra import lab
 
-_CAP_LINES = 4000    # keep first/last this-many when a log is oversized
-_CAP_BYTES = 4 << 20  # ...triggered above this size (4 MiB)
+# Cap policy + the capped copy live in `lab`: the controller's killed-worker harvest
+# (lab.harvest_killed_scratch) must freeze logs identically to this teardown.
+_CAP_LINES = lab.CAP_LINES
+_CAP_BYTES = lab.CAP_BYTES
 
 
 def pytest_configure(config):
@@ -47,30 +51,7 @@ def pytest_configure(config):
     eh.setLevel(logging.INFO)
 
 
-def _copy_capped(src: Path, dst: Path):
-    try:
-        if src.stat().st_size <= _CAP_BYTES:
-            shutil.copyfile(src, dst); return
-    except OSError:
-        return
-    # Oversized: head + tail, with an elision marker in between.
-    head, tail = [], []
-    try:
-        with open(src, "r", errors="replace") as fh:
-            for i, line in enumerate(fh):
-                if i < _CAP_LINES:
-                    head.append(line)
-                else:
-                    tail.append(line)
-                    if len(tail) > _CAP_LINES:
-                        tail.pop(0)
-        elided = max(0, (i + 1) - len(head) - len(tail))
-        with open(dst, "w") as out:
-            out.writelines(head)
-            out.write(f"\n... [eh: {elided} lines elided — see full log in tmp] ...\n\n")
-            out.writelines(tail)
-    except OSError:
-        pass
+_copy_capped = lab.copy_capped
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -87,16 +68,20 @@ def _eh_logcap(request, lab_tmp):
     yield
     if not os.environ.get("EH_RUN_DIR"):
         return
-    logs = sorted(Path(lab_tmp).glob("*.log"))
-    if not logs:
-        return
     setup = getattr(request.node, "_eh_rep_setup", None)
     call = getattr(request.node, "_eh_rep_call", None)
     failed = bool((setup and setup.failed) or (call and call.failed))
-    dest = lab.test_logs_dir(request.node.nodeid, failed)
-    try:
-        dest.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        return
-    for lg in logs:
-        _copy_capped(lg, dest / lg.name)
+    logs = sorted(Path(lab_tmp).glob("*.log"))
+    if logs:
+        dest = lab.test_logs_dir(request.node.nodeid, failed)
+        try:
+            dest.mkdir(parents=True, exist_ok=True)
+            for lg in logs:
+                _copy_capped(lg, dest / lg.name)
+        except OSError:
+            pass
+    # Selective retention (R8): a PASS keeps only the capped record in logs/ — purge the
+    # raw per-test scratch (raw logs + COW flash = real bytes on a non-CoW fs) NOW, not
+    # at age-expiry. A FAIL keeps its scratch for debugging; the age-sweep is the backstop.
+    if not failed:
+        shutil.rmtree(lab_tmp, ignore_errors=True)

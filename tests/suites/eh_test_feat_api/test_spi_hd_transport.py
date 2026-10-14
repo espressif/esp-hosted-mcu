@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """SPI half-duplex transport validation: P4 host <--SPI-HD--> C6 CP.
 
 Ground-truth check for the SPI-HD path. Reaching the api_exerciser 'ready' line
@@ -26,6 +28,7 @@ import time
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))  # tests/
+from infra import build_fw
 from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
 
 FAIL = FATAL_PATTERNS + ['bring-up timed out']
@@ -70,6 +73,11 @@ def test_spi_hd_rpc_roundtrip(bench, transport, substrate, lab_tmp, monkeypatch)
     leaves the host (WRDMA) and the CP's response returns (RDDMA). The host
     must settle on this build's line count once, and keep using it."""
     lines = transport.rsplit('_', 1)[1] if transport != 'spi_hd' else '4'
+    # The CP guards 1-line on the IDF macro (eh_cp_transport_spi_hd.c: #error without
+    # SPI_SLAVE_HD_3WIRE_MODE, ESP-IDF >= v6.0.3). Probe the same macro, not a version.
+    if lines == '1' and not build_fw.idf_has_macro('SPI_SLAVE_HD_3WIRE_MODE'):
+        pytest.skip('SPI-HD 1 data line needs ESP-IDF >= v6.0.3 '
+                    '(SPI_SLAVE_HD_3WIRE_MODE absent from the resolved IDF)')
     emu = substrate.startswith('emu')
     if emu:
         monkeypatch.setenv('RUST_LOG', _EMU_SPI_TRACE)

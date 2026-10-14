@@ -76,9 +76,10 @@ class EmuDut:
         self._fh = open(logpath, 'w')
         self.pexpect_proc = _Pexpect(self)
         _log.info("[emu] launch %s", name)
-        self.proc = subprocess.Popen(
+        from infra import lab
+        self.proc = lab.track(subprocess.Popen(
             argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, text=True, bufsize=1, env=env)
+            stderr=subprocess.STDOUT, text=True, bufsize=1, env=env))
         threading.Thread(target=self._pump, daemon=True).start()
 
     def _pump(self):
@@ -102,7 +103,8 @@ class EmuDut:
     def _expect(self, success, not_matching, timeout, exact):
         fails = [not_matching] if isinstance(not_matching, str) else list(not_matching or [])
         wants = [success] if isinstance(success, str) else list(success)
-        end = time.time() + timeout
+        t0 = time.time()
+        end = t0 + timeout
         while time.time() < end and self.proc.poll() is None:
             text = self._unconsumed()
             for fp in fails:
@@ -117,6 +119,15 @@ class EmuDut:
                         self._cursor += hit_end
                     return w if exact else m   # like pytest-embedded: the match for a regex
             time.sleep(0.05)
+        # Distinguish a DEAD process from a genuine slow-timeout: if the loop exited
+        # because the emu exited (crash / OOM-kill / its own --timeout self-destruct),
+        # surface the exit code + real elapsed (root-cause culture) instead of
+        # mislabeling a 2s crash as a "{timeout}s timeout".
+        rc = self.proc.poll()
+        if rc is not None:
+            raise RuntimeError(
+                f'[{self.name}] process exited (code {rc}) after {time.time() - t0:.1f}s '
+                f'while waiting for {success!r} (not a timeout — the emu is gone)')
         raise TimeoutError(f'[{self.name}] timeout ({timeout}s) waiting for {success!r}')
 
     def expect(self, success, not_matching=None, timeout=15):
@@ -149,6 +160,15 @@ class EmuDut:
 # Full-buffer late-crash signatures — see infra.signatures for why bare 'panic'
 # is excluded from this (settle) list but present in the expect list.
 from infra.signatures import SETTLE_FATAL as _FATAL
+
+
+def quiet(fn):
+    """Run a teardown step, swallowing any error, so one failing stop() can't skip the
+    next step (or the scarce slot release that must follow)."""
+    try:
+        fn()
+    except Exception:  # noqa: BLE001  teardown must never mask the real failure
+        pass
 
 
 def settle_check(*duts, window=None):

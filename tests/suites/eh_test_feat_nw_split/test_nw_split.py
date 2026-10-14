@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Network-split (802.3) — connect-ownership matrix on the emulator.
 
 The coprocessor owns the Wi-Fi radio; host and CP each run their own LWIP stack

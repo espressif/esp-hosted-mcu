@@ -140,6 +140,39 @@ wifi_coverage_check:
     expire_in: 2 weeks
     paths: [wifi_coverage_report.html]
 
+# One-shot capability diagnostic (R7 action#0): reveal whether the runner is a
+# CPU-quota'd container (nproc >> effective CPUs, cgroup cpu.max set) or an
+# unlimited shared host — the two need different chameleon sizing (R7 phase-0).
+# Non-blocking (allow_failure) and cheap; runs on the same tag the build/emu jobs use.
+runner_caps_diag:
+  stage: pre
+  image: espressif/idf:${IDF_VER}
+  tags: [build]
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^release/'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  allow_failure: true
+  script:
+    - 'echo "===== nproc / affinity ====="'
+    - 'nproc || true'
+    - 'python3 -c "import os;print(''sched_getaffinity='', len(os.sched_getaffinity(0)));print(''cpu_count='', os.cpu_count())"'
+    - 'echo "===== cgroup v2 cpu.max / memory.max ====="'
+    - 'cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo "no cgroup v2 cpu.max"'
+    - 'cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "no cgroup v2 memory.max"'
+    - 'echo "===== cgroup v1 cpu quota/period + memory ====="'
+    - 'cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us 2>/dev/null || echo "no cgroup v1 cfs_quota_us"'
+    - 'cat /sys/fs/cgroup/cpu/cpu.cfs_period_us 2>/dev/null || echo "no cgroup v1 cfs_period_us"'
+    - 'cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo "no cgroup v1 memory.limit_in_bytes"'
+    - 'echo "===== meminfo (MemTotal) ====="'
+    - 'grep MemTotal /proc/meminfo || true'
+    - 'echo "===== df -h ====="'
+    - 'df -h || true'
+    - 'echo "===== caps.snapshot (the sizing authority on THIS runner) ====="'
+    - 'PYTHONPATH=tests python3 -m infra.caps || true'
+
 # ──────────────────────── build: affordable spread ────────────────────────
 # Cost model: each cell is one container paying install + export + ccache warm-up,
 # so we minimise cells, not just apps. Two levers:

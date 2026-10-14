@@ -55,12 +55,53 @@ flaky under full-load oversubscription — e.g. power_save_wake_mem[sdio] bring-
 """
 import os
 import sys
+import time
 
 _tests_dir = os.path.dirname(__file__)
 if _tests_dir not in sys.path:
     sys.path.insert(0, _tests_dir)
 
 import pytest  # noqa: E402
+
+# ── per-worker liveness heartbeat ──────────────────────────────────────────
+# Each worker (or 'master' when -n0) stamps its current state to
+# EH_RUN_DIR/workers/<wid> at every test start/finish. eh.py's controller-side
+# watchdog reads these: a worker stuck 'running' one nodeid past the stall budget
+# is wedged (a live-but-hung worker keeps xdist's controller blocked forever — the
+# per-test pytest-timeout runs INSIDE that worker and dies with it). The controller
+# then kills the whole run group so the completeness gate + recovery retry can run.
+_HB = {"wid": "master", "dir": None}
+
+
+def _hb_write(state, nodeid=""):
+    d = _HB["dir"]
+    if not d:
+        return
+    try:
+        with open(os.path.join(d, _HB["wid"]), "w") as fh:
+            fh.write(f"{state}\t{nodeid}\t{time.time()}\t{os.getpid()}\n")
+    except OSError:
+        pass
+
+
+def pytest_configure(config):
+    _HB["wid"] = getattr(config, "workerinput", {}).get("workerid", "master")
+    rd = os.environ.get("EH_RUN_DIR")
+    if rd:
+        try:
+            d = os.path.join(rd, "workers")
+            os.makedirs(d, exist_ok=True)
+            _HB["dir"] = d
+        except OSError:
+            pass
+
+
+def pytest_runtest_logstart(nodeid, location):
+    _hb_write("running", nodeid)
+
+
+def pytest_runtest_logfinish(nodeid, location):
+    _hb_write("idle")
 
 # The engine emits a typed event stream; the reporter consumes it (JSONL + trace).
 # eh_logcap archives each test's CP/host logs next to the run's live.log.
@@ -148,6 +189,31 @@ def pytest_collection_modifyitems(config, items):
     if deselected:
         config.hook.pytest_deselected(items=deselected)
     items[:] = keep
+
+    # Record the expected-to-run set so the reporter can tally which tests actually
+    # completed vs silently vanished (aborted worker / xdist INTERNALERROR). Written
+    # atomically; xdist workers all compute the same `keep`, so last-writer-wins is fine.
+    _rd = os.environ.get("EH_RUN_DIR")
+    if _rd and keep:
+        try:
+            os.makedirs(_rd, exist_ok=True)
+            _tmp = os.path.join(_rd, f".collected.{os.getpid()}.tmp")
+            with open(_tmp, "w") as _fh:
+                _fh.write("".join(it.nodeid + "\n" for it in keep))
+            os.replace(_tmp, os.path.join(_rd, "collected.txt"))
+        except OSError:
+            pass
+
+
+@pytest.fixture(autouse=True)
+def _reap_spawned():
+    """Infra owns the lifecycle of every spawned component: after each test, reap
+    any subprocess (emu DUT, linux shim, Bumble, …) that a fixture launched but
+    left running because it raised before registering its own teardown. Only kills
+    survivors, so it's harmless alongside the normal bench/peer teardowns."""
+    yield
+    from infra import lab
+    lab.reap_spawned()
 
 
 @pytest.fixture
@@ -330,5 +396,14 @@ def bench(substrate, lab_tmp, worker_id):
         return out
 
     yield _make
+    # Per-item isolation: one bench's down() (settle_check may RAISE, or a stop() fault)
+    # must not skip the rest — each would else leak fds + its emu-pair slot. Collect and
+    # re-raise the first so a late-crash signal still fails the test.
+    errors = []
     for b in made:
-        b.down()
+        try:
+            b.down()
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+    if errors:
+        raise errors[0]

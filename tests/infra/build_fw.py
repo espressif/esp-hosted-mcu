@@ -12,6 +12,7 @@ Principle (see .meta2/changes/eh-testlab-framework/execution-model.md §2):
 Cheap and reused across the whole run; safe to call concurrently for distinct keys.
 """
 import fcntl
+import functools
 import hashlib
 import importlib.util
 import logging
@@ -21,7 +22,10 @@ import subprocess
 import time
 from pathlib import Path
 
-from infra import lab  # single source of truth for the .work/ layout
+from infra import caps     # single sizing authority (quota-aware CPU/mem limits)
+from infra import lab      # single source of truth for the .work/ layout
+from infra import sandbox  # shared tool-agnostic isolation provider (EH_SANDBOX)
+from infra import scratch  # shared build-scratch primitives (both builders import it)
 
 _REPO = lab._REPO
 _WORK = lab.WORK      # sandbox-bindable root; cache/ = reused build artifacts
@@ -61,6 +65,26 @@ def _idf_path_opt():
         return _idf_path()
     except RuntimeError:
         return None
+
+
+@functools.lru_cache(maxsize=None)
+def idf_has_macro(name: str) -> bool:
+    """True if the RESOLVED IDF defines `name` anywhere in components/.
+
+    For capability gates, probe the MACRO the firmware itself keys on — never an IDF
+    version string. A version gate silently drifts from the code it guards (same class
+    as the dangling-Kconfig audit), and backports break it outright. Cached per macro.
+    """
+    idf = _idf_path_opt()
+    if not idf:
+        return False
+    try:
+        r = subprocess.run(["grep", "-rl", "--include=*.h",
+                            rf"\b{name}\b", str(Path(idf) / "components")],
+                           capture_output=True, timeout=120)
+        return bool(r.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def _config_hash(example_rel: str, role: str, target: str, overlay, inject=None) -> str:
@@ -205,8 +229,11 @@ def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -
     # a shared scratch build is never corrupted. Distinct configs build freely.
     locks = _WORK / ".locks"
     locks.mkdir(parents=True, exist_ok=True)
-    with open(locks / f"{proj.name}.lock", "w") as lk:
-        fcntl.flock(lk, fcntl.LOCK_EX)
+    # F4: global build-concurrency slot, taken BEFORE the per-config lock (reverse
+    # order deadlocks). Only a real build takes one — a cache hit returned above pays
+    # nothing. Bounds build memory across prewarm AND the run phase.
+    with lab.build_slot(), open(locks / f"{proj.name}.lock", "w") as lk:
+        lab.flock_with_heartbeat(lk)
         # re-check under the lock: another worker may have finished while we waited
         hit = _hit()
         if hit:
@@ -220,27 +247,24 @@ def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -
         #    compile in — `idf.py build` alone won't re-read defaults).
         #  - source only → refresh the copied sources and `idf.py build`
         #    INCREMENTALLY; component trees compile live via override_paths.
-        runner = _load("esplab_runner", _REPO / "tools" / "esplab" / "runner.py")
-        ignore = shutil.ignore_patterns(
-            "build", "managed_components", "dependencies.lock",
-            "sdkconfig", "sdkconfig.old", "*.bin")
+        ignore = scratch.ignore()
         fresh = not workdir.exists()
         cfg_changed = fresh or not cfgfp_file.is_file() or \
             cfgfp_file.read_text().strip() != cfg_fp
         if fresh:
             workdir.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(src, workdir, ignore=ignore)
+            scratch.copy_scratch(src, workdir, ignore)
         else:
-            shutil.copytree(src, workdir, ignore=ignore, dirs_exist_ok=True)
+            scratch.copy_scratch(src, workdir, ignore, dirs_exist_ok=True)
         if has_common:
-            shutil.copytree(common_src, proj / "common", ignore=ignore, dirs_exist_ok=True)
+            scratch.copy_scratch(common_src, proj / "common", ignore, dirs_exist_ok=True)
         # Stage injected files into the COW copy (idempotent — re-applied each build,
         # since an incremental copytree of `src` never carries them). Sandbox-safe.
         for dest, srcpath in inject.items():
             d = workdir / dest
             d.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(srcpath, d)
-        runner._absolutize_overrides(src, workdir)
+        scratch.absolutize_overrides(src, workdir)
         # gcov variant: instrument the SCRATCH copy only (never the real example).
         # Re-applied every build because an incremental copytree restores the
         # pristine CMakeLists; the inject is idempotent (marker-guarded).
@@ -252,6 +276,7 @@ def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -
             defaults = "sdkconfig.defaults;.ovl.defaults"
         bt = _env_float("EH_BUILD_TIMEOUT", 1800)  # per-firmware build-phase cap
         build_log = workdir / "build.log"          # tee'd; the run report links here
+        lab.ensure_free(f"build {example_rel}/{role} [{target}]")  # F3 disk floor
 
         def _run_build(clean):
             """One build pass. clean=True → drop the (possibly wedged) build/ and
@@ -290,9 +315,15 @@ def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -
                       f" overlay={'+'.join(overlay)}" if overlay else "",
                       "clean reconfigure" if clean else "incremental",
                       " (fresh)" if fresh else "")
+            # Optional isolation (EH_SANDBOX; default none = identity): build needs
+            # WORK + the IDF caches read-write; net on for the toolchain fetch.
+            home = Path.home()
+            argv = sandbox.wrap(["bash", "-lc", script],
+                                rw_paths=[lab.WORK, home / ".espressif", home / ".cache"],
+                                net=True)
             with open(build_log, "w") as blf:
-                return subprocess.run(["bash", "-lc", script], timeout=bt,
-                                      stdout=blf, stderr=subprocess.STDOUT).returncode
+                return lab.run_with_heartbeat(argv, bt, stdout=blf,
+                                              stderr=subprocess.STDOUT)
 
         t0 = time.time()
         try:
@@ -317,6 +348,14 @@ def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -
                 tail = build_log.read_text(errors="replace")[-2000:]
             except Exception:
                 pass
+            if lab.is_enospc(tail):
+                # The filesystem filled mid-build. Attributing this to the cell that
+                # happened to be running would bookkeep a disk artifact as a product
+                # failure (2026-10-04: two ot_cli cells went RED this way).
+                msg = (f"ENOSPC during build of {example_rel}/{role} [{target}] "
+                       f"— see {build_log}")
+                lab.note_disk_failure(msg)
+                raise lab.DiskExhausted(msg)
             if "No module named" in tail or "not spawned within an ESP-IDF" in tail:
                 raise RuntimeError(
                     f"ESP-IDF Python env not ready for {example_rel}/{role} [{target}] "
@@ -359,7 +398,7 @@ def prebuild(specs) -> None:
     specs = list(specs)
     if not specs:
         return
-    workers = min(len(specs), max(2, (os.cpu_count() or 2) - 1))
+    workers = min(len(specs), caps.build_pool())  # one CPU-bound sizing authority
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futs = [ex.submit(build, *s) for s in specs]
         for f in futs:
@@ -483,28 +522,28 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
 
     locks = _WORK / ".locks"
     locks.mkdir(parents=True, exist_ok=True)
-    with open(locks / f"{proj.name}.lock", "w") as lk:
-        fcntl.flock(lk, fcntl.LOCK_EX)
+    # F4: global build-concurrency slot, taken BEFORE the per-config lock (reverse
+    # order deadlocks). Only a real build takes one — a cache hit returned above pays
+    # nothing. Bounds build memory across prewarm AND the run phase.
+    with lab.build_slot(), open(locks / f"{proj.name}.lock", "w") as lk:
+        lab.flock_with_heartbeat(lk)
         hit = _hit()
         if hit:
             return hit
-        runner = _load("esplab_runner", _REPO / "tools" / "esplab" / "runner.py")
         # Exclude sdkconfig* + runtime artifacts from the copy → the scratch's
         # sdkconfig is generated fresh from defaults+overlay (never inherited),
         # and root-owned run leftovers (.nvs from a sudo'd host, staged bin/)
         # don't break the copy or pollute the workspace.
-        ignore = shutil.ignore_patterns(
-            "build", "managed_components", "dependencies.lock",
-            "sdkconfig", "sdkconfig.old", "*.bin", ".nvs", "bin", ".eh.target")
+        ignore = scratch.ignore(".nvs", "bin", ".eh.target")
         fresh = not workdir.exists()
         if fresh:
             workdir.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(src, workdir, ignore=ignore)
+            scratch.copy_scratch(src, workdir, ignore)
         else:
-            shutil.copytree(src, workdir, ignore=ignore, dirs_exist_ok=True)
+            scratch.copy_scratch(src, workdir, ignore, dirs_exist_ok=True)
         if has_common:
-            shutil.copytree(common_src, proj / "common", ignore=ignore, dirs_exist_ok=True)
-        runner._absolutize_overrides(src, workdir)
+            scratch.copy_scratch(common_src, proj / "common", ignore, dirs_exist_ok=True)
+        scratch.absolutize_overrides(src, workdir)
         env_overlay = ""
         if overlay:
             ovl = workdir / ".ovl.defaults"
@@ -531,6 +570,7 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
                 return subprocess.run(["bash", "-lc", script], stdout=blf,
                                       stderr=subprocess.STDOUT).returncode
 
+        lab.ensure_free(f"linux build {example_rel}/{role}")  # F3 disk floor
         rc = _run_linux_build(clean=False)
         if rc != 0:
             # One clean-rebuild retry (same policy as the ESP build path): a wedged
@@ -539,6 +579,14 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
                          example_rel, role)
             rc = _run_linux_build(clean=True)
         if rc != 0:
+            try:
+                ltail = build_log.read_text(errors="replace")[-2000:]
+            except OSError:
+                ltail = ""
+            if lab.is_enospc(ltail):
+                msg = f"ENOSPC during linux build of {example_rel}/{role} — see {build_log}"
+                lab.note_disk_failure(msg)
+                raise lab.DiskExhausted(msg)
             raise RuntimeError(f"linux host build failed (clean-rebuild retry also failed): "
                                f"{example_rel}/{role} — see {build_log}")
         b = _bin()
@@ -549,20 +597,6 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
         return {"bin": str(b), "dir": str(workdir), "build_log": str(build_log)}
 
 
-def cow_flash(merged: str, dst_dir) -> str:
-    """Per-run writable flash image (COW level 2). reflink where the fs supports it
-    (btrfs/xfs: instant, zero extra disk), else a plain copy. The cached base is
-    never written to, so runs are isolated and reproducible. The dest name is
-    derived from the source so distinct images (e.g. cp vs host) never collide in
-    the same dir."""
-    src = Path(merged)
-    tag = hashlib.sha1(str(src.resolve()).encode()).hexdigest()[:8]
-    dst = Path(dst_dir) / f"flash_{tag}.bin"
-    # reflink is a Linux (btrfs/xfs) fast-path; `cp --reflink` doesn't exist on
-    # macOS `cp` (errors out). Try it, fall back to a portable copy everywhere else.
-    try:
-        subprocess.run(["cp", "--reflink=auto", merged, str(dst)],
-                       check=True, capture_output=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        shutil.copyfile(merged, str(dst))
-    return str(dst)
+# COW level 2 lives in the shared scratch module; re-exported so existing callers
+# (targets/emu.py, targets/linux.py) keep using build_fw.cow_flash unchanged.
+cow_flash = scratch.cow_flash

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 # SPDX-License-Identifier: Apache-2.0
 """eh — orchestrator for esp_hosted Linux-side builds.
 
@@ -54,8 +56,10 @@ import os
 import platform
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -236,6 +240,13 @@ def cmd_reconfigure(args) -> int:
 _PHASE_WIDTH = 70
 
 
+def _caps():
+    """The single sizing authority (tests/infra/caps.py) — quota-aware CPU/mem limits."""
+    sys.path.insert(0, str(REPO_ROOT / "tests"))
+    from infra import caps
+    return caps
+
+
 def _phase(name: str) -> None:
     """Print a single-line centered phase banner.  Colored when stdout
     is a TTY, plain ASCII otherwise (pipes / log files stay clean)."""
@@ -266,11 +277,10 @@ def _cmake_configure(build_dir: Path) -> int:
 
 
 def _cmake_build(build_dir: Path, target: str | None, parallel: int | None) -> int:
-    import multiprocessing
     cmd = ["cmake", "--build", str(build_dir)]
     if target:
         cmd += ["--target", target]
-    cmd += [f"-j{parallel or multiprocessing.cpu_count()}"]
+    cmd += [f"-j{parallel or _caps().cmake_jobs()}"]  # one quota-aware sizing authority
     _phase("BUILD")
     # Pass EH_PATH through to cmake's nested re-configure
     # invocations (CMAKE_CONFIGURE_DEPENDS triggers them on first
@@ -991,12 +1001,270 @@ def _ensure_testvenv() -> Path:
     return py
 
 
+def _per_test_timeout(rest) -> float:
+    """The per-test hard cap in effect (pytest-timeout): --timeout=N / --timeout N
+    override the pytest.ini default (900s). Used to SIZE the stall watchdog so the
+    two stay proportional — lower --timeout, tighter wedge detection."""
+    for i, t in enumerate(rest):
+        v = None
+        if t.startswith("--timeout="):
+            v = t.split("=", 1)[1]
+        elif t == "--timeout" and i + 1 < len(rest):
+            v = rest[i + 1]
+        if v is not None:
+            try:
+                return float(v.rstrip("s"))
+            except ValueError:
+                pass
+    return 900.0
+
+
+# Signal-safe reap: a SIGTERM to eh.py (CI-cancel) terminates by default and a Ctrl-C
+# SIGINT reaches only eh.py (the run group is its own session, see start_new_session
+# below) — either path would skip _supervise's killpg+reap and orphan the whole tree.
+# We register every LIVE run so one installed handler can sweep them on any signal. No
+# between-phase set is needed: each _supervise call fully reaps in its own finally, so
+# a signal in the gap between phases finds nothing to clean.
+_ACTIVE_SUPERVISED = []   # [(proc, run_dir)] currently-running supervised procs
+_SIG_HANDLERS_INSTALLED = False
+_SIG_CLEANUP_RUNNING = False
+
+
+def _cleanup_supervised(proc, run_dir):
+    """killpg the run group then reap its on-disk spawn registry. Never raises —
+    cleanup must never crash the verdict or the signal path. pytest-timeout's os._exit
+    and our own killpg both skip fixture teardown, so a worker's emus / Bumble / build
+    children can outlive the run; killpg sweeps in-group stragglers (the tree is its own
+    session — killpg targets proc.pid as the group leader) and reap_run_orphans kills
+    any pid a dead worker recorded but never cleared."""
+    if proc is not None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+    try:
+        sys.path.insert(0, str(REPO_ROOT / "tests"))
+        from infra import lab as _lab
+        _lab.reap_run_orphans(run_dir)
+    except Exception:  # noqa: BLE001  cleanup must never crash the verdict
+        pass
+
+
+def _install_signal_cleanup():
+    """Install once: on SIGTERM/SIGINT/SIGHUP to eh.py, killpg every active run group and
+    reap every seen run's registry, then re-raise with the default handler so eh.py dies
+    with the right status. SIGHUP matters because a tmux/SSH disconnect mid-run delivers
+    SIGHUP (not SIGTERM/SIGINT) — without it, a dropped session orphans the whole group.
+    No-op if ever reached off the main thread (signal.signal raises)."""
+    global _SIG_HANDLERS_INSTALLED
+    if _SIG_HANDLERS_INSTALLED:
+        return
+
+    def _handler(signum, _frame):
+        global _SIG_CLEANUP_RUNNING
+        if _SIG_CLEANUP_RUNNING:   # re-entrancy guard: a 2nd signal mid-sweep is a no-op
+            return
+        _SIG_CLEANUP_RUNNING = True
+        active = list(_ACTIVE_SUPERVISED)
+        for proc, _rd in active:   # killpg every group FIRST (fast destructive step, so a
+            try:                   # short SIGTERM->SIGKILL grace window can't beat it)
+                os.killpg(proc.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, OSError):
+                pass
+        for _proc, rd in active:   # THEN sweep each registry (the slower file I/O)
+            _cleanup_supervised(None, rd)
+        signal.signal(signum, signal.SIG_DFL)
+        os.kill(os.getpid(), signum)
+
+    for _s in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            signal.signal(_s, _handler)
+        except (ValueError, OSError):   # not the main thread — skip, finally still covers
+            return
+    _SIG_HANDLERS_INSTALLED = True
+
+
+def _pid_alive(pid: int) -> bool:
+    """True if pid exists and is not a zombie (kill(pid, 0) succeeds on a zombie)."""
+    try:
+        with open(f"/proc/{pid}/stat") as fh:
+            return fh.read().rsplit(")", 1)[1].split()[0] != "Z"
+    except (OSError, IndexError):
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+
+def _supervise(cmd, cwd, env, run_dir, per_test_timeout, label="run") -> int:
+    """Run pytest in its OWN process group and enforce the per-test timeout from
+    OUTSIDE the workers. tests/conftest.py stamps each worker's state to
+    run_dir/workers/<wid>; a worker stuck 'running' one nodeid past the stall budget
+    is a live-but-wedged worker that xdist's controller would otherwise wait on
+    forever (the in-worker pytest-timeout dies WITH the worker). We SIGTERM→SIGKILL
+    the whole group (start_new_session makes the tree its own session; killpg targets
+    proc.pid the group leader — emus + Bumble go with it), so the completeness gate
+    + recovery retry run instead of hanging. Two knobs, both top→bottom overridable:
+      EH_STALL_TIMEOUT   per-worker no-progress budget (default per-test cap + 300s)
+      EH_SESSION_TIMEOUT overall wall cap (default 0 = off; last-resort backstop)
+    Returns pytest's real exit code, or 1 on a watchdog kill — NOT a structural code
+    (2/3/…), so _finalize_exit's merge renders RED + lists the did-not-run tests."""
+    stall = float(env.get("EH_STALL_TIMEOUT") or (per_test_timeout + 300))
+    sess_cap = float(env.get("EH_SESSION_TIMEOUT") or 0)
+    wdir = Path(run_dir) / "workers"
+    t_start = time.time()
+    _install_signal_cleanup()
+    env = dict(env, EH_SUPERVISED="1")
+    proc = subprocess.Popen(cmd, cwd=cwd, env=env, start_new_session=True)
+    _ACTIVE_SUPERVISED.append((proc, run_dir))
+    killed = {"why": None}
+    rc = None
+
+    dead = set()
+
+    def _stuck():
+        out = []
+        try:
+            entries = list(wdir.iterdir())
+        except OSError:
+            return out
+        for f in entries:
+            try:
+                # Ignore corpse heartbeats from an earlier run sharing this dir
+                # (else a stale 'running' file fires the watchdog instantly).
+                if f.stat().st_mtime < t_start:
+                    continue
+                fields = f.read_text().strip().split("\t")
+                state, nodeid, ts = fields[0], fields[1], float(fields[2])
+                pid = int(fields[3]) if len(fields) > 3 else None
+            except (OSError, ValueError, IndexError):
+                continue
+            if state != "running":
+                continue
+            # A worker that exited (pytest-timeout, crash) can never clear its file;
+            # xdist already reported it 'node down'. Not a wedge — the rest run on.
+            if pid is not None and not _pid_alive(pid):
+                if f.name not in dead:
+                    dead.add(f.name)
+                    sys.stderr.write(f"{_YELLOW}eh: {label} — worker {f.name} exited "
+                                     f"during {nodeid.strip()}; not a wedge, run "
+                                     f"continues on the others{_RESET}\n")
+                continue
+            out.append((f.name, nodeid.strip(), time.time() - ts))
+        return out
+
+    def _kill(why):
+        killed["why"] = why
+        sys.stderr.write(f"\n{_RED}eh: {label} — {why}; killing the run group{_RESET}\n")
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            return
+        try:
+            proc.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+
+    # One supervisor: liveness AND resources on the same loop. Split loops meant the
+    # part that could act (kill) was blind to memory, and the part that saw memory
+    # could only record — which is how an oomd kill happened with nobody intervening.
+    # 2s tick: /proc reads cost 0.03ms. Full ps attribution row every 15th tick (19ms).
+    tick = float(env.get("EH_SUPERVISE_TICK") or 2)
+    strikes_max = int(env.get("EH_STALL_STRIKES") or 3)
+    strikes = {}
+
+    def _watch():
+        t0 = time.time()
+        i = 0
+        try:
+            sys.path.insert(0, str(REPO_ROOT / "tests"))
+            from infra import lab as _lab
+        except Exception:  # noqa: BLE001
+            _lab = None
+        while proc.poll() is None:
+            time.sleep(tick)
+            i += 1
+            if _lab is not None:
+                try:
+                    _lab.sample_fast()                       # 2s control signal
+                    if i % 15 == 0:
+                        _lab.sample_resources(run_dir)       # 30s attribution row
+                except Exception:  # noqa: BLE001 — instrumentation never kills a run
+                    pass
+            if sess_cap and time.time() - t0 > sess_cap:
+                _kill(f"session cap {sess_cap:.0f}s exceeded")
+                return
+            seen = set()
+            for wid, nodeid, age in _stuck():
+                seen.add(wid)
+                if age <= stall:
+                    strikes.pop(wid, None)
+                    continue
+                # Strikes, not a hair trigger: one over-budget poll under heavy load
+                # is not the same as a deadlock.
+                strikes[wid] = strikes.get(wid, 0) + 1
+                if strikes[wid] < strikes_max:
+                    sys.stderr.write(
+                        f"{_DIM}eh: {label} — worker {wid} over stall budget "
+                        f"{age:.0f}s/{stall:.0f}s on {nodeid} "
+                        f"(strike {strikes[wid]}/{strikes_max}){_RESET}\n")
+                    continue
+                _kill(f"worker {wid} wedged {age:.0f}s on {nodeid} "
+                      f"(stall budget {stall:.0f}s, {strikes_max} strikes)")
+                return
+            for wid in list(strikes):
+                if wid not in seen:
+                    strikes.pop(wid, None)
+
+
+    def _flush_samples():
+        """Final row on the MAIN thread: _watch is a daemon and is killed at
+        interpreter exit, so a run shorter than the row cadence would record nothing."""
+        try:
+            sys.path.insert(0, str(REPO_ROOT / "tests"))
+            from infra import lab as _lab
+            _lab.sample_resources(run_dir)
+        except Exception:  # noqa: BLE001
+            pass
+
+    th = threading.Thread(target=_watch, daemon=True)
+    th.start()
+    # try/finally: the killpg+reap must run on EVERY exit path (normal, watchdog kill,
+    # exception, or a signal that our handler doesn't fully own) — not only inline after
+    # a clean wait(). A run that "finished" must never leave background children.
+    try:
+        proc.wait()
+        rc = proc.returncode
+    finally:
+        _flush_samples()
+        _cleanup_supervised(proc, run_dir)
+        try:
+            _ACTIVE_SUPERVISED.remove((proc, run_dir))
+        except ValueError:
+            pass
+    # A watchdog kill, or a signal death (Ctrl-C = -2, our SIGKILL = -9): report 1
+    # so _finalize_exit's merge renders the verdict — a negative rc is "not in (0,1)",
+    # which it would otherwise preserve as a bogus 254-ish shell code.
+    return 1 if (killed["why"] or rc is None or rc < 0) else rc
+
+
 def cmd_test(args) -> int:
-    """eh.py test [emu-mcu|emu-linux|hw] [paths/node-ids] [--jobs N] [pytest flags]
+    """eh.py test [emu-mcu|emu-linux|hw] [paths/node-ids] [--jobs N] [--sandbox MODE] [pytest flags]
     Default substrate emu; default sequential (safe/readable); default target the
     substrate's suite dir. --jobs N runs N benches in parallel (pytest-xdist);
-    each worker gets its own socket + flash copy, so failures stay isolated."""
+    each worker gets its own socket + flash copy, so failures stay isolated.
+    --sandbox none|auto|bwrap (bare == auto) isolates build+emu; native by default,
+    falls back to native when the tool can't run."""
     rest = list(args.args or [])
+    # argparse.REMAINDER only starts collecting at a non-flag token, so a flag-first
+    # invocation needs `eh.py test -- --regression …`. Drop that separator here or it
+    # reaches pytest as a path and the run collects nothing (exit 5).
+    if rest and rest[0] == "--":
+        rest.pop(0)
     substrate = "emu"
     # One shared corpus (tests/suites) runs on any substrate; the rest are
     # substrate-specific suites layered on top.
@@ -1006,7 +1274,9 @@ def cmd_test(args) -> int:
         substrate = rest.pop(0)
     # --jobs N | --jobs=N | --jobs auto  ->  xdist -n  (absent => sequential)
     # --bench NAME -> lease that specific HW bench (default: the lab.local.json one)
-    jobs, bench_name, out, i = None, None, [], 0
+    # --sandbox [none|auto|bwrap] -> isolation provider (bare == auto); the front door
+    #   for EH_SANDBOX, which stays the plumbing xdist workers read. Flag wins over env.
+    jobs, bench_name, sandbox_mode, resctl_mode, out, i = None, None, None, None, [], 0
     while i < len(rest):
         t = rest[i]
         if t == "--jobs":
@@ -1017,8 +1287,34 @@ def cmd_test(args) -> int:
             bench_name = rest[i + 1] if i + 1 < len(rest) else None; i += 2; continue
         if t.startswith("--bench="):
             bench_name = t.split("=", 1)[1]; i += 1; continue
+        if t == "--sandbox":
+            nxt = rest[i + 1] if i + 1 < len(rest) else None
+            if nxt in ("none", "auto", "bwrap"):
+                sandbox_mode = nxt; i += 2
+            else:
+                sandbox_mode = "auto"; i += 1   # bare --sandbox == auto
+            continue
+        if t.startswith("--sandbox="):
+            sandbox_mode = t.split("=", 1)[1]; i += 1; continue
+        if t == "--resctl":
+            nxt = rest[i + 1] if i + 1 < len(rest) else None
+            if nxt in ("none", "auto", "systemd", "cgroup", "nice"):
+                resctl_mode = nxt; i += 2
+            else:
+                resctl_mode = "auto"; i += 1   # bare --resctl == auto
+            continue
+        if t.startswith("--resctl="):
+            resctl_mode = t.split("=", 1)[1]; i += 1; continue
         out.append(t); i += 1
     rest = out
+    if sandbox_mode not in (None, "none", "auto", "bwrap"):
+        sys.stderr.write(f"{_RED}eh:{_RESET} --sandbox must be none|auto|bwrap "
+                         f"(got {sandbox_mode!r})\n"); return 2
+    if resctl_mode not in (None, "none", "auto", "systemd", "cgroup", "nice"):
+        sys.stderr.write(f"{_RED}eh:{_RESET} --resctl must be none|auto|systemd|cgroup|"
+                         f"nice (got {resctl_mode!r})\n"); return 2
+    if resctl_mode:
+        os.environ["EH_RESCTL"] = resctl_mode   # before any provider() call below
     # --sequence-diagram: render a per-test text sequence diagram (mermaid + ASCII)
     # from each test's archived host/CP logs after the run. Intercept (pytest
     # wouldn't know the flag).
@@ -1036,6 +1332,35 @@ def cmd_test(args) -> int:
     prewarm = False
     if "--prewarm" in rest:
         rest = [t for t in rest if t != "--prewarm"]; prewarm = True
+    # Resource control, default-on when the platform offers it (F4c). A long run
+    # belongs in its own cgroup: it then outlives the launching shell AND cannot
+    # push the box into an OOM kill. Needs no privilege — a transient USER unit.
+    # Degrades to renice, then to nothing; --resctl none opts out entirely.
+    # Before the systemd hand-off, so it reaches the terminal, not just the journal.
+    if os.environ.get("EH_RESCTL_INNER") != "1":
+        _ccw = _caps().ccache_prepare()
+        if _ccw:
+            print(f"{_YELLOW}eh: {_ccw}{_RESET}")
+    if os.environ.get("EH_RESCTL_INNER") != "1":
+        try:
+            sys.path.insert(0, str(REPO_ROOT / "tests"))
+            from infra import rescontrol as _rc
+            if _rc.provider() == "systemd":
+                # Re-exec the ORIGINAL command line: `rest` has already had --jobs/
+                # --prewarm/--sandbox stripped by the parser above, so rebuilding from
+                # it silently drops flags.
+                argv = [sys.executable] + list(sys.argv)
+                unit = f"eh-test-{int(time.time())}"
+                # A scope, not a service: the run stays in THIS terminal (live output,
+                # Ctrl-C, real exit code) and inherits the env; only the cgroup changes.
+                wrapped = _rc.wrap(argv, unit=unit, scope=True)
+                print(f"{_DIM}eh: resource limits ({', '.join(f'{k}={v}' for k, v in _rc.limits().items())}) "
+                      f"via scope {unit}{_RESET}", flush=True)
+                return subprocess.call(wrapped, cwd=os.getcwd(),
+                                       env=dict(os.environ, EH_RESCTL_INNER="1"))
+            _rc.apply_self()
+        except Exception:  # noqa: BLE001 — resource control must never break a run
+            pass
     tests_root = REPO_ROOT / "tests"
     # 'emu' runs the whole emulator matrix (mcu + linux) in one (parallel) session.
     if substrate == "emu":
@@ -1052,57 +1377,46 @@ def cmd_test(args) -> int:
                        ("/" in t or "::" in t or t.endswith(".py"))
                        for t in rest)
     targets = [] if named_target else [str(d) for d in suite_dirs]
-    # `auto` ≈ cores/2 (each emu test launches TWO emulators → ~1 emu/core). At full
-    # cores/2 the box is saturated with nothing left for the xdist workers, power-save
-    # net shims and OS; the tail-latency spikes flake the heaviest tests (10-cycle
-    # power-save, 40-RPC sweeps). So reserve ONE bench of headroom — but only on hosts
-    # big enough that it's a minor fraction (≥5 benches / ≥10 cores); on small hosts
-    # cores/2-1 is proportionally brutal (halves a 4-core box), so keep the full
-    # cores/2 there. Floor 1 so a 1-2 core machine still gets a job (never 0). = cores
-    # (2× oversubscription) is far worse — starves CP wifi/PHY bring-up, 159s+. Caveat:
-    # emus hold inotify instances — on EMFILE hangs raise
+    # Caveat: emus hold inotify instances — on EMFILE hangs raise
     # `sudo sysctl -w fs.inotify.max_user_instances=1024`. `--jobs N` overrides.
     if jobs == "auto" and substrate != "hw":
-        # Each emu test spins TWO single-threaded emus (host + CP), each wanting a
-        # full core during active phases, plus its own xdist worker — ~3 busy slots
-        # per test. Size against PHYSICAL cores (an HT sibling gives a CPU-bound emu
-        # no extra throughput) so 3*jobs fits: 2*jobs emus + jobs workers <= physical.
-        # The old formula used LOGICAL cores/2 (=15 here on 24 physical → ~30 emus,
-        # 2x oversubscribed): that starves the CP so it misses the firmware's real
-        # RPC/boot deadlines → spurious timeouts on ANY wire (seen: control_plane,
-        # ota_littlefs, peer_data_transfer, nw_split — transport-agnostic). Floor 1.
-        # `--jobs N` overrides.
-        try:
-            _pairs = set(); _pid = None
-            with open("/proc/cpuinfo") as _f:
-                for _ln in _f:
-                    if _ln.startswith("physical id"):
-                        _pid = _ln.split(":", 1)[1].strip()
-                    elif _ln.startswith("core id"):
-                        _pairs.add((_pid, _ln.split(":", 1)[1].strip()))
-            _phys = len(_pairs) or (os.cpu_count() or 4)
-        except OSError:
-            _phys = os.cpu_count() or 4
-        _cap = max(1, _phys // 3)
-        print(f"{_DIM}eh: --jobs auto → {_cap} ({_phys} physical cores; emu=2/test + "
-              f"worker ≈3 slots/test; pass --jobs N to override){_RESET}")
+        # Delegated to the single quota-aware authority: ~3 busy CPUs/test (2 emus +
+        # a worker), bounded by physical cores AND memory (derivation in caps.py).
+        _cap = _caps().emu_pair_capacity()
+        print(f"{_DIM}eh: --jobs auto → {_cap} (caps: physical//3 + mem bound; "
+              f"--jobs N / EH_EMU_PAIR_SLOTS override){_RESET}")
         jobs = str(_cap)
-    # loadgroup (not plain load): tests marked @pytest.mark.xdist_group(...) land on
-    # ONE worker and run serially, so a cohort of CPU-heavy emu tests (control_plane's
-    # per-transport sweeps) can't all run at once and starve the timing-sensitive
-    # power-save wake tests. Ungrouped tests still load-balance across the rest.
+    # loadgroup: @pytest.mark.xdist_group(...) cohorts (emu_heavy / bt_bumble /
+    # emu_boots) run serially on ONE worker so heavy cells can't starve the
+    # timing-sensitive ones; ungrouped tests load-balance across the rest.
+    # Worker restart stays OFF: on xdist 3.8.0, loadgroup + restart wedges the
+    # controller after a crash. A crash ends scheduling instead; the completeness gate
+    # and recovery retry run what did not. Timeouts no longer crash workers (signal).
     xdist = ["-n", jobs, "--dist", "loadgroup"] if jobs and jobs not in ("1", "0") else []
+    if xdist and not any(t.startswith("--max-worker-restart") for t in rest):
+        xdist += ["--max-worker-restart", os.environ.get("EH_MAX_WORKER_RESTART", "0")]
     # In parallel the per-test names and the live INFO trace interleave across
     # workers into unreadable noise; the end-of-run FAILURES + `-ra` summary +
     # report.md are the record. So under --jobs collapse to a progress line (dots)
     # and silence live logging. Sequential runs keep the inline step trace
     # (log_cli). Placed before *rest, so a user-passed -v / -o log_cli=true wins.
     quiet = ["-q", "-o", "log_cli=false"] if xdist else []
+    # ── Phase 0: PROVISION + PROBE ──────────────────────────────────────────
+    # Resolve the toolchain ONCE, fail-fast, then probe runner capabilities before any
+    # build or emu launch: testvenv, IDF (+patches) below, and the caps snapshot that
+    # sizes everything (--jobs, build pool, emu-pair cap) + refuses a too-small runner.
+    _phase("PROVISION")
     py = _ensure_testvenv()
     # One run dir shared by the controller AND every xdist worker (workers can't
     # see the controller's in-process state), so the reporter + per-test log
     # archive all land under the same runs/<ts>/. Workers read it from the env.
     env = os.environ.copy()
+    # --sandbox is the front door; it sets EH_SANDBOX for the workers (build_fw + the emu
+    # launch read it via infra.sandbox). Flag wins over an inherited env value.
+    if sandbox_mode is not None:
+        env["EH_SANDBOX"] = sandbox_mode
+    if resctl_mode:
+        env["EH_RESCTL"] = resctl_mode
     # One run dir under the single lab root (tests/.work/runs/<ts>/), shared by
     # the controller AND every xdist worker (workers read it from the env).
     run_dir = tests_root / ".work" / "runs" / time.strftime("%Y%m%d-%H%M%S")
@@ -1130,6 +1444,21 @@ def cmd_test(args) -> int:
         rc = _idf_preflight(auto_apply=auto_apply_patches)
         if rc:
             return rc
+    # Probe: snapshot runner capabilities (caps.json) and REFUSE a runner too small to
+    # host even one emu pair — never silently serialize (R7 chameleon). EH_EMU_PAIR_SLOTS
+    # is the escape hatch.
+    caps = _caps()
+    try:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        caps.emit_caps_json(run_dir / "caps.json")
+    except OSError:
+        pass
+    if env["EH_SUBSTRATE"] == "emu":
+        try:
+            caps.require_emu_capacity(1)
+        except caps.CapsError as e:
+            sys.stderr.write(f"{_RED}eh: {e}{_RESET}\n")
+            return 2
     # Keep the two bridged emu guest-clocks locked. The spi_fd CP (bridge slave)
     # WFI-fast-forwards its guest clock far ahead of the wall-paced host during the
     # FD idle keep-alive (~60x seen), distorting CP task scheduling enough to
@@ -1227,25 +1556,46 @@ def cmd_test(args) -> int:
         pre_env = env.copy()
         pre_env["EH_PREWARM"] = "1"
         pre_env["EH_RUN_DIR"] = str(run_dir / "prewarm")
+        # Size via caps.build_pool (concurrent BUILDS, not cores) — not the emu pool.
+        buildpool = _caps().build_pool()
+        # Build must NOT run under the 900s per-test cap (a cold BT build alone nears
+        # it; cp+host is two). Give this phase its own budget from EH_BUILD_TIMEOUT
+        # (per-firmware) and size the stall watchdog above it, in pre_env so the
+        # external watchdog can't killpg a legitimately-slow build mid-compile.
+        build_budget = float(os.environ.get("EH_BUILD_TIMEOUT") or 1800)
+        prewarm_cap = build_budget * 2 + 300     # cp+host cold builds per prewarm item
+        pre_env["EH_STALL_TIMEOUT"] = str(prewarm_cap + 300)
+        pre_xdist = ["-n", str(buildpool), "--dist", "load",
+                     "--max-worker-restart", str(2 * buildpool)]
+        # Inject --timeout BEFORE *rest so a user-set --timeout still wins; else this
+        # overrides pytest.ini's 900s for the build phase only.
         pre_cmd = [str(py), "-m", "pytest", "-c", str(tests_root / "pytest.ini"),
-                   *xdist, "-q", "-o", "log_cli=false", *targets, *rest]
-        print(f"{_DIM}eh: prewarm — building all firmware (emus off) before the run{_RESET}")
+                   *pre_xdist, "-q", "-o", "log_cli=false",
+                   f"--timeout={prewarm_cap:.0f}", *targets, *rest]
+        print(f"{_DIM}eh: prewarm — building all firmware (emus off, {buildpool}-way, "
+              f"no per-test cap) before the run{_RESET}")
         _pt = time.time()
-        subprocess.run(pre_cmd, cwd=str(tests_root), env=pre_env)
+        pre_rc = _supervise(pre_cmd, str(tests_root), pre_env, run_dir / "prewarm",
+                            prewarm_cap, label="prewarm")
         prewarm_secs = time.time() - _pt
-        print(f"{_DIM}eh: prewarm done ({prewarm_secs:.0f}s); emu run on warm cache{_RESET}")
+        if pre_rc != 0:
+            print(f"{_YELLOW}eh: prewarm did not complete cleanly (rc={pre_rc}); the "
+                  f"real run will build any missing firmware under its own cap{_RESET}")
+        else:
+            print(f"{_DIM}eh: prewarm done ({prewarm_secs:.0f}s); emu run on warm cache{_RESET}")
 
     print(f"{_DIM}$ {' '.join(cmd)}{_RESET}")
     _t0 = time.time()
     try:
-        rc = subprocess.run(cmd, cwd=str(tests_root), env=env).returncode
+        rc = _supervise(cmd, str(tests_root), env, run_dir, _per_test_timeout(rest))
         # ── second_chance: isolated retry of parallel-run failures ──────────
         # Any @second_chance test that FAILED phase 1 is re-run one-at-a-time
         # (-n0, no xdist) — it passes reliably alone but flakes under parallel emu
         # load. The isolated result is its FINAL outcome. Then eh.py renders the
         # merged matrix/summary and derives the pipeline exit code (below).
-        retry_dir = _run_second_chance(run_dir, py, tests_root, env, rest, auto_scaled)
-        rc = _finalize_exit(run_dir, retry_dir, regression, rc, time.time() - _t0, prewarm_secs)
+        retry_dir, hung = _run_second_chance(run_dir, py, tests_root, env, rest, auto_scaled)
+        rc = _finalize_exit(run_dir, retry_dir, regression, rc, time.time() - _t0,
+                            prewarm_secs, hung=hung)
     finally:
         if lease_db is not None:
             lab_db.release(lease_db, lease_name)  # free our run's lease
@@ -1272,24 +1622,62 @@ def _failed_second_chance(run_dir: Path):
                    if e.get("outcome") == "failed" and e.get("second_chance")})
 
 
+def _incomplete_nodeids(run_dir: Path):
+    """Expected-to-run nodeids (conftest collected.txt) that produced NO result — hung
+    tests killed with their worker, or tests never assigned after an xdist abort. These
+    are re-run isolated alongside the flaky failures so the inventory completes."""
+    p = Path(run_dir) / "collected.txt"
+    if not p.exists():
+        return []
+    sys.path.insert(0, str(REPO_ROOT / "tests"))
+    try:
+        from infra import eh_reporter
+    except Exception:  # noqa: BLE001
+        return []
+    def _key(n):
+        i = n.rfind("@")
+        return n[:i] if i > n.rfind("]") else n
+    expected = [ln.strip() for ln in p.read_text().splitlines() if ln.strip()]
+    done = {_key(e["nodeid"]) for e in eh_reporter._load_ends(run_dir)}
+    return sorted({_key(n) for n in expected if _key(n) not in done})
+
+
 def _run_second_chance(run_dir: Path, py, tests_root: Path, env: dict, rest, auto_scaled):
-    """Phase 2: re-run just the failed @second_chance nodeids ISOLATED (-n0). Writes
-    its own events.jsonl under run_dir/second_chance/. Returns that dir, or None if
-    nothing qualified."""
-    nodeids = _failed_second_chance(run_dir)
+    """Phase 2: re-run each failed @second_chance / did-not-run nodeid ISOLATED (-n0),
+    ONE pytest invocation PER nodeid (F2). A single item's os._exit (pytest-timeout)
+    or watchdog kill then costs only that item — never the whole recovery batch, which
+    a single -n0 call over all ids did (one slow test nuked the rest as spurious
+    did-not-run). Each item writes its events.jsonl into the shared second_chance/ dir
+    (so retry logs stay under second_chance/logs/); we append each to an aggregate and
+    publish it as second_chance/events.jsonl for the reporter. Returns
+    (retry_dir, incomplete) or (None, []) if nothing qualified."""
+    flaky = _failed_second_chance(run_dir)
+    incomplete = _incomplete_nodeids(run_dir)
+    nodeids = sorted(set(flaky) | set(incomplete))
     if not nodeids:
-        return None
-    print(f"{_DIM}eh: second_chance — {len(nodeids)} test(s) failed under parallel "
-          f"load; isolated retry (-n0) [→ retrying; final ↻/⊗/✗ in the matrix below]:{_RESET}")
+        return None, []
+    print(f"{_DIM}eh: recovery — {len(flaky)} flaky-fail + {len(incomplete)} did-not-run "
+          f"test(s); isolated per-item retry (-n0) [→ final ↻/✓/✗/hung in the matrix below]:{_RESET}")
     for n in nodeids:
         print(f"{_DIM}    → {n}{_RESET}")
+    # Harvest a killed worker's logs BEFORE reclaiming its scratch — order matters.
+    try:
+        sys.path.insert(0, str(REPO_ROOT / "tests"))
+        from infra import lab as _lab
+        h, fz, freed = _lab.harvest_killed_scratch(run_dir, nodeids)
+        if h or freed:
+            print(f"{_DIM}eh: recovery — froze {fz} log(s) from {h} killed-worker "
+                  f"scratch dir(s); reclaimed {freed / 1e9:.1f}GB "
+                  f"(free now {_lab.free_gb():.0f}GB){_RESET}")
+    except Exception as e:  # noqa: BLE001 — housekeeping must never break recovery
+        print(f"{_DIM}eh: recovery — scratch harvest skipped ({e}){_RESET}")
     # Let the box settle: the parallel phase just tore down ~15 emu pairs and
     # their net shims; retrying into that residue re-hits the same load-induced
     # boot-RPC (5s deadline) timeouts the retry exists to escape.
     time.sleep(8)
     retry_dir = run_dir / "second_chance"
+    retry_dir.mkdir(parents=True, exist_ok=True)
     env2 = env.copy()
-    env2["EH_RUN_DIR"] = str(retry_dir)
     # Isolated = un-starved: drop the parallel-load expect widening WE added so the
     # retry runs at real pace (a user-set EH_EXPECT_SCALE still wins — never touched).
     if auto_scaled:
@@ -1298,28 +1686,53 @@ def _run_second_chance(run_dir: Path, py, tests_root: Path, env: dict, rest, aut
     # like --regression so collection keeps the same items.
     flags = [t for t in rest if not (not t.startswith("-") and
              ("/" in t or "::" in t or t.endswith(".py")))]
-    cmd = [str(py), "-m", "pytest", "-c", str(tests_root / "pytest.ini"),
-           "-p", "no:cacheprovider", *flags, *nodeids]
-    print(f"{_DIM}$ {' '.join(cmd)}{_RESET}")
-    subprocess.run(cmd, cwd=str(tests_root), env=env2)
-    return retry_dir
+    agg = retry_dir / ".events.agg.jsonl"
+    agg.unlink(missing_ok=True)
+    ev_file = retry_dir / "events.jsonl"
+    for n in nodeids:
+        env3 = env2.copy()
+        env3["EH_RUN_DIR"] = str(retry_dir)  # logs → second_chance/logs/<slug>.FAIL
+        cmd = [str(py), "-m", "pytest", "-c", str(tests_root / "pytest.ini"),
+               "-p", "no:cacheprovider", *flags, n]
+        print(f"{_DIM}$ {' '.join(cmd)}{_RESET}")
+        # Per-item run dir writes/truncates second_chance/events.jsonl; harvest it
+        # before the next item overwrites it, so one item's kill can't lose the rest.
+        _supervise(cmd, str(tests_root), env3, retry_dir, _per_test_timeout(rest),
+                   label="recovery")
+        try:
+            if ev_file.exists():
+                with open(agg, "a") as a:
+                    a.write(ev_file.read_text())
+        except OSError:
+            pass
+    # Publish the aggregate as the canonical events.jsonl the reporter merges.
+    try:
+        if agg.exists():
+            os.replace(agg, ev_file)
+    except OSError:
+        pass
+    return retry_dir, incomplete
 
 
-def _finalize_exit(run_dir: Path, retry_dir, regression: bool, raw_rc: int, elapsed=None, prewarm=None) -> int:
+def _finalize_exit(run_dir: Path, retry_dir, regression: bool, raw_rc: int, elapsed=None,
+                   prewarm=None, hung=None) -> int:
     """Render the merged matrix + truthful summary and derive the pipeline exit code
     from the MERGED results: non-zero iff some test with a FINAL failure is NOT
     allow_fail. A structural pytest exit (2 interrupted / 3 internal / 4 usage /
-    5 no-tests) is preserved — only pass/fail (0/1) is overridden by our merge."""
+    5 no-tests) is preserved — only pass/fail (0/1) is overridden by our merge.
+    `hung` = nodeids that DID NOT RUN in the parallel phase (killed with a wedged
+    worker) so the reporter flags them distinctly from an ordinary parallel-load flake."""
     sys.path.insert(0, str(REPO_ROOT / "tests"))
     try:
         from infra import eh_reporter
     except Exception as e:  # noqa: BLE001
         sys.stderr.write(f"{_RED}eh:{_RESET} summary render unavailable: {e}\n")
         return raw_rc
-    res = eh_reporter.summarize(run_dir, retry_dir=retry_dir, regression=regression, elapsed=elapsed, prewarm=prewarm)
+    res = eh_reporter.summarize(run_dir, retry_dir=retry_dir, regression=regression,
+                               elapsed=elapsed, prewarm=prewarm, hung=hung)
     if raw_rc not in (0, 1):
         return raw_rc  # collection/usage/internal error — don't mask it
-    if res["blocking"]:
+    if res["blocking"] or res.get("not_run"):
         return 1
     # A run where every selected test skipped proves nothing; exiting 0 reports it
     # as a pass. Only reachable when the skips are environmental (no emu, no bench).

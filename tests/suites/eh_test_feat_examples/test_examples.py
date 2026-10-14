@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Boot-and-verify smokes for the real example firmwares — substrate-agnostic.
 
 Each row boots one real example on the bench and asserts its success signature.

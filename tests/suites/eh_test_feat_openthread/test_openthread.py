@@ -58,6 +58,7 @@ frame (RxErrSec); and EH_EMU_RADIO_PACE wall-paces idle WFI so the reply-timer c
 race the cross-emu round-trip.
 """
 
+import fcntl
 import os
 import re
 import shutil
@@ -71,8 +72,8 @@ from infra import lab, build_fw
 from infra.emu_dut import EmuDut, emu_bin
 from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
 
-_REPO = Path(__file__).resolve().parents[3]
-_PEER_CACHE = _REPO / "tests/.work/ot_cli_peer"          # built once, reused
+_PEER_CACHE = lab.WORK / "ot_cli_peer"   # built once under a flock, then reused
+_PEER_MARKER = _PEER_CACHE / "build/.peerfp"  # written LAST; reuse == "completed build"
 
 # Emu-target host overlay: the emu models no P4 PSRAM, so SPIRAM must be off
 # (which also forces worker-task stacks to internal RAM); auto-start gives the
@@ -85,25 +86,44 @@ _EMU_HOST_OVL = (
 
 
 def _build_peer():
-    """Build (once, cached) the monolithic native-radio C6 `ot_cli` peer from
-    ESP-IDF with a shared auto-start dataset. Returns (merged_bin, elf), or None
-    only when ESP-IDF or its ot_cli example is genuinely absent (the test then
-    skips). A real build FAILURE raises pytest.fail with the captured output — a
-    broken peer build must surface as red, not masquerade as a skip.
+    """Build (once, under a flock, then reused) the monolithic native-radio C6
+    `ot_cli` peer from ESP-IDF with a shared auto-start dataset. Returns
+    (merged_bin, elf), or None only when ESP-IDF or its ot_cli example is
+    genuinely absent (the test then skips). A real build FAILURE raises
+    pytest.fail with the captured output — a broken peer build must surface as
+    red, not masquerade as a skip.
+
+    The peer is identical across transports, so concurrent params (sdio + spi_hd,
+    no longer serialized by a loadgroup) MUST NOT race on the shared scratch. We
+    take the SAME per-config flock build_fw uses (`_WORK/.locks/<name>.lock`,
+    build_fw.py:206-212): the first caller builds; the rest block, then reuse the
+    one build. The hit-check runs ONLY under the lock AND requires a `.peerfp`
+    done-marker written as the final build step (mirrors build_fw's .srcfp/.cfgfp),
+    so neither a concurrent mid-write nor a build killed mid esptool-merge
+    (os._exit / SIGKILL) can hand the emu a truncated merged_flash.bin.
 
     IDF comes from the harness's canonical resolver (eh.conf override -> .deps ->
     $IDF_PATH; set via `eh.py set-idf-path`) — the same one every other build in
     the suite uses — never a hardcoded home-dir path."""
     bin_ = _PEER_CACHE / "build/merged_flash.bin"
     elf = _PEER_CACHE / "build/esp_ot_cli.elf"
-    if bin_.exists() and elf.exists():
-        return str(bin_), str(elf)
     idf = build_fw._idf_path_opt()
     if not idf:
         return None
     src = Path(idf) / "examples/openthread/ot_cli"
     if not src.exists():
         return None
+    locks = lab.WORK / ".locks"
+    locks.mkdir(parents=True, exist_ok=True)
+    with open(locks / f"{_PEER_CACHE.name}.lock", "w") as lk:
+        lab.flock_with_heartbeat(lk)
+        # re-check under the lock: another worker may have finished while we waited
+        if bin_.exists() and elf.exists() and _PEER_MARKER.exists():
+            return str(bin_), str(elf)
+        return _do_build_peer(idf, src, bin_, elf)
+
+
+def _do_build_peer(idf, src, bin_, elf):
     _PEER_CACHE.parent.mkdir(parents=True, exist_ok=True)
 
     # Copy the example out of IDF (we never build in-tree), skipping the same
@@ -163,19 +183,25 @@ cd build && python -m esptool --chip esp32c6 merge_bin -o merged_flash.bin @flas
         pytest.fail(f"ot_cli peer firmware build failed (rc={r.returncode})\n"
                     f"...stdout tail:\n{r.stdout[-2000:]}\n"
                     f"...stderr tail:\n{r.stderr[-2000:]}")
+    _PEER_MARKER.write_text("ok\n")  # done-marker LAST: a build killed mid-merge leaves
+                                     # none, so the next caller rebuilds, not reuses trunc.
     return str(bin_), str(elf)
 
 
-# Heaviest cell in the suite (3 emus: host + RCP + peer). Join the emu_heavy
-# loadgroup so it serializes with the other heavy/spi_fd cells (conftest funnels
-# those there) instead of adding a concurrent group that oversubscribes the box
-# and starves them. sdio is the sanity representative.
+# Heaviest cell in the suite: it runs 3 emus (host + RCP + peer). NOTE the bench
+# reserves ONE lab.acquire_emu_slot for its cp+host pair, but the peer emu (spawned
+# in the test body below) is currently OUTSIDE slot accounting — so this cell holds
+# 1 slot while running 3 live emus. That undercount is a tracked follow-up (account
+# for the peer in make()/BenchSpec as one atomic reservation sized to the real emu
+# count) — not a second test-body acquire, which would only add a fail-open
+# hold-and-wait. It doesn't affect the correctness of the association checks below.
+# sdio is the sanity representative.
 # Transports: sdio + spi_hd. NOT uart — OpenThread needs a dedicated spinel
 # UART (UART1) for the 802.15.4 PDUs, so the ESP-Hosted control transport must
 # NOT also be UART (they collide on UART1 and the host never drives the RCP —
 # verified: host fails to attach). NOT spi_fd either (the emu clock-flaky wire).
 @pytest.mark.sanity
-@pytest.mark.xdist_group("emu_heavy")
+@pytest.mark.xdist_group("emu_heavy")  # serialize with the other heavy/spi_fd cells
 @pytest.mark.parametrize("transport", ["sdio", "spi_hd"])
 def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
     peer = _build_peer()
@@ -194,20 +220,20 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
     os.environ["EH_OT_SPINEL"] = "1"                                          # emu.py: spinel UART bridge
     os.environ["EH_THREAD_SIM_CP"] = f"bind:{pa},peer:127.0.0.1:{pb},autoack"  # emu.py: RCP radio bridge
     os.environ["EH_EMU_RADIO_PACE"] = "1"     # wall-pace idle WFI so a ping reply-timer can't race the radio round-trip
-    peer = None
+    started = []
     try:
-        # Bring the peer up first so it forms the partition (becomes Leader)
-        # before the heavier host+RCP node finishes booting and attaches. Its
-        # --timeout must outlast a COLD build of Node A (bench() builds cp+host
-        # synchronously below, ~3 min first time) plus the host's attach, or the
-        # peer emu exits before the host ever reaches the radio. EmuDut (not raw
-        # Popen) so we can drive its `ot` console to read the leader's view.
-        peer = EmuDut("peer", [str(emu_bin()), "--chip", "esp32c6", "--firmware", peer_bin,
-                               "--elf", peer_elf, "--thread-sim",
-                               f"bind:{pb},peer:127.0.0.1:{pa},autoack", "--timeout", "600s"], plog)
+        # Peer starts after Node A's firmware is built (its 600 s lifetime must not
+        # drain during a build) and before Node A boots, so it is Leader first.
+        def _start_peer():
+            started.append(EmuDut("peer", [str(emu_bin()), "--chip", "esp32c6",
+                                           "--firmware", peer_bin, "--elf", peer_elf,
+                                           "--thread-sim",
+                                           f"bind:{pb},peer:127.0.0.1:{pa},autoack",
+                                           "--timeout", "600s"], plog))
 
         b = bench("openthread/cli", "esp_host", transport, timeout="150s",
-                  overlay=_EMU_HOST_OVL)
+                  overlay=_EMU_HOST_OVL, pre_launch=_start_peer)
+        peer = started[0]
         # Host attaches to the peer's partition as a Child — the end-to-end signal.
         r = eh_test_expect(b["host"], r'Role \S+ -> child', fail=FATAL_PATTERNS, timeout=90)
         peer_out = plog.read_text() if plog.exists() else ""
@@ -260,5 +286,5 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
         os.environ.pop("EH_OT_SPINEL", None)
         os.environ.pop("EH_THREAD_SIM_CP", None)
         os.environ.pop("EH_EMU_RADIO_PACE", None)
-        if peer is not None:
-            peer.stop()
+        for p in started:
+            p.stop()

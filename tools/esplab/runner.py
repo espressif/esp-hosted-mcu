@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """esplab runner — entity-driven ESP-Hosted test engine (build + emulate + assert).
 
 Everything is an entity with properties (see tests.json): a suite, scenario, or
@@ -32,14 +34,25 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
 CATALOG = HERE / 'tests.json'
-WORK = REPO_ROOT / 'tests' / '.work'  # scratch build workspace (shared with the
-# pytest framework's build_fw; the sandbox-bindable root). Examples stay read-only.
+
+# Share ONE source of truth for the .work layout + build-scratch primitives with the
+# pytest framework (tests/infra). runner.py runs standalone from the CLI, so put
+# tests/ on sys.path (conftest does this for the pytest path; we must here).
+sys.path.insert(0, str(REPO_ROOT / 'tests'))
+from infra import lab       # noqa: E402  layout single source of truth
+from infra import sandbox as _sandbox  # noqa: E402  shared isolation provider (param 'sandbox' shadows)
+from infra import scratch   # noqa: E402  symlink-safe copy, override fix, COW flash
+
+WORK = lab.WORK           # sandbox-bindable root (shared with build_fw)
+CACHE = lab.CACHE         # reused per-config build artifacts
+SOCK_DIR = lab.SOCK_DIR   # short AF_UNIX socket paths under the bound root
 
 SLAVE_WARMUP_S = 3        # let the C6 slave bind its socket before the host connects
 LOG_TAIL = 6000           # max lines kept in memory per stream (full logs go to disk)
@@ -79,38 +92,6 @@ def idf_path() -> pathlib.Path:
             return p
     raise RuntimeError("ESP-IDF not found: run ./install.sh, set IDF_PATH, "
                        "or `eh.py set-idf-path <dir>`")
-
-
-def _bwrap_works() -> bool:
-    """True if bubblewrap is installed AND user namespaces actually work here."""
-    if not shutil.which('bwrap'):
-        return False
-    try:
-        r = subprocess.run(['bwrap', '--ro-bind', '/', '/', '--dev-bind', '/dev', '/dev',
-                            '--proc', '/proc', 'true'], capture_output=True, timeout=10)
-        return r.returncode == 0
-    except Exception:
-        return False
-
-
-def _absolutize_overrides(src: pathlib.Path, proj: pathlib.Path) -> None:
-    """Rewrite relative `override_path:` in the scratch copy's idf_component.yml
-    files to absolute paths resolved against the ORIGINAL example location, so the
-    copy still points at the real in-repo components (e.g. esp_hosted at repo root)
-    instead of a path that only made sense from the example's own depth."""
-    def fix(m):
-        val = m.group(3).strip()
-        if not val or val.startswith('/'):
-            return m.group(0)
-        return f'{m.group(1)}"{(yml_src.parent / val).resolve()}"'
-    for yml_src in src.rglob('idf_component.yml'):
-        yml_dst = proj / yml_src.relative_to(src)
-        if not yml_dst.is_file():
-            continue
-        text = yml_dst.read_text()
-        new = re.sub(r'(override_path:\s*)([\'"]?)([^\'"\n]+)\2', fix, text)
-        if new != text:
-            yml_dst.write_text(new)
 
 
 # ── catalog (entity tree) ────────────────────────────────────────────────────
@@ -238,34 +219,25 @@ class Runner:
         self.logroot = logroot or (REPO_ROOT / 'tests' / '.work' / 'runs' / time.strftime('%Y%m%d-%H%M%S'))
         self.logroot.mkdir(parents=True, exist_ok=True)
         self.stop_event = stop_event
-        # Optional sandbox: 'bwrap' isolates build/emulate in a bubblewrap namespace
-        # (private /tmp, repo read-only except the scratch workspace) so the main
-        # system stays untouched. Off by default; degrades gracefully to native.
-        self.sandbox = sandbox if sandbox and sandbox != 'none' else ''
-        if self.sandbox == 'bwrap' and not _bwrap_works():
-            self._log('  ! sandbox=bwrap requested but bubblewrap is unavailable/blocked — running native')
-            self.sandbox = ''
+        # Optional sandbox via the shared provider (EH_SANDBOX / --sandbox): isolates
+        # build/emulate so the main system stays untouched. Off by default; the provider
+        # degrades gracefully to native when the tool is unavailable. self.sandbox is the
+        # requested MODE; the provider resolves + wraps.
+        self.sandbox = (sandbox or os.environ.get('EH_SANDBOX') or 'none').lower()
+        if self.sandbox in ('bwrap', 'auto') and _sandbox.provider(self.sandbox) == 'none':
+            self._log('  ! sandbox requested but bubblewrap is unavailable/blocked — running native')
 
     def stopped(self) -> bool:
         return bool(self.stop_event and self.stop_event.is_set())
 
+    def _isolated(self) -> bool:
+        """True when a real (non-native) isolation provider is active."""
+        return _sandbox.provider(self.sandbox) != 'none'
+
     def _bwrap_prefix(self, rw_paths: list, net: bool) -> list:
-        """Build a bubblewrap argv prefix: whole root read-only, private /tmp + /dev
-        + /proc, with `rw_paths` re-bound read-write (later binds override the RO
-        root). `net=False` drops the network namespace entirely (the emulator's
-        --net user is in-process, so emulation needs no host network)."""
-        if not self.sandbox:
-            return []
-        argv = ['bwrap', '--die-with-parent', '--unshare-pid',
-                '--ro-bind', '/', '/', '--dev-bind', '/dev', '/dev',
-                '--proc', '/proc', '--tmpfs', '/tmp']
-        for p in rw_paths:
-            sp = str(p)
-            if os.path.exists(sp):
-                argv += ['--bind', sp, sp]
-        if not net:
-            argv += ['--unshare-net']
-        return argv
+        """Isolation argv PREFIX (empty = native) via the shared provider; kept as a
+        thin wrapper so the existing prefix+argv call sites are untouched."""
+        return _sandbox.wrap([], rw_paths=rw_paths, net=net, mode=self.sandbox)
 
     # -- build one side (with optional sdkconfig overlay) ---------------------
 
@@ -293,7 +265,7 @@ class Runner:
         if key in self.builds:
             log.write(f'↺ reusing build (cached this run): {ex_dir} [{target}] — no rebuild')
             return self.builds[key]
-        proj = WORK / (ex_dir.replace('/', '__') + '__' + key)
+        proj = CACHE / (ex_dir.replace('/', '__') + '__' + key)
         if self.rebuild and proj.exists():
             shutil.rmtree(proj, ignore_errors=True)
         # reuse a prior valid build for this exact config — no rebuild at all
@@ -305,12 +277,12 @@ class Runner:
                 return res
         # The example is a read-only input: build in an isolated scratch copy so the
         # example tree is never written to (no build/, sdkconfig, overlay, deps, bin).
+        # copy_scratch is symlink-safe: a `components/esp_hosted -> repo root` symlink
+        # is recreated, never dereferenced into a 33GB copy of the whole tree.
         if not proj.exists():
             proj.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(src, proj, ignore=shutil.ignore_patterns(
-                'build', 'managed_components', 'dependencies.lock',
-                'sdkconfig', 'sdkconfig.old', '*.bin'))
-            _absolutize_overrides(src, proj)
+            scratch.copy_scratch(src, proj, scratch.ignore())
+            scratch.absolutize_overrides(src, proj)
         for asrc, rel in (inject or []):
             if not os.path.isfile(asrc):
                 return {'ok': False, 'err': f'inject source missing: {asrc}'}
@@ -364,9 +336,9 @@ class Runner:
         # When sandboxed, /tmp is a private tmpfs per process, so the bridge socket
         # must live in the shared, bound scratch workspace instead; native runs keep
         # it in /tmp. (Both stay well under the 108-char AF_UNIX path limit.)
-        if self.sandbox:
-            WORK.mkdir(parents=True, exist_ok=True)
-            run.sock = str(WORK / f'eh_{run.id}_{os.getpid()}.sock')
+        if self._isolated():
+            SOCK_DIR.mkdir(parents=True, exist_ok=True)
+            run.sock = str(SOCK_DIR / f'eh_{run.id}_{os.getpid()}.sock')
         else:
             run.sock = f'/tmp/esplab_{run.id}_{os.getpid()}.sock'
         try:
@@ -412,6 +384,13 @@ class Runner:
     def _launch_bench(self, sc, setup, cp, host, run, timeout_s) -> None:
         stim = sc.get('stimulus', {})
         net_stim = stim.get('net', [])
+        # COW level 2: boot a per-run reflink copy of each merged image, never the
+        # shared cached artifact — the emu writes NVS/flash state back into the file
+        # it boots, so booting the cache directly poisons it for the next scenario
+        # (in-process reuse) and the next invocation (on-disk cache hit).
+        flashdir = self.logroot / 'flash' / run.id
+        cp_flash = scratch.cow_flash(cp['merged'], flashdir)
+        host_flash = scratch.cow_flash(host['merged'], flashdir)
         # the bridge socket lives in the scratch workspace (a bound-RW dir) so both
         # sandboxed instances share it; --unshare-net is fine (Unix socket ≠ network)
         host_prefix = self._bwrap_prefix([WORK], net=False)
@@ -420,7 +399,7 @@ class Runner:
         cp_prefix = self._bwrap_prefix([WORK], net=bool(net_stim))
         # ── C6 coprocessor (slave) — starts first, registered for teardown ──
         cp_argv = [str(emu_bin()), '--chip', setup['cp_target'],
-                   '--firmware', cp['merged'], '--elf', cp['elf'],
+                   '--firmware', cp_flash, '--elf', cp['elf'],
                    '--hosted', f'bridge:slave:{run.sock}']
         net_spec = setup.get('net')
         if net_spec:
@@ -437,7 +416,7 @@ class Runner:
         time.sleep(SLAVE_WARMUP_S)
         # ── P4 host ──
         host_argv = [str(emu_bin()), '--chip', setup['host_target'],
-                     '--firmware', host['merged'], '--elf', host['elf'],
+                     '--firmware', host_flash, '--elf', host['elf'],
                      '--hosted', f'bridge:host:{run.sock}']
         if setup.get('reset_gpio') is not None:
             host_argv += ['--hosted-reset-gpio', str(setup['reset_gpio'])]
@@ -735,8 +714,8 @@ def _cli():
     rp.add_argument('--all', action='store_true')
     rp.add_argument('--include-unsupported', action='store_true')
     rp.add_argument('--rebuild', action='store_true', help='force a clean rebuild (default reuses cached builds per config)')
-    rp.add_argument('--sandbox', choices=['none', 'bwrap'], default='none',
-                    help='isolate build+emulate in a bubblewrap namespace (main system untouched)')
+    rp.add_argument('--sandbox', choices=['none', 'auto', 'bwrap'], default='none',
+                    help='isolation provider (auto=bwrap if it works, else native); main system untouched')
     args = ap.parse_args()
 
     if args.cmd == 'list':
@@ -772,7 +751,7 @@ def _cli():
                     seen.add(s['id']); scs.append(s)
 
     runner = Runner(rebuild=args.rebuild, sandbox=args.sandbox)
-    print(f'logs: {runner.logroot}{"  [sandbox: bwrap]" if runner.sandbox else ""}')
+    print(f'logs: {runner.logroot}{"  [sandbox: bwrap]" if runner._isolated() else ""}')
     results = []
     cur_suite = None
     for sc in scs:
