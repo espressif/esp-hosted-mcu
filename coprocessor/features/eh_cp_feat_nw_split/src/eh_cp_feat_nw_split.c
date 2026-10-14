@@ -125,11 +125,11 @@ static esp_netif_t *nw_split_get_active_sta_netif(void)
 #define MAX_PORT_STR_LEN 128
 
 
-#if defined(CONFIG_ESP_HOSTED_DEFAULT_NETWORK_STACK_COPROCESSOR)
+#if EH_CP_FEAT_NW_SPLIT_DEFAULT_STACK_COPROCESSOR
   #define DEFAULT_NW_STACK_TO_SEND NW_STACK_COPROCESSOR
-#elif defined(CONFIG_ESP_HOSTED_DEFAULT_NETWORK_STACK_HOST)
+#elif EH_CP_FEAT_NW_SPLIT_DEFAULT_STACK_HOST
   #define DEFAULT_NW_STACK_TO_SEND NW_STACK_HOST
-#elif defined(CONFIG_ESP_HOSTED_DEFAULT_NETWORK_STACK_BOTH)
+#elif EH_CP_FEAT_NW_SPLIT_DEFAULT_STACK_BOTH
   #define DEFAULT_NW_STACK_TO_SEND NW_STACK_BOTH
 #else
   #error "Select one of the NW_STACK to forward"
@@ -454,10 +454,10 @@ static bool nw_split_is_dhcp_client_msg(const void *frame_data, uint16_t frame_l
 	return lwip_ntohs(udphdr->src) == LWIP_IANA_PORT_DHCP_CLIENT;
 }
 
-/* Bus RX on STA: host frames on their way to the air. While the CP owns the IP
- * the host's DHCP client must not reach the AP (esp_netif starts it on every
- * association): one client on air. ESP_ERR_NOT_FOUND: core sends it to the air. */
-static esp_err_t nw_split_filter_bus_rx(void *buf, uint16_t len, void *eb)
+/* Bus RX -> STA TX filter. While the CP owns the IP, the host's DHCP client must
+ * not reach the AP (esp_netif starts it on every association): one client on
+ * air. ESP_ERR_NOT_FOUND: feat_wifi sends the frame to the air. */
+static esp_err_t nw_split_drop_host_dhcp(void *buf, uint16_t len, void *eb)
 {
 	(void)eb;
 	if (eh_cp_nw_split_ip_owner() == ESP_EXT_CAP_NW_SPLIT_DHCP_CP &&
@@ -1076,7 +1076,7 @@ esp_err_t eh_cp_feat_nw_split_init(eh_cp_feat_nw_split_config_t *config)
 	}
 
 	/* Configure default port forwarding rules */
-#ifdef CONFIG_ESP_HOSTED_HOST_ONLY_PORTS_CONFIGURED
+#if EH_CP_FEAT_NW_SPLIT_HOST_ONLY_PORTS_CONFIGURED
 	eh_cp_feat_nw_split_config_host_static_port_forwarding_rules(
 		config->host_reserved_ports.tcp_src_ports,
 		config->host_reserved_ports.tcp_dst_ports,
@@ -1106,11 +1106,12 @@ esp_err_t eh_cp_feat_nw_split_init(eh_cp_feat_nw_split_config_t *config)
 	nw_split_wlan_sta_rx_cb = config->wlan_sta_rx_callback_for_coprocessor;
 	/* Ours from now to deinit: it sends to the host while the CP netif is not up. */
 	EH_CHECK_OK(eh_cp_set_traffic_tx_cb(ESP_STA_IF, nw_split_wlan_sta_rx_cb));
-	EH_CHECK_OK(eh_cp_set_traffic_rx_cb(ESP_STA_IF, nw_split_filter_bus_rx));
 
 	EH_CHECK_OK(eh_cp_nw_split_ip_owner_fsm_start(coprocessor_sta_netif, s_owned_sta_netif != NULL,
 		s_dhcp_policy == NW_STACK_HOST ? ESP_EXT_CAP_NW_SPLIT_DHCP_HOST : ESP_EXT_CAP_NW_SPLIT_DHCP_CP,
 		s_dhcp_policy != NW_STACK_COPROCESSOR));
+	/* After the FSM start: STOPPED reads as CP owner and would drop host DHCP. */
+	eh_cp_feat_wifi_set_bus_rx_sta_tx_filter(nw_split_drop_host_dhcp);
 #if EH_CP_FEAT_NW_SPLIT_WIFI_AUTO_CONNECT_ON_STA_START
 	eh_cp_feat_wifi_set_auto_connect(true);     /* last: nothing above can fail after it */
 #endif
@@ -1135,7 +1136,7 @@ esp_err_t eh_cp_feat_nw_split_deinit(void)
 	eh_cp_feat_wifi_set_auto_connect(false);
 #endif
 	(void)eh_cp_set_traffic_tx_cb(ESP_STA_IF, orig_wlan_rx_cb_for_host);
-	(void)eh_cp_set_traffic_rx_cb(ESP_STA_IF, NULL);
+	eh_cp_feat_wifi_set_bus_rx_sta_tx_filter(NULL);
 	eh_cp_nw_split_ip_owner_fsm_stop();
 
 	/* Stop the STA netif before destroying an owned netif. */

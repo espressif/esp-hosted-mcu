@@ -10,6 +10,7 @@
 #include "esp_err.h"
 #include "esp_wifi_types.h"
 #include <stdbool.h>
+#include "eh_cp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +35,10 @@ void eh_cp_feat_wifi_resync_host(void);
 void eh_cp_feat_wifi_set_auto_connect(bool on);
 /* The driver's station state, independent of this feature's FSM. */
 void eh_cp_feat_wifi_driver_state(bool *started, bool *linked, wifi_event_sta_connected_t *conn);
+/* STA frames from the host pass the filter before they go to the air.
+ * ESP_ERR_NOT_FOUND: send to the air. Any other return: the filter consumed
+ * the frame. NULL clears. */
+void eh_cp_feat_wifi_set_bus_rx_sta_tx_filter(eh_cp_traffic_cb_t filter);
 /* Before an RPC reply: the station reports its request caused go out first. */
 void eh_cp_feat_wifi_reports_flush(void);
 
