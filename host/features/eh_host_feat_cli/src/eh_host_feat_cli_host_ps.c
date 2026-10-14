@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* host_power_save console command set. */
 
 #include "sdkconfig.h"
@@ -121,6 +125,7 @@ esp_err_t eh_host_feat_cli_host_ps_register(void)
     ps_start_args.type = arg_str0(NULL, NULL, "<deep>",
                                   "sleep type (only 'deep' supported; default: deep)");
     ps_start_args.end  = arg_end(2);
+    EH_CLI_TRACK_ARGS(ps_start_args);
     const esp_console_cmd_t c_start = {
         .command  = "host_power_save",
         .help     = "Enter host deep sleep. Restarts on wake-up GPIO.",
@@ -128,7 +133,7 @@ esp_err_t eh_host_feat_cli_host_ps_register(void)
         .func     = cmd_host_power_save,
         .argtable = &ps_start_args,
     };
-    esp_err_t rc = esp_console_cmd_register(&c_start);
+    esp_err_t rc = eh_host_feat_cli_cmd_register(&c_start);
     if (rc != ESP_OK) return rc;
 
     const esp_console_cmd_t c_stop = {
@@ -136,12 +141,13 @@ esp_err_t eh_host_feat_cli_host_ps_register(void)
         .help    = "Notify slave that host is no longer in power-save.",
         .func    = cmd_host_power_save_stop,
     };
-    rc = esp_console_cmd_register(&c_stop);
+    rc = eh_host_feat_cli_cmd_register(&c_stop);
     if (rc != ESP_OK) return rc;
 
     ps_timer_args.ms  = arg_int1(NULL, NULL, "<ms>",
                                  "idle time in ms before auto-enter sleep");
     ps_timer_args.end = arg_end(2);
+    EH_CLI_TRACK_ARGS(ps_timer_args);
     const esp_console_cmd_t c_timer = {
         .command  = "host_power_save_timer",
         .help     = "Arm auto-enter timer; sleep triggers after <ms> of idle.",
@@ -149,7 +155,7 @@ esp_err_t eh_host_feat_cli_host_ps_register(void)
         .func     = cmd_host_power_save_timer,
         .argtable = &ps_timer_args,
     };
-    rc = esp_console_cmd_register(&c_timer);
+    rc = eh_host_feat_cli_cmd_register(&c_timer);
     if (rc != ESP_OK) return rc;
 
     const esp_console_cmd_t c_timer_stop = {
@@ -157,7 +163,7 @@ esp_err_t eh_host_feat_cli_host_ps_register(void)
         .help    = "Cancel the auto-enter sleep timer.",
         .func    = cmd_host_power_save_timer_stop,
     };
-    rc = esp_console_cmd_register(&c_timer_stop);
+    rc = eh_host_feat_cli_cmd_register(&c_timer_stop);
     if (rc != ESP_OK) return rc;
 
     const esp_console_cmd_t c_status = {
@@ -165,7 +171,7 @@ esp_err_t eh_host_feat_cli_host_ps_register(void)
         .help    = "Print enabled / saving / woke_from_ps flags.",
         .func    = cmd_host_power_save_status,
     };
-    return esp_console_cmd_register(&c_status);
+    return eh_host_feat_cli_cmd_register(&c_status);
 }
 
 #endif /* CONFIG_ESP_HOSTED_HOST_FEAT_POWER_SAVE_READY */

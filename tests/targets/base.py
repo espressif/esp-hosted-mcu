@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """The Target contract — the substrate seam.
 
 `BenchProvider.make(spec) -> Bench`. `spec` names *what* to run (example, roles,
@@ -25,6 +27,7 @@ class BenchSpec:
     example: str
     host_role: str = "mcu_host"      # mcu_host | esp_host | linux_802_3_host/c_app
     cp_role: str = "cp"
+    cp_app: str = None               # test-owned CP app (infra/cp_apps.py); "own" = example's cp/
     host_target: str = "esp32p4"
     cp_target: str = "esp32c6"
     transport: str = "sdio"          # sdio | uart

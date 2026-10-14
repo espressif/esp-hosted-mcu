@@ -7,6 +7,7 @@
 
 #include "eh_host_port_master_config.h"
 
+#include "argtable3/argtable3.h"
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -18,14 +19,61 @@
 
 #define CLI_TAG "eh_cli"
 
+/* What register_commands() added, so deinit can remove exactly that. */
+#define CLI_MAX_CMDS    64
+#define CLI_MAX_TABLES  16
+static const char *s_cmds[CLI_MAX_CMDS];
+static size_t s_n_cmds;
+static struct { void **table; size_t n; } s_tables[CLI_MAX_TABLES];
+static size_t s_n_tables;
+
+esp_err_t eh_host_feat_cli_cmd_register(const esp_console_cmd_t *cmd)
+{
+    if (s_n_cmds == CLI_MAX_CMDS) {
+        return ESP_ERR_NO_MEM;
+    }
+    esp_err_t rc = esp_console_cmd_register(cmd);
+    if (rc == ESP_OK) {
+        s_cmds[s_n_cmds++] = cmd->command;
+    }
+    return rc;
+}
+
+esp_err_t eh_host_feat_cli_track_args(void *table, size_t n)
+{
+    if (s_n_tables == CLI_MAX_TABLES) {
+        arg_freetable(table, n);
+        return ESP_ERR_NO_MEM;
+    }
+    s_tables[s_n_tables].table = table;
+    s_tables[s_n_tables++].n = n;
+    return ESP_OK;
+}
+
+static void cli_unregister_all(void)
+{
+    while (s_n_cmds) {
+        esp_console_cmd_deregister(s_cmds[--s_n_cmds]);
+    }
+    while (s_n_tables) {
+        s_n_tables--;
+        arg_freetable(s_tables[s_n_tables].table, s_tables[s_n_tables].n);
+    }
+}
+
 esp_err_t eh_host_feat_cli_register_commands(void)
 {
     esp_err_t rc = ESP_OK;
+
+    if (s_n_cmds) {
+        return ESP_OK;
+    }
 
 #if EH_HOST_FEAT_POWER_SAVE_READY
     rc = eh_host_feat_cli_host_ps_register();
     if (rc != ESP_OK) {
         ESP_LOGE(CLI_TAG, "host_ps CLI register failed: 0x%x", rc);
+        cli_unregister_all();
         return rc;
     }
 #endif
@@ -34,6 +82,7 @@ esp_err_t eh_host_feat_cli_register_commands(void)
     rc = eh_host_feat_cli_rf_cert_register();
     if (rc != ESP_OK) {
         ESP_LOGE(CLI_TAG, "rf_cert CLI register failed: 0x%x", rc);
+        cli_unregister_all();
         return rc;
     }
 #endif
@@ -48,11 +97,11 @@ int eh_host_feat_cli_init(void)
 
 int eh_host_feat_cli_deinit(void)
 {
-    /* esp_console exposes no bulk-unregister; per-cmd deregister at teardown is pointless. */
+    cli_unregister_all();
     return 0;
 }
 
-#if EH_HOST_AUTO_FEAT_INIT
+#if EH_HOST_AUTO_FEAT_INIT && EH_HOST_FEAT_CLI_AUTO_INIT
 EH_HOST_FEAT_REGISTER(eh_host_feat_cli_init,
                       eh_host_feat_cli_deinit,
                       "cli", 400);

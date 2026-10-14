@@ -108,8 +108,8 @@ def _bumble_bench(bench, lab_tmp, worker_id, example, transport, ready, wait_bum
         # ECONNREFUSED and the whole cell fails. (bf closes here; the child keeps its
         # dup'd fd, matching the previous behaviour.)
         with open(blog, "w") as bf:
-            bp_box.append(subprocess.Popen([str(_VENV_PY), "-u", str(_BUMBLE)], env=os.environ,
-                                           stdout=bf, stderr=subprocess.STDOUT))
+            bp_box.append(lab.track(subprocess.Popen([str(_VENV_PY), "-u", str(_BUMBLE)], env=os.environ,
+                                           stdout=bf, stderr=subprocess.STDOUT)))
         if not _wait_listening(blog):
             pytest.fail("Bumble HCI controller never started listening")
 

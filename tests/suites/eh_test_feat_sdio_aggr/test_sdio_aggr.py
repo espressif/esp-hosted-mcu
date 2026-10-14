@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """SDIO software-aggregation (SW_AGGR) — smoke + host-first OTA migration drill.
 
 SW_AGGR is negotiated at boot via the 0x1B buf-config TLV (mode==SW_AGGR both
@@ -74,7 +76,11 @@ def test_sdio_sw_aggr_ota_migration(bench):
     test_sdio_sw_aggr_bulk_really_aggregates (small frames here would ride
     the single-frame fast path / latency bypass and prove nothing)."""
     b = bench('ota/coprocessor_ota', 'mcu_host', 'sdio', timeout='300s',
-              overlay=['CONFIG_OTA_METHOD_LITTLEFS=y'],
+              # Host and staged CP image share one version, so the example's
+              # version gates would skip the OTA under test (phase 2 never runs).
+              overlay=['CONFIG_OTA_METHOD_LITTLEFS=y',
+                       'CONFIG_OTA_VERSION_CHECK_HOST_SLAVE=n',
+                       'CONFIG_OTA_VERSION_CHECK_SLAVEFW_SLAVE=n'],
               cp_overlay=STREAM_CP_OVL,        # boot CP = rel-2-like stream wire
               cp_ota_overlay=SW_AGGR_CP_OVL,   # staged image = the new default
               cp_app_to_host='components/ota_littlefs/slave_fw_bin/cp_app.bin')

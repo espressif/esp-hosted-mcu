@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Consolidated control-plane sweep for the native eh_host_* surface.
 
 One emu/HW bench per transport drives the ENTIRE non-conflicting command corpus

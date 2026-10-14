@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Phase 1: a single esp_hosted_deinit() stops every datapath task.
 
 The interesting case is a deinit while the datapath is OPEN and the tasks are
@@ -20,12 +22,6 @@ import os, re, sys, time
 import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
-
-_FW = os.path.join(os.path.dirname(__file__), '..', '..', 'fw', 'cp_deinit_init_cycles')
-CP_INJECT = {f'components/cp_deinit_init_cycles/{f}':
-             os.path.abspath(os.path.join(_FW, f))
-             for f in ('cp_deinit_init_cycles.c', 'CMakeLists.txt',
-                       'Kconfig.projbuild')}
 
 EXAMPLE = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
 # send_task exists only when the TX priority queues are compiled in
@@ -53,11 +49,10 @@ def _task_dump(cp, tag):
 @pytest.mark.power_save
 @pytest.mark.sanity
 def test_cp_deinit_stops_every_task(emu_bench):
-    # The hosted-deinit command lives in the test harness component, not the
-    # product CLI. Cycles stay 0, so it registers the command and runs no task.
+    # The hosted-deinit command lives in the test harness component the test CP
+    # carries, not the product CLI. No cycles-start, so no cycle task runs.
     b = emu_bench(EXAMPLE, 'esp_host', 'sdio', timeout='300s',
-                  cp_extra_ovl=['CONFIG_FREERTOS_USE_TRACE_FACILITY=y'],
-                  cp_inject=CP_INJECT)
+                  cp_extra_ovl=['CONFIG_FREERTOS_USE_TRACE_FACILITY=y'])
     host, cp = b['host'], b['cp']
 
     # Precondition 1: datapath open, and traffic has crossed it.

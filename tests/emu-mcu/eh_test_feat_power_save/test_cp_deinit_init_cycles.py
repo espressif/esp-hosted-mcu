@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """A CP teardown and rebuild cycle must return every byte of heap.
 
 The cycle destroys the console, so no command can drive it: a full
@@ -24,12 +26,14 @@ from infra.heaptrace import name_borrowers, table
 EXAMPLE = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
 # The harness lives here, not in the example; build_fw stages it into the
 # scratch copy as an extra component.
-_FW = os.path.join(os.path.dirname(__file__), '..', '..', 'fw', 'cp_deinit_init_cycles')
-CP_INJECT = {f'components/cp_deinit_init_cycles/{f}': os.path.abspath(os.path.join(_FW, f))
-             for f in ('cp_deinit_init_cycles.c', 'CMakeLists.txt', 'Kconfig.projbuild')}
 CYCLES = int(os.environ.get('EH_CP_DEINIT_INIT_CYCLES', '20'))
 # Bytes a settled cycle may keep. Raise only with the allocation named here.
 ALLOWED_DRIFT_BYTES = 0
+# Free size is sampled while the CP netif stays up across deinit: its DHCP client and
+# lwIP timers (sys_timeout entries, 16 B each, 1-4 live, re-armed by tcpip_thread) come
+# and go, so free moves by up to 64 B with nothing leaked (heap trace: same 16/64 B
+# after every cycle, never growing). A leak repeats every cycle and crosses this.
+LWIP_TIMER_CHURN_BYTES = 4 * 16
 FAIL = FATAL_PATTERNS + ['CORRUPT HEAP', 'Firmware abort', 'tasks still running']
 ROW = re.compile(r'\[cycles\] cycle=(\d+) init=(-?\d+) deinit=(-?\d+) '
                  r'bytes=(-?\d+) recs=(\d+) ovf=(\d+) polls=(\d+) free=(\d+)')
@@ -99,14 +103,15 @@ def _assert_cycles_built(bench, cycles):
 def test_cp_deinit_init_cycles_return_heap(emu_bench, transport, wifi_ap):
     # wake=True: the bench wires the wake path, which spi_fd needs to reach
     # 'Open Data Path'. Same wiring for every transport keeps rows comparable.
-    ovl = [f'CONFIG_EH_TEST_CP_DEINIT_INIT_CYCLES={CYCLES}']
+    # The test CP carries the harness with 20 cycles; only an override needs its own image.
+    ovl = [f'CONFIG_EH_TEST_CP_DEINIT_INIT_CYCLES={CYCLES}'] if CYCLES != 20 else []
     if HEAP_TRACE:
         ovl += TRACE_OVL
     # Diagnostic hook: extra CP sdkconfig lines, comma separated. Used to arm
     # heap tracing without committing it on.
     ovl += [x for x in os.environ.get('EH_CP_EXTRA_OVL', '').split(',') if x]
     bench = emu_bench(EXAMPLE, 'esp_host', transport, wake=True, timeout='900s',
-                      cp_extra_ovl=ovl, cp_inject=CP_INJECT)
+                      cp_extra_ovl=ovl)
     # Kconfig drops an out-of-range int SILENTLY and falls back to the default
     # (0 = harness compiled out). The run then hangs on the priming wait with no
     # clue why, so read the value the build actually took.
@@ -163,6 +168,9 @@ def test_cp_deinit_init_cycles_return_heap(emu_bench, transport, wifi_ap):
     except Exception as exc:                       # no listener is expected
         print(f'[cycles] probe sent, no reply ({type(exc).__name__})')
 
+    # Start the cycles only now: the stack they tear down is associated, has its IP
+    # and has carried traffic, however long the bring-up took.
+    cp.write('cycles-start')
     assert eh_test_expect(cp, r'\[cycles\] priming deinit=0', fail=FAIL,
                           timeout=60).ok, 'priming deinit failed'
     r = eh_test_expect(cp, rf'\[cycles\] done cycles={CYCLES}', fail=FAIL, timeout=180)
@@ -195,7 +203,7 @@ def test_cp_deinit_init_cycles_return_heap(emu_bench, transport, wifi_ap):
 
         frees = [free for _, _, _, _, _, _, _, free in rows]
         half = frees[len(frees) // 2:]
-        falling = half[-1] < half[0]
+        falling = half[-1] < half[0] - LWIP_TIMER_CHURN_BYTES
         print(f'[cycles] free: cycle1={frees[0]} cycleN={frees[-1]} '
               f'delta={frees[-1] - frees[0]:+d} still_falling={falling}')
     else:

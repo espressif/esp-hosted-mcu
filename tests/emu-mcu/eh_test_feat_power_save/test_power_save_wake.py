@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """Combined host power-save wake regression (sdio + uart): an external packet wakes
 the host via the CP, repeated back-to-back for CYCLES iterations, checking each wake
 completes reliably AND the coprocessor's heap stays stable across the bus deinit→reinit
@@ -30,6 +32,10 @@ CYCLES = int(os.environ.get('EH_PS_WAKE_CYCLES', '30'))
 # Per-cycle heap noise tolerance (fragmentation / cache). A real leak accrues far
 # more than this over CYCLES; a stable path stays within it.
 LEAK_EPS = 2048
+# Wall time the host must stay in deep sleep before the wake packet: a host that
+# reboots on its own (no CP wake GPIO) shows its boot line inside this window.
+HOLD_S = 1.5
+BOOT = r'rst:0x'
 
 
 # allow_fail is GONE from both cells, deliberately. It used to blame "shared-box CPU
@@ -119,6 +125,7 @@ def test_power_save_wake_mem(emu_bench, transport):
         if not r.ok:
             failures.append(f'GOT_IP: {r.matched}')
 
+    cp_boots = len(re.findall(BOOT, getattr(cp, '_buf', '')))
     for i in range(0 if failures else CYCLES):
         # host → deep sleep, CP → light sleep (+ bus unload)
         host.write('host_power_save')
@@ -126,9 +133,21 @@ def test_power_save_wake_mem(emu_bench, transport):
         if not r.ok:
             failures.append(f'cycle {i}: CP light-sleep: {r.matched}')
             break
+        r = eh_test_expect(host, r'deep-sleep wakeup armed', fail=PS_FAIL, timeout=30)
+        if not r.ok:
+            failures.append(f'cycle {i}: host deep-sleep entry: {r.matched}')
+            break
+        # The host must stay asleep until the CP wakes it.
+        if eh_test_expect(host, BOOT, timeout=HOLD_S).ok:
+            failures.append(f'cycle {i}: host left deep sleep before the wake packet')
+            break
 
-        # external packet wakes the host via the CP
+        # external packet wakes the host via the CP's wake GPIO
         net.wake()
+        r = eh_test_expect(host, r'rst:0x5 \(PMU_SYS_PWR_DOWN_RESET\)', fail=PS_FAIL, timeout=60)
+        if not r.ok:
+            failures.append(f'cycle {i}: host deep-sleep reset after wake: {r.matched}')
+            break
         r = eh_test_expect(host, r'Host woke up from power save', fail=PS_FAIL, timeout=60)
         if not r.ok:
             failures.append(f'cycle {i}: host wake: {r.matched}')
@@ -146,6 +165,10 @@ def test_power_save_wake_mem(emu_bench, transport):
         r = eh_test_expect(host, r'Returned from app_main', fail=PS_FAIL, timeout=45)
         if not r.ok:
             failures.append(f'cycle {i}: host boot complete after wake: {r.matched}')
+            break
+        # The CP light-sleeps through the cycle; a boot line means it was reset.
+        if len(re.findall(BOOT, getattr(cp, '_buf', ''))) != cp_boots:
+            failures.append(f'cycle {i}: CP rebooted during the host sleep/wake')
             break
 
     # CP heap. Sampled from [mem:ps_cycle], which the example logs once per cycle

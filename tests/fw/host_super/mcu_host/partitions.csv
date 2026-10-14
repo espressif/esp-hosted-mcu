@@ -1,0 +1,5 @@
+# Name,   Type, SubType, Offset,  Size
+nvs,      data, nvs,     ,        24K,
+phy_init, data, phy,     ,        4K,
+factory,  app,  factory, 0x20000, 3M,
+storage,  data, littlefs, 0x320000, 0x1E0000,
