@@ -966,9 +966,10 @@ def cmd_set_esp_emu(args) -> int:
 
 TESTVENV  = DEPS_DIR / "testvenv"
 TEST_PKGS = ["pytest", "pytest-xdist", "pytest-rerunfailures", "pytest-timeout",
-             "pyserial", "bumble"]
+             "pyserial", "bumble", "littlefs-python==0.15.0"]
 # (flaky-HW retry via `eh.py test hw --reruns N`; xdist for `--jobs N`;
-#  pytest-timeout for the overall per-test cap; pyserial for the HW SerialDut)
+#  pytest-timeout for the overall per-test cap; pyserial for the HW SerialDut;
+#  littlefs-python (joltwallet/littlefs's pin) for LittleFS images the bench writes)
 
 
 def _ensure_testvenv() -> Path:
@@ -1318,6 +1319,9 @@ def cmd_test(args) -> int:
     # --sequence-diagram: render a per-test text sequence diagram (mermaid + ASCII)
     # from each test's archived host/CP logs after the run. Intercept (pytest
     # wouldn't know the flag).
+    # --plan: list the images the selected tests need (count, sharing) and build nothing.
+    plan = "--plan" in rest
+    rest = [t for t in rest if t != "--plan"]
     seqdiag = False
     if "--sequence-diagram" in rest:
         rest = [t for t in rest if t != "--sequence-diagram"]; seqdiag = True
@@ -1327,11 +1331,10 @@ def cmd_test(args) -> int:
     auto_apply_patches = os.environ.get("EH_AUTO_APPLY_IDF_PATCHES", "").lower() in ("1", "true", "yes")
     if "--auto-apply-idf-patches" in rest:
         rest = [t for t in rest if t != "--auto-apply-idf-patches"]; auto_apply_patches = True
-    # --prewarm: opt in to the two-phase build-all-then-run (see Phase 1 below).
-    # Off by default; pass it (CI does) for cold-cache/parallel runs.
-    prewarm = False
-    if "--prewarm" in rest:
-        rest = [t for t in rest if t != "--prewarm"]; prewarm = True
+    # Build all firmware first, then test (Phase 1 below): a test's budget then covers
+    # the test, never a build queue. --no-prewarm opts out; --prewarm is the default.
+    prewarm = "--no-prewarm" not in rest
+    rest = [t for t in rest if t not in ("--prewarm", "--no-prewarm")]
     # Resource control, default-on when the platform offers it (F4c). A long run
     # belongs in its own cgroup: it then outlives the launching shell AND cannot
     # push the box into an OOM kill. Needs no privilege — a transient USER unit.
@@ -1542,45 +1545,59 @@ def cmd_test(args) -> int:
             except (ValueError, RuntimeError) as e:
                 sys.stderr.write(f"{_RED}eh:{_RESET} {e}\n"); return 1
 
+    def _record_plan(plan_file):
+        """Run the selection in plan mode: record every firmware request, build nothing."""
+        prc = subprocess.call([str(py), "-m", "pytest", "-c", str(tests_root / "pytest.ini"), "-q",
+                               "-p", "no:cacheprovider", "-o", "log_cli=false", *targets, *rest],
+                              cwd=str(tests_root), env=dict(env, EH_PLAN=str(plan_file)),
+                              stdout=subprocess.DEVNULL)
+        if prc not in (0, 5):   # 5 = no tests ran; anything else would undercount
+            sys.stderr.write(f"{_RED}eh:{_RESET} plan: pytest rc={prc} (collection or "
+                             f"test errors), image list incomplete\n")
+            return prc
+        if not plan_file.is_file():
+            sys.stderr.write(f"{_RED}eh:{_RESET} plan recorded no firmware requests\n")
+            return 1
+        return 0
+
+    if plan:
+        plan_file = run_dir / "plan.jsonl"
+        prc = _record_plan(plan_file)
+        if prc:
+            return prc
+        sys.path.insert(0, str(tests_root))
+        from infra import plan as _plan
+        _plan.summarize(str(plan_file), print)
+        print(f"{_DIM}eh: plan record: {plan_file}{_RESET}")
+        return 0
+
     # ── Phase 1: prewarm build (emu only) ───────────────────────────────────
     # Cold-cache firmware builds run all-cores ninja; overlapping them with the
     # emu run starves the latency-sensitive emu guest clocks (esp. the slow uart
     # CP) -> spurious timeouts (the `rm -rf .work`/CI failure mode). So build
-    # EVERY firmware the run needs FIRST with emus disabled (targets skip launch
-    # under EH_PREWARM), then run below on a warm cache with no compilers
+    # EVERY firmware the run needs FIRST with emus disabled (infra.prewarm, from
+    # the plan of this selection), then run below on a warm cache with no compilers
     # competing. ccache keeps repeat builds cheap; a build failure just surfaces
-    # in the real run below. Opt-in via --prewarm (CI passes it); a warm-cache
-    # local run doesn't need it.
+    # in the real run below. Default on (--no-prewarm skips it); on a warm cache
+    # every item is a fast cache hit.
     prewarm_secs = 0.0
-    if env["EH_SUBSTRATE"] == "emu" and xdist and prewarm:
+    if env["EH_SUBSTRATE"] == "emu" and prewarm:
         pre_env = env.copy()
-        pre_env["EH_PREWARM"] = "1"
         pre_env["EH_RUN_DIR"] = str(run_dir / "prewarm")
-        # Size via caps.build_pool (concurrent BUILDS, not cores) — not the emu pool.
-        buildpool = _caps().build_pool()
-        # Build must NOT run under the 900s per-test cap (a cold BT build alone nears
-        # it; cp+host is two). Give this phase its own budget from EH_BUILD_TIMEOUT
-        # (per-firmware) and size the stall watchdog above it, in pre_env so the
-        # external watchdog can't killpg a legitimately-slow build mid-compile.
-        build_budget = float(os.environ.get("EH_BUILD_TIMEOUT") or 1800)
-        prewarm_cap = build_budget * 2 + 300     # cp+host cold builds per prewarm item
-        pre_env["EH_STALL_TIMEOUT"] = str(prewarm_cap + 300)
-        pre_xdist = ["-n", str(buildpool), "--dist", "load",
-                     "--max-worker-restart", str(2 * buildpool)]
-        # Inject --timeout BEFORE *rest so a user-set --timeout still wins; else this
-        # overrides pytest.ini's 900s for the build phase only.
-        pre_cmd = [str(py), "-m", "pytest", "-c", str(tests_root / "pytest.ini"),
-                   *pre_xdist, "-q", "-o", "log_cli=false",
-                   f"--timeout={prewarm_cap:.0f}", *targets, *rest]
-        print(f"{_DIM}eh: prewarm — building all firmware (emus off, {buildpool}-way, "
-              f"no per-test cap) before the run{_RESET}")
+        (run_dir / "prewarm").mkdir(parents=True, exist_ok=True)
+        # Each unique image once, from the plan of this same selection; builds run
+        # under EH_BUILD_TIMEOUT per firmware, never under the per-test cap.
+        print(f"{_DIM}eh: prewarm — building each firmware once (emus off) before the run{_RESET}")
         _pt = time.time()
-        pre_rc = _supervise(pre_cmd, str(tests_root), pre_env, run_dir / "prewarm",
-                            prewarm_cap, label="prewarm")
+        plan_file = run_dir / "prewarm" / "plan.jsonl"
+        pre_rc = _record_plan(plan_file)
+        if pre_rc == 0:
+            pre_rc = subprocess.call([str(py), "-m", "infra.prewarm", str(plan_file)],
+                                     cwd=str(tests_root), env=pre_env)
         prewarm_secs = time.time() - _pt
         if pre_rc != 0:
             print(f"{_YELLOW}eh: prewarm did not complete cleanly (rc={pre_rc}); the "
-                  f"real run will build any missing firmware under its own cap{_RESET}")
+                  f"real run builds any missing firmware itself{_RESET}")
         else:
             print(f"{_DIM}eh: prewarm done ({prewarm_secs:.0f}s); emu run on warm cache{_RESET}")
 
@@ -2987,8 +3004,8 @@ def main() -> int:
                          "(default emu-mcu), then paths/node-ids, --jobs N, "
                          "--auto-apply-idf-patches (apply IDF patches to the resolved "
                          "IDF in place before the run; for CI — else an unpatched IDF "
-                         "aborts), --prewarm (build all firmware first with emus off, "
-                         "then run on a warm cache — for cold-cache/CI parallel runs), "
+                         "aborts), --no-prewarm (skip the default build-all-firmware-first "
+                         "phase; tests then build in-line), "
                          "and pytest flags (e.g. -k wake --jobs 2 --reruns 2)")
     sp.set_defaults(fn=cmd_test)
 

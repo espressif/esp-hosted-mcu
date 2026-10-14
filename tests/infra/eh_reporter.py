@@ -471,7 +471,8 @@ def record_run_history(run_dir, counts, verdict, elapsed=None, prewarm=None,
             load1 = round(os.getloadavg()[0], 1)
         except OSError:
             load1 = ""
-        idf_dir = env("IDF_PATH", "")
+        from infra import build_fw
+        idf_dir = env("IDF_PATH", "") or build_fw._idf_path_opt() or ""
         idf = _sh("git", "-C", idf_dir, "describe", "--tags") if idf_dir else ""
         emu_dir = repo / ".deps" / "esp-emu"
         emu_rev = _sh("git", "-C", str(emu_dir), "rev-parse", "--short", "HEAD") \

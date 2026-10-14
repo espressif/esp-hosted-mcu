@@ -190,16 +190,19 @@ def pytest_collection_modifyitems(config, items):
         config.hook.pytest_deselected(items=deselected)
     items[:] = keep
 
-    # Record the expected-to-run set so the reporter can tally which tests actually
-    # completed vs silently vanished (aborted worker / xdist INTERNALERROR). Written
-    # atomically; xdist workers all compute the same `keep`, so last-writer-wins is fine.
+
+def pytest_collection_finish(session):
+    """Record the expected-to-run set so the reporter can tally which tests actually
+    completed vs silently vanished (aborted worker / xdist INTERNALERROR). Here, not in
+    modifyitems: only the final items reflect -k / -m deselection. Written atomically;
+    xdist workers all see the same items, so last-writer-wins is fine."""
     _rd = os.environ.get("EH_RUN_DIR")
-    if _rd and keep:
+    if _rd and session.items:
         try:
             os.makedirs(_rd, exist_ok=True)
             _tmp = os.path.join(_rd, f".collected.{os.getpid()}.tmp")
             with open(_tmp, "w") as _fh:
-                _fh.write("".join(it.nodeid + "\n" for it in keep))
+                _fh.write("".join(it.nodeid + "\n" for it in session.items))
             os.replace(_tmp, os.path.join(_rd, "collected.txt"))
         except OSError:
             pass

@@ -25,6 +25,7 @@ import shutil
 import signal
 import socket
 import subprocess
+import threading
 import time
 import zlib
 from pathlib import Path
@@ -32,6 +33,7 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[2]
 WORK = _REPO / "tests" / ".work"
 CACHE = WORK / "cache"
+SHARED = WORK / ".shared"  # image key -> owning build dir; outside cache/ so eviction keeps it
 SOCK_DIR = WORK / "sock"
 RUNS = WORK / "runs"
 
@@ -303,6 +305,23 @@ def run_with_heartbeat(argv, timeout, **kw) -> int:
             _refresh_heartbeat()
 
 
+def live_emu_pairs() -> int:
+    """Emu pairs running right now (held emu slots), for sizing a build's -j."""
+    held = 0
+    try:
+        slots = list(_EMU_SLOTS_DIR.glob("slot*"))
+    except OSError:
+        return 0
+    for p in slots:
+        try:
+            with open(p, "a") as fh:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(fh, fcntl.LOCK_UN)
+        except OSError:
+            held += 1
+    return held
+
+
 def acquire_emu_slot(timeout=1800.0):
     """Reserve one live-emu-pair slot; blocks (polling) until one is free or `timeout`.
     Returns an open file object whose held flock IS the reservation — keep it alive for
@@ -349,37 +368,68 @@ def acquire_build_slot(timeout=1800.0):
     Returns the open file whose flock IS the reservation, or None (fail-open) so a
     slot shortage degrades to oversubscription rather than a failed run.
 
-    CALLER CONTRACT: take this BEFORE the per-config build flock. The reverse order
-    deadlocks — a config-lock holder waiting for a slot while a slot holder waits for
-    that same config lock. One global order removes the cycle."""
+    CALLER CONTRACT: take this LAST, after every flock, and never wait on a flock while
+    holding it: a slot holder waiting on a lock whose holder waits for a slot stalls
+    builds until the timeout."""
     from infra import caps
     try:
         _BUILD_SLOTS_DIR.mkdir(parents=True, exist_ok=True)
     except OSError:
         return None
+    # Arrival-order queue: only the oldest n waiters may take a free slot, so a
+    # short request cannot be starved by a stream of later ones.
+    queue = _BUILD_SLOTS_DIR / "queue"
+    try:
+        queue.mkdir(exist_ok=True)
+        ticket = queue / f"{time.time_ns():020d}-{threading.get_ident()}-{os.getpid()}"
+        ticket.touch()
+    except OSError:
+        ticket = None
     deadline = time.time() + timeout
-    while True:
-        # Re-size every poll; PSI throttles to 1 under pressure. Never below 1.
-        n = build_capacity()
-        # Throttle on EITHER pressure. Each build is a write stream, so I/O
-        # saturation — including another tenant's — must shrink us too.
-        if (caps.mem_pressure_pct() > caps.mem_pressure_limit()
-                or caps.io_pressure_pct() > caps.io_pressure_limit()):
-            n = 1
-        for i in range(n):
-            try:
-                fh = open(_BUILD_SLOTS_DIR / f"slot{i}", "w")
-            except OSError:
-                continue
-            try:
-                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                return fh
-            except OSError:
-                fh.close()
-        if time.time() >= deadline:
-            return None
-        _refresh_heartbeat()  # a legitimate build-slot wait must not look like a wedge
-        time.sleep(0.2)
+    try:
+        while True:
+            # Re-size every poll; PSI throttles to 1 under pressure. Never below 1.
+            n = build_capacity()
+            # Throttle on EITHER pressure. Each build is a write stream, so I/O
+            # saturation — including another tenant's — must shrink us too.
+            if (caps.mem_pressure_pct() > caps.mem_pressure_limit()
+                    or caps.io_pressure_pct() > caps.io_pressure_limit()):
+                n = 1
+            if ticket is None or ticket.name in _queue_head(queue, n):
+                for i in range(n):
+                    try:
+                        fh = open(_BUILD_SLOTS_DIR / f"slot{i}", "w")
+                    except OSError:
+                        continue
+                    try:
+                        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        return fh
+                    except OSError:
+                        fh.close()
+            if time.time() >= deadline:
+                return None
+            _refresh_heartbeat()  # a legitimate build-slot wait must not look like a wedge
+            time.sleep(0.2)
+    finally:
+        if ticket is not None:
+            ticket.unlink(missing_ok=True)
+
+
+def _queue_head(queue, n):
+    """Names of the n oldest tickets whose process is alive; dead ones are dropped."""
+    live = []
+    for t in sorted(os.listdir(queue)):
+        try:
+            os.kill(int(t.rsplit("-", 1)[1]), 0)
+        except ProcessLookupError:
+            (queue / t).unlink(missing_ok=True)
+            continue
+        except (ValueError, PermissionError):
+            pass
+        live.append(t)
+        if len(live) == n:
+            break
+    return live
 
 
 @contextlib.contextmanager
@@ -392,6 +442,23 @@ def build_slot(timeout=1800.0):
         yield fh
     finally:
         release_build_slot(fh)
+
+
+@contextlib.contextmanager
+def test_clock_paused():
+    """Stop the per-test timeout (pytest-timeout's SIGALRM itimer) while firmware is
+    acquired: the test cap is for the test, builds are bounded by EH_BUILD_TIMEOUT."""
+    try:
+        left = signal.getitimer(signal.ITIMER_REAL)[0]
+        if left:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+    except ValueError:  # not the main thread: no test clock to pause
+        left = 0
+    try:
+        yield
+    finally:
+        if left:
+            signal.setitimer(signal.ITIMER_REAL, left)
 
 
 def release_build_slot(fh) -> None:
@@ -436,12 +503,56 @@ def retention_days() -> float:
     return RETENTION_DEFAULT_DAYS
 
 
+LAST_USED = ".lastused"
+
+
+_IDF_CHECKED = None
+
+
+def check_idf_identity(identity: str) -> None:
+    """Build dirs are only valid for the IDF that made them: on a change, wipe them all
+    once (under a lock), then record the new identity. Checked once per process."""
+    global _IDF_CHECKED
+    if _IDF_CHECKED == identity or not identity:
+        return
+    marker = WORK / ".idf_identity"
+    (WORK / ".locks").mkdir(parents=True, exist_ok=True)
+    with open(WORK / ".locks" / "idf_identity.lock", "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        try:
+            old = marker.read_text().strip()
+        except OSError:
+            old = ""
+        if old != identity:
+            if CACHE.is_dir():
+                for d in CACHE.iterdir():
+                    shutil.rmtree(d, ignore_errors=True)
+            shutil.rmtree(SHARED, ignore_errors=True)
+            marker.write_text(identity + "\n")
+    _IDF_CHECKED = identity
+
+
+def touch_last_used(d) -> None:
+    """Stamp a cache entry as used (build or hit); retention ages entries by this."""
+    try:
+        (Path(d) / LAST_USED).touch()
+    except OSError:
+        pass
+
+
+def _last_used(d) -> float:
+    """Age key for retention: the .lastused stamp. A dir's own mtime is unreliable
+    (copytree sets it to the source tree's on every rebuild)."""
+    try:
+        return (Path(d) / LAST_USED).stat().st_mtime
+    except OSError:
+        return Path(d).stat().st_mtime
+
+
 def sweep_expired(days=None) -> int:
-    """Prune runs/ and cache/ entries whose mtime is older than `days` (default
+    """Prune runs/ and cache/ entries last used more than `days` ago (default
     retention_days()). One stat per top-level entry, so it's cheap to run at every
-    startup. Never removes the current run ($EH_RUN_DIR). A cache dir's mtime is
-    bumped on every reuse (build_fw), so 'old' means genuinely unused. Returns the
-    count removed."""
+    startup. Never removes the current run ($EH_RUN_DIR). Returns the count removed."""
     days = retention_days() if days is None else days
     if days <= 0:
         return 0
@@ -449,8 +560,6 @@ def sweep_expired(days=None) -> int:
     keep = os.environ.get("EH_RUN_DIR")
     keep = str(Path(keep)) if keep else None
     removed = 0
-    # Per-entry sweep of the reused/per-run trees (a cache dir's mtime is bumped on
-    # every build reuse, so 'old' == genuinely unused).
     for base in (RUNS, CACHE):
         if not base.is_dir():
             continue
@@ -458,7 +567,7 @@ def sweep_expired(days=None) -> int:
             if _is_live(d):
                 continue
             try:
-                if d.stat().st_mtime < cutoff:
+                if _last_used(d) < cutoff:
                     shutil.rmtree(d, ignore_errors=True)
                     removed += 1
             except OSError:
@@ -481,7 +590,8 @@ def sweep_expired(days=None) -> int:
             except OSError:
                 pass
     # Top-level strays under WORK that belong to no blessed subdir — the same age rule.
-    _blessed = {"cache", "runs", "sock", ".locks", ".emu_slots", "spawned", "adhoc"}
+    _blessed = {"cache", "runs", "sock", ".locks", ".emu_slots", "spawned", "adhoc",
+                "ccache", SHARED.name}
     if WORK.is_dir():
         for d in WORK.iterdir():
             if d.name in _blessed or _is_live(d):
@@ -733,13 +843,12 @@ def _is_live(d) -> bool:
 
 
 def _evict_lru(base, keep_newest=0, stop_when=None) -> int:
-    """Evict entries under `base` coldest-first (mtime; build_fw bumps it on every
-    cache reuse, so 'cold' means genuinely unused). Stops as soon as stop_when()
-    is satisfied. Never touches the current run."""
+    """Evict entries under `base` coldest-first (last use, as the age sweep). Stops
+    as soon as stop_when() is satisfied. Never touches the current run."""
     if not base.is_dir():
         return 0
     try:
-        entries = sorted(base.iterdir(), key=lambda d: d.stat().st_mtime)
+        entries = sorted(base.iterdir(), key=_last_used)
     except OSError:
         return 0
     if keep_newest:

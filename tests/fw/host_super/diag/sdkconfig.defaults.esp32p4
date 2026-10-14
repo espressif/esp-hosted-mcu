@@ -1,0 +1,12 @@
+# On top of mcu_host's sdkconfig.defaults (IDF appends <defaults>.<target>).
+# shut_down_cp_when_unused's own instrumentation, plus the poisoning its soak test asks for.
+CONFIG_ESP_SYSTEM_USE_FRAME_POINTER=y
+CONFIG_HEAP_TRACING_STANDALONE=y
+CONFIG_HEAP_TRACING=y
+CONFIG_HEAP_TRACING_STACK_DEPTH=10
+CONFIG_HEAP_POISONING_COMPREHENSIVE=y
+# test_api_string_limits reads a DEBUG line; the default level stays INFO unless asked.
+CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
+# rf_cert scenario; the CLI auto-inits on every bring-up, so the shut_down soak covers its deinit.
+CONFIG_ESP_HOSTED_HOST_FEAT_RF_CERT=y
+CONFIG_ESP_HOSTED_HOST_FEAT_CLI=y

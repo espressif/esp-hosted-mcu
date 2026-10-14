@@ -105,6 +105,9 @@ def _build_peer():
     IDF comes from the harness's canonical resolver (eh.conf override -> .deps ->
     $IDF_PATH; set via `eh.py set-idf-path`) — the same one every other build in
     the suite uses — never a hardcoded home-dir path."""
+    if os.environ.get("EH_PLAN"):
+        build_fw.plan_record("idf:openthread", "ot_cli", "esp32c6", ["CONFIG_OPENTHREAD_NETWORK_AUTO_START=y"])
+        return "plan.bin", "plan.elf"
     bin_ = _PEER_CACHE / "build/merged_flash.bin"
     elf = _PEER_CACHE / "build/esp_ot_cli.elf"
     idf = build_fw._idf_path_opt()
@@ -177,8 +180,9 @@ export SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.emu'
 idf.py set-target esp32c6 build
 cd build && python -m esptool --chip esp32c6 merge_bin -o merged_flash.bin @flash_args
 """
-    r = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
-                       timeout=int(os.environ.get("EH_BUILD_TIMEOUT", "1800")))
+    with lab.test_clock_paused():
+        r = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
+                           timeout=int(os.environ.get("EH_BUILD_TIMEOUT", "1800")))
     if r.returncode != 0 or not bin_.exists():
         pytest.fail(f"ot_cli peer firmware build failed (rc={r.returncode})\n"
                     f"...stdout tail:\n{r.stdout[-2000:]}\n"

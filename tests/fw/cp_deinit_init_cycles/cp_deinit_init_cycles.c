@@ -93,7 +93,6 @@ __attribute__((unused))
 static void cp_cycles_task(void *arg)
 {
 	(void)arg;
-	vTaskDelay(pdMS_TO_TICKS(8000));   /* let boot allocations settle */
 
 #if CONFIG_HEAP_TRACING
 	ESP_ERROR_CHECK(heap_trace_init_standalone(s_trace, TRACE_RECORDS));
@@ -122,10 +121,14 @@ static void cp_cycles_task(void *arg)
 				break;
 			borrowed = now;
 		}
+		multi_heap_info_t hi;
+		heap_caps_get_info(&hi, MALLOC_CAP_INTERNAL);
+		/* blocks: a free-size step with a block-count step is allocator overhead */
 		ESP_LOGI(TAG, "[cycles] cycle=%d init=%d deinit=%d bytes=%d "
-		              "recs=%u ovf=%u polls=%d free=%u",
+		              "recs=%u ovf=%u polls=%d free=%u alloc=%u blocks=%u",
 		         i, (int)r, (int)d, borrowed, recs, ovf, polls,
-		         (unsigned int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+		         (unsigned int)hi.total_free_bytes, (unsigned int)hi.total_allocated_bytes,
+		         (unsigned int)hi.free_blocks);
 	}
 
 	/* Run verdict: outstanding after the LAST deinit is what was never given
@@ -155,7 +158,19 @@ static int hosted_deinit_cmd(int argc, char *argv[])
 	return esp_hosted_deinit() == ESP_OK ? 0 : 1;
 }
 
-/* Spawn once: this runs from the feature walk, which every cycle repeats. */
+/* The test starts the cycles once the stack it tears down is live (host has its IP). */
+static int cycles_start_cmd(int argc, char *argv[])
+{
+	static bool started;
+
+	(void)argc; (void)argv;
+	if (CYCLES <= 0 || started)
+		return 1;
+	started = true;
+	return xTaskCreate(cp_cycles_task, "cp_dinit_cycles", 4096, NULL, 5, NULL) == pdPASS ? 0 : 1;
+}
+
+/* Register once: this runs from the feature walk, which every cycle repeats. */
 static esp_err_t cp_cycles_spawn(void)
 {
 	static bool spawned;
@@ -164,15 +179,14 @@ static esp_err_t cp_cycles_spawn(void)
 		return ESP_OK;
 	spawned = true;
 
-	const esp_console_cmd_t cmd = {
-		.command = "hosted-deinit",
-		.help = "TEST: call esp_hosted_deinit()",
-		.func = hosted_deinit_cmd,
+	const esp_console_cmd_t cmds[] = {
+		{ .command = "hosted-deinit", .help = "TEST: call esp_hosted_deinit()",
+		  .func = hosted_deinit_cmd },
+		{ .command = "cycles-start", .help = "TEST: run the deinit/init cycles",
+		  .func = cycles_start_cmd },
 	};
-	esp_console_cmd_register(&cmd);
-
-	if (CYCLES > 0)
-		xTaskCreate(cp_cycles_task, "cp_dinit_cycles", 4096, NULL, 5, NULL);
+	for (size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); i++)
+		esp_console_cmd_register(&cmds[i]);
 	return ESP_OK;
 }
 

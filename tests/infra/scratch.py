@@ -9,6 +9,7 @@ because build_fw reached into runner.py backwards via importlib instead of both
 importing a common module. That inversion is gone: both import this.
 """
 import hashlib
+import filecmp
 import os
 import re
 import shutil
@@ -45,16 +46,44 @@ def copy_scratch(src, dst, ign, dirs_exist_ok=False):
         skip.update(n for n in names if os.path.islink(os.path.join(d, n)))
         return skip
 
-    shutil.copytree(src, dst, ignore=_ign, dirs_exist_ok=dirs_exist_ok)
+    def _copy(s, d):
+        # Rewrite only on a content change so ninja/CMake see real edits only;
+        # idf_component.yml is owned by absolutize_overrides once it exists.
+        if os.path.exists(d) and (os.path.basename(d) == "idf_component.yml"
+                                  or filecmp.cmp(s, d, shallow=False)):
+            return d
+        return shutil.copy2(s, d)
+
+    # A path that was a symlink in an earlier staging and is real now: drop the old link,
+    # else copytree writes through it into the link's target (the source tree).
+    if dst.is_dir():
+        for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
+            for n in dirnames + filenames:
+                sp = os.path.join(dirpath, n)
+                out = dst / os.path.relpath(sp, src)
+                if not os.path.islink(sp) and out.is_symlink():
+                    out.unlink()
+        # A component removed from the source must not keep building from the scratch.
+        if (dst / "components").is_dir():
+            for c in (dst / "components").iterdir():
+                if not os.path.lexists(src / "components" / c.name):
+                    if c.is_symlink() or not c.is_dir():
+                        c.unlink()
+                    else:
+                        shutil.rmtree(c)
+    shutil.copytree(src, dst, ignore=_ign, dirs_exist_ok=dirs_exist_ok, copy_function=_copy)
     for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
         for n in dirnames + filenames:
             sp = os.path.join(dirpath, n)
             if os.path.islink(sp):
                 out = dst / os.path.relpath(sp, src)
+                target = os.path.realpath(sp)
+                if out.is_symlink() and os.readlink(out) == target:
+                    continue
                 out.parent.mkdir(parents=True, exist_ok=True)
                 if out.is_symlink() or out.exists():
                     out.unlink()
-                os.symlink(os.path.realpath(sp), out)
+                os.symlink(target, out)
 
 
 _OVERRIDE_RE = re.compile(
@@ -96,43 +125,12 @@ def absolutize_overrides(src, proj):
                 return ''  # provided in place by a components/<name> symlink → drop
             return f'{m.group(1)}override_path: "{target}"\n'
 
-        text = yml_dst.read_text()
-        new = _OVERRIDE_RE.sub(fix, text)
-        if new != text:
+        new = _OVERRIDE_RE.sub(fix, yml_src.read_text())
+        if yml_dst.read_text() != new:
             yml_dst.write_text(new)
 
 
 def cow_flash(merged, dst_dir):
-    """Per-run writable flash image (COW level 2). reflink where the fs supports it
-    (btrfs/xfs: instant, zero extra disk), else a plain copy. The cached base is
-    never written to, so runs are isolated and reproducible. The dest name is
-    derived from the source so distinct images (e.g. cp vs host) never collide in
-    the same dir."""
-    src = Path(merged)
-    # F3 disk floor: reflink is a btrfs/xfs fast-path — on ext4 `cp --reflink=auto`
-    # silently degrades to a full physical copy, so this IS a byte consumer. The
-    # 2026-10-04 run died exactly here (OSError ENOSPC in copyfile).
-    lab.ensure_free(f"flash copy {src.name}")
-    Path(dst_dir).mkdir(parents=True, exist_ok=True)
-    tag = hashlib.sha1(str(src.resolve()).encode()).hexdigest()[:8]
-    dst = Path(dst_dir) / f"flash_{tag}.bin"
-    # reflink is a Linux (btrfs/xfs) fast-path; `cp --reflink` doesn't exist on
-    # macOS `cp` (errors out). Try it, fall back to a portable copy everywhere else.
-    try:
-        subprocess.run(["cp", "--reflink=auto", merged, str(dst)],
-                       check=True, capture_output=True)
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        err = getattr(e, "stderr", b"") or b""
-        if lab.is_enospc(err.decode(errors="replace") if isinstance(err, bytes) else f"{err}"):
-            msg = f"ENOSPC copying flash image {src.name} → {dst_dir}"
-            lab.note_disk_failure(msg)
-            raise lab.DiskExhausted(msg)
-        try:
-            shutil.copyfile(merged, str(dst))
-        except OSError as oe:
-            if not lab.is_enospc(oe):
-                raise
-            msg = f"ENOSPC copying flash image {src.name} → {dst_dir}"
-            lab.note_disk_failure(msg)
-            raise lab.DiskExhausted(msg) from oe
-    return str(dst)
+    """The flash image to boot, read in place: esp-emu reads the file into RAM and
+    writes it back only with --save-state, which the harness never passes."""
+    return str(merged)

@@ -12,13 +12,17 @@ Principle (see .meta2/changes/eh-testlab-framework/execution-model.md §2):
 Cheap and reused across the whole run; safe to call concurrently for distinct keys.
 """
 import fcntl
+import contextlib
 import functools
 import hashlib
 import importlib.util
+import json
 import logging
 import os
 import shutil
 import subprocess
+import sys
+import threading
 import time
 from pathlib import Path
 
@@ -65,6 +69,24 @@ def _idf_path_opt():
         return _idf_path()
     except RuntimeError:
         return None
+
+
+@functools.lru_cache(maxsize=None)
+def idf_identity() -> str:
+    """IDF commit + applied tools/idf_patches + path; no tree scan, so it is stable on a
+    cold disk. A change wipes every build dir (lab.check_idf_identity)."""
+    p = _idf_path_opt()
+    if not p:
+        return ""
+    try:
+        head = subprocess.run(["git", "-C", p, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, timeout=30).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        head = "unknown"
+    h = hashlib.sha1()
+    for f in sorted((_REPO / "tools" / "idf_patches").glob("*.patch")):
+        h.update(f.read_bytes())
+    return f"{head}+{h.hexdigest()[:12]}@{p}"
 
 
 @functools.lru_cache(maxsize=None)
@@ -150,6 +172,7 @@ def _fingerprints(example_rel: str, role: str, target: str, overlay, inject=None
     seed = "|".join([example_rel, role, target]).encode()
     hs.update(seed)
     hc.update(seed + b"|" + "|".join(sorted(overlay or [])).encode())
+    hc.update(f"|idf:{idf_identity()}".encode())  # an IDF switch must not reuse a stale image
     for dest, srcpath in sorted((inject or {}).items()):
         try:
             st = os.stat(srcpath)
@@ -175,205 +198,381 @@ def _fingerprints(example_rel: str, role: str, target: str, overlay, inject=None
     return hs.hexdigest(), hc.hexdigest()
 
 
-def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -> dict:
-    """Build (or reuse from cache) firmware for examples/<example_rel>/<role> at
-    <target>, with optional sdkconfig <overlay> lines. Returns
-    {'merged', 'elf', 'dir'}. Cache hit needs BOTH a matching config (same
-    example/role/target/overlay => same scratch dir) AND a matching source
-    fingerprint — so a source edit rebuilds (incrementally) instead of silently
-    reusing a stale binary. A different overlay => a new binary; base untouched.
+def _defaults_hash(workdir: Path) -> str:
+    """Content of every sdkconfig.defaults* + the overlay: IDF does not re-read them once
+    sdkconfig exists, so a change here (only here) forces a fresh sdkconfig."""
+    h = hashlib.sha1()
+    for f in sorted(workdir.glob("sdkconfig.defaults*")) + [workdir / ".ovl.defaults"]:
+        if f.is_file():
+            h.update(f.name.encode() + b"\0" + f.read_bytes() + b"\0")
+    return h.hexdigest()
 
-    `inject` = {dest_rel: abs_src_file}: files staged into the COW build copy
-    after the source copy (e.g. a CP app image dropped into the host's LittleFS
-    OTA source dir). Sandbox-safe — writes land only under the cache copy — and
-    fold into the cache key so a changed injected file rebuilds."""
-    overlay = list(overlay or [])
+
+def _image_key(app: str, target: str, workdir: Path, inject: dict) -> str:
+    """Identity of the image a configured build dir will produce: the app, its resolved
+    sdkconfig (comments dropped), its top CMakeLists (scratch injections) and staged files."""
+    h = hashlib.sha1(f"{app}|{target}".encode())
+    cfg = (workdir / "sdkconfig").read_text(errors="replace").splitlines()
+    h.update("\n".join(l for l in cfg if l and not l.startswith("#")).encode())
+    h.update((workdir / "CMakeLists.txt").read_bytes())
+    for dest in sorted(inject):
+        h.update(dest.encode() + (workdir / dest).read_bytes())
+    return h.hexdigest()
+
+
+_SHARED = lab.SHARED
+
+# Dry run with no real work. IDF's bootloader is an ExternalProject with BUILD_ALWAYS, so
+# its steps (and the app size check) always show up, as does the output-less SDIO cap
+# check; anything else is real work.
+_NOOP_CHECK = ("ninja -C build -n all | grep -E '^\\[[0-9]+/[0-9]+\\]' "
+               "| grep -vE \"bootloader|check_sizes.py|check_sdio_cap\" | grep -q . && exit 1 || exit 0")
+
+
+def _write_if_changed(path: Path, data: bytes) -> None:
+    if not (path.is_file() and path.read_bytes() == data):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+
+@contextlib.contextmanager
+def _flock(name: str):
+    (_WORK / ".locks").mkdir(parents=True, exist_ok=True)
+    with open(_WORK / ".locks" / f"{name}.lock", "w") as lk:
+        lab.flock_with_heartbeat(lk)
+        yield
+
+
+def _note(label: str, msg: str) -> None:
+    """One line per build decision, also kept in the run dir so a run can be audited."""
+    _log.info("[build] %s — %s", label, msg)
+    run = os.environ.get("EH_RUN_DIR")
+    if run:
+        try:
+            with open(os.path.join(run, "builds.log"), "a") as f:
+                f.write(f"{time.strftime('%H:%M:%S')} {label} — {msg}\n")
+        except OSError:
+            pass
+
+
+def _owner_of(key: str, workdir: Path, key_of):
+    """(dir, proj) of another built dir producing image `key`, else None."""
+    try:
+        owner, owner_proj = (_SHARED / key).read_text().split()
+        owner = Path(owner)
+        if (owner != workdir and (owner / "build" / "merged_flash.bin").is_file()
+                and key_of(owner) == key):
+            return owner, Path(owner_proj)
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def _register(key: str, workdir: Path, proj: Path) -> None:
+    _SHARED.mkdir(parents=True, exist_ok=True)
+    tmp = _SHARED / f".{key}.{os.getpid()}.{threading.get_ident()}"
+    tmp.write_text(f"{workdir} {proj}\n")
+    os.replace(tmp, _SHARED / key)
+
+
+def _drop_defaulted(example_rel: str, role: str, target: str, overlay) -> list:
+    """Sorted overlay minus lines the app's own sdkconfig.defaults[.<target>] already set to
+    the same value: such a request is the plain image and must not get its own."""
+    src = _REPO / "examples" / example_rel / role
+    eff = {}
+    for f in (src / "sdkconfig.defaults", src / f"sdkconfig.defaults.{target}"):
+        if f.is_file():
+            for line in f.read_text().splitlines():
+                if line.startswith("CONFIG_") and "=" in line:
+                    k, v = line.split("=", 1)
+                    eff[k] = v.strip()
+    keep = set()
+    for o in overlay or []:
+        k, _, v = o.partition("=")
+        if eff.get(k) != v.strip():
+            keep.add(o)
+    return sorted(keep)  # order/duplicates do not make a new image
+
+
+def plan_record(example_rel: str, role: str, target: str, overlay, inject=None) -> dict:
+    """Plan mode (EH_PLAN): note the image a test asks for instead of building it."""
+    inject = {k: str(v) for k, v in (inject or {}).items()}
+    rec = {"app": f"{example_rel}/{role}", "example": example_rel, "role": role,
+           "target": target, "overlay": sorted(overlay or []), "inject": sorted(inject),
+           "inject_src": inject, "test": os.environ.get("PYTEST_CURRENT_TEST", "")}
+    with open(os.environ["EH_PLAN"], "a") as f:
+        f.write(json.dumps(rec) + "\n")
+    return {"merged": "", "elf": "plan.elf", "bin": None, "dir": "", "build_log": ""}
+
+
+def _result(workdir: Path, build_log: Path) -> dict:
+    return {"merged": str(workdir / "build" / "merged_flash.bin"),
+            "elf": str(next(workdir.glob("build/*.elf"))), "bin": None,
+            "dir": str(workdir), "build_log": str(build_log)}
+
+
+def _build_shared(owner: Path, owner_proj: Path, key: str, stage, key_of, alias_proj: Path,
+                  label: str, _run_in) -> dict:
+    """Serve a request from another dir producing the identical image: stage this request's
+    sources into it and let ninja bring it up to date. None once the two images differ."""
+    with _flock(owner_proj.name):
+        stage(owner, owner_proj)
+        if key_of(owner) != key:
+            return None
+        log = owner / "build.log"
+        if _run_in(_NOOP_CHECK, owner / ".noop.log", cwd=owner) != 0:
+            with lab.build_slot():
+                jobs = caps.build_jobs(lab.build_capacity(), lab.live_emu_pairs())
+                if _run_in(f'ninja -C build -j {jobs} all && idf.py merge-bin -o merged_flash.bin',
+                           log, cwd=owner) != 0:
+                    raise RuntimeError(f"firmware build failed: {label} (shared {owner}) — see {log}")
+            if key_of(owner) != key:   # a Kconfig/CMake edit regenerated its sdkconfig
+                return None
+        lab.touch_last_used(owner_proj)
+        lab.touch_last_used(alias_proj)
+        return _result(owner, log)
+
+
+def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -> dict:
+    with lab.test_clock_paused():
+        return _build(example_rel, role, target, overlay, inject)
+
+
+def _build(example_rel: str, role: str, target: str, overlay=None, inject=None) -> dict:
+    """Build firmware for examples/<example_rel>/<role> at <target> (+ sdkconfig
+    <overlay> lines) in a persistent per-config dir, and let ninja decide what to
+    rebuild: unchanged inputs = no-op, an edit = only what compiles it. Returns
+    {'merged', 'elf', 'dir', 'build_log'} pointing into the build dir (read in place).
+    A request whose resolved image another dir already produces is served from that dir.
+
+    Lock order: per-config lock, then image-key lock, then a build slot last; nothing
+    waits on a lock while holding a slot.
+
+    `inject` = {dest_rel: abs_src_file}: files staged into the build copy (e.g. a CP app
+    image in the host's LittleFS OTA dir); part of the config key."""
+    overlay = _drop_defaulted(example_rel, role, target, overlay)
     inject = dict(inject or {})
+    if os.environ.get("EH_PLAN"):
+        return plan_record(example_rel, role, target, overlay, inject)
     src = _REPO / "examples" / example_rel / role
     if not (src / "CMakeLists.txt").is_file():
         raise FileNotFoundError(f"no such example role: {src}")
+    lab.check_idf_identity(idf_identity())
     key = _config_hash(example_rel, role, target, overlay, inject)
-    proj = _CACHE / f"{example_rel.replace('/', '__')}__{role}__{key}"
+    proj = _CACHE / f"{example_rel.replace('../', '').replace('/', '__')}__{role}__{key}"
     common_src = _REPO / "examples" / example_rel / "common"
     has_common = common_src.is_dir()
     # A sibling common/ shared across roles needs a nested scratch (proj/<role>
-    # + proj/common) so the role CMake's ../../common resolves in the COW copy
-    # exactly as in-tree; without common/, the role dir IS the scratch (flat).
+    # + proj/common) so the role CMake's ../../common resolves in the copy exactly as
+    # in-tree; without common/, the role dir IS the scratch (flat).
     workdir = (proj / role) if has_common else proj
     merged = workdir / "build" / "merged_flash.bin"
-    srcfp_file = proj / ".srcfp"
-    cfgfp_file = proj / ".cfgfp"
-    src_fp, cfg_fp = _fingerprints(example_rel, role, target, overlay, inject)
+    build_log = workdir / "build.log"
+    hash_file = proj / ".defaults_hash"
+    alias = proj / ".alias"
+    app = f"{example_rel}/{role}"
+    label = (f"{app} [{target}]" + (f" overlay={'+'.join(overlay)}" if overlay else ""))
 
-    def _hit():
-        elf = next(workdir.glob("build/*.elf"), None) if workdir.exists() else None
-        if (merged.is_file() and elf and srcfp_file.is_file() and cfgfp_file.is_file()
-                and srcfp_file.read_text().strip() == src_fp
-                and cfgfp_file.read_text().strip() == cfg_fp):
-            try:
-                os.utime(proj)  # mark last-used so retention keeps active caches
-            except OSError:
-                pass
-            return {"merged": str(merged), "elf": str(elf), "bin": None,
-                    "dir": str(workdir), "build_log": str(workdir / "build.log")}
-        return None
-
-    hit = _hit()
-    if hit:
-        _log.info("[build] %s/%s [%s]%s — cache hit", example_rel, role, target,
-                  f" overlay={'+'.join(overlay)}" if overlay else "")
-        return hit
-
-    # Per-config lock: parallel workers (--jobs N) or prebuild threads that need
-    # the SAME config serialize here — one builds, the rest wait then reuse — so
-    # a shared scratch build is never corrupted. Distinct configs build freely.
-    locks = _WORK / ".locks"
-    locks.mkdir(parents=True, exist_ok=True)
-    # F4: global build-concurrency slot, taken BEFORE the per-config lock (reverse
-    # order deadlocks). Only a real build takes one — a cache hit returned above pays
-    # nothing. Bounds build memory across prewarm AND the run phase.
-    with lab.build_slot(), open(locks / f"{proj.name}.lock", "w") as lk:
-        lab.flock_with_heartbeat(lk)
-        # re-check under the lock: another worker may have finished while we waited
-        hit = _hit()
-        if hit:
-            return hit
-
-        # COW level 1: build in an isolated scratch copy so the example stays a
-        # read-only input; absolutise override_paths so the copy still points at
-        # the in-repo components. Rebuild action depends on WHAT changed:
-        #  - config changed (or fresh) → `set-target` re-reads SDKCONFIG_DEFAULTS
-        #    and does a clean reconfigure (a new Kconfig feat must actually
-        #    compile in — `idf.py build` alone won't re-read defaults).
-        #  - source only → refresh the copied sources and `idf.py build`
-        #    INCREMENTALLY; component trees compile live via override_paths.
+    def stage(wd: Path, pj: Path) -> None:
+        # Refresh the copy: only changed files are rewritten, so mtimes stay put and
+        # ninja sees exactly what changed. Never the overlay: it is per config.
         ignore = scratch.ignore()
-        fresh = not workdir.exists()
-        cfg_changed = fresh or not cfgfp_file.is_file() or \
-            cfgfp_file.read_text().strip() != cfg_fp
-        if fresh:
-            workdir.parent.mkdir(parents=True, exist_ok=True)
-            scratch.copy_scratch(src, workdir, ignore)
-        else:
-            scratch.copy_scratch(src, workdir, ignore, dirs_exist_ok=True)
+        wd.parent.mkdir(parents=True, exist_ok=True)
+        scratch.copy_scratch(src, wd, ignore, dirs_exist_ok=True)
         if has_common:
-            scratch.copy_scratch(common_src, proj / "common", ignore, dirs_exist_ok=True)
-        # Stage injected files into the COW copy (idempotent — re-applied each build,
-        # since an incremental copytree of `src` never carries them). Sandbox-safe.
+            scratch.copy_scratch(common_src, pj / "common", ignore, dirs_exist_ok=True)
         for dest, srcpath in inject.items():
-            d = workdir / dest
-            d.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(srcpath, d)
-        scratch.absolutize_overrides(src, workdir)
-        # gcov variant: instrument the SCRATCH copy only (never the real example).
-        # Re-applied every build because an incremental copytree restores the
-        # pristine CMakeLists; the inject is idempotent (marker-guarded).
+            _write_if_changed(wd / dest, Path(srcpath).read_bytes())
+        # Fixed app version: else IDF stamps `git describe` and every commit relinks every image.
+        _write_if_changed(wd / "version.txt", b"eh-test\n")
+        scratch.absolutize_overrides(src, wd)
         if _GCOV_SENTINEL in overlay:
-            _inject_gcov_instrument(workdir / "CMakeLists.txt")
+            _inject_gcov_instrument(wd / "CMakeLists.txt")
+
+    def key_of(wd: Path) -> str:
+        return _image_key(app, target, wd, inject)
+
+    with _flock(proj.name):
+        stage(workdir, proj)
         defaults = "sdkconfig.defaults"
         if overlay:
-            (workdir / ".ovl.defaults").write_text("\n".join(overlay) + "\n")
+            _write_if_changed(workdir / ".ovl.defaults", ("\n".join(overlay) + "\n").encode())
             defaults = "sdkconfig.defaults;.ovl.defaults"
+        dhash = _defaults_hash(workdir)
+        has_build = (workdir / "build" / "build.ninja").is_file()
+        configured = has_build and hash_file.is_file() and hash_file.read_text().strip() == dhash
         bt = _env_float("EH_BUILD_TIMEOUT", 1800)  # per-firmware build-phase cap
-        build_log = workdir / "build.log"          # tee'd; the run report links here
-        lab.ensure_free(f"build {example_rel}/{role} [{target}]")  # F3 disk floor
+        idf = _idf_path()
+        home = Path.home()
 
-        def _run_build(clean):
-            """One build pass. clean=True → drop the (possibly wedged) build/ and
-            reconfigure from defaults via set-target; clean=False → incremental
-            `idf.py build`. Returns the subprocess rc (raises only on the timeout cap)."""
-            if clean:
-                # A build interrupted mid-flight (Ctrl-C, OOM, kill) — or one
-                # configured under a different IDF python-env — leaves a build/ that
-                # `set-target`'s fullclean REFUSES to delete; drop it ourselves so the
-                # reconfigure self-heals.
-                shutil.rmtree(workdir / "build", ignore_errors=True)
-                cmd = (f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" '
-                       f'set-target {target} build')
-            else:
-                cmd = 'idf.py build'  # source-only => incremental
-            idf = _idf_path()
+        def _run(cmd, logf, append=False, cwd=None):
             script = (
-                # Build in a clean IDF env: drop any Python-venv / IDF activation
-                # inherited from the caller (the test runner's own venv, or a
-                # different IDF sourced in the shell), and pin IDF_PATH to the
-                # resolved IDF so export.sh activates *that* one — not whatever
-                # was active. Otherwise idf.py runs against the wrong venv.
-                f'unset VIRTUAL_ENV IDF_PYTHON_ENV_PATH PYTHONHOME PYTHONPATH; '
+                # Clean IDF env: drop any inherited venv / IDF activation and pin
+                # IDF_PATH so export.sh activates the resolved IDF.
+                'unset VIRTUAL_ENV IDF_PYTHON_ENV_PATH PYTHONHOME PYTHONPATH; '
                 f'export IDF_PATH="{idf}"; '
                 f'. "{idf}/export.sh" >/dev/null 2>&1 || exit 90; '
-                # ccache always on: the N transport variants of an example share
-                # ~all TUs, so after the first cold build the rest (and every
-                # post-edit rebuild) are compiler-cache hits. IDF gates ccache on
-                # this env var; unset it defaults -DCCACHE_ENABLE=0.
-                f'export IDF_CCACHE_ENABLE=1; '
-                f'cd "{workdir}" || exit 91; '
-                f'{cmd} && idf.py merge-bin -o merged_flash.bin'
-            )
-            _log.info("[build] %s/%s [%s]%s — %s%s (may take minutes on a first build)…",
-                      example_rel, role, target,
-                      f" overlay={'+'.join(overlay)}" if overlay else "",
-                      "clean reconfigure" if clean else "incremental",
-                      " (fresh)" if fresh else "")
-            # Optional isolation (EH_SANDBOX; default none = identity): build needs
-            # WORK + the IDF caches read-write; net on for the toolchain fetch.
-            home = Path.home()
+                # ccache shared across build dirs of the same config: base_dir makes
+                # include paths relative; IDF's -fmacro-prefix-map embeds the dir.
+                f'export IDF_CCACHE_ENABLE=1 CCACHE_BASEDIR="{_CACHE}" CCACHE_NOHASHDIR=1 '
+                'CCACHE_IGNOREOPTIONS="-fmacro-prefix-map=*" '
+                + " ".join(f'{k}="{v}"' for k, v in caps.ccache_env().items()) + '; '
+                f'cd "{cwd or workdir}" || exit 91; {cmd}')
             argv = sandbox.wrap(["bash", "-lc", script],
-                                rw_paths=[lab.WORK, home / ".espressif", home / ".cache"],
+                                rw_paths=[lab.WORK, caps.ccache_dir(), home / ".espressif",
+                                          home / ".cache"],
                                 net=True)
-            with open(build_log, "w") as blf:
-                return lab.run_with_heartbeat(argv, bt, stdout=blf,
-                                              stderr=subprocess.STDOUT)
+            with open(logf, "a" if append else "w") as f:
+                return lab.run_with_heartbeat(argv, bt, stdout=f, stderr=subprocess.STDOUT)
 
-        t0 = time.time()
-        try:
-            rc = _run_build(clean=cfg_changed)
-            if rc != 0:
-                # One clean-rebuild retry before we give up: an incremental build over
-                # a wedged/stale scratch (classic: "project configured with a different
-                # python, run idf.py fullclean") fails, but a from-scratch reconfigure
-                # succeeds. A genuine code/config break fails the retry too → terminate
-                # rather than run tests against a broken or stale binary.
-                _log.warning("[build] %s/%s [%s] build failed — one clean-rebuild retry",
-                             example_rel, role, target)
-                rc = _run_build(clean=True)
-        except subprocess.TimeoutExpired:
-            raise RuntimeError(
-                f"build phase exceeded EH_BUILD_TIMEOUT={bt:.0f}s: "
-                f"{example_rel}/{role} [{target}] (raise it or check the build); "
-                f"log: {build_log}")
-        if rc != 0:
-            tail = ""
+        def shared(owner: Path, owner_proj: Path, k: str):
+            res = _build_shared(owner, owner_proj, k, stage, key_of, proj, label, _run)
+            if res:
+                _note(label, f"same image as {owner_proj.name}")
+            return res
+
+        if alias.is_file():
             try:
-                tail = build_log.read_text(errors="replace")[-2000:]
-            except Exception:
-                pass
-            if lab.is_enospc(tail):
-                # The filesystem filled mid-build. Attributing this to the cell that
-                # happened to be running would bookkeep a disk artifact as a product
-                # failure (2026-10-04: two ot_cli cells went RED this way).
-                msg = (f"ENOSPC during build of {example_rel}/{role} [{target}] "
-                       f"— see {build_log}")
-                lab.note_disk_failure(msg)
-                raise lab.DiskExhausted(msg)
-            if "No module named" in tail or "not spawned within an ESP-IDF" in tail:
-                raise RuntimeError(
-                    f"ESP-IDF Python env not ready for {example_rel}/{role} [{target}] "
-                    f"— idf.py couldn't import its venv packages. Finish the install "
-                    f"(./install.sh) or repair tools, then retry. See {build_log}")
-            # Inline the log tail into the exception: on CI the container is torn
-            # down after the job, so the tee'd build.log is otherwise unreachable —
-            # this puts the real compiler/cmake error in the pytest FAILURES section.
-            raise RuntimeError(f"firmware build failed (clean-rebuild retry also failed): "
-                               f"{example_rel}/{role} [{target}] — see {build_log}\n"
-                               f"----- build.log tail -----\n{tail.strip() or '(empty)'}\n"
-                               f"----- end build.log -----")
-        elf = next(workdir.glob("build/*.elf"))
-        srcfp_file.write_text(src_fp)  # re-fingerprint AFTER a good build
-        cfgfp_file.write_text(cfg_fp)
-        _log.info("[build] %s/%s [%s] — done in %.0fs", example_rel, role, target, time.time() - t0)
-        return {"merged": str(merged), "elf": str(elf), "bin": None,
-                "dir": str(workdir), "build_log": str(build_log)}
+                owner, owner_proj, k, ahash = alias.read_text().split()
+            except (OSError, ValueError):
+                ahash = None
+            if ahash == dhash and (Path(owner) / "build" / "merged_flash.bin").is_file():
+                res = shared(Path(owner), Path(owner_proj), k)
+                if res:
+                    return res
+            alias.unlink()
+
+        # No-op check without a build slot: ninja's own dry run.
+        if configured and merged.is_file():
+            if _run(_NOOP_CHECK, workdir / ".noop.log") == 0:
+                lab.touch_last_used(proj)
+                _note(label, "up to date")
+                return _result(workdir, build_log)
+
+        def compile_(mode, what=None):
+            with lab.build_slot():
+                lab.ensure_free(f"build {label}")  # F3 disk floor
+                slots, pairs = lab.build_capacity(), lab.live_emu_pairs()
+                jobs = caps.build_jobs(slots, pairs)
+                make = f'ninja -C build -j {jobs} all && idf.py merge-bin -o merged_flash.bin'
+
+                def _attempt(mode):
+                    # incremental: ninja only. reconfigure: defaults changed, so regenerate
+                    # sdkconfig in place (sdkconfig.h is rewritten only if its content
+                    # changes, so only config-dependent files recompile). fresh: first use,
+                    # or recovery of a wedged build dir.
+                    if mode == "incremental":
+                        cmd = make
+                    else:
+                        (workdir / "sdkconfig").unlink(missing_ok=True)
+                        hash_file.unlink(missing_ok=True)
+                        if mode == "fresh":
+                            shutil.rmtree(workdir / "build", ignore_errors=True)
+                            cmd = f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" set-target {target} && {make}'
+                        else:
+                            cmd = f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" reconfigure && {make}'
+                    _log.info("[build] %s — %s, jobs=%d (budget %d, %d live emu pairs, %d build slots)…",
+                              label, mode, jobs, caps.cpu_budget(), pairs, slots)
+                    return _run(cmd, build_log)
+
+                t0 = time.time()
+                try:
+                    rc = _attempt(mode)
+                    if rc != 0 and mode != "fresh":
+                        _log.warning("[build] %s — %s build failed; one fresh retry", label, mode)
+                        mode = "fresh"
+                        rc = _attempt(mode)
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError(
+                        f"build phase exceeded EH_BUILD_TIMEOUT={bt:.0f}s: {label} "
+                        f"(raise it or check the build); log: {build_log}")
+                if rc != 0:
+                    tail = ""
+                    try:
+                        tail = build_log.read_text(errors="replace")[-2000:]
+                    except Exception:
+                        pass
+                    if lab.is_enospc(tail):
+                        # A full disk mid-build is a disk failure, not this cell's.
+                        msg = f"ENOSPC during build of {label} — see {build_log}"
+                        lab.note_disk_failure(msg)
+                        raise lab.DiskExhausted(msg)
+                    if "No module named" in tail or "not spawned within an ESP-IDF" in tail:
+                        raise RuntimeError(
+                            f"ESP-IDF Python env not ready for {label} — idf.py couldn't import "
+                            f"its venv packages. Finish the install (./install.sh) or repair "
+                            f"tools, then retry. See {build_log}")
+                    # Inline the log tail: on CI the container (and build.log) is gone after.
+                    raise RuntimeError(f"firmware build failed: {label} — see {build_log}\n"
+                                       f"----- build.log tail -----\n{tail.strip() or '(empty)'}\n"
+                                       f"----- end build.log -----")
+            hash_file.write_text(dhash)
+            lab.touch_last_used(proj)
+            _register(key_of(workdir), workdir, proj)
+            _note(label, f"{what or mode} build, {time.time() - t0:.0f}s")
+            return _result(workdir, build_log)
+
+        mode = "incremental" if configured else ("reconfigure" if has_build else "fresh")
+        if mode != "fresh":
+            return compile_(mode)
+        # New dir: configure first (no slot: seconds of CMake, not a build), then
+        # either serve the request from a dir already producing that image or build it.
+        # The image-key lock makes a concurrent request for the same image wait and share.
+        shutil.rmtree(workdir / "build", ignore_errors=True)
+        (workdir / "sdkconfig").unlink(missing_ok=True)
+        hash_file.unlink(missing_ok=True)
+        rc = _run(f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" set-target {target}', build_log)
+        if rc != 0:
+            return compile_("fresh")
+        k = key_of(workdir)
+        with _flock(f"img-{k}"):
+            found = _owner_of(k, workdir, key_of)
+            if not found:
+                return compile_("incremental", "fresh")
+            alias.write_text(f"{found[0]} {found[1]} {k} {dhash}\n")
+        res = shared(*found, k)
+        if res:
+            shutil.rmtree(workdir / "build", ignore_errors=True)
+            return res
+        alias.unlink(missing_ok=True)
+        with _flock(f"img-{k}"):
+            return compile_("incremental", "fresh")
+
+
+def _partition(build: Path, label: str):
+    """(offset, size) of partition `label` from the built binary partition table."""
+    tbl = (build / "partition_table" / "partition-table.bin").read_bytes()
+    for i in range(0, len(tbl) - 31, 32):
+        if tbl[i:i + 2] != b"\xaa\x50":
+            break
+        if tbl[i + 12:i + 28].rstrip(b"\0").decode() == label:
+            return int.from_bytes(tbl[i + 4:i + 8], "little"), int.from_bytes(tbl[i + 8:i + 12], "little")
+    raise KeyError(f"no partition {label!r} in {build}")
+
+
+def flash_with_fs(fw, part, files, dst_dir):
+    """A per-bench copy of fw's flash whose LittleFS partition `part` holds `files`
+    ({name: src}), in the format joltwallet/littlefs builds (littlefs-python, test venv)."""
+    build = Path(fw["dir"]) / "build"
+    off, size = _partition(build, part)
+    src = Path(dst_dir) / f"{part}_src"
+    shutil.rmtree(src, ignore_errors=True)
+    src.mkdir(parents=True)
+    for name, f in files.items():
+        shutil.copyfile(f, src / name)
+    img = Path(dst_dir) / f"{part}.bin"
+    subprocess.run([str(Path(sys.executable).parent / "littlefs-python"), "create",
+                    str(src), str(img), f"--fs-size={size}", "--name-max=64",
+                    "--block-size=4096"], check=True, capture_output=True)
+    out = Path(dst_dir) / "host_flash.bin"
+    shutil.copyfile(fw["merged"], out)
+    with open(out, "r+b") as f:
+        end = f.seek(0, os.SEEK_END)
+        if end < off:  # merged image stops at its last flashed region; pad as erased flash
+            f.write(b"\xff" * (off - end))
+        f.seek(off)
+        f.write(img.read_bytes())
+    return str(out)
 
 
 def stash_logs(dest_dir, **named) -> None:
@@ -469,6 +668,11 @@ def _inject_gcov_instrument(cml):
 
 
 def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
+    with lab.test_clock_paused():
+        return _build_linux_host(example_rel, role, overlay)
+
+
+def _build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
     """Build (or reuse) a Linux userspace host binary (posix target) OUT-OF-TREE.
 
     The example is a read-only input: it's COW-copied to a per-config scratch
@@ -479,6 +683,8 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
     (example, role, overlay) + unchanged sources => cache hit, no rebuild.
 
     Mirrors build() (the ESP path) but drives the posix hosted build via eh.py."""
+    if os.environ.get("EH_PLAN"):
+        return plan_record(example_rel, role, "linux", overlay)
     overlay = list(overlay or [])
     target = "posix"
     src = _REPO / "examples" / example_rel / role
@@ -507,7 +713,7 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
                 and srcfp_file.read_text().strip() == src_fp
                 and cfgfp_file.read_text().strip() == cfg_fp):
             try:
-                os.utime(proj)
+                lab.touch_last_used(proj)
             except OSError:
                 pass
             return {"merged": None, "elf": None, "bin": str(b),
@@ -554,6 +760,7 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
         idf_src = f'. "{idf}/export.sh" >/dev/null 2>&1; ' if idf else ''
         script = (
             f'export EH_PATH="{_REPO}"; '
+            f'export EH_CMAKE_JOBS={caps.build_jobs(lab.build_capacity(), lab.live_emu_pairs())}; '
             f'{idf_src}'
             f'{env_overlay}'
             f'cd "{workdir}" || exit 91; '
@@ -594,6 +801,7 @@ def build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
             raise RuntimeError(f"linux host build produced no binary: {workdir}")
         srcfp_file.write_text(src_fp)
         cfgfp_file.write_text(cfg_fp)
+        lab.touch_last_used(proj)
         return {"bin": str(b), "dir": str(workdir), "build_log": str(build_log)}
 
 

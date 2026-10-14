@@ -314,7 +314,32 @@ _BUILD_SELF_PARALLELISM = 8   # cores one ninja build keeps busy on average
 # Each concurrent build is an independent write stream; 2026-10-06 measured 88-100%
 # iowait with only 1-3% user, i.e. the disk — not the CPU — was the wall. Cap the
 # streams too, not just CPU/memory. EH_BUILD_IO_STREAMS.
-BUILD_IO_STREAMS = 3
+BUILD_IO_STREAMS = 2
+BUILD_JOBS_MIN = 2            # EH_BUILD_JOBS_MIN
+
+
+def cpu_budget() -> int:
+    """CPUs the whole run may keep busy (builds + emulators). EH_CPU_BUDGET overrides."""
+    v = os.environ.get("EH_CPU_BUDGET")
+    if v and v.isdigit() and int(v) > 0:
+        return int(v)
+    return effective_cpus()
+
+
+def build_jobs(slots: int, live_pairs: int = 0) -> int:
+    """ninja -j for one firmware build, fixed when the build starts:
+    (cpu_budget - live emu pairs x EH_CPU_PER_EMU_PAIR) / build slots, clamped to
+    [EH_BUILD_JOBS_MIN, EH_BUILD_JOBS_MAX]. EH_BUILD_JOBS pins it. Keeps the sum of all
+    compile jobs within the budget instead of every ninja taking every core."""
+    v = os.environ.get("EH_BUILD_JOBS")
+    if v and v.isdigit() and int(v) > 0:
+        return int(v)
+    budget = cpu_budget()
+    per_pair = _env_float("EH_CPU_PER_EMU_PAIR", CPUS_PER_PAIR)
+    lo = int(_env_float("EH_BUILD_JOBS_MIN", BUILD_JOBS_MIN))
+    hi = int(_env_float("EH_BUILD_JOBS_MAX", budget))
+    free = budget - int(live_pairs * per_pair)
+    return max(lo, min(hi, free // max(1, slots)))
 
 
 def build_pool() -> int:
@@ -434,6 +459,8 @@ def snapshot() -> dict:
         "emu_pair_capacity": emu_pair_capacity(),
         "build_pool": build_pool(),
         "cmake_jobs": cmake_jobs(),
+        "cpu_budget": cpu_budget(),
+        "build_jobs_idle": build_jobs(build_capacity()),
         "ccache": ccache_stats(),
     }
 

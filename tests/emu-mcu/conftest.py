@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """
 ESP-Hosted Emulator Test Infrastructure — conftest.py
 
@@ -26,21 +28,6 @@ from targets.base import BenchSpec   # noqa: E402
 from targets.emu import EmuTarget    # noqa: E402
 
 _PS_EXAMPLE = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
-
-
-@pytest.fixture(scope='session', autouse=True)
-def _prebuild_ahead():
-    """Speculative: warm the build cache concurrently before tests fan out, so a
-    first run overlaps builds instead of building serially per test. Lock-guarded
-    (safe under --jobs); best-effort (lazy build in the bench is the fallback)."""
-    from infra import build_fw
-    ex = 'system/get_cp_fw_version'
-    build_fw.prebuild([
-        (ex, 'cp', 'esp32c6', []),
-        (ex, 'mcu_host', 'esp32p4', []),
-        (ex, 'cp', 'esp32c6', ['CONFIG_EH_TRANSPORT_CP_UART=y']),
-        (ex, 'mcu_host', 'esp32p4', ['CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART=y']),
-    ])
 
 
 @pytest.fixture

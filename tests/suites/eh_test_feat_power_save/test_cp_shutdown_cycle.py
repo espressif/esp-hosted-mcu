@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """CP shut-down / cold-boot cycle soak — power_save/cp/shut_down_cp_when_unused.
 
 The host holds the CP in reset when networking is idle, then cold-boots it: each
@@ -26,6 +28,9 @@ CYCLES = 10
 STEADY_FROM = 5           # ignore warm-up cycles; assert flatness from here
 LEAK_TOL_BYTES = 512      # steady-state drift budget (measured drift is 0; real leak was ~148 B/cy)
 
+# Printed by the CP core on every boot, whichever CP app runs.
+CP_READY = r"ehcp_core: ESP-Hosted core initialized"
+
 FAIL = FATAL_PATTERNS + ['CORRUPT HEAP', 'Firmware abort', 'abort()']
 
 
@@ -51,7 +56,7 @@ def test_cp_shutdown_cold_boot_cycles(bench, transport):
     host, cp = b["host"], b["cp"]
 
     # Initial cold boot + first association.
-    assert eh_test_expect(cp, r"shut_down_cp coprocessor ready", fail=FAIL, timeout=90).ok, "CP first boot"
+    assert eh_test_expect(cp, CP_READY, fail=FAIL, timeout=90).ok, "CP first boot"
     assert eh_test_expect(host, r"Got IP address", fail=FAIL, timeout=120).ok, "initial GOT_IP"
 
     free_by_cycle = {}
@@ -72,7 +77,7 @@ def test_cp_shutdown_cold_boot_cycles(bench, transport):
 
         # The CP must actually have been held in reset and cold-booted (not a no-op).
         assert eh_test_expect(host, r"Slave is down", fail=FAIL, timeout=60).ok, f"cycle {n} CP held in reset"
-        assert eh_test_expect(cp, r"shut_down_cp coprocessor ready", fail=FAIL, timeout=90).ok, f"cycle {n} CP cold-boot"
+        assert eh_test_expect(cp, CP_READY, fail=FAIL, timeout=90).ok, f"cycle {n} CP cold-boot"
 
         # Full recovery on the fresh CP: deinit/init restored everything -> IP again.
         assert eh_test_expect(host, r"Got IP address", fail=FAIL, timeout=120).ok, f"cycle {n} reconnect"
