@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* RF certification test console — a port of the ESP-IDF phy/cert_test example
  * (examples/phy/cert_test/main/cmd_phy.c, Unlicense OR CC0-1.0).
  *
@@ -708,7 +712,7 @@ static esp_err_t reg(const char *native, const char *idf, const char *help,
         .command = native, .help = help, .hint = NULL,
         .func = fn, .argtable = args,
     };
-    esp_err_t rc = esp_console_cmd_register(&n);
+    esp_err_t rc = eh_host_feat_cli_cmd_register(&n);
 
     if (rc != ESP_OK || idf == NULL) {
         return rc;
@@ -717,7 +721,7 @@ static esp_err_t reg(const char *native, const char *idf, const char *help,
         .command = idf, .help = NULL, .hint = NULL,
         .func = fn, .argtable = args,
     };
-    return esp_console_cmd_register(&a);
+    return eh_host_feat_cli_cmd_register(&a);
 }
 
 esp_err_t eh_host_feat_cli_rf_cert_register(void)
@@ -738,7 +742,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
             .command = (_cmd), .help = (_help), .hint = NULL,                \
             .func = (_fn), .argtable = (_args),                              \
         };                                                                   \
-        rc = esp_console_cmd_register(&c);                                   \
+        rc = eh_host_feat_cli_cmd_register(&c);                                   \
         if (rc != ESP_OK) {                                                  \
             return rc;                                                       \
         }                                                                    \
@@ -746,6 +750,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
 
     phy_args.enable = arg_int0(NULL, NULL, "<enable>", "enable");
     phy_args.end = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_args);
 
     REG_ONE("phy_cert_commands", "Show the commands grouped by radio, and the order a run goes in.",
         &cmd_overview, NULL);
@@ -769,12 +774,14 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
     phy_wifi_tx_args.packet_delay= arg_int0("d", "packet_delay", "<packet_delay>", "TX packet interval configuration");
     phy_wifi_tx_args.packet_num  = arg_int0("c", "packet_num"  , "<packet_num>"  , "The number of packets to send");
     phy_wifi_tx_args.end         = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_wifi_tx_args);
     REG("phy_cert_esp_tx", IDF_NAME("esp_tx"), "WiFi TX command. Attenuation is in 0.25 dB steps, so 4 gives 1 dB. Length is the PSDU in bytes, delay is in us. A packet count of 0 transmits until cmdstop.", &esp_phy_wifi_tx_func,
         &phy_wifi_tx_args);
 
     phy_wifi_rx_args.channel = arg_int0("n", "channel", "<channel>", "channel setting, 1~14");
     phy_wifi_rx_args.rate    = arg_int0("r", "rate"   , "<rate>"   , "rate setting");
     phy_wifi_rx_args.end     = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_wifi_rx_args);
     REG("phy_cert_esp_rx", IDF_NAME("esp_rx"), "WiFi RX command. Runs until cmdstop; read the counts with get_rx_result.", &esp_phy_wifi_rx_func,
         &phy_wifi_rx_args);
 
@@ -782,6 +789,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
     phy_wifiscwout_args.channel     = arg_int0("c", "channel"    , "<channel>"    , "channel setting, 1~14");
     phy_wifiscwout_args.attenuation = arg_int0("p", "attenuation", "<attenuation>", "Transmit power attenuation");
     phy_wifiscwout_args.end         = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_wifiscwout_args);
     REG("phy_cert_wifiscwout", IDF_NAME("wifiscwout"), "Wi-Fi CW TX command. Attenuation is in 0.25 dB steps, so 4 gives 1 dB.",
         &esp_phy_wifiscwout_func,
         &phy_wifiscwout_args);
@@ -792,6 +800,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
     phy_wifi_11ax_tx_set_args.ru_index  = arg_int0("i", "ru_index" , "<ru_index>" , "0~8, 37~40, 53~54, 61,\
         ru_index is only effective in HETB mode. In other modes, this parameter can be omitted or set to 0, with the default value being 0");
     phy_wifi_11ax_tx_set_args.end       = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_wifi_11ax_tx_set_args);
     REG("phy_cert_phy_11ax_tx_set", IDF_NAME("phy_11ax_tx_set"), "WiFi 11ax TX set command. Needs a coprocessor with 802.11ax. ru_index applies in HETB mode only.",
         &esp_phy_wifi_11ax_tx_set_func, &phy_wifi_11ax_tx_set_args);
 
@@ -803,6 +812,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
     phy_ble_tx_args.rate      = arg_int0("r", "rate"     , "<rate>"     , "TX rate setting,0: 1M; 1: 2M; 2: 125K; 3: 500K");
     phy_ble_tx_args.tx_num_in = arg_int0("m", "tx_num_in", "<tx_num_in>", "Number of packets to send; 0 sends continuously");
     phy_ble_tx_args.end       = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_ble_tx_args);
     REG("phy_cert_esp_ble_tx", IDF_NAME("esp_ble_tx"), "BLE TX command. Channel 0~39 is 2402 + chan*2 MHz. TX power is about (level-8)*3 dBm, so level 8 is around 0 dBm. A packet count of 0 transmits until cmdstop.", &esp_phy_ble_tx_func,
         &phy_ble_tx_args);
 #if EH_HOST_FEAT_RF_CERT_CLI_IDF_NAMES
@@ -813,6 +823,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
     phy_ble_rx_args.syncw   = arg_int0("s", "syncw"  , "<syncw>"  , "Packet identification");
     phy_ble_rx_args.rate    = arg_int0("r", "rate"   , "<rate>"   , "RX rate setting,0: 1M; 1: 2M; 2: 125K; 3: 500K");
     phy_ble_rx_args.end     = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_ble_rx_args);
     REG("phy_cert_esp_ble_rx", IDF_NAME("esp_ble_rx"), "BLE RX command. Channel 0~39 is the BLE data-channel index, where 0 is 2404 MHz and 37, 38, 39 are 2402, 2426, 2480 MHz. Read the counts with get_rx_result.", &esp_phy_ble_rx_func,
         &phy_ble_rx_args);
 #if EH_HOST_FEAT_RF_CERT_CLI_IDF_NAMES
@@ -823,6 +834,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
     phy_bt_tx_tone_args.channel     = arg_int0("n", "channel", "<channel>", "Single carrier transmission channel selection");
     phy_bt_tx_tone_args.attenuation = arg_int0("p", "power"  , "<power>"  , "CW power attenuation parameter");
     phy_bt_tx_tone_args.end         = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_bt_tx_tone_args);
     REG("phy_cert_bt_tx_tone", IDF_NAME("bt_tx_tone"), "Single carrier TX command. Channel 0~39 is 2402 + chan*2 MHz. Attenuation is in 0.25 dB steps, so 4 gives 1 dB.",
         &esp_phy_bt_tx_tone_func,
         &phy_bt_tx_tone_args);
@@ -831,6 +843,7 @@ esp_err_t eh_host_feat_cli_rf_cert_register(void)
     phy_gpio_output_set_args.gpio_number = arg_int0("n", "number", "<gpio_number>", "output gpio number");
     phy_gpio_output_set_args.gpio_level  = arg_int0("l", "level" , "<gpio_level>" , "output gpio level");
     phy_gpio_output_set_args.end         = arg_end(1);
+    EH_CLI_TRACK_ARGS(phy_gpio_output_set_args);
     REG("phy_cert_gpio_output_set", IDF_NAME("gpio_output_set"), "gpio output set command. Drives a pin on the coprocessor, through the GPIO expander.",
         &esp_phy_gpio_output_set_func, &phy_gpio_output_set_args);
 #endif

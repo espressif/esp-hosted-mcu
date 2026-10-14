@@ -434,6 +434,13 @@
 #  define EH_HOST_FEAT_MEM_MONITOR_AUTO_INIT   0
 #endif
 
+/* CLI */
+#ifdef CONFIG_ESP_HOSTED_HOST_FEAT_CLI_AUTO_INIT
+#  define EH_HOST_FEAT_CLI_AUTO_INIT           1
+#else
+#  define EH_HOST_FEAT_CLI_AUTO_INIT           0
+#endif
+
 /* POWER_SAVE */
 #ifdef CONFIG_ESP_HOSTED_HOST_FEAT_POWER_SAVE
 #  define EH_HOST_FEAT_POWER_SAVE              1
