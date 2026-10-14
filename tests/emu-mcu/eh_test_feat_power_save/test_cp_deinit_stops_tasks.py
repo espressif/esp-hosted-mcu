@@ -22,6 +22,7 @@ import os, re, sys, time
 import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
+from infra.cp_build_config import built_cp_config
 
 EXAMPLE = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
 # send_task exists only when the TX priority queues are compiled in
@@ -29,6 +30,12 @@ EXAMPLE = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
 ALWAYS = ('recv_task', 'host_reset_task')
 OPTIONAL = ('send_task',)
 FAIL = FATAL_PATTERNS + ['CORRUPT HEAP', 'Firmware abort', 'tasks still running']
+UNLOAD_KEY = 'CONFIG_ESP_HOSTED_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING'
+# The example's MAX light-sleep profile selects UNLOAD_BUS, so =n alone is
+# overridden; switch the profile off as well.
+NO_UNLOAD_OVL = ['CONFIG_ESP_HOSTED_CP_LIGHT_SLEEP_POWER_MAX=n',
+                 'CONFIG_ESP_HOSTED_CP_LIGHT_SLEEP_POWER_DISABLED=y',
+                 f'{UNLOAD_KEY}=n']
 
 
 def _task_dump(cp, tag):
@@ -48,11 +55,21 @@ def _task_dump(cp, tag):
 
 @pytest.mark.power_save
 @pytest.mark.sanity
-def test_cp_deinit_stops_every_task(emu_bench):
+@pytest.mark.parametrize('unload', [
+    pytest.param(True, id='unload_bus'),
+    # Without the bus unload the SDIO read blocks with no timeout, so only the
+    # transport's stop can release it.
+    pytest.param(False, id='no_unload_bus'),
+])
+def test_cp_deinit_stops_every_task(emu_bench, unload):
     # The hosted-deinit command lives in the test harness component the test CP
     # carries, not the product CLI. No cycles-start, so no cycle task runs.
-    b = emu_bench(EXAMPLE, 'esp_host', 'sdio', timeout='300s',
-                  cp_extra_ovl=['CONFIG_FREERTOS_USE_TRACE_FACILITY=y'])
+    ovl = ['CONFIG_FREERTOS_USE_TRACE_FACILITY=y']
+    if not unload:
+        ovl += NO_UNLOAD_OVL
+    b = emu_bench(EXAMPLE, 'esp_host', 'sdio', timeout='300s', cp_extra_ovl=ovl)
+    built = built_cp_config(b, UNLOAD_KEY) == 'y'
+    assert built == unload, f'{UNLOAD_KEY}={built} in the built CP, overlay did not take'
     host, cp = b['host'], b['cp']
 
     # Precondition 1: datapath open, and traffic has crossed it.
