@@ -54,6 +54,7 @@ esp_err_t __wrap_esp_wifi_connect(void)
 	esp_err_t ret = __real_esp_wifi_connect();
 	if (ret == ESP_ERR_WIFI_NOT_INIT || ret == ESP_ERR_WIFI_NOT_STARTED) {
 		/* WiFi not started yet — defer connect until STA_START. */
+		s_station_connecting = false;
 		s_pending_connect_on_start = true;
 		return ESP_OK;
 	}
@@ -248,7 +249,16 @@ esp_err_t eh_cp_feat_wifi_set_sta_config(wifi_interface_t iface, const wifi_conf
 		return ESP_ERR_INVALID_ARG;
 	}
 
-	if (eh_cp_feat_wifi_is_station_connecting()) {
+	if (iface == WIFI_IF_STA && esp_wifi_get_config(iface, &current_cfg) == ESP_OK) {
+		changed = (memcmp(&current_cfg, cfg, sizeof(wifi_config_t)) != 0);
+	}
+
+	/* IDF takes a config while stopped or associated, and refuses it only while
+	 * a connect is running. */
+	wifi_config_t applied = *cfg;
+	esp_err_t ret = esp_wifi_set_config(iface, &applied);
+
+	if (ret == ESP_ERR_WIFI_STATE && iface == WIFI_IF_STA) {
 		/* Kick in-flight attempt so disconnect handler applies the cached cfg. */
 		ESP_LOGW(TAG, "Caching new WiFi config SSID: %.*s",
 				sizeof(cfg->sta.ssid), (const char *)cfg->sta.ssid);
@@ -256,13 +266,7 @@ esp_err_t eh_cp_feat_wifi_set_sta_config(wifi_interface_t iface, const wifi_conf
 		eh_cp_feat_wifi_set_pending_sta_config(cfg, true);
 		return eh_cp_feat_wifi_request_disconnect(true);
 	}
-
-	if (iface == WIFI_IF_STA && esp_wifi_get_config(iface, &current_cfg) == ESP_OK) {
-		changed = (memcmp(&current_cfg, cfg, sizeof(wifi_config_t)) != 0);
-	}
-
-	wifi_config_t applied = *cfg;
-	if (esp_wifi_set_config(iface, &applied) != ESP_OK) {
+	if (ret != ESP_OK) {
 		ESP_LOGW(TAG, "failed to set wifi config, caching instead");
 		s_sta_reconnect_required = true;
 		return eh_cp_feat_wifi_set_pending_sta_config(cfg, true);
