@@ -11,10 +11,13 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "esp_event.h"
 #include "esp_rom_serial_output.h"
 #include "esp_log.h"
 #include "eh_host_core.h"
 #include "eh_host_transport_config.h"
+#include "eh_host_event.h"
 
 static const char *TAG = "eh_super";
 
@@ -28,6 +31,44 @@ static void hosted_start_task(void *arg)
 	if (eh_host_init(NULL) != 0 || eh_host_connect_to_slave() != 0)
 		ESP_LOGE(TAG, "hosted start failed");
 	vTaskDelete(NULL);
+}
+
+/* init_race: one eh_host_init() from a single context, then two tasks on different
+ * cores call eh_host_connect_to_slave() at once. One bring-up must run: one
+ * TRANSPORT_UP, both callers 0. No lock is pre-created, unlike a normal scenario. */
+static volatile int s_up_events;
+static SemaphoreHandle_t s_go, s_done;
+
+static void on_transport_up(void *a, esp_event_base_t b, int32_t id, void *d)
+{
+	s_up_events++;
+}
+
+static void race_connect(void *arg)
+{
+	xSemaphoreTake(s_go, portMAX_DELAY);
+	int rc = eh_host_connect_to_slave();
+	ESP_LOGI(TAG, "init_race: connect%d rc=%d", (int)(intptr_t)arg, rc);
+	xSemaphoreGive(s_done);
+	vTaskDelete(NULL);
+}
+
+static void init_race(void)
+{
+	s_go = xSemaphoreCreateCounting(2, 0);
+	s_done = xSemaphoreCreateCounting(2, 0);
+	ESP_ERROR_CHECK(eh_host_init(NULL));
+	esp_event_handler_register(EH_HOST_EVENT, EH_HOST_EVENT_TRANSPORT_UP, on_transport_up, NULL);
+	for (int i = 0; i < 2; i++)
+		xTaskCreatePinnedToCore(race_connect, "race", 4096, (void *)(intptr_t)i, 23, NULL,
+					i % portNUM_PROCESSORS);
+	vTaskDelay(pdMS_TO_TICKS(50));
+	xSemaphoreGive(s_go);
+	xSemaphoreGive(s_go);
+	xSemaphoreTake(s_done, portMAX_DELAY);
+	xSemaphoreTake(s_done, portMAX_DELAY);
+	vTaskDelay(pdMS_TO_TICKS(1000));
+	ESP_LOGI(TAG, "init_race: done transport_up=%d", s_up_events);
 }
 
 /* Every super host shares this table; a scenario not linked into this image is NULL. */
@@ -108,6 +149,10 @@ void app_main(void)
 			continue;
 		for (char *opt = strtok_r(NULL, " ", &save); opt; opt = strtok_r(NULL, " ", &save))
 			apply_option(opt);
+		if (strcmp(name, "init_race") == 0) {
+			init_race();
+			return;
+		}
 		for (size_t i = 0; i < sizeof(s_scenarios) / sizeof(s_scenarios[0]); i++) {
 			if (s_scenarios[i].main && strcmp(name, s_scenarios[i].name) == 0) {
 				ESP_LOGI(TAG, "scenario %s", name);

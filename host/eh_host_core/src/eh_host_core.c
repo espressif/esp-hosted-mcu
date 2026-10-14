@@ -250,6 +250,7 @@ int eh_host_init(const eh_host_init_cfg_t *cfg)
     }
 
     s_init_state = INIT_RUNNING;
+    eh_host_core_lifecycle_locks_init();   /* bring-up lock exists before INIT_DONE */
 
     /* MCU-only: Linux user-space kmod owns the bus, no shadow to seed. */
     int rc;

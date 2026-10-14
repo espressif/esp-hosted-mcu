@@ -31,6 +31,8 @@ _SCENARIO_OF = {
     ("bluetooth/esp_hosted_bluedroid/controller_mac_addr", "mcu_host"): "bluedroid:controller_mac_addr",
     # rf_cert needs the host CLI, which only the diagnostics variant starts
     ("rf_cert", "mcu_host"): "diag:rf_cert",
+    # test-only scenario of the super host itself (no example)
+    ("test/init_race", "mcu_host"): "init_race",
 }
 
 

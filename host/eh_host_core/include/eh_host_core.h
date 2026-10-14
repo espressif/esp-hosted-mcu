@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* One-call init/deinit facade over vserial + base RPC + auto-init features. */
 
 #ifndef EH_HOST_CORE_H_
@@ -24,7 +28,8 @@ typedef struct {
 } eh_host_init_cfg_t;
 
 /* cfg==NULL resolves role from compile-time vserial. On failure performs
- * reverse-order rollback. Idempotent. */
+ * reverse-order rollback. Idempotent. Call from a task/thread; make the first
+ * call from one context (later calls and connect may be concurrent). */
 int eh_host_init(const eh_host_init_cfg_t *cfg);
 
 /* Equivalent to eh_host_init({.role=LINUX_USER}). -ENOSYS on MCU builds. */
