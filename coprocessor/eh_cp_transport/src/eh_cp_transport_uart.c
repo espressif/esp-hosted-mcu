@@ -118,6 +118,7 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 static int h_uart_read(interface_handle_t *if_handle, interface_buffer_handle_t *buf_handle);
 static esp_err_t h_uart_reset(interface_handle_t *handle);
 static void h_uart_deinit(interface_handle_t *handle);
+static void h_uart_stop(interface_handle_t *handle);
 
 if_ops_t if_ops = {
 	.init = h_uart_init,
@@ -125,6 +126,7 @@ if_ops_t if_ops = {
 	.read = h_uart_read,
 	.reset = h_uart_reset,
 	.deinit = h_uart_deinit,
+	.stop = h_uart_stop,
 	.set_transfer_size = uart_set_transfer_size,
 };
 
@@ -650,6 +652,19 @@ static interface_handle_t * h_uart_init(void)
 	eh_cp_utils_log_mem_stats(TAG, "uart_init");
 
 	return &if_handle_g;
+}
+
+/* An empty frame plus its give releases the reader; read() returns 0 for it.
+ * A full queue means the semaphore already has counts, so no reader is parked. */
+static void h_uart_stop(interface_handle_t *handle)
+{
+	interface_buffer_handle_t empty = {0};
+
+	(void)handle;
+	if (!uart_rx_sem || !uart_rx_queue[PRIO_Q_SERIAL])
+		return;
+	if (xQueueSend(uart_rx_queue[PRIO_Q_SERIAL], &empty, 0) == pdTRUE)
+		xSemaphoreGive(uart_rx_sem);
 }
 
 static void h_uart_deinit(interface_handle_t * handle)
