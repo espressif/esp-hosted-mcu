@@ -149,8 +149,11 @@ static TaskHandle_t send_task_handle;
 static SemaphoreHandle_t s_sdio_tx_mtx;
 
 /* Reader/stop handshake. sdio_slave_recv() has no wake API, so stop aborts the
- * reader's blocking take and waits for RX_READER_LEFT before the driver goes. */
+ * reader's blocking take and waits for RX_READER_LEFT before the driver goes.
+ * The reader then holds until RX_STOP_DONE, so it cannot exit and free its TCB
+ * while stop may still abort it. */
 #define RX_READER_LEFT BIT0
+#define RX_STOP_DONE   BIT1
 static portMUX_TYPE rx_lock = portMUX_INITIALIZER_UNLOCKED;
 static TaskHandle_t rx_reader;           /* set while inside sdio_slave_recv() */
 static bool rx_stopping;                 /* cleared only by sdio_init */
@@ -602,6 +605,9 @@ static int sdio_read(interface_handle_t *if_handle, interface_buffer_handle_t *b
 			blk_base = NULL;
 			blk_handle = NULL;
 			xEventGroupSetBits(rx_eg, RX_READER_LEFT);
+			while (!(xEventGroupWaitBits(rx_eg, RX_STOP_DONE, pdFALSE, pdTRUE,
+						     portMAX_DELAY) & RX_STOP_DONE))
+				;   /* a late abort cuts this wait short */
 			return ESP_FAIL;
 		}
 		if (ret) {
@@ -933,7 +939,7 @@ static interface_handle_t *sdio_init(void)
 				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
 				CONFIG_ESP_HOSTED_TASK_PRIORITY_DEFAULT, &send_task_handle) == pdTRUE);
 
-	xEventGroupClearBits(rx_eg, RX_READER_LEFT);
+	xEventGroupClearBits(rx_eg, RX_READER_LEFT | RX_STOP_DONE);
 	taskENTER_CRITICAL(&rx_lock);
 	rx_stopping = false;
 	taskEXIT_CRITICAL(&rx_lock);
@@ -1006,9 +1012,10 @@ static void sdio_stop(interface_handle_t *handle)
 
 	/* The abort misses a reader that entered but has not blocked yet, so
 	 * repeat until it blocks (abort lands) or leaves on a packet. */
-	while (xTaskAbortDelay(reader) != pdPASS && rx_reader_inside())
+	while (rx_reader_inside() && xTaskAbortDelay(reader) != pdPASS)
 		vTaskDelay(1);
 	xEventGroupWaitBits(rx_eg, RX_READER_LEFT, pdFALSE, pdTRUE, portMAX_DELAY);
+	xEventGroupSetBits(rx_eg, RX_STOP_DONE);
 }
 
 static void sdio_deinit(interface_handle_t *handle)
