@@ -115,7 +115,15 @@ esp_netif_t *slave_sta_netif = NULL;
 
 SemaphoreHandle_t host_reset_sem;
 
-static bool g_eh_cp_initialized = false;
+typedef enum {
+    EH_CP_DOWN,
+    EH_CP_UP,
+    /* A datapath task outlived deinit. Its resources stay; only a deinit retry
+     * may move on from here. */
+    EH_CP_STOP_FAILED,
+} eh_cp_state_t;
+
+static eh_cp_state_t g_eh_cp_state = EH_CP_DOWN;
 
 static volatile bool g_cp_running;
 static EventGroupHandle_t g_task_exit_eg;
@@ -953,8 +961,12 @@ eh_cp_rx_cb_t eh_cp_rx_get(eh_if_type_t if_type)
 
 esp_err_t eh_cp_init_internal(void)
 {
-    if (g_eh_cp_initialized) {
+    if (g_eh_cp_state == EH_CP_UP) {
         return ESP_OK;
+    }
+    if (g_eh_cp_state == EH_CP_STOP_FAILED) {
+        ESP_LOGE(TAG, "init: previous deinit left tasks running, retry eh_cp_deinit() first");
+        return ESP_ERR_INVALID_STATE;
     }
 
     ESP_LOGI(TAG, "ESP-Hosted core init");
@@ -1050,7 +1062,7 @@ esp_err_t eh_cp_init_internal(void)
     xEventGroupSetBits(g_auto_feat_init_done_eg, EH_CP_FEAT_INIT_DONE_BIT);
 #endif
 
-    g_eh_cp_initialized = true;
+    g_eh_cp_state = EH_CP_UP;
     ESP_LOGI(TAG, "ESP-Hosted core initialized");
     return ESP_OK;
 }
@@ -1280,7 +1292,7 @@ static void deinit_core_objects(void)
 
 esp_err_t eh_cp_deinit(void)
 {
-    if (!g_eh_cp_initialized)
+    if (g_eh_cp_state == EH_CP_DOWN)
         return ESP_OK;
 
     esp_err_t ret = deinit_await_feat_init();
@@ -1288,8 +1300,10 @@ esp_err_t eh_cp_deinit(void)
         return ret;
 
     ret = deinit_stop_tasks();
-    if (ret != ESP_OK)
+    if (ret != ESP_OK) {
+        g_eh_cp_state = EH_CP_STOP_FAILED;
         return ret;
+    }
 
     eh_cp_utils_stop_debugging_tasks();
     eh_cp_deinit_transport_test_debugging_tasks();
@@ -1297,7 +1311,7 @@ esp_err_t eh_cp_deinit(void)
     deinit_transport();
     deinit_core_objects();
 
-    g_eh_cp_initialized = false;
+    g_eh_cp_state = EH_CP_DOWN;
     ESP_LOGI(TAG, "ESP-Hosted CP deinitialized successfully");
     return ESP_OK;
 }

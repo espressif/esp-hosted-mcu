@@ -30,6 +30,10 @@ esp_err_t eh_cp_init(void);
  * This function deinitializes the ESP-Hosted Co-Processor component, including
  * the RPC command registry.
  *
+ * On ESP_ERR_TIMEOUT a datapath task did not stop and nothing was released.
+ * eh_cp_init() then returns ESP_ERR_INVALID_STATE until a later
+ * eh_cp_deinit() succeeds.
+ *
  * @return ESP_OK on success, error code otherwise
  */
 esp_err_t eh_cp_deinit(void);
