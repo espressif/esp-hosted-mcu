@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* RX upcall + queue + worker; decode via proto_ops->decode_frame. */
 
 #include <inttypes.h>
@@ -44,6 +48,22 @@ void eh_rpc_rx_deinit(void)
     }
 }
 
+static void rx_worker_join(void)
+{
+    g_rx_stop_requested = true;
+    /* Wake rx_worker from its blocking receive. If the queue is full the send
+     * fails, but then the worker is not blocked and sees the flag after the
+     * item it takes. */
+    if (g_rx_q) {
+        rx_item_t wake = { 0 };
+        (void)eh_host_port_queue_send(g_rx_q, &wake, 0);
+    }
+    eh_host_port_task_join(g_rx_thread);
+    eh_host_port_task_destroy(g_rx_thread);
+    g_rx_thread = NULL;
+    g_rx_thread_running = false;
+}
+
 int eh_rpc_rx_start(void)
 {
     if (g_rx_thread_running) {
@@ -64,11 +84,7 @@ int eh_rpc_rx_start(void)
     if (c->io_ops && c->io_ops->register_rx_cb) {
         if (c->io_ops->register_rx_cb(rx_upcall, NULL, c->io_ops->ctx) != 0) {
             ESP_LOGD("eh_host_feat_rpc", "rx_start: io_ops.register_rx_cb failed");
-            g_rx_stop_requested = true;
-            eh_host_port_task_join(g_rx_thread);
-            eh_host_port_task_destroy(g_rx_thread);
-            g_rx_thread = NULL;
-            g_rx_thread_running = false;
+            rx_worker_join();
             return -1;
         }
     }
@@ -87,11 +103,7 @@ int eh_rpc_rx_stop(void)
         (void)c->io_ops->register_rx_cb(NULL, NULL, c->io_ops->ctx);
     }
 
-    g_rx_stop_requested = true;
-    eh_host_port_task_join(g_rx_thread);
-    eh_host_port_task_destroy(g_rx_thread);
-    g_rx_thread = NULL;
-    g_rx_thread_running = false;
+    rx_worker_join();
 
     if (g_rx_q) {
         rx_item_t item;
@@ -185,8 +197,9 @@ static void rx_worker(void *arg)
 
     while (!g_rx_stop_requested) {
         rx_item_t item;
-        eh_host_port_err_t r = eh_host_port_queue_receive(g_rx_q, &item, 100);
-        if (r != EH_HOST_PORT_OK) {
+        eh_host_port_err_t r = eh_host_port_queue_receive(g_rx_q, &item, EH_HOST_PORT_WAIT_FOREVER);
+        /* NULL buf is the stop wake-up; rx_upcall never queues one */
+        if (r != EH_HOST_PORT_OK || !item.buf) {
             continue;
         }
 
