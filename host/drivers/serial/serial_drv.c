@@ -17,6 +17,7 @@ struct serial_drv_handle_t {
 
 static serial_ll_handle_t * serial_ll_if_g;
 static void * readSemaphore;
+static volatile bool drv_started;
 
 
 static void rpc_rx_indication(void);
@@ -57,6 +58,13 @@ int serial_drv_write (struct serial_drv_handle_t* serial_drv_handle,
 	if (!serial_drv_handle || !buf || !in_count || !out_count) {
 		ESP_LOGE(TAG,"Invalid parameters in write\n\r");
 		return RET_INVALID;
+	}
+
+	if (!drv_started) {
+		/* buf is owned by this function once called */
+		HOSTED_FREE(buf);
+		*out_count = 0;
+		return RET_FAIL;
 	}
 
 	if( (!serial_ll_if_g) ||
@@ -107,6 +115,10 @@ uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 
 	ESP_LOGV(TAG, "Wait for serial_ll_semaphore");
 	g_h.funcs->_h_get_semaphore(readSemaphore, HOSTED_BLOCK_MAX);
+
+	if (!drv_started) {
+		return NULL;
+	}
 
 	if( (!serial_ll_if_g) ||
 		(!serial_ll_if_g->fops) ||
@@ -254,6 +266,19 @@ int rpc_platform_deinit(void)
 	}
 
 	return RET_OK;
+}
+
+void serial_drv_start(void)
+{
+	drv_started = true;
+}
+
+void serial_drv_stop(void)
+{
+	drv_started = false;
+	/* Wake a reader blocked in serial_drv_read(); it sees the flag and
+	 * returns before it waits on the empty serial_ll queue */
+	rpc_rx_indication();
 }
 
 static void rpc_rx_indication(void)

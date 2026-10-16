@@ -1,5 +1,7 @@
 # Unreleased - Main Branch
 
+- host: stop the RPC threads before `esp_hosted_deinit()` frees the queues and semaphores they wait on. This removes a heap corruption on every deinit, and a stuck lock when a thread was deleted while it held one
+
 # Releases
 
 # $${\color{green} \text{2.13.0}}$$

@@ -40,6 +40,13 @@ static void * rpc_tx_thread_hdl;
 static void * rpc_tx_sem;
 static struct rpc_lib_context rpc_lib_ctxt;
 
+/* Deleting an RPC thread at an arbitrary point can leave a lock it holds
+ * (e.g. stdout) taken forever, or unlink it from the wait list of a freed
+ * object. So on stop, each thread parks where it holds and waits on nothing,
+ * posts rpc_threads_parked, and only then is deleted. */
+static volatile bool rpc_threads_stop;
+static void * rpc_threads_parked;
+
 /* uid to link between requests and responses */
 /* uids are incrementing values from 1 onwards.
  * 0 means not a valid id */
@@ -458,6 +465,15 @@ free_buffers:
 	return RPC_ERR_PROTOBUF_DECODE;
 }
 
+/* Never returns: the thread waits here until stop_rpc_threads() deletes it */
+static void rpc_thread_park(void)
+{
+	g_h.funcs->_h_post_semaphore(rpc_threads_parked);
+	while (1) {
+		g_h.funcs->_h_sleep(1);
+	}
+}
+
 /* RPC rx thread
  * This is entry point for rpc messages received from ESP32 */
 static void rpc_rx_thread(void const *arg)
@@ -485,12 +501,21 @@ static void rpc_rx_thread(void const *arg)
 		uint8_t *buf = NULL;
 		Rpc *resp = NULL;
 
+		if (rpc_threads_stop) {
+			rpc_thread_park();
+		}
+
 		/* Block on read of protobuf encoded msg */
 		if (!is_rpc_lib_ready()) {
 			g_h.funcs->_h_sleep(1);
 			continue;
 		}
 		buf = transport_pserial_read(&buf_len);
+
+		if (rpc_threads_stop) {
+			HOSTED_FREE(buf);
+			rpc_thread_park();
+		}
 
 		if (!buf_len || !buf) {
 			ESP_LOGE(TAG, "buf_len read = 0");
@@ -546,6 +571,10 @@ static void rpc_tx_thread(void const *arg)
 	while (1) {
 		ESP_LOGV(TAG, "Loop: Wait for next RPC request");
 
+		if (rpc_threads_stop) {
+			rpc_thread_park();
+		}
+
 		/* 4.1 Block on read of protobuf encoded msg */
 		if (!is_rpc_lib_ready()) {
 			g_h.funcs->_h_sleep(1);
@@ -556,6 +585,11 @@ static void rpc_tx_thread(void const *arg)
 		ESP_LOGV(TAG, "Waiting for RPC TX semaphore");
 		g_h.funcs->_h_get_semaphore(rpc_tx_sem, HOSTED_BLOCKING);
 		ESP_LOGV(TAG, "RPC TX semaphore acquired");
+
+		/* The post may be the stop wake-up, with nothing queued */
+		if (rpc_threads_stop) {
+			rpc_thread_park();
+		}
 
 		ESP_LOGV(TAG, "Dequeueing RPC TX Q");
 		if (g_h.funcs->_h_dequeue_item(rpc_tx_q, &app_req, HOSTED_BLOCK_MAX)) {
@@ -581,6 +615,15 @@ static void rpc_tx_thread(void const *arg)
 
 static int spawn_rpc_threads(void)
 {
+	rpc_threads_stop = false;
+	rpc_threads_parked = g_h.funcs->_h_create_semaphore(2);
+	if (!rpc_threads_parked) {
+		ESP_LOGE(TAG, "Failed to create rpc threads parked semaphore");
+		return FAILURE;
+	}
+	/* _h_create_semaphore() returns it already posted once */
+	g_h.funcs->_h_get_semaphore(rpc_threads_parked, 0);
+
 	/* create new thread for rpc RX path handling */
 	rpc_rx_thread_hdl = g_h.funcs->_h_thread_create("rpc_rx", RPC_TASK_PRIO,
 			RPC_TASK_STACK_SIZE, rpc_rx_thread, NULL);
@@ -593,16 +636,35 @@ static int spawn_rpc_threads(void)
 	return SUCCESS;
 }
 
-/* cancel thread for rpc RX path handling */
-static int cancel_rpc_threads(void)
+/* stop threads for rpc RX/TX path handling */
+static int stop_rpc_threads(void)
 {
 	int ret1 = 0, ret2 =0;
 
+	if (!rpc_threads_parked)
+		return SUCCESS;
+
+	rpc_threads_stop = true;
+	if (rpc_tx_sem)
+		g_h.funcs->_h_post_semaphore(rpc_tx_sem);
+	serial_drv_stop();
+
+	/* One post per thread, in any order: delete only when both are parked */
+	if (rpc_rx_thread_hdl)
+		g_h.funcs->_h_get_semaphore(rpc_threads_parked, HOSTED_BLOCKING);
+	if (rpc_tx_thread_hdl)
+		g_h.funcs->_h_get_semaphore(rpc_threads_parked, HOSTED_BLOCKING);
+
 	if (rpc_rx_thread_hdl)
 		ret1 = g_h.funcs->_h_thread_cancel(rpc_rx_thread_hdl);
+	rpc_rx_thread_hdl = NULL;
 
 	if (rpc_tx_thread_hdl)
 		ret2 = g_h.funcs->_h_thread_cancel(rpc_tx_thread_hdl);
+	rpc_tx_thread_hdl = NULL;
+
+	g_h.funcs->_h_destroy_semaphore(rpc_threads_parked);
+	rpc_threads_parked = NULL;
 
 	if (ret1 || ret2) {
 		ESP_LOGE(TAG, "pthread_cancel rpc threads failed");
@@ -1180,6 +1242,12 @@ int rpc_core_deinit(void)
 
 	set_rpc_lib_state(RPC_LIB_STATE_INACTIVE);
 
+	/* The threads use the queues and rpc_tx_sem destroyed below */
+	if (stop_rpc_threads()) {
+		ret = FAILURE;
+		ESP_LOGE(TAG, "stop rpc threads failed");
+	}
+
 	/* Drain rpc_rx_q before destroying to prevent buffer leaks */
 	if (rpc_rx_q) {
 		esp_queue_elem_t elem;
@@ -1212,11 +1280,6 @@ int rpc_core_deinit(void)
 			ESP_LOGE(TAG, "read sem tx deinit failed");
 		}
 		rpc_tx_sem = NULL;
-	}
-
-	if (cancel_rpc_threads()) {
-		ret = FAILURE;
-		ESP_LOGE(TAG, "cancel rpc rx thread failed");
 	}
 
 	cleanup_sync_async_timer_table();
@@ -1269,6 +1332,7 @@ int rpc_core_init(void)
 		ESP_LOGE(TAG, "Failed to serial_init");
 		goto free_bufs;
 	}
+	serial_drv_start();
 
 	rpc_rx_q = g_h.funcs->_h_create_queue(RPC_RX_QUEUE_SIZE,
 			sizeof(esp_queue_elem_t));

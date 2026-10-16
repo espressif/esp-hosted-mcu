@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -79,6 +79,21 @@ int serial_drv_write (struct serial_drv_handle_t* serial_drv_handle,
 
 uint8_t * serial_drv_read(struct serial_drv_handle_t *serial_drv_handle,
 		uint32_t *out_nbyte);
+
+/*
+ * serial_drv_start function allows serial_drv_read() and serial_drv_write().
+ * Call it after rpc_platform_init().
+ */
+
+void serial_drv_start(void);
+
+/*
+ * serial_drv_stop function makes serial_drv_read() and serial_drv_write()
+ * fail, and wakes a reader blocked in serial_drv_read(). It frees nothing:
+ * rpc_platform_deinit() does that.
+ */
+
+void serial_drv_stop(void);
 
 /*
  * serial_drv_close function closes driver interface.
