@@ -916,18 +916,21 @@ static esp_err_t sdio_reset(interface_handle_t *handle)
 	if (ret != ESP_OK)
 		return ret;
 
+#if TX_MODE == TX_MODE_STREAM
+	/* Reclaim the buffers the flush returned. STREAM owns them here; in the
+	 * other modes send_task is blocked inside sdio_slave_transmit waiting for
+	 * that same completion, and taking it here would leave it blocked for good. */
 	while (1) {
 		void *finished = NULL;
 
 		if (sdio_slave_send_get_finished(&finished, 0) != ESP_OK)
 			break;
-#if TX_MODE == TX_MODE_STREAM
 		if (finished) {
 			hosted_mempool_free(buf_mp_tx_g, finished);
 			xSemaphoreGive(tx_stream_sem);
 		}
-#endif
 	}
+#endif
 	return ESP_OK;
 }
 
