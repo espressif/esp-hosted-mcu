@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* TX queue + worker thread. */
 
 #include <inttypes.h>
@@ -65,6 +69,13 @@ int eh_rpc_tx_stop(void)
         return 0;
     }
     g_tx_stop_requested = true;
+    /* Wake tx_worker from its blocking receive. If the queue is full the send
+     * fails, but then the worker is not blocked and sees the flag after the
+     * item it takes. */
+    if (g_tx_q) {
+        tx_item_t wake = { 0 };
+        (void)eh_host_port_queue_send(g_tx_q, &wake, 0);
+    }
     eh_host_port_task_join(g_tx_thread);
     eh_host_port_task_destroy(g_tx_thread);
     g_tx_thread = NULL;
@@ -114,8 +125,9 @@ static void tx_worker(void *arg)
         }
 
         tx_item_t item;
-        eh_host_port_err_t r = eh_host_port_queue_receive(g_tx_q, &item, 100);
-        if (r != EH_HOST_PORT_OK) {
+        eh_host_port_err_t r = eh_host_port_queue_receive(g_tx_q, &item, EH_HOST_PORT_WAIT_FOREVER);
+        /* NULL app_req is the stop wake-up; senders never queue one */
+        if (r != EH_HOST_PORT_OK || !item.app_req) {
             continue;
         }
 
