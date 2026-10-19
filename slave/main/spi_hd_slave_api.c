@@ -528,20 +528,6 @@ static void spi_hd_rx_task(void* pvParameters)
 		offset = le16toh(header->offset);
 		flags = header->flags;
 
-		ESP_LOGV(TAG, "Received flags: 0x%02x", flags);
-
-		if (flags & FLAG_POWER_SAVE_STARTED) {
-			ESP_LOGI(TAG, "Host informed starting to power sleep");
-			if (context.event_handler) {
-				context.event_handler(ESP_POWER_SAVE_ON);
-			}
-		} else if (flags & FLAG_POWER_SAVE_STOPPED) {
-			ESP_LOGI(TAG, "Host informed that it waken up");
-			tx_ready_buf_size = 0;
-			if (context.event_handler) {
-				context.event_handler(ESP_POWER_SAVE_OFF);
-			}
-		}
 		if (buf_handle.payload_len > spi_hd_transfer_size) {
 			ESP_LOGE(TAG, "%s: err: payload_len[%u] > transfer_size[%u]", __func__,
 					buf_handle.payload_len, (unsigned)spi_hd_transfer_size);
@@ -550,8 +536,8 @@ static void spi_hd_rx_task(void* pvParameters)
 			continue;
 		}
 		if (buf_handle.payload_len < len+offset) {
-			ESP_LOGE(TAG, "%s: err: read_len[%u] < len[%u]+offset[%u]", __func__,
-					buf_handle.payload_len, len, offset);
+			ESP_LOGE(TAG, "%s: err: read_len[%u] < len[%u]+offset[%u], flags[0x%02x]", __func__,
+					buf_handle.payload_len, len, offset, flags);
 			// return the transaction back to the rx queue
 			spi_hd_read_done(ret_trans);
 			continue;
@@ -564,13 +550,30 @@ static void spi_hd_rx_task(void* pvParameters)
 		checksum = compute_checksum(buf_handle.payload, len+offset);
 
 		if (checksum != rx_checksum) {
-			ESP_LOGE(TAG, "%s: cal_chksum[%u] != exp_chksum[%u], drop len[%u] offset[%u]",
-					 __func__, checksum, rx_checksum, len, offset);
+			ESP_LOGE(TAG, "%s: cal_chksum[%u] != exp_chksum[%u], drop len[%u] offset[%u] flags[0x%02x]",
+					 __func__, checksum, rx_checksum, len, offset, flags);
 			// return the transaction back to the rx queue
 			spi_hd_read_done(ret_trans);
 			continue;
 		}
 #endif
+
+		/* Act on power-save flags only after the frame is validated: a corrupted
+		 * frame with FLAG_POWER_SAVE_STOPPED would clear tx_ready_buf_size and
+		 * desync it from the host's rx byte count */
+		ESP_LOGV(TAG, "Received flags: 0x%02x", flags);
+		if (flags & FLAG_POWER_SAVE_STARTED) {
+			ESP_LOGI(TAG, "Host informed starting to power sleep");
+			if (context.event_handler) {
+				context.event_handler(ESP_POWER_SAVE_ON);
+			}
+		} else if (flags & FLAG_POWER_SAVE_STOPPED) {
+			ESP_LOGI(TAG, "Host informed that it waken up");
+			tx_ready_buf_size = 0;
+			if (context.event_handler) {
+				context.event_handler(ESP_POWER_SAVE_OFF);
+			}
+		}
 
 		/* Buffer is valid */
 		buf_handle.if_type = header->if_type;
