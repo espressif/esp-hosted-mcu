@@ -1,6 +1,7 @@
 # Unreleased - Main Branch
 
-- slave SPI-HD: act on the host power-save flags only after the frame passes the length and checksum checks. A corrupted frame with `FLAG_POWER_SAVE_STOPPED` reset the Tx byte count, and the host then ignored every read (`read_bytes[..] > MAX_SPI_HD_BUFFER_SIZE`)
+- host SPI-HD: report a Tx byte-count desync once as `ESP_HOSTED_EVENT_TRANSPORT_FAILURE` instead of logging it forever
+- slave SPI-HD: act on host power-save flags only after the length and checksum checks. A corrupted frame could reset the Tx byte count and stall host rx
 - host: stop the RPC threads before `esp_hosted_deinit()` frees the queues and semaphores they wait on. This removes a heap corruption on every deinit, and a stuck lock when a thread was deleted while it held one
 
 # Releases
