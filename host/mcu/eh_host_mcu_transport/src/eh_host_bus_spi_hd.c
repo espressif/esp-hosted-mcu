@@ -116,6 +116,8 @@ static volatile uint8_t     s_running;
 static volatile uint8_t     s_isr_installed;
 static volatile uint8_t     s_datapath_open;
 static uint32_t             s_rx_byte_count;  /* RX wrap counter */
+/* TX_BUF_LEN no longer matches s_rx_byte_count; RX stays stopped until re-init. */
+static bool                 s_rx_desync;
 /* Active data-line count: 1 during bring-up, raised by spihd_apply_cp_lines()
  * to the widest mode both host and CP support. */
 static uint8_t              s_data_lines = 1;
@@ -451,6 +453,7 @@ static void eh_spihd_rx_task(void *arg)
             continue;
         }
         if (!s_running) break;
+        if (s_rx_desync) continue;
 
         eh_host_port_mutex_lock(s_bus_lock);
 
@@ -487,9 +490,15 @@ static void eh_spihd_rx_task(void *arg)
             continue;
         }
         if (size_to_xfer > EH_SPIHD_MAX_BUF) {
-            ESP_LOGE(TAG, "size_to_xfer=%u > MAX=%u; dropping",
+            ESP_LOGE(TAG, "TX_BUF_LEN desync: cp[0x%06x] host[0x%06x] diff[%u] > max[%u]",
+                     (unsigned int)curr_masked, (unsigned int)s_rx_byte_count,
                      (unsigned int)size_to_xfer, EH_SPIHD_MAX_BUF);
+            s_rx_desync = true;
             eh_host_port_mutex_unlock(s_bus_lock);
+            esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
+#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
+            eh_host_port_restart_host();
+#endif
             continue;
         }
 
@@ -543,6 +552,7 @@ int eh_host_bus_init(void)
         goto fail;
     }
     s_rx_byte_count = 0;
+    s_rx_desync = false;
     s_spihd_tx_buf_count = 0;
     s_data_lines = 1;
 
