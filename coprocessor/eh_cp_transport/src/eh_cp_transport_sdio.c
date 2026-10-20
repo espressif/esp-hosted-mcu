@@ -10,6 +10,7 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
@@ -147,6 +148,17 @@ static QueueHandle_t to_host_queue[MAX_PRIORITY_QUEUES]; /* per-priority to-host
 static TaskHandle_t send_task_handle;
 static SemaphoreHandle_t s_sdio_tx_mtx;
 
+/* Reader/stop handshake. sdio_slave_recv() has no wake API, so stop aborts the
+ * reader's blocking take and waits for RX_READER_LEFT before the driver goes.
+ * The reader then holds until RX_STOP_DONE, so it cannot exit and free its TCB
+ * while stop may still abort it. */
+#define RX_READER_LEFT BIT0
+#define RX_STOP_DONE   BIT1
+static portMUX_TYPE rx_lock = portMUX_INITIALIZER_UNLOCKED;
+static TaskHandle_t rx_reader;           /* set while inside sdio_slave_recv() */
+static bool rx_stopping;                 /* cleared only by sdio_init */
+static EventGroupHandle_t rx_eg;
+
 static inline esp_err_t sdio_tx_locked(uint8_t *buf, size_t len)
 {
 	esp_err_t r;
@@ -178,6 +190,7 @@ static int32_t sdio_write(interface_handle_t *handle, interface_buffer_handle_t 
 static int sdio_read(interface_handle_t *if_handle, interface_buffer_handle_t *buf_handle);
 static esp_err_t sdio_reset(interface_handle_t *handle);
 static void sdio_deinit(interface_handle_t *handle);
+static void sdio_stop(interface_handle_t *handle);
 
 if_ops_t if_ops = {
 	.init   = sdio_init,
@@ -185,6 +198,7 @@ if_ops_t if_ops = {
 	.read   = sdio_read,
 	.reset  = sdio_reset,
 	.deinit = sdio_deinit,
+	.stop   = sdio_stop,
 };
 
 static uint32_t sdio_hw_max_rx_buf_size(void)
@@ -533,6 +547,40 @@ static int32_t sdio_write(interface_handle_t *handle, interface_buffer_handle_t 
 }
 
 /* ===================== H2E receive (de-aggregating) ===================== */
+static bool rx_reader_enter(void)
+{
+	bool ok;
+
+	taskENTER_CRITICAL(&rx_lock);
+	ok = !rx_stopping;
+	if (ok)
+		rx_reader = xTaskGetCurrentTaskHandle();
+	taskEXIT_CRITICAL(&rx_lock);
+	return ok;
+}
+
+/* false: a stop arrived while inside, and that stopper waits for RX_READER_LEFT. */
+static bool rx_reader_leave(void)
+{
+	bool stopping;
+
+	taskENTER_CRITICAL(&rx_lock);
+	rx_reader = NULL;
+	stopping = rx_stopping;
+	taskEXIT_CRITICAL(&rx_lock);
+	return !stopping;
+}
+
+static bool rx_reader_inside(void)
+{
+	bool inside;
+
+	taskENTER_CRITICAL(&rx_lock);
+	inside = rx_reader != NULL;
+	taskEXIT_CRITICAL(&rx_lock);
+	return inside;
+}
+
 static int sdio_read(interface_handle_t *if_handle, interface_buffer_handle_t *buf_handle)
 {
 	esp_err_t ret;
@@ -547,12 +595,21 @@ static int sdio_read(interface_handle_t *if_handle, interface_buffer_handle_t *b
 		return ESP_FAIL;
 
 	if (!blk_base) {
-		/* bounded only when the bus unloads on host-PS, so recv survives the deinit/reinit */
-		TickType_t recv_wait = portMAX_DELAY;
-#if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
-		recv_wait = pdMS_TO_TICKS(10);
-#endif
-		ret = sdio_slave_recv(&blk_handle, &blk_base, &sdio_read_len, recv_wait);
+		if (!rx_reader_enter())
+			return ESP_FAIL;
+		ret = sdio_slave_recv(&blk_handle, &blk_base, &sdio_read_len, portMAX_DELAY);
+		if (!rx_reader_leave()) {
+			/* Stopping: the driver goes next, so hand the buffer back now. */
+			if (ret == ESP_OK)
+				sdio_read_done(blk_handle);
+			blk_base = NULL;
+			blk_handle = NULL;
+			xEventGroupSetBits(rx_eg, RX_READER_LEFT);
+			while (!(xEventGroupWaitBits(rx_eg, RX_STOP_DONE, pdFALSE, pdTRUE,
+						     portMAX_DELAY) & RX_STOP_DONE))
+				;   /* a late abort cuts this wait short */
+			return ESP_FAIL;
+		}
 		if (ret) {
 			blk_base = NULL;
 			return ESP_FAIL;
@@ -780,6 +837,9 @@ static interface_handle_t *sdio_init(void)
 
 	if (!s_sdio_tx_mtx)
 		s_sdio_tx_mtx = xSemaphoreCreateMutex();
+	if (!rx_eg)
+		rx_eg = xEventGroupCreate();
+	assert(rx_eg);
 
 	sdio_rx_buf_size = sdio_hw_max_rx_buf_size();
 	ESP_LOGI(TAG, "rx_buf_size=%"PRIu32, sdio_rx_buf_size);
@@ -879,6 +939,11 @@ static interface_handle_t *sdio_init(void)
 				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
 				CONFIG_ESP_HOSTED_TASK_PRIORITY_DEFAULT, &send_task_handle) == pdTRUE);
 
+	xEventGroupClearBits(rx_eg, RX_READER_LEFT | RX_STOP_DONE);
+	taskENTER_CRITICAL(&rx_lock);
+	rx_stopping = false;
+	taskEXIT_CRITICAL(&rx_lock);
+
 	memset(&if_handle_g, 0, sizeof(if_handle_g));
 	if_handle_g.state = ACTIVE;
 
@@ -931,9 +996,35 @@ static esp_err_t sdio_reset(interface_handle_t *handle)
 	return ESP_OK;
 }
 
+/* Idempotent. Returns once no reader is inside sdio_slave_recv(); later reads
+ * fail fast until sdio_init. Leaves handle->state to deinit. */
+static void sdio_stop(interface_handle_t *handle)
+{
+	TaskHandle_t reader;
+
+	(void)handle;
+	taskENTER_CRITICAL(&rx_lock);
+	rx_stopping = true;
+	reader = rx_reader;
+	taskEXIT_CRITICAL(&rx_lock);
+	if (!reader)
+		return;
+
+	/* The abort misses a reader that entered but has not blocked yet, so
+	 * repeat until it blocks (abort lands) or leaves on a packet. */
+	while (rx_reader_inside() && xTaskAbortDelay(reader) != pdPASS)
+		vTaskDelay(1);
+	xEventGroupWaitBits(rx_eg, RX_READER_LEFT, pdFALSE, pdTRUE, portMAX_DELAY);
+	xEventGroupSetBits(rx_eg, RX_STOP_DONE);
+}
+
 static void sdio_deinit(interface_handle_t *handle)
 {
+	/* Already unloaded for host power-save. */
+	if (if_handle_g.state == DEINIT)
+		return;
 	if_handle_g.state = DEINIT;
+	sdio_stop(handle);
 
 	/* let send_task finish its current iteration before deleting it. */
 	vTaskDelay(pdMS_TO_TICKS(20));
@@ -987,6 +1078,8 @@ static void sdio_deinit(interface_handle_t *handle)
 		heap_caps_free(sdio_slave_rx_buffer[i]);
 		sdio_slave_rx_buffer[i] = NULL;
 	}
+	vEventGroupDelete(rx_eg);
+	rx_eg = NULL;
 #if TX_MODE == TX_MODE_SW_AGGR
 	heap_caps_free(tx_aggr_buf); tx_aggr_buf = NULL;
 #elif TX_MODE == TX_MODE_PACKET

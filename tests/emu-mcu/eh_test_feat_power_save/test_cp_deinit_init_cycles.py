@@ -22,6 +22,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))  # tests/
 from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
 from infra.heaptrace import name_borrowers, table
+from infra.cp_build_config import built_cp_config
 
 EXAMPLE = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
 # The harness lives here, not in the example; build_fw stages it into the
@@ -37,6 +38,12 @@ LWIP_TIMER_CHURN_BYTES = 4 * 16
 FAIL = FATAL_PATTERNS + ['CORRUPT HEAP', 'Firmware abort', 'tasks still running']
 ROW = re.compile(r'\[cycles\] cycle=(\d+) init=(-?\d+) deinit=(-?\d+) '
                  r'bytes=(-?\d+) recs=(\d+) ovf=(\d+) polls=(\d+) free=(\d+)')
+UNLOAD_KEY = 'CONFIG_ESP_HOSTED_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING'
+# The example's MAX light-sleep profile selects UNLOAD_BUS, so =n alone is
+# overridden; switch the profile off as well.
+NO_UNLOAD_OVL = ['CONFIG_ESP_HOSTED_CP_LIGHT_SLEEP_POWER_MAX=n',
+                 'CONFIG_ESP_HOSTED_CP_LIGHT_SLEEP_POWER_DISABLED=y',
+                 f'{UNLOAD_KEY}=n']
 # Opt-in with EH_CP_HEAP_TRACE=1. Off by default: tracing costs memory and
 # shifts timing. On, it decides ownership - free memory alone cannot.
 HEAP_TRACE = os.environ.get('EH_CP_HEAP_TRACE', '0') == '1'
@@ -96,15 +103,20 @@ def _assert_cycles_built(bench, cycles):
 
 
 @pytest.mark.power_save
-@pytest.mark.parametrize('transport', [
-    pytest.param('sdio', marks=pytest.mark.sanity),
-    'uart', 'spi_fd', 'spi_hd',
+@pytest.mark.parametrize('transport,unload', [
+    pytest.param('sdio', True, marks=pytest.mark.sanity, id='sdio'),
+    pytest.param('sdio', False, id='sdio-no_unload_bus'),
+    pytest.param('uart', True, id='uart'),
+    pytest.param('spi_fd', True, id='spi_fd'),
+    pytest.param('spi_hd', True, id='spi_hd'),
 ])
-def test_cp_deinit_init_cycles_return_heap(emu_bench, transport, wifi_ap):
+def test_cp_deinit_init_cycles_return_heap(emu_bench, transport, unload, wifi_ap):
     # wake=True: the bench wires the wake path, which spi_fd needs to reach
     # 'Open Data Path'. Same wiring for every transport keeps rows comparable.
     # The test CP carries the harness with 20 cycles; only an override needs its own image.
     ovl = [f'CONFIG_EH_TEST_CP_DEINIT_INIT_CYCLES={CYCLES}'] if CYCLES != 20 else []
+    if not unload:
+        ovl += NO_UNLOAD_OVL
     if HEAP_TRACE:
         ovl += TRACE_OVL
     # Diagnostic hook: extra CP sdkconfig lines, comma separated. Used to arm
@@ -116,6 +128,8 @@ def test_cp_deinit_init_cycles_return_heap(emu_bench, transport, wifi_ap):
     # (0 = harness compiled out). The run then hangs on the priming wait with no
     # clue why, so read the value the build actually took.
     _assert_cycles_built(bench, CYCLES)
+    built = built_cp_config(bench, UNLOAD_KEY) == 'y'
+    assert built == unload, f'{UNLOAD_KEY}={built} in the built CP, overlay did not take'
     cp = bench['cp']
 
     host = bench['host']
