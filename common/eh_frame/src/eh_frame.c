@@ -235,12 +235,12 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
     offset = _from_le16(hdr->offset);
 
     /* A flagged len==0 frame (power save) is validated below before its flags
-       are returned. */
+       are returned. Dummies never carry flags, so a flag on one is dropped. */
     if (hdr->if_type == eh_if_type_dummy_wire() || (len == 0 && !hdr->flags)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
-            h->flags   = hdr->flags;
+            h->flags   = 0;
         }
         return EH_FRAME_DUMMY;
     }
@@ -332,12 +332,12 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
     offset = _from_le16(hdr->offset);
 
     /* A flagged len==0 frame (power save) is validated below before its flags
-       are returned. */
+       are returned. Dummies never carry flags, so a flag on one is dropped. */
     if (hdr->if_type == eh_if_type_dummy_wire() || (len == 0 && !hdr->flags)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
-            h->flags   = hdr->flags;
+            h->flags   = 0;
         }
         return EH_FRAME_DUMMY;
     }
