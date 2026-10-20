@@ -4,10 +4,17 @@
 /* eh_frame.c — V1/V2 wire frame encode/decode. Sole reader/writer of wire structs. */
 
 #include "eh_frame.h"
+#include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 
 #define FRAME_WARN(fmt, ...) printf("[frame][W] " fmt "\n", ##__VA_ARGS__)
+
+/* Byte offset of the checksum field in each wire header. */
+#define FRAME_V1_CKSUM_OFF ((uint16_t)offsetof(struct esp_payload_header, checksum))
+#define FRAME_V2_CKSUM_OFF ((uint16_t)offsetof(eh_header_v2_t, checksum))
+_Static_assert(offsetof(struct esp_payload_header, checksum) == 6, "v1 wire checksum offset");
+_Static_assert(offsetof(eh_header_v2_t, checksum) == 12, "v2 wire checksum offset");
 
 /* ── Endian helpers (no OS dep) ───────────────────────────────────────── */
 #ifdef __KERNEL__
@@ -227,8 +234,9 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
     len    = _from_le16(hdr->len);
     offset = _from_le16(hdr->offset);
 
-    if (hdr->if_type == eh_if_type_dummy_wire() || len == 0) {
-		/* Preserve power-save flags in header-only frames in DUMMY frame */
+    /* A flagged len==0 frame (power save) is validated below before its flags
+       are returned. */
+    if (hdr->if_type == eh_if_type_dummy_wire() || (len == 0 && !hdr->flags)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
@@ -260,9 +268,12 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
         total = (uint16_t)total32;
     }
 
-    if (s_cfg.checksum_enabled) {
+    /* A power-save frame may carry no checksum: the host can send its wake frame
+       before it learns from the CP that checksums are on, and the 2.x SPI host
+       never sets one on power-save frames. */
+    if (s_cfg.checksum_enabled && !(len == 0 && hdr->checksum == 0)) {
         uint16_t stored = _from_le16(hdr->checksum);
-        uint16_t calc = frame_checksum_zeroed(buf, total, 6);
+        uint16_t calc = frame_checksum_zeroed(buf, total, FRAME_V1_CKSUM_OFF);
 #ifdef EH_FRAME_DEBUG
         frame_dbg_v1(buf, buf_len, len, offset, total, stored, calc);
 #endif
@@ -274,6 +285,15 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
             }
             return EH_FRAME_CORRUPT;
         }
+    }
+
+    if (len == 0) {
+        if (h) {
+            h->if_type = eh_if_type_from_wire(hdr->if_type);
+            h->if_num  = hdr->if_num;
+            h->flags   = hdr->flags;
+        }
+        return EH_FRAME_DUMMY;
     }
 
     memset(h, 0, sizeof(*h));
@@ -311,8 +331,9 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
     len    = _from_le16(hdr->len);
     offset = _from_le16(hdr->offset);
 
-    if (hdr->if_type == eh_if_type_dummy_wire() || len == 0) {
-		/* Preserve power-save flags in header-only frames in DUMMY frame */
+    /* A flagged len==0 frame (power save) is validated below before its flags
+       are returned. */
+    if (hdr->if_type == eh_if_type_dummy_wire() || (len == 0 && !hdr->flags)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
@@ -339,9 +360,12 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
         total = (uint16_t)total32;
     }
 
-    if (s_cfg.checksum_enabled) {
+    /* A power-save frame may carry no checksum: the host can send its wake frame
+       before it learns from the CP that checksums are on, and the 2.x SPI host
+       never sets one on power-save frames. */
+    if (s_cfg.checksum_enabled && !(len == 0 && hdr->checksum == 0)) {
         uint16_t stored = _from_le16(hdr->checksum);
-        uint16_t calc = frame_checksum_zeroed(buf, total, 12);
+        uint16_t calc = frame_checksum_zeroed(buf, total, FRAME_V2_CKSUM_OFF);
 #ifdef EH_FRAME_DEBUG
         frame_dbg_v2(buf, buf_len, len, offset, total, stored, calc);
 #endif
@@ -353,6 +377,15 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
             }
             return EH_FRAME_CORRUPT;
         }
+    }
+
+    if (len == 0) {
+        if (h) {
+            h->if_type = eh_if_type_from_wire(hdr->if_type);
+            h->if_num  = hdr->if_num;
+            h->flags   = hdr->flags;
+        }
+        return EH_FRAME_DUMMY;
     }
 
     memset(h, 0, sizeof(*h));

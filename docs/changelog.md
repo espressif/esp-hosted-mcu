@@ -1,6 +1,7 @@
 # Unreleased
 
 - host/spi_hd: report a Tx byte-count desync once as `EH_HOST_EVENT_TRANSPORT_FAILURE` instead of logging it forever
+- frame: trust power-save flags on a header-only frame only if its checksum holds. A corrupted frame could reset the SPI-HD co-processor Tx byte count and stall host rx
 - wifi: support new IDF Wi-Fi fields `privacy_enhancements`, `rmac_auto_reset_int`, `wifi_task_stack_size`,
   `max_offchan_duration_ms` and `max_bandwidth_negotiation_enabled_2g/5g`
 - host/wifi: `max_bandwidth_negotiation_enabled_2g/5g` builds only where the IDF headers have them (IDF v5.5.6, v6.0.4, v6.1.1 or later)
