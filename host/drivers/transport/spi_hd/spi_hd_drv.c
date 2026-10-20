@@ -26,6 +26,7 @@
 #include "esp_hosted_transport_config.h"
 #include "esp_hosted_bt.h"
 #include "port_esp_hosted_host_os.h"
+#include "esp_hosted_event.h"
 
 #include "mempool.h"
 #include "transport_util.h"
@@ -125,6 +126,9 @@ static size_t curr_transfer_size = SPI_HD_BLOCK_SIZE;
 
 // one-time trigger to start write thread
 static bool spi_hd_start_write_thread = false;
+
+// TX_BUF_LEN no longer matches spi_hd_rx_byte_count; rx stays stopped until re-init
+static bool spi_hd_rx_desync = false;
 
 static void spi_hd_write_task(void const* pvParameters);
 static void spi_hd_read_task(void const* pvParameters);
@@ -579,6 +583,9 @@ static void spi_hd_read_task(void const* pvParameters)
 #endif
 		ESP_LOGV(TAG, "spi_hd_read_task: data ready intr received");
 
+		if (spi_hd_rx_desync)
+			continue;
+
 		SPI_HD_DRV_LOCK();
 
 		res = g_h.funcs->_h_spi_hd_read_reg(SPI_HD_REG_TX_BUF_LEN, &curr_rx_value, POLLING_READ, ACQUIRE_LOCK);
@@ -635,10 +642,16 @@ static void spi_hd_read_task(void const* pvParameters)
 
 		/* Validate transfer size to prevent buffer overflow */
 		if (size_to_xfer > curr_transfer_size) {
-			ESP_LOGE(TAG, "read_bytes[%"PRIu32"] > curr_transfer_size[%u]. Ignoring read request",
-					size_to_xfer, (unsigned)curr_transfer_size);
-
+			ESP_LOGE(TAG, "TX_BUF_LEN desync: cp[0x%06"PRIx32"] host[0x%06"PRIx32"] diff[%"PRIu32"] > max[%u]",
+					curr_rx_value, spi_hd_rx_byte_count, size_to_xfer, (unsigned)curr_transfer_size);
+			spi_hd_rx_desync = true;
 			SPI_HD_DRV_UNLOCK();
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT,
+					ESP_HOSTED_EVENT_TRANSPORT_FAILURE,
+					NULL, 0, HOSTED_BLOCK_MAX);
+#if H_TRANSPORT_RESTART_ON_FAILURE
+			g_h.funcs->_h_restart_host();
+#endif
 			continue;
 		}
 
@@ -782,6 +795,7 @@ void * bus_init_internal(void)
 	uint8_t prio_q_idx = 0;
 
 	curr_transfer_size = SPI_HD_BLOCK_SIZE;
+	spi_hd_rx_desync = false;
 
 	SPI_HD_DRV_LOCK_CREATE();
 
