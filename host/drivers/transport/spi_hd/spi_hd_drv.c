@@ -14,6 +14,7 @@
 #include "endian.h"
 #include "esp_hosted_transport.h"
 #include "esp_hosted_transport_spi_hd.h"
+#include "esp_hosted_transport_init.h"
 #include "stats.h"
 #include "transport_drv.h"
 
@@ -1006,6 +1007,43 @@ int ensure_slave_bus_ready(void *bus_handle)
 		stop_host_power_save();
 	}
 
+	return res;
+}
+
+int bus_spi_hd_reconfigure_interface(uint32_t ext_cap)
+{
+	int res = ESP_FAIL;
+
+	// reconfigure SPI_HD interface based on host and co-processor capabilities
+	if (H_SPI_HD_HOST_NUM_DATA_LINES == 4) {
+		if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_4_DATA_LINES) {
+			ESP_LOGI(TAG, "configure SPI_HD interface to use 4 data lines");
+			res = g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_4_DATA_LINES);
+		} else if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_2_DATA_LINES) {
+			ESP_LOGI(TAG, "co-processor supports 2 data lines, downgrading from 4");
+			res = g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
+		} else {
+			ESP_LOGI(TAG, "co-processor supports 1 data line, downgrading from 4");
+			res = g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_1_DATA_LINE);
+		}
+	} else if (H_SPI_HD_HOST_NUM_DATA_LINES == 2) {
+		if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_4_DATA_LINES) {
+			ESP_LOGI(TAG, "co-processor supports 4 data lines, downgrading to 2");
+			res = g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
+		} else if (ext_cap & ESP_SPI_HD_INTERFACE_SUPPORT_2_DATA_LINES) {
+			ESP_LOGI(TAG, "configure SPI_HD interface to use 2 data lines");
+			res = g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_2_DATA_LINES);
+		} else {
+			ESP_LOGI(TAG, "co-processor supports 1 data line, downgrading from 2");
+			res = g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_1_DATA_LINE);
+		}
+	} else if (H_SPI_HD_HOST_NUM_DATA_LINES == 1) {
+		ESP_LOGI(TAG, "configure SPI_HD interface to use 1 data line");
+		res = g_h.funcs->_h_spi_hd_set_data_lines(H_SPI_HD_CONFIG_1_DATA_LINE);
+	} else {
+		ESP_LOGE(TAG, "invalid number of data lines in SPI_HD interface");
+		res = ESP_FAIL;
+	}
 	return res;
 }
 

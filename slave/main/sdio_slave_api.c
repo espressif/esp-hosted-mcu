@@ -250,9 +250,9 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap)
 	*pos = CONFIG_IDF_FIRMWARE_CHIP_ID; pos++;len++;
 
 #if CONFIG_ESP_SDIO_STREAMING_MODE
-	uint8_t sdio_mode = 1;
+	uint8_t sdio_mode = ESP_SDIO_MODE_STREAMING;
 #else
-	uint8_t sdio_mode = 0;
+	uint8_t sdio_mode = ESP_SDIO_MODE_PACKET;
 #endif
 
 	/* TLV - SDIO mode */

@@ -581,9 +581,29 @@ The table below shows the effect of changing `SDIO Tx queue size` on throughput 
 | 30 | 84 | 65,536 | 92,160 |
 
 > [!NOTE]
-> The SDIO packet size is 1536 bytes. The co-processor can send at most `(Tx queue size) * 1536` bytes. Since the Host does double buffering, the theoretical Buffer Size needed is `2 * (Tx queue size) * 1536`.
+> The SDIO packet size is 1536 bytes. The co-processor can send at most `(Tx queue size) * 1536` bytes. If the Host does double buffering, the theoretical Buffer Size needed is `2 * (Tx queue size) * 1536`.
 
 From the table above, throughput is more or less stagnant on and above Rx queue size of `25`. For a good trade off between memory consumption vs performance, the Rx queue sizes are currently defaulted to `20`.
+
+##### Reducing heap usage further, and preventing allocation issues on the host
+
+A `Kconfig` option was added to disable double buffering on the host. This reduces the memory required by SDIO receive buffers by half. Disabling double buffering can lower peak Rx throughput.
+
+To disable double buffering:
+
+```
+Component config
+└── ESP-Hosted config
+    └── Hosted SDIO Configuration
+        └── [ ] Enable Rx Double Buffering             (toggle off)
+```
+
+On previous releases, the Rx buffer was allocated based on the size of the data to be transferred from the co-processor, and grew when required. This can cause run-time failures if the heap is unable to allocate the required memory to grow the buffer.
+
+The required Rx buffer memory is now pre-allocated during ESP-Hosted initialisation. The size of the buffer is set by the number of Tx buffers configured on the co-processor.
+
+> [!NOTE]
+> ESP-Hosted will still do run-time allocation of the Rx buffer if the number of Tx buffers configured on the co-processor is not known. This can happen if the co-processor is an older version that does not send that information. A warning will be emitted if this happens. In this condition, ESP-Hosted memory allocation attempt can still fail, resulting in a stuck system.
 
 #### 9.3.2 Host Transmit
 
@@ -626,7 +646,9 @@ For minimal memory usage with a lower throughput, you can switch to Packet Mode.
                   ├── Always Rx Max Packet size [Change to this, preferably]
                   └── Use Streaming Mode        [Default was selected, change to one of above]
   ```
-In Packet Mode, the host uses `2 * 1536` or `3,072` bytes of memory for Rx buffers.
+
+In Packet Mode, the host uses the Rx Queue Mempool directly and does not allocate additional memory.
+
 - with `No optimization`, Rx Raw Throughput is 33.0 Mbits/s
 - with `Always Rx Max Packet size`, Rx Raw Throughput is 33.2 Mbits/s
 
