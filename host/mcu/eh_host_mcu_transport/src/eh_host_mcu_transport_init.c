@@ -205,12 +205,8 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
         return;
     }
 
-    /* A WiFi data iface with no registered channel — e.g. a frame (the buffered
-     * wake packet) arriving during the post-wake re-init window before the wifi
-     * channel is back. Drop it: routing a data frame to the RPC dispatcher
-     * misparses the payload as an msg_id and jumps through a garbage handler. */
-    if (h->if_type == ESP_STA_IF || h->if_type == ESP_AP_IF ||
-        h->if_type == ESP_ETH_IF) {
+    /* The priv dispatcher reads any payload as an msg_id: give it PRIV only. */
+    if (h->if_type != ESP_PRIV_IF) {
         ESP_LOGW("eh_dispatch", "rx-drop: no channel for if_type=%u len=%u flags=0x%x",
                  (unsigned int)h->if_type, (unsigned int)h->payload_len,
                  (unsigned int)h->flags);

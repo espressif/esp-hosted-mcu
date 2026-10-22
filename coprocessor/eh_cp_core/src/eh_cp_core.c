@@ -648,6 +648,12 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		eh_transport_utils_update_raw_tp_rx_count(payload, payload_len);
 	}
 #endif
+	/* STA/AP/TEST of a compiled-out feature: drop without a log (data flood). */
+	else if (buf_handle->if_type != ESP_STA_IF && buf_handle->if_type != ESP_AP_IF &&
+	         buf_handle->if_type != ESP_TEST_IF) {
+		ESP_LOGW(TAG, "rx-drop: no handler for if_type=%u len=%u",
+		         buf_handle->if_type, payload_len);
+	}
 
 done:
 	if (buf_handle->free_buf_handle && buf_handle->priv_buffer_handle) {
