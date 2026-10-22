@@ -31,6 +31,10 @@ if(COMMAND idf_component_get_property)
     endif()
 endif()
 
+# One WIFI_STA_DEF whoever creates it first (see __wrap_esp_netif_create_default_wifi_sta).
+target_link_options(eh_host_feat_nw_split INTERFACE
+    "-Wl,--wrap=esp_netif_create_default_wifi_sta")
+
 if(CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT_AUTO_INIT)
     target_link_options(eh_host_feat_nw_split INTERFACE
         "-Wl,--undefined=eh_host_feat_nw_split_init")

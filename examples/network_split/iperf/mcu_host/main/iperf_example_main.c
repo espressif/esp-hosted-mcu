@@ -136,9 +136,11 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
 
-		/* Do nothing */
+		ESP_LOGI(TAG, "sta connected");
 
 	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+
+		ESP_LOGI(TAG, "sta disconnected");
 
 		#ifdef CONFIG_ESP_HOSTED_CP_EXAMPLE_MQTT_CLIENT
 			example_mqtt_pause();
@@ -146,6 +148,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 
 		/* Reconnect via sta_connect, or the network-split auto-reconnect feature. */
 		(void)s_retry_num;
+
+	} else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_LOST_IP) {
+
+		ESP_LOGI(TAG, "lost ip");
 
 	} else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
 
@@ -192,6 +198,7 @@ void wifi_init_sta(void)
 
 	esp_event_handler_instance_t instance_any_id;
 	esp_event_handler_instance_t instance_got_ip;
+	esp_event_handler_instance_t instance_lost_ip;
 	ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
 														ESP_EVENT_ANY_ID,
 														&event_handler,
@@ -202,6 +209,11 @@ void wifi_init_sta(void)
 														&event_handler,
 														NULL,
 														&instance_got_ip));
+	ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+														IP_EVENT_STA_LOST_IP,
+														&event_handler,
+														NULL,
+														&instance_lost_ip));
 
 	ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
 
@@ -339,7 +351,10 @@ void app_main(void)
 
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+	/* INTERNAL_* network-split netif modes create WIFI_STA_DEF themselves. */
+#if !CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT || CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT_NETIF_APP_EXTERNAL
 	esp_netif_create_default_wifi_sta();
+#endif
 
 	ESP_ERROR_CHECK(esp_hosted_init());
 	esp_hosted_connect_to_slave();
