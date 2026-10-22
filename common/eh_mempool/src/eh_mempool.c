@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2022 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "eh_mempool.h"
 #include "esp_log.h"
@@ -11,7 +14,7 @@ static const char *TAG = "HS_MP";
 struct hosted_mempool * hosted_mempool_create(void *pre_allocated_mem,
 		size_t pre_allocated_mem_size, size_t num_blocks, size_t block_size)
 {
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef EH_MEMPOOL_PREALLOC
 	struct hosted_mempool *new = NULL;
 	struct eh_mp_mempool *pool = NULL;
 	uint8_t *heap = NULL;
@@ -78,7 +81,7 @@ free_buffs:
 
 void hosted_mempool_destroy(struct hosted_mempool *mempool)
 {
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef EH_MEMPOOL_PREALLOC
 	if (!mempool)
 		return;
 #if MEMPOOL_DEBUG
@@ -100,7 +103,7 @@ void * hosted_mempool_alloc(struct hosted_mempool *mempool,
 {
 	void *mem = NULL;
 
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef EH_MEMPOOL_PREALLOC
 	if (!mempool) {
 		ESP_LOGE(TAG, "mempool %p is NULL", mempool);
 		return NULL;
@@ -134,7 +137,7 @@ int hosted_mempool_free(struct hosted_mempool *mempool, void *mem)
 	if (!mem) {
 		return 0;
 	}
-#ifdef CONFIG_ESP_CACHE_MALLOC
+#ifdef EH_MEMPOOL_PREALLOC
 	if (!mempool) {
 		ESP_LOGE(TAG, "%s: mempool %p is NULL", __func__, mempool);
 		return MEMPOOL_FAIL;

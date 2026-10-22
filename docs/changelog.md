@@ -6,6 +6,9 @@
   - host examples: `sdkconfig.defaults.esp32p4.usb` builds an ESP32-P4 host against an ESP32-S31 co-processor on this bus in `examples/system/api_exerciser/mcu_host` and `examples/wifi/iperf/mcu_host`
   - host/usb: the MCU host can use ESP-IDF `usb_host_cdc_acm` (default) or CherryUSB. Default is `usb_host_cdc_acm`
   - docs: [USB OTG Host](design/usb-otg-host.md)
+- cp/sdio: the init event advertises the RX buffer, as a count of 1536-byte frames, in packet, stream, and software-aggregation mode. It no longer sends `EH_TRANSPORT_CP_SDIO_TX_Q_SIZE`. Stream mode queues only as many frames as fit in that buffer, so a host staging slot sized from the advertisement can hold one read. The Kconfig option is unused and kept so existing sdkconfigs still parse
+- host/sdio: streaming RX staging buffers are sized from the co-processor TX capacity when INIT arrives. The read task allocates them once, after every staging slot has been drained, so a buffer still in use is not freed. `ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1` keeps a single buffer and the read waits until it has been copied out
+- host/sdio: optional DMA mempool for packet buffers (`ESP_HOSTED_HOST_SDIO_USE_MEMPOOL`, off by default) when a 1536-byte DMA allocation fails on a fragmented heap
 - cp/sdio: enabled SDIO packet mode operation
 - host/task: removed division by sizeof(StackType_t). In IDF, the stack size should be specified as bytes
 - host: with `CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=y`, starting a detached Hosted task no longer corrupts the heap ([#254](https://github.com/espressif/esp-hosted-mcu/issues/254))

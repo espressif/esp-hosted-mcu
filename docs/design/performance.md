@@ -363,7 +363,7 @@ CONFIG_ESP_HOSTED_SDIO_BUS_WIDTH=4
 ```
 
 > [!NOTE]
-> See the SDIO transport guide for the trade-off between SDIO performance and memory use.
+> See [MCU host packet buffers](sdio.md#mcu-host-packet-buffers) for the trade-off between per-frame DMA allocation and a reserved SDIO mempool.
 
 ### 2.2 SPI Full-Duplex
 
@@ -397,6 +397,8 @@ Trim the footprint for constrained hosts:
 # Reduce queue sizes
 CONFIG_ESP_HOSTED_SDIO_TX_Q_SIZE=10    # Default: 20
 CONFIG_ESP_HOSTED_SDIO_RX_Q_SIZE=10    # Default: 20
+# One RX staging buffer instead of two (lower peak RX rate)
+CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1
 ```
 
 - Disable features you do not use (e.g. Bluetooth).

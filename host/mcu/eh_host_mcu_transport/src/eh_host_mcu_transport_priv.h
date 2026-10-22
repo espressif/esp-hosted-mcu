@@ -66,6 +66,13 @@ int eh_host_bus_init(void);
 int eh_host_bus_deinit(void);
 int eh_host_bus_tx(interface_buffer_handle_t *bh);
 
+#if EH_HOST_TRANSPORT_BUS_SDIO
+/* Record the streaming RX staging size advertised by the CP INIT event.
+ * Allocation is deferred to sdio_read_task, the sole owner of staging slots.
+ * No-op unless the host RX mode is streaming. */
+void eh_host_bus_sdio_set_rx_staging_target(uint32_t target_size);
+#endif
+
 
 /* PS coordination: weak default returns -ENOSYS for buses without impl. */
 int eh_host_bus_inform_slave_ps_enter(void);

@@ -19,8 +19,10 @@
 #include "eh_host_port_master_config.h"
 #if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
 #include "eh_host_port_dma.h"
+#include "eh_host_port_sdio.h"
 #endif
 #include "eh_host_mcu_transport_init_event.h"
+#include "eh_host_mcu_transport_priv.h"
 #include "esp_log.h"
 #include "eh_host_port_tags.h"   /* EH_HOST_PORT_RETAIN_ATTR */
 #include "eh_host_raw_tp_stats.h"
@@ -246,6 +248,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
     uint16_t       remain = len;
 #if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
     int            saw_sdio_mode_tlv = 0;
+    uint8_t        slave_tx_q_size = 0;
 #endif
     uint8_t        peer_rpc_version  = 0;
 
@@ -334,7 +337,12 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
             if (tlen >= 1) ESP_LOGD(TAG, "slave rx queue size: %u", (unsigned int)val[0]);
             break;
         case EH_PRIV_TX_Q_SIZE:
-            if (tlen >= 1) ESP_LOGD(TAG, "slave tx queue size: %u", (unsigned int)val[0]);
+            if (tlen >= 1) {
+                ESP_LOGD(TAG, "slave tx queue size: %u", (unsigned int)val[0]);
+#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+                slave_tx_q_size = val[0];
+#endif
+            }
             break;
         case EH_PRIV_TEST_RAW_TP:
             if (tlen >= 1) {
@@ -392,6 +400,24 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         sdio_mode_check(s_slave_sdio_streaming_mode);
     } else {
 		ESP_LOGI(TAG, "Missing SDIO_MODE TLV; Continue anyway.");
+    }
+    {
+        uint32_t target_size;
+        if (eh_host_mcu_transport_sdio_sw_aggr_negotiated())
+            target_size = (uint32_t)s_sdio_buf_cfg.e2h_bufsz_512B *
+                          EH_SDIO_CFG_BUF_BLOCK;
+        else if (s_slave_sdio_streaming_mode && slave_tx_q_size)
+            target_size = (uint32_t)MAX_SDIO_BUFFER_SIZE * slave_tx_q_size;
+        else
+            target_size = MAX_SDIO_BUFFER_SIZE;
+
+        if (s_slave_sdio_streaming_mode && !slave_tx_q_size &&
+            !eh_host_mcu_transport_sdio_sw_aggr_negotiated()) {
+            ESP_LOGW(TAG, "co-processor TX queue size is unknown");
+            ESP_LOGW(TAG, "SDIO RX staging buffers stay dynamic; a later alloc may fail");
+            target_size = 0;
+        }
+        eh_host_bus_sdio_set_rx_staging_target(target_size);
     }
 #endif
 

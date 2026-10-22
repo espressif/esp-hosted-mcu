@@ -797,6 +797,17 @@
 
   #define EH_HOST_PORT_SDIO_TX_Q                                  CONFIG_ESP_HOSTED_HOST_SDIO_TX_Q_SIZE
   #define EH_HOST_PORT_SDIO_RX_Q                                  CONFIG_ESP_HOSTED_HOST_SDIO_RX_Q_SIZE
+  #ifdef CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS
+    #define EH_HOST_PORT_SDIO_RX_STAGING_SLOTS                    CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS
+  #else
+    #define EH_HOST_PORT_SDIO_RX_STAGING_SLOTS                    2
+  #endif
+
+  #ifdef CONFIG_ESP_HOSTED_HOST_SDIO_USE_MEMPOOL
+    #define EH_HOST_PORT_SDIO_USE_MEMPOOL                         1
+  #else
+    #define EH_HOST_PORT_SDIO_USE_MEMPOOL                         0
+  #endif
 
   #define EH_HOST_PORT_SDIO_HOST_STREAMING_MODE 1
   #define EH_HOST_PORT_SDIO_ALWAYS_HOST_RX_MAX_TRANSPORT_SIZE 2

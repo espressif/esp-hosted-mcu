@@ -157,7 +157,7 @@ static void show_config(void)
 #define DEFAULT_TO_SLAVE_QUEUE_SIZE       20
 #define DEFAULT_FROM_SLAVE_QUEUE_SIZE     20
 
-#if EH_HOST_USE_MEMPOOL
+#if EH_HOST_PORT_SDIO_USE_MEMPOOL
 #define MIN_MEMPOOL_BT_PACKETS        3
 #define MIN_MEMPOOL_SERIAL_PACKETS    3
 #define MIN_MEMPOOL_NET_PACKETS       5
@@ -220,8 +220,8 @@ static uint8_t *reg_buf = NULL;
 static uint8_t  *sdio_tx_aggr_buf = NULL;
 static uint32_t  sdio_tx_aggr_cap = 0;
 
-#if EH_HOST_USE_MEMPOOL
-static hosted_mempool_t * buf_mp_g;
+#if EH_HOST_PORT_SDIO_USE_MEMPOOL
+static struct hosted_mempool *buf_mp_g;
 #endif
 
 
@@ -250,16 +250,13 @@ typedef struct {
 } buf_info_t;
 
 /* RX staging ring (was a fixed 2-slot double buffer). SPSC: sdio_read_task
- * fills `head`, sdio_data_to_rx_buf_task drains `tail`. `head` is always the
- * in-progress read slot, so pending is capped at SLOTS-1 — at the default
- * SLOTS=2 that's depth 1, identical to the original double buffer. */
-#ifndef CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS
-#define CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS 2
-#endif
-#define SDIO_RX_STAGING_SLOTS  CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS
-
+ * fills `head`, sdio_data_to_rx_buf_task drains `tail`. With 2 or more slots,
+ * `head` is the in-progress read and is not counted, so pending is at most
+ * SLOTS-1 (the default 2 is depth 1, the original double buffer). With 1 slot
+ * the same buffer is read and drained: the read task waits until `count`
+ * returns to 0 before the next read. */
 typedef struct {
-	buf_info_t buffer[SDIO_RX_STAGING_SLOTS];
+	buf_info_t buffer[EH_HOST_PORT_SDIO_RX_STAGING_SLOTS];
 	int head;               /* producer: next slot to fill */
 	int tail;               /* consumer: next slot to drain */
 	int count;              /* slots filled and awaiting drain */
@@ -273,6 +270,14 @@ static inline void sdio_rx_ring_reset(void)
 	double_buf.head = double_buf.tail = double_buf.count = 0;
 }
 
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+/* Published by INIT and consumed only by sdio_read_task while holding the
+ * driver lock.  The read task is the sole owner allowed to resize slots. */
+static uint32_t sdio_rx_staging_target_size;
+static bool sdio_rx_staging_prealloc_pending;
+static bool sdio_rx_staging_prealloc_done;
+#endif
+
 static eh_host_port_sem_t *sem_double_buf_xfer_data;
 
 /* Posted by the drain task when it frees a double-buf slot, so the read task
@@ -280,12 +285,14 @@ static eh_host_port_sem_t *sem_double_buf_xfer_data;
  * Binary semaphore: repeated posts coalesce. */
 static eh_host_port_sem_t *sem_double_buf_free;
 
+#if EH_HOST_PORT_SDIO_RX_STAGING_SLOTS > 1
 /* Bounded wait for a free slot before giving up and dropping. Keep the
  * per-attempt comfortably above the host's wait granularity so it blocks. */
 #define SDIO_RX_SLOT_WAIT_MS       20
 #define SDIO_RX_SLOT_WAIT_RETRIES  2   /* 2 x 20ms = 40ms give-up ceiling (stall only) */
 
 static uint32_t sdio_rx_slot_drops;   /* overrun drops; should stay 0 */
+#endif
 
 #if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
 static uint16_t sdio_rx_stream_drops;
@@ -302,29 +309,33 @@ static void sdio_write_task(void *pvParameters);
 static void sdio_read_task(void *pvParameters);
 static void sdio_process_rx_task(void *pvParameters);
 static void sdio_rx_free_buffer(uint8_t *buf);
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+static int sdio_prealloc_pending_rx_slots(void);
+#endif
 
 static inline void sdio_mempool_create(int tx_q_size, int rx_q_size)
 {
-#if EH_HOST_USE_MEMPOOL
-	hosted_mempool_config_t config = {
-		.pre_allocated_mem = NULL,
-		.pre_allocated_mem_size = 0,
-		.num_blocks = rx_q_size + MIN_MEMPOOL_REQ,
-		.block_size = MAX_SDIO_BUFFER_SIZE,
-		.alignment_in_bytes = HOSTED_MEM_ALIGNMENT,
-		.malloc = transport_util_malloc,
-		.calloc = transport_util_calloc,
-		.memset = memset,
-		.free   = free,
-	};
-	buf_mp_g = hosted_mempool_create(&config);
+#if EH_HOST_PORT_SDIO_USE_MEMPOOL
+	size_t num_blocks = (size_t)rx_q_size + MIN_MEMPOOL_REQ;
+
+	(void)tx_q_size;
+	buf_mp_g = hosted_mempool_create(NULL, 0, num_blocks, MAX_SDIO_BUFFER_SIZE);
+	if (!buf_mp_g) {
+		ESP_LOGE(TAG, "SDIO mempool create failed (%u blocks x %u bytes)",
+		         (unsigned)num_blocks, (unsigned)MAX_SDIO_BUFFER_SIZE);
+	}
 	assert(buf_mp_g);
+	ESP_LOGI(TAG, "SDIO mempool: %u blocks x %u bytes",
+	         (unsigned)num_blocks, (unsigned)MAX_SDIO_BUFFER_SIZE);
+#else
+	(void)tx_q_size;
+	(void)rx_q_size;
 #endif
 }
 
 static inline void sdio_mempool_destroy(void)
 {
-#if EH_HOST_USE_MEMPOOL
+#if EH_HOST_PORT_SDIO_USE_MEMPOOL
 	ESP_LOGD(TAG, "Destroying SDIO mempool");
 	hosted_mempool_destroy(buf_mp_g);
 	buf_mp_g = NULL;
@@ -333,8 +344,8 @@ static inline void sdio_mempool_destroy(void)
 
 static inline void *sdio_buffer_alloc(unsigned int need_memset)
 {
-#if EH_HOST_USE_MEMPOOL
-	MEMPOOL_ALLOC(buf_mp_g, MAX_SDIO_BUFFER_SIZE, need_memset);
+#if EH_HOST_PORT_SDIO_USE_MEMPOOL
+	return hosted_mempool_alloc(buf_mp_g, MAX_SDIO_BUFFER_SIZE, need_memset);
 #else
 	void *p = eh_host_port_dma_alloc(MAX_SDIO_BUFFER_SIZE);
 	if (p && need_memset) memset(p, 0, MAX_SDIO_BUFFER_SIZE);
@@ -344,8 +355,8 @@ static inline void *sdio_buffer_alloc(unsigned int need_memset)
 
 static inline void sdio_buffer_free(void *buf)
 {
-#if EH_HOST_USE_MEMPOOL
-	MEMPOOL_FREE(buf_mp_g, buf);
+#if EH_HOST_PORT_SDIO_USE_MEMPOOL
+	hosted_mempool_free(buf_mp_g, buf);
 #else
 	if (buf) eh_host_port_dma_free(buf);
 #endif
@@ -452,7 +463,7 @@ static void bus_deinit_internal(void *bus_handle)
 #else
 #  define EH_DOUBLE_BUF_FREE(p)  eh_host_port_dma_free(p)
 #endif
-	for (int i = 0; i < SDIO_RX_STAGING_SLOTS; i++) {
+	for (int i = 0; i < EH_HOST_PORT_SDIO_RX_STAGING_SLOTS; i++) {
 		if (double_buf.buffer[i].buf) {
 			ESP_LOGI(TAG, "free buffer[%d] %p", i, double_buf.buffer[i].buf);
 			EH_DOUBLE_BUF_FREE(double_buf.buffer[i].buf);
@@ -462,6 +473,11 @@ static void bus_deinit_internal(void *bus_handle)
 	}
 #undef EH_DOUBLE_BUF_FREE
 	sdio_rx_ring_reset();
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+	sdio_rx_staging_target_size = 0;
+	sdio_rx_staging_prealloc_pending = false;
+	sdio_rx_staging_prealloc_done = false;
+#endif
 
 	sdio_tx_buf_count = 0;
 	sdio_rx_byte_count = 0;
@@ -1296,13 +1312,22 @@ static esp_err_t sdio_push_aggr_to_queue(uint8_t *buf, uint32_t buf_len)
 		}
 
 		uint8_t *pkt_rxbuff = sdio_buffer_alloc(MEMSET_REQUIRED);
-		if (pkt_rxbuff) {
+		if (!pkt_rxbuff) {
+			if (!mempool_oom_logged) {
+				ESP_LOGD(TAG, "mempool OOM start (RX)");
+				mempool_oom_logged = true;
+			}
+			/* skip this sub-frame, keep walking */
+		} else {
+			if (mempool_oom_logged) {
+				ESP_LOGD(TAG, "mempool OOM end");
+				mempool_oom_logged = false;
+			}
 			memcpy(pkt_rxbuff, buf, packet_size);
 			if (sdio_push_pkt_to_queue(pkt_rxbuff, len, offset))
 				ESP_LOGI(TAG, "aggr rx: failed to queue sub-frame");
-		} /* OOM: skip this sub-frame, keep walking */
-
-		subframes++;
+			subframes++;
+		}
 		uint32_t aligned = (packet_size + 3u) & ~3u;
 		if (aligned >= buf_len)
 			goto out_ok;
@@ -1328,6 +1353,14 @@ static uint8_t * sdio_rx_get_buffer(uint32_t len)
 	uint8_t ** buf = &double_buf.buffer[index].buf;
 
 	if (len > double_buf.buffer[index].buf_size) {
+		/* A completed target is the CP's contract for every subsequent
+		 * aggregate. Do not silently resize after a staging hand-off. */
+		if (sdio_rx_staging_prealloc_done) {
+			ESP_LOGE(TAG, "SDIO RX read (%lu bytes) exceeds staging target (%lu bytes)",
+			         (unsigned long)len,
+			         (unsigned long)double_buf.buffer[index].buf_size);
+			return NULL;
+		}
 		if (*buf) {
 			eh_host_port_dma_free(*buf);
 			*buf = NULL;
@@ -1470,7 +1503,7 @@ static void sdio_data_to_rx_buf_task(void *pvParameters)
 		double_buf.buffer[slot].buf = NULL;
 #endif
 
-		double_buf.tail = (slot + 1) % SDIO_RX_STAGING_SLOTS;
+		double_buf.tail = (slot + 1) % EH_HOST_PORT_SDIO_RX_STAGING_SLOTS;
 		double_buf.count--;
 
 		/* Wake sdio_read_task if it is parked waiting for a free slot. */
@@ -1665,6 +1698,52 @@ static void sdio_read_task(void *pvParameters)
 		}
 #endif
 
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+		/* INIT may have arrived while an earlier aggregate was still being
+		 * drained.  Before the next CMD53, wait for every published slot to
+		 * drain, then resize all slots as their sole owner. */
+		if (sdio_rx_staging_prealloc_pending) {
+			SDIO_DRV_UNLOCK();
+			while (s_running && double_buf.count > 0)
+				eh_host_port_sem_wait_ms(sem_double_buf_free, EH_HOST_PORT_WAIT_FOREVER);
+			if (!s_running) {
+				/* Deinit force-cancels this task; returning races with that
+				 * cancellation exactly as in the one-slot path below. */
+				while (1)
+					eh_host_port_task_delay_ms(1000);
+			}
+			SDIO_DRV_LOCK();
+			if (sdio_rx_staging_prealloc_pending &&
+			    sdio_prealloc_pending_rx_slots() != 0) {
+				SDIO_DRV_UNLOCK();
+				if (s_running) {
+					esp_event_post(EH_HOST_EVENT,
+						       (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE,
+						       NULL, 0, 0);
+#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
+					eh_host_port_restart_host();
+#endif
+				}
+				continue;
+			}
+		}
+#endif
+
+#if EH_HOST_PORT_SDIO_RX_STAGING_SLOTS == 1
+		/* The only buffer is shared with the drain task. Do not read into
+		 * it until that task has copied the previous transfer out. */
+		SDIO_DRV_UNLOCK();
+		while (s_running && double_buf.count > 0)
+			eh_host_port_sem_wait_ms(sem_double_buf_free, EH_HOST_PORT_WAIT_FOREVER);
+		if (!s_running) {
+			/* Deinit force-cancels this task. Returning would self-delete
+			 * and race with that cancel. */
+			while (1)
+				eh_host_port_task_delay_ms(1000);
+		}
+		SDIO_DRV_LOCK();
+#endif
+
 		rxbuff = sdio_rx_get_buffer(len_from_slave);
 		if (!rxbuff) {
 			ESP_LOGW(TAG, "rx_get_buffer(%lu) failed; skipping read",
@@ -1709,18 +1788,26 @@ static void sdio_read_task(void *pvParameters)
 		if (unlikely(ret))
 			continue;
 
+#if EH_HOST_PORT_SDIO_RX_STAGING_SLOTS == 1
+		/* Publish the only slot. A failed read never reaches here, so
+		 * `count` stays 0 and the next loop does not wait. */
+		double_buf.buffer[double_buf.head].data_len = len_from_slave;
+		double_buf.count = 1;
+		if (s_running && sem_double_buf_xfer_data)
+			eh_host_port_sem_post(sem_double_buf_xfer_data);
+#else
 		/* Ring full (pending == SLOTS-1): the just-read frame is safely in the
 		 * `head` slot, but the drain task hasn't freed a slot yet. Wait briefly
 		 * rather than dropping. Parking also backpressures the next SDIO read
 		 * (the slave holds later frames in its send queue), so nothing is lost.
 		 * Drop only if the drain task is genuinely stuck. */
 		int waits = SDIO_RX_SLOT_WAIT_RETRIES;
-		while (s_running && double_buf.count >= SDIO_RX_STAGING_SLOTS - 1 && waits-- > 0)
+		while (s_running && double_buf.count >= EH_HOST_PORT_SDIO_RX_STAGING_SLOTS - 1 && waits-- > 0)
 			eh_host_port_sem_wait_ms(sem_double_buf_free, SDIO_RX_SLOT_WAIT_MS);
 
-		if (double_buf.count < SDIO_RX_STAGING_SLOTS - 1) {
+		if (double_buf.count < EH_HOST_PORT_SDIO_RX_STAGING_SLOTS - 1) {
 			double_buf.buffer[double_buf.head].data_len = len_from_slave;
-			double_buf.head = (double_buf.head + 1) % SDIO_RX_STAGING_SLOTS;
+			double_buf.head = (double_buf.head + 1) % EH_HOST_PORT_SDIO_RX_STAGING_SLOTS;
 			double_buf.count++;
 			if (s_running && sem_double_buf_xfer_data)
 				eh_host_port_sem_post(sem_double_buf_xfer_data);
@@ -1735,6 +1822,7 @@ static void sdio_read_task(void *pvParameters)
 				ESP_LOGE(TAG, "Rx slot busy, dropped #%lu (drain stalled)",
 				         (unsigned long)(++sdio_rx_slot_drops));
 		}
+#endif
 		}
 }
 
@@ -1848,6 +1936,81 @@ static void sdio_process_rx_task(void *pvParameters)
 	}
 }
 
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+/* Grow one streaming slot. Never shrinks. Allocates the replacement before
+ * freeing the old buffer, so a failure leaves the slot unchanged. */
+static int sdio_grow_rx_slot(buf_info_t *slot, uint32_t new_size)
+{
+	if (slot->buf && new_size == slot->buf_size)
+		return 0;
+	if (slot->buf && new_size < slot->buf_size) {
+		ESP_LOGW(TAG, "SDIO RX slot is %lu bytes; not shrinking to %lu",
+		         (unsigned long)slot->buf_size, (unsigned long)new_size);
+		return 0;
+	}
+
+	uint8_t *buf = (uint8_t *)eh_host_port_dma_alloc_aligned(new_size, HOSTED_MEM_ALIGNMENT);
+	if (!buf) {
+		ESP_LOGE(TAG, "SDIO RX staging alloc failed (%lu bytes)",
+		         (unsigned long)new_size);
+		return -1;
+	}
+	if (slot->buf)
+		eh_host_port_dma_free(slot->buf);
+	slot->buf = buf;
+	slot->buf_size = new_size;
+	return 0;
+}
+#endif
+
+void eh_host_bus_sdio_set_rx_staging_target(uint32_t target_size)
+{
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE != EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+	/* Packet mode reads into one sdio_buffer_alloc() frame per transfer. */
+	(void)target_size;
+#else
+	if (!target_size)
+		return;
+
+#if EH_HOST_PORT_SDIO_RX_BLOCK_ONLY_XFER
+	target_size = ((target_size + ESP_BLOCK_SIZE - 1) / ESP_BLOCK_SIZE) * ESP_BLOCK_SIZE;
+#endif
+
+	SDIO_DRV_LOCK();
+	/* INIT normally runs once. If a later INIT advertises a larger aggregate,
+	 * safely schedule one more read-owned grow; a smaller target needs none. */
+	if (!sdio_rx_staging_prealloc_done ||
+	    target_size > sdio_rx_staging_target_size) {
+		sdio_rx_staging_target_size = target_size;
+		sdio_rx_staging_prealloc_pending = true;
+		sdio_rx_staging_prealloc_done = false;
+	}
+	SDIO_DRV_UNLOCK();
+ #endif
+}
+
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+/* Called by sdio_read_task with SDIO_DRV_LOCK held and count == 0. */
+static int sdio_prealloc_pending_rx_slots(void)
+{
+	for (int i = 0; i < EH_HOST_PORT_SDIO_RX_STAGING_SLOTS; i++) {
+		if (sdio_grow_rx_slot(&double_buf.buffer[i],
+				      sdio_rx_staging_target_size) != 0) {
+			ESP_LOGE(TAG, "failed to preallocate SDIO RX slot %d (%lu bytes)",
+			         i, (unsigned long)sdio_rx_staging_target_size);
+			sdio_rx_staging_prealloc_pending = false;
+			return -1;
+		}
+	}
+	sdio_rx_staging_prealloc_pending = false;
+	sdio_rx_staging_prealloc_done = true;
+	ESP_LOGI(TAG, "preallocated %d SDIO RX staging slot(s), %lu bytes each",
+	         EH_HOST_PORT_SDIO_RX_STAGING_SLOTS,
+	         (unsigned long)sdio_rx_staging_target_size);
+	return 0;
+}
+#endif
+
 static void check_if_max_freq_used(void)
 {
 	uint32_t clk_khz = EH_HOST_PORT_SDIO_CLOCK_FREQ_KHZ;
@@ -1936,6 +2099,11 @@ static void *bus_init_internal(void)
 
 	memset(&double_buf, 0, sizeof(double_buf_t));
 	sdio_rx_ring_reset();
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
+	sdio_rx_staging_target_size = 0;
+	sdio_rx_staging_prealloc_pending = false;
+	sdio_rx_staging_prealloc_done = false;
+#endif
 
 	sem_double_buf_xfer_data = eh_host_port_sem_create();
 	assert(sem_double_buf_xfer_data);

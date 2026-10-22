@@ -12,7 +12,7 @@ repos:
       name: EH Changelog Checker
       entry: tools/check_changelog.py
       language: python
-      files: ^idf_component.yml$
+      files: ^(idf_component\.yml|docs/changelog\.md)$
     - id: rpc-id-names
       name: EH RPC id names match rpc_v2.proto
       entry: common/serializers/eh_proto_v2/src/proto/gen_rpc_id_names.py --check
