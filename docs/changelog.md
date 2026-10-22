@@ -1,5 +1,9 @@
 # Unreleased
 
+# Releases
+
+# $${\color{green} \text{3.0.10}}$$
+
 - host/spi_hd: report a Tx byte-count desync once as `EH_HOST_EVENT_TRANSPORT_FAILURE` instead of logging it forever
 - frame: ignore flags on dummy frames. A corrupted SPI-FD idle frame could make the co-processor act on a power-save flag
 - frame: trust power-save flags on a header-only frame only if its checksum holds. A corrupted frame could reset the SPI-HD co-processor Tx byte count and stall host rx
@@ -33,8 +37,10 @@
 - host: SPI, SPI-HD and UART now use the transport config set with `esp_hosted_*_set_config()` (they used the Kconfig values); a new config is accepted after `esp_hosted_deinit()`
 - examples: a P4 host defaults to the P4 Function EV board with a C6 co-processor, and to the P4X Function EV board with a C5 co-processor
 - examples: `mcu_transport_config` shows a staged manual bring-up (auto-init off) against a Wi-Fi + BLE co-processor
-
-# Releases
+- nw_split: the host app gets one `IP_EVENT_STA_GOT_IP` per lease, and only the DHCP owner (host or co-processor) runs a DHCP client on the shared MAC
+- host/wifi: STA events reach the app only after its `esp_wifi_start()`; `esp_wifi_stop()` stops the STA netif in every netif mode
+- cp/wifi: a STA config set while Wi-Fi is stopped is applied at once, not cached
+- host/wifi: at `esp_wifi_start()`, the host adopts a co-processor link that is already up only with network split
 
 # $${\color{green} \text{3.0.9}}$$
 

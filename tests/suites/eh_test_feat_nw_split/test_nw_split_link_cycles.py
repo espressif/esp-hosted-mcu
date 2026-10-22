@@ -19,6 +19,7 @@ Counts come from the full host log (EmuDut._buf), not from expect(): expect()
 stops at the first match, so a duplicate event would pass unseen.
 """
 import os
+import re
 import sys
 import time
 
@@ -309,4 +310,36 @@ def test_nwsplit_drop_without_reconnect(bench, wifi_ap, mode, trigger):
     mark = _mark(host)
     _restore(host, trigger, wifi_ap)
     led.phase(host, mark, 'restore')
+    led.verdict()
+
+
+# ── S42: config set while Wi-Fi is stopped ──────────────────────────────────
+@pytest.mark.nw_split
+@pytest.mark.wifi
+@pytest.mark.parametrize('split', ['split_off', 'split_on'])
+def test_nwsplit_set_config_while_stopped(bench, wifi_ap, split):
+    """wifi stop -> sta_connect x2 -> wifi start: IDF takes a config while stopped
+    and connects once started. The CP must not refuse it with
+    ESP_ERR_WIFI_NOT_STARTED (12290)."""
+    if not wifi_ap:
+        pytest.skip('bench has no associable AP')
+    led = Ledger(f'[sdio/app_external/{split}/set-config-while-stopped]')
+    off = dict(extra_host=['CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT=n'],
+               cp_ovl=[CP_DHCP_HOST]) if split == 'split_off' else {}
+    host, mark = _bring_up(bench, wifi_ap, 'sdio', 'app_external', 'cli', **off)
+    led.phase(host, mark, 'initial', got=None, conn=None)
+    mark, cp_mark = _mark(host), _mark(host.cp)
+    host.write('wifi stop')
+    eh_test_expect(host, DISC, fail=FAIL, timeout=T_IP)
+    time.sleep(2)
+    _connect(host, wifi_ap)          # set_config + connect while stopped
+    time.sleep(2)
+    _connect(host, wifi_ap)          # again: a connect is already deferred to start
+    time.sleep(2)
+    host.write('wifi start')
+    led.phase(host, mark, 'restart', disc=1, lost=None)
+    # disconnect while stopped returns 12290 as in IDF; only set_config must not.
+    if 'NOT_STARTED' in _since(host, mark) or \
+            re.search(r'req_wifi_set_config.*\[12290\]', _since(host.cp, cp_mark)):
+        led.bad.append('set_config refused while stopped')
     led.verdict()

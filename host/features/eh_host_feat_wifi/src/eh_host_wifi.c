@@ -28,6 +28,7 @@
 #include "esp_wifi_types.h"
 
 #include "eh_host_wifi.h"
+#include "eh_host_port_master_config.h"
 #include "eh_host_wifi_priv.h"
 
 #include "eh_host_feat_rpc_ext_v2_api_common.h"
@@ -923,7 +924,9 @@ static void sta_app_started(void)
 {
     uint32_t gen = s_cp_sta_down_gen;
     wifi_ap_record_t ap;
-    bool kept = (eh_host_wifi_sta_get_ap_info(&ap) == ESP_OK);
+    /* Only a network-split CP shares its link with every host session; a plain
+     * CP may hold a link of a previous host app, which this app never asked for. */
+    bool kept = EH_HOST_FEAT_NW_SPLIT_READY && (eh_host_wifi_sta_get_ap_info(&ap) == ESP_OK);
 
     sta_lock();
     if (kept && !s_cp_sta_connected && gen == s_cp_sta_down_gen) {
