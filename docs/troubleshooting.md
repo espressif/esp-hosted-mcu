@@ -113,6 +113,36 @@ then something is wrong with the SPI/SDIO connection and the host cannot talk to
 - For SDIO, confirm pull-ups and signalling requirements (short, shielded connections) are met — see the [SDIO](getting-started-mcu.md#1-sdio) page.
 - If your transport tolerates jumper cables, cross-check the maximum allowed jumper length in the [Getting Started: MCU](getting-started-mcu.md).
 
+### If the error persists across reboots
+
+A host-side reset is **not** a power cycle. The transport already resets the slave
+(`CONFIG_ESP_HOSTED_SLAVE_RESET_ON_EVERY_HOST_BOOTUP`), but if the co-processor has ended up in
+a wedged state, pulsing its reset/EN line may not bring it back: the host keeps reporting
+`send_op_cond ... 0x107` and `card init failed` on every boot, and re-flashing the host does not help either.
+
+If your board lets the host control the co-processor power/enable (some boards do it through an
+IO expander), toggle it once and retry the transport init:
+
+```c
+enable_coprocessor_power(false);          /* cut the co-processor supply      */
+vTaskDelay(pdMS_TO_TICKS(500));
+enable_coprocessor_power(true);           /* back on                          */
+vTaskDelay(pdMS_TO_TICKS(3000));          /* let the slave bring SDIO up      */
+/* then re-init, e.g. esp_wifi_init() -> esp_wifi_remote_init() -> esp_hosted_reconfigure() */
+```
+
+Do this only when the link is already down, and restore the pin level immediately afterwards:
+in some designs that pin also participates in power management. We have seen a completely
+unresponsive co-processor recover on the first try this way (logs and discussion in issue #240).
+
+### Note on restarts
+
+`CONFIG_ESP_HOSTED_TRANSPORT_RESTART_ON_FAILURE` defaults to `y`, so an unrecoverable transport
+error restarts the host, which then fails again - an endless reboot loop that hides the real
+state. Consider disabling it and handling `ESP_HOSTED_EVENT_TRANSPORT_FAILURE` in the application
+(see `examples/host_hosted_events`), so the application can run its own recovery, for example the
+power cycle above.
+
 ---
 
 ## 6. `Drop Packet` errors
