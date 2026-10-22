@@ -1,5 +1,6 @@
 # Unreleased
 
+- cp/sdio: enabled SDIO packet mode operation
 - host/task: removed division by sizeof(StackType_t). In IDF, the stack size should be specified as bytes
 - host: with `CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=y`, starting a detached Hosted task no longer corrupts the heap ([#254](https://github.com/espressif/esp-hosted-mcu/issues/254))
 
