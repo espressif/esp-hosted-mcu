@@ -1,5 +1,10 @@
 # Unreleased - Main Branch
 
+
+# Releases
+
+# $${\color{green} \text{2.13.1}}$$
+
 - when using SDIO Streaming mode, pre-allocate required Rx buffers on host to prevent transport failures due to failure to allocate memory during run-time
   - transport is halted if there is not enough memory to pre-allocate the required Rx buffers
   - required size of Rx buffers on host is set by the number of SDIO Tx buffers on the co-processor
@@ -7,8 +12,6 @@
 - host SPI-HD: report a Tx byte-count desync once as `ESP_HOSTED_EVENT_TRANSPORT_FAILURE` instead of logging it forever
 - slave SPI-HD: act on host power-save flags only after the length and checksum checks. A corrupted frame could reset the Tx byte count and stall host rx
 - host: stop the RPC threads before `esp_hosted_deinit()` frees the queues and semaphores they wait on. This removes a heap corruption on every deinit, and a stuck lock when a thread was deleted while it held one
-
-# Releases
 
 # $${\color{green} \text{2.13.0}}$$
 
