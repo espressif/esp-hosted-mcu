@@ -182,6 +182,8 @@ void *hosted_thread_create(const char *tname, uint32_t tprio, uint32_t tstack_si
 	}
 
 #if H_DFLT_TASK_FROM_SPIRAM
+	(void)task_created;
+
 	StaticTask_t *task_buffer = heap_caps_calloc(1, sizeof(StaticTask_t), MALLOC_CAP_INTERNAL);
 	if (!task_buffer) {
 		ESP_LOGE(TAG, "Failed to allocate task buffer");
@@ -196,17 +198,19 @@ void *hosted_thread_create(const char *tname, uint32_t tprio, uint32_t tstack_si
 		return NULL;
 	}
 
-	task_created = pdTRUE;
-	*thread_handle = xTaskCreateStatic((void (*)(void *))start_routine, tname, tstack_size, sr_arg, tprio, thread_stack, task_buffer);
-	if (!*thread_handle) {
+	thread_handle->task = xTaskCreateStatic((void (*)(void *))start_routine, tname, tstack_size, sr_arg, tprio, thread_stack, task_buffer);
+	if (!thread_handle->task) {
+		ESP_LOGE(TAG, "Failed to create thread: %s\n", tname);
 		heap_caps_free(thread_stack);
 		heap_caps_free(task_buffer);
-		task_created = pdFALSE;
+		HOSTED_FREE(thread_handle);
+		return NULL;
 	}
+	thread_handle->tcb = task_buffer;
+	thread_handle->stack = thread_stack;
 #else
-	task_created = xTaskCreate((void (*)(void *))start_routine, tname, tstack_size, sr_arg, tprio, thread_handle);
-#endif
-	if (!(*thread_handle)) {
+	task_created = xTaskCreate((void (*)(void *))start_routine, tname, tstack_size, sr_arg, tprio, &thread_handle->task);
+	if (!(thread_handle->task)) {
 		ESP_LOGE(TAG, "Failed to create thread: %s\n", tname);
 		HOSTED_FREE(thread_handle);
 		return NULL;
@@ -217,25 +221,59 @@ void *hosted_thread_create(const char *tname, uint32_t tprio, uint32_t tstack_si
 		HOSTED_FREE(thread_handle);
 		return NULL;
 	}
+#endif
 
 	return thread_handle;
 }
 
+/* NOTE: Must not be called from the thread being cancelled. */
 int hosted_thread_cancel(void *thread_handle)
 {
-	//int ret = RET_OK;
-	thread_handle_t *thread_hdl = NULL;
+	thread_handle_t *thread_hdl = (thread_handle_t *)thread_handle;
 
-	if (!thread_handle) {
+	if (!thread_hdl || !thread_hdl->task) {
 		ESP_LOGE(TAG, "Invalid thread handle\n");
 		return RET_INVALID;
 	}
 
-	thread_hdl = (thread_handle_t *)thread_handle;
-
-	vTaskDelete(*thread_hdl);
-
-	HOSTED_FREE(thread_handle);
+#if H_DFLT_TASK_FROM_SPIRAM
+	/* This API cannot safely cancel its own currently-running task. */
+	if (thread_hdl->task == xTaskGetCurrentTaskHandle()) {
+		return RET_INVALID;
+	}
+	/* The suspend/wait is necessary on SMP targets: freeing a PSRAM
+	 * stack immediately after vTaskDelete() is unsafe if the target
+	 * was still executing on another core. The other core usually
+	 * switches away within a tick; 100 ms is a generous bound. */
+	vTaskSuspend(thread_hdl->task);
+	const TickType_t wait_start = xTaskGetTickCount();
+	const TickType_t wait_ticks = pdMS_TO_TICKS(100);
+	for (;;) {
+		BaseType_t on_core = pdFALSE;
+		for (BaseType_t c = 0; c < configNUMBER_OF_CORES; c++) {
+			if (xTaskGetCurrentTaskHandleForCore(c) == thread_hdl->task) {
+				on_core = pdTRUE;
+				break;
+			}
+		}
+		if (!on_core) {
+			break;
+		}
+		if ((xTaskGetTickCount() - wait_start) >= wait_ticks) {
+			ESP_LOGE(TAG, "Timed out waiting for thread to suspend\n");
+			/* Leave the task runnable: its stack must not be freed. */
+			vTaskResume(thread_hdl->task);
+			return RET_FAIL_TIMEOUT;
+		}
+		taskYIELD();
+	}
+	vTaskDelete(thread_hdl->task);
+	heap_caps_free(thread_hdl->stack);
+	heap_caps_free(thread_hdl->tcb);
+#else
+	vTaskDelete(thread_hdl->task);
+#endif
+	HOSTED_FREE(thread_hdl);
 	return RET_OK;
 }
 
