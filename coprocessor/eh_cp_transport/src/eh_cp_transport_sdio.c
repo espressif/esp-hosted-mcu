@@ -18,7 +18,6 @@
 #include "eh_transport_cp.h"
 #include "sdio_slave_api.h"
 #include "driver/sdio_slave.h"
-#include "hal/sdio_slave_ll.h"
 #include "endian.h"
 #include "eh_mempool.h"
 #include "eh_header.h"
@@ -201,12 +200,16 @@ if_ops_t if_ops = {
 	.stop   = sdio_stop,
 };
 
+#if TX_MODE != TX_MODE_PACKET
+#include "hal/sdio_slave_ll.h"
+
 static uint32_t sdio_hw_max_rx_buf_size(void)
 {
 	sdio_slave_ll_desc_t dummy;
 	memset(&dummy, 0xFF, sizeof(dummy));
 	return (dummy.size / 512) * 512;
 }
+#endif
 
 static void sdio_read_done(void *handle)
 {
@@ -378,22 +381,59 @@ static void send_task(void *arg)
 }
 
 #elif TX_MODE == TX_MODE_PACKET
-#error "Not the current run"
-static void send_task(void *arg)
+/* PACKET: one frame per transfer. Drained per-priority (SERIAL -> BT -> OTHERS),
+ * matching the SW_AGGR and STREAM paths. One persistent DMA buffer is reused;
+ * sdio_slave_transmit blocks until the host takes the frame. */
+static void process_tx_packet(QueueHandle_t q, uint16_t queued)
 {
-	interface_buffer_handle_t buf;
+	interface_buffer_handle_t buf = {0};
 
-	for (;;) {
+	if (!queued)
+		return;
+
+	if (!tx_pkt_buf) {
+		if (xQueueReceive(q, &buf, 0) == pdTRUE)
+			free_tx_buf(&buf);
+		return;
+	}
+
+	while (queued--) {
 		uint16_t total;
 
-		if (xQueueReceive(to_host_queue, &buf, portMAX_DELAY) != pdTRUE)
+		if (xQueueReceive(q, &buf, 0) != pdTRUE)
+			break;
+		if (!datapath || !buf.payload || !buf.payload_len ||
+		    buf.payload_len + SDIO_HDR_SIZE > sdio_rx_buf_size) {
+			free_tx_buf(&buf);
 			continue;
-		if (!datapath || !buf.payload || !buf.payload_len) { free_tx_buf(&buf); continue; }
+		}
+
 		total = SDIO_HDR_SIZE + buf.payload_len;
 		build_frame(tx_pkt_buf, &buf);
+		free_tx_buf(&buf);
 		if (sdio_tx_locked(tx_pkt_buf, total) != ESP_OK)
 			ESP_LOGE(TAG, "packet transmit failed");
-		free_tx_buf(&buf);
+	}
+}
+
+static void send_task(void *arg)
+{
+	for (;;) {
+		bool worked = false;
+
+		/* highest priority first: PRIO_Q_SERIAL(0) -> BT(1) -> OTHERS(2) */
+		for (int p = 0; p < MAX_PRIORITY_QUEUES; p++) {
+			uint16_t waiting = uxQueueMessagesWaiting(to_host_queue[p]);
+
+			if (waiting) {
+				process_tx_packet(to_host_queue[p], waiting);
+				worked = true;
+			}
+		}
+
+		/* All lanes empty: sleep until sdio_write enqueues. */
+		if (!worked)
+			send_task_wait_work(portMAX_DELAY);
 	}
 }
 
@@ -841,7 +881,13 @@ static interface_handle_t *sdio_init(void)
 		rx_eg = xEventGroupCreate();
 	assert(rx_eg);
 
+#if TX_MODE == TX_MODE_PACKET
+	/* One frame per transfer, capped at the transport MTU (1536, 3x512).
+	 * The HW descriptor max is for SW_AGGR/STREAM aggregates. */
+	sdio_rx_buf_size = MAX_TRANSPORT_BUF_SIZE;
+#else
 	sdio_rx_buf_size = sdio_hw_max_rx_buf_size();
+#endif
 	ESP_LOGI(TAG, "rx_buf_size=%"PRIu32, sdio_rx_buf_size);
 
 #if TX_MODE == TX_MODE_SW_AGGR
@@ -921,7 +967,8 @@ static interface_handle_t *sdio_init(void)
 		tx_aggr_buf = heap_caps_malloc(sdio_rx_buf_size, MALLOC_CAP_DMA);
 	assert(tx_aggr_buf);
 #elif TX_MODE == TX_MODE_PACKET
-	tx_pkt_buf = heap_caps_malloc(sdio_rx_buf_size, MALLOC_CAP_DMA);
+	if (!tx_pkt_buf)
+		tx_pkt_buf = heap_caps_malloc(sdio_rx_buf_size, MALLOC_CAP_DMA);
 	assert(tx_pkt_buf);
 #elif TX_MODE == TX_MODE_STREAM
 	if (!tx_stream_sem) {

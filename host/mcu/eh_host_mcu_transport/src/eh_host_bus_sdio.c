@@ -287,8 +287,10 @@ static eh_host_port_sem_t *sem_double_buf_free;
 
 static uint32_t sdio_rx_slot_drops;   /* overrun drops; should stay 0 */
 
+#if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
 static uint16_t sdio_rx_stream_drops;
 static uint16_t sdio_rx_phantom_reads;
+#endif
 #define SDIO_RX_POST_RESUME_SETTLE_MS  0
 
 static void * sdio_rx_buf_thread;
