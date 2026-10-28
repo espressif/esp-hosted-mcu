@@ -1,5 +1,7 @@
 # Unreleased - Main Branch
 
+- host: `hosted_thread_cancel()` frees the static TCB and PSRAM stack when `CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM` is enabled. `xTaskCreateStatic()` leaves those buffers allocated, so the thread handle now keeps them
+  - cancel suspends the task and waits until it is no longer running, then deletes it and frees both allocations. This is required on SMP, where the task can still be executing on another core
 
 # Releases
 

@@ -45,7 +45,6 @@ typedef enum {
 #define HOSTED_BLOCKING                              -1
 #define HOSTED_NON_BLOCKING                          0
 
-#define thread_handle_t                              TaskHandle_t
 #define queue_handle_t                               QueueHandle_t
 #define semaphore_handle_t                           SemaphoreHandle_t
 #define mutex_handle_t                               SemaphoreHandle_t
@@ -66,7 +65,17 @@ typedef enum {
 #define DFLT_TASK_STACK_SIZE                         (5*1024)
 #define DFLT_TASK_PRIO                               23
 
-
+/* defined as a struct to keep track of statically allocated tcb and stack
+ * from SPIRAM.
+ * Buffers given to xTaskCreateStatic(): TCB in internal RAM, stack in SPIRAM.
+ * Kept so that hosted_thread_cancel() can free them. */
+typedef struct {
+	TaskHandle_t task;
+#if H_DFLT_TASK_FROM_SPIRAM
+	StaticTask_t *tcb;
+	StackType_t  *stack;
+#endif
+} thread_handle_t;
 
 #define H_GPIO_MODE_DEF_DISABLE         (0)
 #define H_GPIO_MODE_DEF_INPUT           (BIT0)    ///< bit mask for input
