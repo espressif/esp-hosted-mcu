@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* IDF task = xTaskCreate + exit-sem gate for join (no force-kill). */
 
 #include "eh_host_port_config.h"
@@ -74,25 +78,29 @@ eh_host_port_err_t eh_host_port_task_create(const eh_host_port_task_create_cfg_t
         if (!t->exit_sem) { free(t); return EH_HOST_PORT_ERR_NOMEM; }
     }
 
+    // in IDF, usStackDepth is specified by number of bytes
     size_t stack_bytes = cfg->stack_bytes ? cfg->stack_bytes
                                           : (size_t)EH_HOST_PORT_DFLT_TASK_STACK;
     UBaseType_t prio   = cfg->priority > 0
                              ? (UBaseType_t)cfg->priority
                              : (UBaseType_t)(tskIDLE_PRIORITY + 5);
     const char *name = cfg->name ? cfg->name : "eh_host_port_task";
-    uint32_t depth = (uint32_t)(stack_bytes / sizeof(StackType_t));
 
     BaseType_t ok;
+    /* xTaskCreateWithCaps stores *pvCreatedTask only after the task is
+     * already runnable. A detached task frees `t` on exit, so the store must go to a
+     * local and `t` must never be touched again once the task may be running. */
+    TaskHandle_t handle = NULL;
 #if EH_HOST_PORT_DFLT_TASK_FROM_SPIRAM
-    /* Allocate the task's TCB + stack from external SPIRAM. Such a task
+    /* Allocate the task's stack from external SPIRAM. Such a task
      * MUST be torn down with vTaskDeleteWithCaps (handled in trampoline
      * and _cancel). */
     t->with_caps = 1;
-    ok = xTaskCreateWithCaps(trampoline, name, depth, t, prio, &t->handle,
+    ok = xTaskCreateWithCaps(trampoline, name, stack_bytes, t, prio, &handle,
                              MALLOC_CAP_SPIRAM);
 #else
     t->with_caps = 0;
-    ok = xTaskCreate(trampoline, name, depth, t, prio, &t->handle);
+    ok = xTaskCreate(trampoline, name, stack_bytes, t, prio, &handle);
 #endif
     if (ok != pdPASS) {
         /* Task never started, so `t` is still ours to free (it isn't detached-
@@ -101,7 +109,11 @@ eh_host_port_err_t eh_host_port_task_create(const eh_host_port_task_create_cfg_t
         free(t);
         return EH_HOST_PORT_ERR_NOMEM;
     }
-    /* Detached task owns `t` on success; it may already be freed. */
+    if (detached) {
+        /* Detached task owns `t` and may already have freed it. */
+        return EH_HOST_PORT_OK;
+    }
+    t->handle = handle;
     if (out) *out = t;
     return EH_HOST_PORT_OK;
 }
