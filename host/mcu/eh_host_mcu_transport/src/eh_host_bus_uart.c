@@ -39,7 +39,7 @@
 /* ~7.7 ms of line time at 8 Mbaud, so a short RX task stall does not
  * overflow the driver ring. */
 #define EH_UART_RX_BUF_SIZE     (EH_UART_MAX_BUF * 4)
-#define EH_UART_TX_BUF_SIZE     0   /* 0 -> driver ring; caller blocks */
+#define EH_UART_TX_BUF_SIZE     (EH_UART_MAX_BUF * 2)  /* next frame queues while one drains */
 #define EH_UART_EVT_QUEUE_LEN   20
 #define EH_UART_RX_FULL_THRESH  64
 #define EH_UART_EVT_STOP        UART_EVENT_MAX

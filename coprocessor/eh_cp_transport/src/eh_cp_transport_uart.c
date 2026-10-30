@@ -492,7 +492,7 @@ static void uart_rx_task(void* pvParameters)
 		 * buffer and re-point payload into the copy at the same offset, so the
 		 * consumer gets the offset-applied payload (matches the SDIO path). */
 		uint16_t off = (uint16_t)((const uint8_t *)buf_handle.payload - uart_scratch_buf);
-		buf = h_uart_buffer_rx_alloc(MEMSET_REQUIRED);
+		buf = h_uart_buffer_rx_alloc(MEMSET_NOT_REQUIRED);
 		/* Wait for the consumer to free a buffer instead of dropping the
 		 * frame. The driver RX ring holds the bytes that arrive meanwhile. */
 		while (!buf) {
@@ -501,7 +501,7 @@ static void uart_rx_task(void* pvParameters)
 			if (uart_exit_requested)
 				break;
 #endif
-			buf = h_uart_buffer_rx_alloc(MEMSET_REQUIRED);
+			buf = h_uart_buffer_rx_alloc(MEMSET_NOT_REQUIRED);
 		}
 		if (!buf) {
 			uart_rx_consume(total_len);
@@ -610,7 +610,7 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 
 	total_len = buf_handle->payload_len + eh_frame_hdr_size();
 
-	sendbuf = h_uart_buffer_tx_alloc(total_len, MEMSET_REQUIRED);
+	sendbuf = h_uart_buffer_tx_alloc(total_len, MEMSET_NOT_REQUIRED);
 	if (sendbuf == NULL) {
 		ESP_LOGE(TAG , "send buffer[%"PRIu32"] malloc fail", total_len);
 		MEM_DUMP("malloc failed");
@@ -634,9 +634,11 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 	ESP_LOGD(TAG, "sending %"PRIu32 " bytes", total_len);
 	ESP_HEXLOGD("uart_tx", sendbuf, total_len, 32);
 
-	tx_len = uart_write_bytes(HOSTED_UART, (const char*)sendbuf, total_len);
-
+	/* Wait for the previous frame, not this one: this frame was built while
+	 * the previous one was on the wire. The wait also yields the CPU to the
+	 * RX consumer, which frees the RX pool buffers. */
 	uart_wait_tx_done(HOSTED_UART, portMAX_DELAY);
+	tx_len = uart_write_bytes(HOSTED_UART, (const char*)sendbuf, total_len);
 
 	if ((tx_len < 0) || (tx_len != total_len)) {
 		ESP_LOGE(TAG , "uart transmit error");
