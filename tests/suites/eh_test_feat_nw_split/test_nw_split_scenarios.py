@@ -812,6 +812,24 @@ def test_nwsplit_drop_without_reconnect(bench, wifi_ap, mode):
     led.verdict()
 
 
+# ── S72: hosted's netif exists once connect_to_slave() returns (esp_hosted_mcu#12) ──
+NETIF_AFTER_CONNECT = 'CONFIG_EXAMPLE_LOG_STA_NETIF_AFTER_CONNECT=y'
+SLOW_FEATURE = 'CONFIG_EXAMPLE_SLOW_FEATURE_INIT_MS=300'     # a slower board's feature init
+
+
+@pytest.mark.nw_split
+@pytest.mark.parametrize('transport', ['sdio', 'spi_fd', 'spi_hd', 'uart'])
+@pytest.mark.parametrize('mode', ['internal_static', 'internal_dhcp'])
+def test_nwsplit_netif_ready_after_connect(bench, wifi_ap, mode, transport):
+    """An app that looks WIFI_STA_DEF up right after esp_hosted_connect_to_slave()
+    must find it: hosted creates it in INTERNAL_* modes, the app cannot wait for that."""
+    host = _bring_up(bench, wifi_ap, transport=transport, mode=mode, trigger='stop_start',
+                     host_extra=[NETIF_AFTER_CONNECT, SLOW_FEATURE])
+    m = re.search(r'netif after connect: (found|NULL)', _since(host))
+    assert m, 'the app never logged its netif lookup'
+    assert m.group(1) == 'found', 'WIFI_STA_DEF missing when esp_hosted_connect_to_slave() returned'
+
+
 # ── S47: stop + start back to back, no wait in between ─────────────────────
 @pytest.mark.nw_split
 @pytest.mark.wifi

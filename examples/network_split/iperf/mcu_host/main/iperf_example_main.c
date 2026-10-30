@@ -31,6 +31,16 @@
 
 /* ESP-Hosted host-side init (transport bring-up) */
 #include "esp_hosted.h"
+#if CONFIG_EXAMPLE_SLOW_FEATURE_INIT_MS
+#include "eh_host_auto_init.h"
+
+static int slow_feature_init(void)
+{
+	vTaskDelay(pdMS_TO_TICKS(CONFIG_EXAMPLE_SLOW_FEATURE_INIT_MS));
+	return 0;
+}
+EH_HOST_FEAT_REGISTER(slow_feature_init, NULL, "test_slow", 199);
+#endif
 
 
 /* component manager */
@@ -408,6 +418,10 @@ void app_main(void)
 	esp_netif_create_default_wifi_sta();
 #endif
 	esp_hosted_connect_to_slave();
+#if CONFIG_EXAMPLE_LOG_STA_NETIF_AFTER_CONNECT
+	ESP_LOGI(TAG, "netif after connect: %s",
+	         esp_netif_get_handle_from_ifkey("WIFI_STA_DEF") ? "found" : "NULL");
+#endif
 
 	/* Initialize WiFi with basic configuration */
 	//wifi_cmd_initialize_wifi(NULL);

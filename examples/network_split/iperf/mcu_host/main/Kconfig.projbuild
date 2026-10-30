@@ -29,6 +29,17 @@ menu "ESP-Hosted Example Config"
 			bool "None"
 	endchoice
 
+	config EXAMPLE_LOG_STA_NETIF_AFTER_CONNECT
+		bool "Log whether WIFI_STA_DEF exists when esp_hosted_connect_to_slave() returns"
+		default n
+
+	config EXAMPLE_SLOW_FEATURE_INIT_MS
+		int "Test hook: a hosted feature init that takes this long (ms), 0 = none"
+		default 0
+		help
+			Registers a feature that runs just before network split and sleeps,
+			as a slower board would. Test use only.
+
 	config EXAMPLE_NW_SPLIT_ECHO_SERVER
 		bool "Run a TCP echo server on the host stack (network-split routing test)"
 		default n

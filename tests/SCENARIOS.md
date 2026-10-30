@@ -156,3 +156,9 @@ appear in the test IDs.
 | `test_power_save_wake_mem` | SDIO, UART, SPI-FD, SPI-HD | one datagram on a host port wakes the host, and that same datagram reaches the host app; then GOT_IP and ping; the heap comes back |
 | `test_power_save_wake_burst` | 4 wires | more frames than the host can hold arrive before its path opens: the waking frame is still delivered (the hold refuses the newest, never the first) |
 | `test_plain_wake_app_quiet` | B5: no Wi-Fi call / init only | plain mode, CP code holds the link: an app that has not started Wi-Fi sees nothing at boot or after a wake; its start then adopts the link: `conn` 1, `got` 1 |
+
+## 7. Bring-up
+
+| Test | Rows | Proves |
+|---|---|---|
+| `test_nwsplit_netif_ready_after_connect` | S72: 4 wires × 2 internal modes | the netif that hosted makes exists when `esp_hosted_connect_to_slave()` returns, also with a slow feature init (esp_hosted_mcu#12) |
