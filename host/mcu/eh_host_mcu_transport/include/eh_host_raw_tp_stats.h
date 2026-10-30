@@ -15,7 +15,7 @@ void eh_host_raw_tp_process_test_capabilities(uint8_t cap);
  * sides. Return 0 on success; -1 without raw-TP support compiled in. */
 int eh_host_raw_tp_start(uint8_t dir);
 int eh_host_raw_tp_stop(void);
-void eh_host_raw_tp_update_rx_len(uint16_t payload_len);
+void eh_host_raw_tp_update_rx_len(const uint8_t *payload, uint16_t payload_len);
 void eh_host_raw_tp_deinit(void);
 
 #ifdef __cplusplus

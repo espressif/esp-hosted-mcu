@@ -35,7 +35,7 @@
 #define TEST_RAW_TP__BUF_SIZE        CONFIG_ESP_RAW_TP_ESP_TO_HOST_PKT_LEN
 #define TEST_RAW_TP__TIMEOUT         CONFIG_ESP_RAW_TP_REPORT_INTERVAL
 
-void eh_transport_utils_update_raw_tp_rx_count(uint16_t len);
+void eh_transport_utils_update_raw_tp_rx_count(const uint8_t *payload, uint16_t len);
 #endif
 
 

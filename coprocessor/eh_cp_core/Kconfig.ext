@@ -203,6 +203,13 @@ menu "CP core"
 					Size of Rx queue for packets
 		endmenu
 
+		config EH_DBG_WIFI_NOMEM_MS
+			int "DEBUG: Wi-Fi TX reports full for this long once per second"
+			default 0
+			range 0 900
+			help
+				Test only. Simulates Wi-Fi TX congestion. 0 disables.
+
 		config ESP_HOSTED_CP_WIFI_TX_RETRY_LIMIT
 			int "Host to Wi-Fi TX retry limit on buffer-full"
 			default 16

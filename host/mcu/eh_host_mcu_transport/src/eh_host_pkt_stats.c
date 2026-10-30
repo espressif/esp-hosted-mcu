@@ -16,6 +16,20 @@ static esp_timer_handle_t s_stats_timer;
 static void pkt_stats_timer_func(void *arg)
 {
 	(void)arg;
+#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART
+	{
+		extern void eh_host_bus_uart_rx_faults(uint32_t *fifo_ovf, uint32_t *resync_bytes);
+		uint32_t ovf, resync;
+		eh_host_bus_uart_rx_faults(&ovf, &resync);
+		extern void eh_host_bus_uart_tx_credit(uint32_t *n, uint32_t *ms, uint32_t *busy,
+		                                       uint32_t *resync, uint32_t *bad);
+		uint32_t cn, cms, cb, cr, cbad;
+		eh_host_bus_uart_tx_credit(&cn, &cms, &cb, &cr, &cbad);
+		ESP_LOGI(TAG, "UART RX: fifo_ovf[%lu] resync_bytes[%lu] TX credit: wait[%lu] ms[%lu] busy[%lu] lost[%lu] bad[%lu]",
+		         (unsigned long)ovf, (unsigned long)resync, (unsigned long)cn, (unsigned long)cms,
+		         (unsigned long)cb, (unsigned long)cr, (unsigned long)cbad);
+	}
+#endif
 	ESP_LOGI(TAG, "STA TX: in[%lu] trans[%lu] out[%lu] drop[%lu] credit_stall[%lu] "
 	         "RX: in[%lu] out[%lu]",
 	         (unsigned long)pkt_stats.sta_tx_in_pass,

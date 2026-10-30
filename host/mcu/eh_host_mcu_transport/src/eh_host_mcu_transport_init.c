@@ -190,7 +190,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
     }
 
     if (h->if_type == ESP_TEST_IF) {
-        eh_host_raw_tp_update_rx_len(h->payload_len);
+        eh_host_raw_tp_update_rx_len(h->payload, h->payload_len);
         return;
     }
 

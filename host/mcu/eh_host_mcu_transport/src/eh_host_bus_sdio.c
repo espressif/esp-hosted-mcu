@@ -1829,7 +1829,7 @@ static void sdio_process_rx_task(void *pvParameters)
 		} else if (buf_handle->if_type == ESP_TEST_IF) {
 			/* raw-TP flood sink — count only; a per-frame log here would
 			 * starve the RX task at flood rates. */
-			eh_host_raw_tp_update_rx_len(buf_handle->payload_len);
+			eh_host_raw_tp_update_rx_len(buf_handle->payload, buf_handle->payload_len);
 		} else {
 			ESP_LOGW(TAG, "unknown type %d ", buf_handle->if_type);
 		}

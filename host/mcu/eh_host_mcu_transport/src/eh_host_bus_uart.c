@@ -22,6 +22,7 @@
 #include "eh_host_mcu_hci_internal.h"
 #include "eh_common_header.h"
 #include "eh_common_header_v2.h"
+#include "eh_host_pkt_stats.h"
 
 #ifdef ESP_PLATFORM
 
@@ -81,6 +82,8 @@ static volatile TickType_t  s_cr_tick;      /* last change of s_cr_read */
 static volatile TickType_t  s_cr_stuck;     /* room < one frame since; 0 = room */
 /* The RX task never waits for credit: it receives the credit. */
 static TaskHandle_t         s_rx_tid;
+static volatile uint32_t    s_rx_fifo_ovf, s_rx_resync_bytes;
+static volatile uint32_t    s_cr_wait_n, s_cr_wait_ms, s_cr_busy, s_cr_resync, s_cr_bad;
 #endif
 
 #ifdef ESP_PLATFORM
@@ -106,6 +109,7 @@ static void eh_uart_credit_resync(void)
 {
     s_cr_sent = s_cr_read * s_cr_unit;
     s_cr_stuck = 0;
+    s_cr_resync++;
 }
 
 static void eh_uart_credit_check_room(void)
@@ -143,6 +147,7 @@ static void eh_uart_credit_rx(uint8_t v)
      * credit is a running count, so the next valid frame catches up. */
     if (s_cr_unit && (int32_t)d * s_cr_unit >
         (int32_t)(s_cr_sent - s_cr_read * s_cr_unit) + s_cr_unit) {
+        s_cr_bad++;
         d = 0;
     }
     if (d) {
@@ -215,6 +220,10 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
     if ((r == EH_FRAME_OK || r == EH_FRAME_DUMMY) && h.rx_credit != EH_FRAME_NO_CREDIT)
         eh_uart_credit_rx(h.rx_credit);
     if (r == EH_FRAME_OK && h.payload && h.payload_len) {
+#if ESP_PKT_STATS
+        if (h.if_type == ESP_STA_IF)
+            pkt_stats.sta_rx_in++;
+#endif
         if (h.if_type == ESP_HCI_IF) {
             eh_host_mcu_hci_rx_deliver(h.payload, h.payload_len);
         } else {
@@ -236,6 +245,7 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
         if (room == 0) {
             /* Accumulator full but no complete frame — framing lost. */
             ESP_LOGD(TAG, "accumulator full; resyncing");
+            s_rx_resync_bytes++;
             memmove(acc, acc + 1, *acc_len - 1);
             *acc_len -= 1;
             room = 1;
@@ -254,6 +264,7 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
             int consumed = eh_uart_try_decode_one(acc + start, *acc_len - start);
             if (consumed == 0) break;
             if (consumed < 0) {
+                s_rx_resync_bytes++;
                 start++;
             } else {
                 start += (size_t)consumed;
@@ -296,6 +307,7 @@ static void eh_uart_rx_task(void *arg)
              * are good, so keep them; the resync skips the damaged frame.
              * No console output here: a line stalls this task. */
             ESP_LOGD(TAG, "RX FIFO overflow");
+            s_rx_fifo_ovf++;
             continue;
         }
         if (ev.type == UART_DATA || ev.type == UART_BUFFER_FULL) {
@@ -305,6 +317,22 @@ static void eh_uart_rx_task(void *arg)
 
     free(acc);
     ESP_LOGI(TAG, "UART RX task exiting");
+}
+
+void eh_host_bus_uart_rx_faults(uint32_t *fifo_ovf, uint32_t *resync_bytes)
+{
+    *fifo_ovf = s_rx_fifo_ovf;
+    *resync_bytes = s_rx_resync_bytes;
+}
+
+void eh_host_bus_uart_tx_credit(uint32_t *n, uint32_t *ms, uint32_t *busy, uint32_t *resync,
+                                uint32_t *bad)
+{
+    *n = s_cr_wait_n;
+    *ms = s_cr_wait_ms;
+    *busy = s_cr_busy;
+    *resync = s_cr_resync;
+    *bad = s_cr_bad;
 }
 
 #endif /* ESP_PLATFORM */
@@ -526,23 +554,40 @@ int eh_host_bus_tx(interface_buffer_handle_t *bh)
      * also the credit. Data stays throttled until the credit has room. */
     bool data = !header_only && (bh->if_type == ESP_STA_IF || bh->if_type == ESP_AP_IF);
     bool no_wait = data || xTaskGetCurrentTaskHandle() == s_rx_tid;
+    bool waited = false;
     for (;;) {
         eh_host_port_mutex_lock(s_bus_lock);
         if (eh_uart_credit_take(len))
             break;
         eh_host_port_mutex_unlock(s_bus_lock);
         if (no_wait || !s_running) {
+            s_cr_busy++;
             if (data)
                 eh_host_wifi_tx_set_throttle(true);
             goto out;
         }
+        if (!waited)
+            s_cr_wait_n++;
+        waited = true;
         vTaskDelay(1);
+        s_cr_wait_ms++;
     }
     if (data && s_cr_stuck)
         eh_host_wifi_tx_set_throttle(true);
     int written = uart_write_bytes((uart_port_t)s_cfg.port,
                                    (const char *)buf, len);
     rc = (written == (int)len) ? 0 : -1;
+#if ESP_PKT_STATS
+    /* Under the bus lock: several tasks transmit, and ++ is not atomic. */
+    if (!header_only && bh->if_type == ESP_STA_IF) {
+        pkt_stats.sta_tx_in_pass++;
+        pkt_stats.sta_tx_trans_in++;
+        if (rc)
+            pkt_stats.sta_tx_out_drop++;
+        else
+            pkt_stats.sta_tx_out++;
+    }
+#endif
     eh_host_port_mutex_unlock(s_bus_lock);
 out:
     if (bh->free_buf_handle) bh->free_buf_handle(bh->priv_buffer_handle);

@@ -1501,7 +1501,7 @@ def cmd_test(args) -> int:
     # `eh.py test hw` (or a manual `hw acquire`) on this host can't collide. The
     # bench is auto-registered from lab.local.json (declared chips, no probe); a
     # crashed run's lease auto-expires. emu/linux need no lease (private benches).
-    lease_db = lease_name = None
+    lease_db = lease_name = lease_owner = None
     if substrate == "hw":
         import json
         # ── fail-early pre-flight: cheap checks BEFORE any build/flash so a
@@ -1546,8 +1546,8 @@ def cmd_test(args) -> int:
                                  transports=lc.get("transports", ["sdio"]), caps=lc.get("caps", []))
         if lab_db.get_bench(lease_db, lease_name):
             try:
-                lab_db.acquire(lease_db, lease_name, want=lab_db.DEFAULT_HOLD,
-                               reason="eh.py test hw")
+                lease_owner = lab_db.acquire(lease_db, lease_name, want=lab_db.DEFAULT_HOLD,
+                                             reason="eh.py test hw")["owner"]
                 print(f"{_DIM}eh: leased bench '{lease_name}' for this run{_RESET}")
             except (ValueError, RuntimeError) as e:
                 sys.stderr.write(f"{_RED}eh:{_RESET} {e}\n"); return 1
@@ -1622,7 +1622,9 @@ def cmd_test(args) -> int:
                             prewarm_secs, hung=hung)
     finally:
         if lease_db is not None:
-            lab_db.release(lease_db, lease_name)  # free our run's lease
+            # Release by the owner recorded at acquire: whoami() embeds the
+            # hostname, which macOS changes when the network does.
+            lab_db.release(lease_db, lease_name, owner=lease_owner)
     if seqdiag:
         _render_seqdiags(run_dir)
     return rc
