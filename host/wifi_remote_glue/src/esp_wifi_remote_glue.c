@@ -99,9 +99,14 @@ static esp_err_t hosted_channel_rx_guard(void *h, void *buffer,
 
 const char eh_wifi_remote_glue_anchor = 0;
 
+/* Channels follow a successful init/deinit: a refused call changes nothing. */
 esp_err_t esp_wifi_remote_init(const wifi_init_config_t *config)
 {
+    esp_err_t rc = eh_host_wifi_init(config);
 #if EH_HOST_TYPE_MCU && EH_HOST_FEAT_WIFI_READY
+    if (rc != ESP_OK) {
+        return rc;
+    }
     struct esp_remote_channel_config sta_cfg = { .if_type = ESP_STA_IF, .secure = false };
     struct esp_remote_channel_config ap_cfg  = { .if_type = ESP_AP_IF,  .secure = false };
     esp_remote_channel_tx_fn_t tx_fn = NULL;
@@ -112,13 +117,16 @@ esp_err_t esp_wifi_remote_init(const wifi_init_config_t *config)
     s_ap_ch = esp_hosted_add_channel(&ap_cfg, &tx_fn, hosted_channel_rx_guard);
     if (s_ap_ch) esp_wifi_remote_channel_set(WIFI_IF_AP, s_ap_ch, tx_fn);
 #endif
-    return eh_host_wifi_init(config);
+    return rc;
 }
 
 esp_err_t esp_wifi_remote_deinit(void)
 {
     esp_err_t rc = eh_host_wifi_deinit();
 #if EH_HOST_TYPE_MCU && EH_HOST_FEAT_WIFI_READY
+    if (rc != ESP_OK) {
+        return rc;
+    }
     /* Clear esp_wifi_remote channel pointers before freeing channels. */
     if (s_sta_ch) { esp_wifi_remote_channel_set(WIFI_IF_STA, NULL, NULL); esp_hosted_remove_channel(s_sta_ch); s_sta_ch = NULL; }
     if (s_ap_ch)  { esp_wifi_remote_channel_set(WIFI_IF_AP, NULL, NULL);  esp_hosted_remove_channel(s_ap_ch);  s_ap_ch  = NULL; }

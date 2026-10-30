@@ -43,7 +43,8 @@ if ESP_HOSTED_HOST_FEAT_WIFI
 		bool "Auto-call esp_wifi_connect() on WIFI_EVENT_STA_DISCONNECTED"
 		default n
 		help
-		  Host auto-reconnects on STA_DISCONNECTED.
+		  Host calls esp_wifi_connect() when the link drops or an attempt fails
+		  without the app's esp_wifi_disconnect().
 
 	# Wi-Fi extensions nest here so menuconfig shows them under Wi-Fi.
 	orsource "../eh_host_feat_wifi_ext_ent/Kconfig.ext"

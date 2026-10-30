@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #ifndef EH_HOST_FEAT_RPC_EXT_V2_DECODE_PRIV_H_
 #define EH_HOST_FEAT_RPC_EXT_V2_DECODE_PRIV_H_
 
@@ -30,6 +34,7 @@ int rpc_ext_v2_parse_resp_gpio_exp(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_resp_rf_cert(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_resp_ext_coex(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_resp_feature_control(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
+int rpc_ext_v2_parse_context(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 
 int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);
 int rpc_ext_v2_parse_event_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c);

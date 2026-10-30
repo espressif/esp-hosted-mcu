@@ -206,7 +206,8 @@ cd build && python -m esptool --chip esp32c6 merge_bin -o merged_flash.bin @flas
 # verified: host fails to attach). NOT spi_fd either (the emu clock-flaky wire).
 @pytest.mark.sanity
 @pytest.mark.xdist_group("emu_heavy")  # serialize with the other heavy/spi_fd cells
-@pytest.mark.parametrize("transport", ["sdio", "spi_hd"])
+# Feature test: spinel rides its own UART; the hosted wire adds nothing per transport.
+@pytest.mark.parametrize("transport", ["sdio"])
 def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
     peer = _build_peer()
     if peer is None:
@@ -227,13 +228,17 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
     started = []
     try:
         # Peer starts after Node A's firmware is built (its 600 s lifetime must not
-        # drain during a build) and before Node A boots, so it is Leader first.
+        # drain during a build). Node A boots only once the peer is Leader, else both
+        # form partitions and the host can win the merge instead of attaching.
         def _start_peer():
             started.append(EmuDut("peer", [str(emu_bin()), "--chip", "esp32c6",
                                            "--firmware", peer_bin, "--elf", peer_elf,
                                            "--thread-sim",
                                            f"bind:{pb},peer:127.0.0.1:{pa},autoack",
                                            "--timeout", "600s"], plog))
+            lr = eh_test_expect(started[0], r'Role detached -> leader',
+                                fail=FATAL_PATTERNS, timeout=60)
+            assert lr.ok, f"peer never became Leader:\n{plog.read_text()[-1500:]}"
 
         b = bench("openthread/cli", "esp_host", transport, timeout="150s",
                   overlay=_EMU_HOST_OVL, pre_launch=_start_peer)

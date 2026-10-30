@@ -45,7 +45,6 @@ extern "C" {
 #define BSSID_BYTES_SIZE       6
 
 /* MCU component internal state variables - WiFi related */
-extern wifi_event_sta_connected_t mcu_lkg_sta_connected_event;
 
 /* MCU component internal state variables - System/OTA related */
 extern TimerHandle_t handle_heartbeat_task;
@@ -502,12 +501,16 @@ esp_err_t eh_cp_feat_rpc_ext_v2_unregister_system_evt_handlers(void);
 
 
 esp_err_t rpc_evt_Event_DhcpDnsStatus(Rpc *ntfy, const uint8_t *data, ssize_t len);
+esp_err_t rpc_evt_context(Rpc *ntfy, const uint8_t *data, size_t len);
+esp_err_t req_set_context(Rpc *req, Rpc *resp, void *priv_data);
 esp_err_t rpc_evt_custom_rpc(Rpc *ntfy, const uint8_t *data, size_t len);
 esp_err_t rpc_evt_mem_monitor(Rpc *ntfy, const uint8_t *inbuf, size_t inlen);
 
 #if EH_CP_FEAT_NW_SPLIT_READY
 esp_err_t req_get_dhcp_dns_status(Rpc *req, Rpc *resp, void *priv_data);
 esp_err_t req_set_dhcp_dns_status(Rpc *req, Rpc *resp, void *priv_data);
+/* EH_CTX_NW_SPLIT_IP_OWNER: in is the request struct, out gets the answer; returns resp. */
+int32_t ctx_nw_split_ip_owner(const ProtobufCBinaryData *in, ProtobufCBinaryData *out);
 #endif
 
 

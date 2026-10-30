@@ -45,7 +45,7 @@ esp_err_t eh_cp_protocomm_process_rpc_evt(const char *epname,
 esp_err_t eh_cp_feat_rpc_serial_tx_lock_init(void);
 esp_err_t eh_cp_feat_rpc_serial_write(uint8_t *data, ssize_t len);
 ssize_t   eh_cp_feat_rpc_serial_read(uint8_t *data, ssize_t len);
-esp_err_t eh_cp_feat_rpc_serial_rx(void *ctx, void *buf, uint16_t len, void *eb);
+esp_err_t eh_cp_feat_rpc_serial_rx(void *buf, uint16_t len, void *eb);
 
 protocomm_t *eh_cp_protocomm_get_instance(void);
 

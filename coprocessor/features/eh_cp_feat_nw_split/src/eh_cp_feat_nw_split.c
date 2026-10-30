@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* LWIP packet filtering implementation */
 
 #include <string.h>
@@ -19,11 +24,14 @@
 #include "eh_cp_feat_nw_split_events.h"
 #include "eh_cp_feat_nw_split_apis.h"
 #include "eh_cp_feat_wifi.h"
+#include "eh_cp_feat_wifi_event.h"
 #include "eh_log.h"
 #include "eh_common.h"
 #include "eh_cp_core.h"           /* EH_CP_FEAT_REGISTER */
+#include "eh_common_caps.h"
 #include "eh_cp_event.h"
 #include "eh_cp_feat_nw_split.h"
+#include "eh_cp_nw_split_ip_owner_fsm.h"
 
 ESP_EVENT_DEFINE_BASE(ESP_HOSTED_CP_FEAT_NW_SPLIT_EVENT);
 
@@ -72,41 +80,16 @@ EH_CP_FEAT_REGISTER(nw_split_auto_init,
 
 static const char *TAG = "ehcp_nw_split";
 
-static eh_cp_feat_nw_split_nw_stack_e g_dhcp_owner;
+/* Kconfig DHCP owner: the boot owner, and whether the host may own the IP. */
+static eh_cp_feat_nw_split_nw_stack_e s_dhcp_policy;
 
-eh_cp_rx_cb_t orig_wlan_rx_cb_for_host =  NULL;
-eh_cp_rx_cb_t nw_split_wlan_sta_rx_cb =	NULL;
+/* The core's default STA callback (frames to the host) and ours, which splits. */
+static eh_cp_traffic_cb_t orig_wlan_rx_cb_for_host;
+static eh_cp_traffic_cb_t nw_split_wlan_sta_rx_cb;
 
 /* Coprocessor station netif */
 static esp_netif_t *coprocessor_sta_netif = NULL;
 static esp_netif_t *s_owned_sta_netif = NULL;
-static bool s_sta_rx_overridden = false;
-static bool s_sta_got_ip = false;
-static bool s_sta_netif_input_ready = false;
-
-/* Link-time wrap: suppress STA rxcb overrides while nw_split owns it. */
-static bool s_nw_split_owns_sta_rxcb = false;
-
-extern esp_err_t __real_esp_wifi_internal_reg_rxcb(wifi_interface_t ifx, wifi_rxcb_t fn);
-esp_err_t __wrap_esp_wifi_internal_reg_rxcb(wifi_interface_t ifx, wifi_rxcb_t fn);
-
-esp_err_t __wrap_esp_wifi_internal_reg_rxcb(wifi_interface_t ifx, wifi_rxcb_t fn)
-{
-	if (ifx == WIFI_IF_STA && s_nw_split_owns_sta_rxcb) {
-		ESP_LOGD(TAG, "Suppressing STA rxcb override (%p) — nw_split owns it", fn);
-		return ESP_OK;
-	}
-	return __real_esp_wifi_internal_reg_rxcb(ifx, fn);
-}
-
-static void nw_split_core_event_handler(void *handler_args, esp_event_base_t base,
-										int32_t event_id, void *event_data)
-{
-	if (base != EH_CP_EVENT || event_id != EH_CP_EVT_PRIVATE_RPC_READY) {
-		return;
-	}
-	eh_cp_feat_nw_split_replay_status_if_needed();
-}
 
 static bool nw_split_netif_input_ready(esp_netif_t *netif)
 {
@@ -141,22 +124,6 @@ static esp_netif_t *nw_split_get_active_sta_netif(void)
 #define MAX_ALLOWED_PORTS 10
 #define MAX_PORT_STR_LEN 128
 
-/* Port caching for performance */
-#define PORT_CACHE_TIMEOUT_US 1000000 // 1 second
-
-/* Port caching for performance */
-static struct {
-	uint64_t last_check_time;
-	int last_result;
-	uint16_t last_port;
-} tcp_cache = {0};
-
-static struct {
-	uint64_t last_check_time;
-	int last_result;
-	uint16_t last_port;
-} udp_cache = {0};
-
 
 #if defined(CONFIG_ESP_HOSTED_DEFAULT_NETWORK_STACK_COPROCESSOR)
   #define DEFAULT_NW_STACK_TO_SEND NW_STACK_COPROCESSOR
@@ -188,22 +155,8 @@ static esp_err_t nw_split_set_config(uint8_t iface, const char *ip, const char *
 	const char *gw, const char *dns_ip, uint8_t dns_type);
 
 
-/* Parse a comma-separated list of ports into an array - using old code logic */
+/* Parse a comma-separated list of ports into an array; replaces the previous list. */
 static int init_allowed_ports(const char *ports_str, int *ports_count, uint16_t *ports_array, int max_ports, const char *port_type) {
-	/* Only initialize once */
-	static bool tcp_src_initialized = false;
-	static bool tcp_dst_initialized = false;
-	static bool udp_src_initialized = false;
-	static bool udp_dst_initialized = false;
-
-	/* Check if already initialized for this port type */
-	if ((strcmp(port_type, "tcp_src") == 0 && tcp_src_initialized) ||
-		(strcmp(port_type, "tcp_dst") == 0 && tcp_dst_initialized) ||
-		(strcmp(port_type, "udp_src") == 0 && udp_src_initialized) ||
-		(strcmp(port_type, "udp_dst") == 0 && udp_dst_initialized)) {
-		return 0;
-	}
-
 	/* Reset counter */
 	*ports_count = 0;
 
@@ -213,45 +166,42 @@ static int init_allowed_ports(const char *ports_str, int *ports_count, uint16_t 
 		return 0;
 	}
 
-	char port_buf[6]; /* Max 5 digits for a port + null terminator */
-	int port_buf_idx = 0;
+	uint32_t port = 0;
+	bool digits = false;
 
-	for (int i = 0; ports_str[i] != '\0' && *ports_count < max_ports; i++) {
-		if (isdigit((unsigned char)ports_str[i])) {
-			port_buf[port_buf_idx++] = ports_str[i];
-			if (port_buf_idx >= sizeof(port_buf) - 1) {
-				port_buf_idx = sizeof(port_buf) - 2; /* Prevent overflow */
+	for (const char *c = ports_str; ; c++) {
+		if (isdigit((unsigned char)*c)) {
+			port = port * 10 + (uint32_t)(*c - '0');
+			if (port > UINT16_MAX) {
+				port = UINT16_MAX + 1;      /* stays invalid until the separator */
 			}
-		} else if (ports_str[i] == ',') {
-			if (port_buf_idx > 0) {
-				port_buf[port_buf_idx] = '\0';
-				ports_array[(*ports_count)++] = atoi(port_buf);
-				port_buf_idx = 0;
+			digits = true;
+			continue;
+		}
+		if (*c != ',' && *c != '\0') {
+			continue;                       /* spaces */
+		}
+		if (digits) {
+			if (port == 0 || port > UINT16_MAX) {
+				ESP_LOGE(TAG, "%s: invalid port in \"%s\"", port_type, ports_str);
+			} else if (*ports_count == max_ports) {
+				ESP_LOGE(TAG, "%s: more than %d ports, rest ignored", port_type, max_ports);
+				break;
+			} else {
+				ports_array[(*ports_count)++] = (uint16_t)port;
 			}
 		}
-	}
-
-	/* Process the last port if there's no trailing comma */
-	if (port_buf_idx > 0) {
-		port_buf[port_buf_idx] = '\0';
-		ports_array[(*ports_count)++] = atoi(port_buf);
+		port = 0;
+		digits = false;
+		if (*c == '\0') {
+			break;
+		}
 	}
 
 	/* Log the results */
 	ESP_LOGI(TAG, "Initialized %d allowed %s ports:", *ports_count, port_type);
 	for (int i = 0; i < *ports_count; i++) {
 		ESP_LOGI(TAG, "  - Port %d", ports_array[i]);
-	}
-
-	/* Mark as initialized */
-	if (strcmp(port_type, "tcp_src") == 0) {
-		tcp_src_initialized = true;
-	} else if (strcmp(port_type, "tcp_dst") == 0) {
-		tcp_dst_initialized = true;
-	} else if (strcmp(port_type, "udp_src") == 0) {
-		udp_src_initialized = true;
-	} else if (strcmp(port_type, "udp_dst") == 0) {
-		udp_dst_initialized = true;
 	}
 
 	return 0;
@@ -261,17 +211,10 @@ static int init_allowed_ports(const char *ports_str, int *ports_count, uint16_t 
 static int init_allowed_tcp_ports(const char *ports_str_src, const char *ports_str_dst) {
 	int ret1 = 0, ret2 = 0;
 
-	if (ports_str_src && strlen(ports_str_src) > 0) {
-		ESP_LOGI(TAG, "Host reserved TCP src ports: %s", ports_str_src);
-		ret1 = init_allowed_ports(ports_str_src, &allowed_tcp_src_ports_count,
-								 allowed_tcp_src_ports, MAX_ALLOWED_TCP_SRC_PORTS, "tcp_src");
-	}
-
-	if (ports_str_dst && strlen(ports_str_dst) > 0) {
-		ESP_LOGI(TAG, "Host reserved TCP dst ports: %s", ports_str_dst);
-		ret2 = init_allowed_ports(ports_str_dst, &allowed_tcp_dst_ports_count,
-								 allowed_tcp_dst_ports, MAX_ALLOWED_TCP_DST_PORTS, "tcp_dst");
-	}
+	ret1 = init_allowed_ports(ports_str_src, &allowed_tcp_src_ports_count,
+				 allowed_tcp_src_ports, MAX_ALLOWED_TCP_SRC_PORTS, "tcp_src");
+	ret2 = init_allowed_ports(ports_str_dst, &allowed_tcp_dst_ports_count,
+				 allowed_tcp_dst_ports, MAX_ALLOWED_TCP_DST_PORTS, "tcp_dst");
 
 	if (ret1) {
 		ESP_LOGE(TAG, "Failed to initialize allowed TCP src ports");
@@ -288,16 +231,10 @@ static int init_allowed_tcp_ports(const char *ports_str_src, const char *ports_s
 static int init_allowed_udp_ports(const char *ports_str_src, const char *ports_str_dst) {
 	int ret1 = 0, ret2 = 0;
 
-	if (ports_str_src && strlen(ports_str_src) > 0) {
-		ESP_LOGI(TAG, "host reserved udp src ports: %s", ports_str_src);
-		ret1 = init_allowed_ports(ports_str_src, &allowed_udp_src_ports_count,
-				allowed_udp_src_ports, MAX_ALLOWED_UDP_SRC_PORTS, "udp_src");
-	}
-	if (ports_str_dst && strlen(ports_str_dst) > 0) {
-		ESP_LOGI(TAG, "host reserved udp dst ports: %s", ports_str_dst);
-		ret2 = init_allowed_ports(ports_str_dst, &allowed_udp_dst_ports_count,
-				allowed_udp_dst_ports, MAX_ALLOWED_UDP_DST_PORTS, "udp_dst");
-	}
+	ret1 = init_allowed_ports(ports_str_src, &allowed_udp_src_ports_count,
+				 allowed_udp_src_ports, MAX_ALLOWED_UDP_SRC_PORTS, "udp_src");
+	ret2 = init_allowed_ports(ports_str_dst, &allowed_udp_dst_ports_count,
+				 allowed_udp_dst_ports, MAX_ALLOWED_UDP_DST_PORTS, "udp_dst");
 
 	if (ret1) {
 		ESP_LOGE(TAG, "Failed to initialize allowed udp src ports");
@@ -390,75 +327,86 @@ static bool host_mqtt_wakeup_triggered(const void *payload, uint16_t payload_len
 	return false;
 }
 
-/* Check if a TCP port is open locally - using old code logic with thread safety */
-static int is_local_tcp_port_open(uint16_t port)
+/* Recent port lookups: a flow keeps its route while its packets keep coming
+ * (1 s after the last one), so lwIP's PCB lists are walked once per flow. */
+#define PORT_CACHE_N      4
+#define PORT_CACHE_TTL_US 1000000
+
+typedef struct {
+	int64_t  last_us;
+	uint16_t port;
+	bool     open;
+} port_cache_t;
+
+static port_cache_t s_tcp_cache[PORT_CACHE_N];
+static port_cache_t s_udp_cache[PORT_CACHE_N];
+
+static bool port_cache_hit(port_cache_t *c, uint16_t port, int64_t now, bool *open)
 {
-	uint64_t current_time = esp_timer_get_time() >> 10; /* Approx ms */
-
-	/* Return cached result if within 1 sec window */
-	if (tcp_cache.last_port == port &&
-			(current_time - tcp_cache.last_check_time) < 1000) {
-		tcp_cache.last_check_time = current_time;
-		return tcp_cache.last_result;
+	for (int i = 0; i < PORT_CACHE_N; i++) {
+		if (c[i].last_us && c[i].port == port && now - c[i].last_us < PORT_CACHE_TTL_US) {
+			c[i].last_us = now;
+			*open = c[i].open;
+			return true;
+		}
 	}
+	return false;
+}
 
-	/* Use LWIP protection for thread safety */
+/* Replaces the same port's entry, else the least recently used. */
+static void port_cache_put(port_cache_t *c, uint16_t port, bool open, int64_t now)
+{
+	port_cache_t *e = &c[0];
+
+	for (int i = 0; i < PORT_CACHE_N && e->port != port; i++) {
+		if (c[i].port == port || c[i].last_us < e->last_us) {
+			e = &c[i];
+		}
+	}
+	*e = (port_cache_t){ .last_us = now, .port = port, .open = open };
+}
+
+static bool is_local_tcp_port_open(uint16_t port)
+{
+	int64_t now = esp_timer_get_time();
+	bool found = false;
+
+	if (port_cache_hit(s_tcp_cache, port, now, &found)) {
+		return found;
+	}
 	SYS_ARCH_DECL_PROTECT(old_level);
 	SYS_ARCH_PROTECT(old_level);
-
-	int found = 0;
-	struct tcp_pcb *pcb;
-	for(pcb = tcp_listen_pcbs.pcbs; pcb != NULL; pcb = pcb->next) {
+	for (struct tcp_pcb *pcb = tcp_listen_pcbs.pcbs; pcb; pcb = pcb->next) {
 		if (pcb->local_port == port) {
-			found = 1;
+			found = true;
 			break;
 		}
 	}
-
 	SYS_ARCH_UNPROTECT(old_level);
-
-	/* Cache the result */
-	tcp_cache.last_check_time = current_time;
-	tcp_cache.last_result = found;
-	tcp_cache.last_port = port;
-
-	ESP_LOGI(TAG, "is_local_tcp_port (%u) open: %d", port, found);
+	port_cache_put(s_tcp_cache, port, found, now);
+	ESP_LOGD(TAG, "is_local_tcp_port (%u) open: %d", port, found);
 	return found;
 }
 
-/* Check if a UDP port is open locally - using old code logic with thread safety */
-static int is_local_udp_port_open(uint16_t port)
+static bool is_local_udp_port_open(uint16_t port)
 {
-	uint64_t current_time = esp_timer_get_time() >> 10; /* Approx ms */
+	int64_t now = esp_timer_get_time();
+	bool found = false;
 
-	/* Return cached result if within 1 sec window */
-	if (udp_cache.last_port == port &&
-			(current_time - udp_cache.last_check_time) < 1000) {
-		udp_cache.last_check_time = current_time;
-		return udp_cache.last_result;
+	if (port_cache_hit(s_udp_cache, port, now, &found)) {
+		return found;
 	}
-
-	/* Use LWIP protection for thread safety */
 	SYS_ARCH_DECL_PROTECT(old_level);
 	SYS_ARCH_PROTECT(old_level);
-
-	int found = 0;
-	struct udp_pcb *pcb;
-	for(pcb = udp_pcbs; pcb != NULL; pcb = pcb->next) {
+	for (struct udp_pcb *pcb = udp_pcbs; pcb; pcb = pcb->next) {
 		if (pcb->local_port == port) {
-			found = 1;
+			found = true;
 			break;
 		}
 	}
-
 	SYS_ARCH_UNPROTECT(old_level);
-
-	/* Cache the result */
-	udp_cache.last_check_time = current_time;
-	udp_cache.last_result = found;
-	udp_cache.last_port = port;
-
-	ESP_LOGI(TAG, "is_local_udp_port (%u) open: %d", port, found);
+	port_cache_put(s_udp_cache, port, found, now);
+	ESP_LOGD(TAG, "is_local_udp_port (%u) open: %d", port, found);
 	return found;
 }
 
@@ -486,6 +434,40 @@ static bool nw_split_is_dhcp_client_reply(const void *frame_data, uint16_t frame
 	return lwip_ntohs(udphdr->dest) == LWIP_IANA_PORT_DHCP_CLIENT;
 }
 
+/* True for an IPv4 UDP datagram from the DHCP client port (DISCOVER/REQUEST/RELEASE). */
+static bool nw_split_is_dhcp_client_msg(const void *frame_data, uint16_t frame_length)
+{
+	const struct eth_hdr *ethhdr = (const struct eth_hdr *)frame_data;
+
+	if (frame_length < SIZEOF_ETH_HDR + IP_HLEN || ethhdr->type != PP_HTONS(ETHTYPE_IP)) {
+		return false;
+	}
+	const struct ip_hdr *iphdr =
+		(const struct ip_hdr *)((const u8_t *)frame_data + SIZEOF_ETH_HDR);
+	uint16_t ihl = IPH_HL(iphdr) * 4;
+
+	if (IPH_PROTO(iphdr) != IP_PROTO_UDP || frame_length < SIZEOF_ETH_HDR + ihl + UDP_HLEN) {
+		return false;
+	}
+	const struct udp_hdr *udphdr = (const struct udp_hdr *)((const u8_t *)iphdr + ihl);
+
+	return lwip_ntohs(udphdr->src) == LWIP_IANA_PORT_DHCP_CLIENT;
+}
+
+/* Bus RX on STA: host frames on their way to the air. While the CP owns the IP
+ * the host's DHCP client must not reach the AP (esp_netif starts it on every
+ * association): one client on air. ESP_ERR_NOT_FOUND: core sends it to the air. */
+static esp_err_t nw_split_filter_bus_rx(void *buf, uint16_t len, void *eb)
+{
+	(void)eb;
+	if (eh_cp_nw_split_ip_owner() == ESP_EXT_CAP_NW_SPLIT_DHCP_CP &&
+	    nw_split_is_dhcp_client_msg(buf, len)) {
+		ESP_LOGI(TAG, "host DHCP client frame dropped: the CP owns the IP");
+		return ESP_OK;
+	}
+	return ESP_ERR_NOT_FOUND;
+}
+
 /* Filter and route packet based on port number and power saving state */
 eh_cp_feat_nw_split_nw_stack_e eh_cp_feat_nw_split_filter_packet(void *frame_data, uint16_t frame_length)
 {
@@ -508,12 +490,10 @@ eh_cp_feat_nw_split_nw_stack_e eh_cp_feat_nw_split_filter_packet(void *frame_dat
     is_host_power_saving = 0;
     #endif
 
-	/* With DHCP owner HOST the host runs the only DHCP client, so a broadcast
-	 * OFFER/ACK must reach it; the broadcast rule below would keep it on the
-	 * co-processor. With COPROCESSOR or BOTH the co-processor runs the client, and
-	 * the host client that esp_netif starts by default must not see the OFFER. */
-	if (g_dhcp_owner == NW_STACK_HOST &&
-	    nw_split_is_dhcp_client_reply(frame_data, frame_length)) {
+	/* DHCP replies reach only the stack that owns the IP: one client on air. A
+	 * broadcast OFFER/ACK would otherwise stay on the co-processor (rule below). */
+	bool host_owns_ip = eh_cp_nw_split_ip_owner() == ESP_EXT_CAP_NW_SPLIT_DHCP_HOST;
+	if (host_owns_ip && nw_split_is_dhcp_client_reply(frame_data, frame_length)) {
 		return NW_STACK_HOST;
 	}
 
@@ -570,11 +550,10 @@ eh_cp_feat_nw_split_nw_stack_e eh_cp_feat_nw_split_filter_packet(void *frame_dat
 				if (is_host_power_saving) {
 					/* Special handling for MQTT packets that should wake up the host */
 					if (src_port == MQTT_PORT) {
-						#define TCP_HDR_LEN(tcphdr) ((TCPH_FLAGS(tcphdr) >> 12) * 4)
-
-						u16_t tcp_hdr_len = TCP_HDR_LEN(tcphdr);
-						u16_t mqtt_payload_length = lwip_ntohs(tcphdr->wnd);
-						u8_t *mqtt_payload = (u8_t *)tcphdr + tcp_hdr_len;
+						u8_t *mqtt_payload = (u8_t *)tcphdr + TCPH_HDRLEN_BYTES(tcphdr);
+						u8_t *frame_end = (u8_t *)frame_data + frame_length;
+						u16_t mqtt_payload_length = mqtt_payload < frame_end ?
+							(u16_t)(frame_end - mqtt_payload) : 0;
 
 						if (host_mqtt_wakeup_triggered(mqtt_payload, mqtt_payload_length)) {
 							ESP_LOGV(TAG, "Wakeup host: MQTT wakeup pkt");
@@ -641,8 +620,7 @@ eh_cp_feat_nw_split_nw_stack_e eh_cp_feat_nw_split_filter_packet(void *frame_dat
 
 			/* Special case for DHCP client port */
 			else if (dst_port == LWIP_IANA_PORT_DHCP_CLIENT) {
-				result = g_dhcp_owner;
-				return result;
+				return host_owns_ip ? NW_STACK_HOST : NW_STACK_COPROCESSOR;
 			}
 
 			/* Check if UDP port is in the remote port range */
@@ -818,74 +796,66 @@ IRAM_ATTR esp_err_t eh_cp_feat_nw_split_wlan_sta_rx_callback(void *buffer, uint1
 	return ESP_OK;
 }
 
-static void populate_dhcp_owner(eh_cp_feat_nw_split_nw_stack_e dhcp_owner)
+static uint32_t dhcp_owner_cap(void)
 {
-	g_dhcp_owner = dhcp_owner;
-	switch (g_dhcp_owner) {
-		case NW_STACK_COPROCESSOR:
-			ESP_LOGI(TAG, "DHCP at coprocessor");
-			g_dhcp_owner = NW_STACK_COPROCESSOR;
-			break;
-		case NW_STACK_HOST:
-			ESP_LOGI(TAG, "DHCP at host");
-			g_dhcp_owner = NW_STACK_HOST;
-			break;
-		case NW_STACK_BOTH:
-			ESP_LOGI(TAG, "DHCP at both");
-			g_dhcp_owner = NW_STACK_BOTH;
-			break;
-		default:
-			ESP_LOGI(TAG, "DHCP owner invalid");
-			g_dhcp_owner = NW_STACK_INVALID;
-			ESP_LOGE(TAG, "Invalid DHCP owner");
-			break;
+	switch (s_dhcp_policy) {
+	case NW_STACK_COPROCESSOR: return ESP_EXT_CAP_NW_SPLIT_DHCP_CP;
+	case NW_STACK_HOST:        return ESP_EXT_CAP_NW_SPLIT_DHCP_HOST;
+	case NW_STACK_BOTH:        return ESP_EXT_CAP_NW_SPLIT_DHCP_BOTH;
+	default:                   return ESP_EXT_CAP_NW_SPLIT_DHCP_NONE;
 	}
 }
 
 static void nw_split_send_status_event(void);
-static void nw_split_try_override_sta_rx_cb(void);
+
+/* The station as the CP Wi-Fi feature publishes it (a config switch is one link),
+ * and its replay to a host that woke. */
+static void on_cp_station(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+	switch (id) {
+	case EH_CP_FEAT_WIFI_EVT_STA_CONNECTED_TO_AP:
+		eh_cp_nw_split_ip_owner_link(true);
+		break;
+	case EH_CP_FEAT_WIFI_EVT_STA_DISCONNECTED_FROM_AP:
+		eh_cp_nw_split_ip_owner_link(false);
+		nw_split_send_status_event();
+		break;
+	case EH_CP_FEAT_WIFI_EVT_STA_STARTED: {
+		/* A drop before the Wi-Fi feature ran (boot) was never published. */
+		bool started, linked;
+
+		eh_cp_feat_wifi_driver_state(&started, &linked, NULL);
+		if (!linked) {
+			eh_cp_nw_split_ip_owner_link(false);
+		}
+		break;
+	}
+	case EH_CP_FEAT_WIFI_EVT_STA_REPLAYED:
+		eh_cp_nw_split_ip_owner_resync();
+		break;
+	default:
+		break;
+	}
+}
+
+static const int32_t s_station_ids[] = {
+	EH_CP_FEAT_WIFI_EVT_STA_CONNECTED_TO_AP, EH_CP_FEAT_WIFI_EVT_STA_DISCONNECTED_FROM_AP,
+	EH_CP_FEAT_WIFI_EVT_STA_REPLAYED, EH_CP_FEAT_WIFI_EVT_STA_STARTED,
+};
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 							  int32_t event_id, void *event_data)
 {
-	if (event_base == WIFI_EVENT) {
-		switch (event_id) {
-			case WIFI_EVENT_STA_START:
-				ESP_LOGD(TAG, "Wi-Fi station started");
-#if EH_CP_FEAT_NW_SPLIT_WIFI_AUTO_CONNECT_ON_STA_START
-				if (!eh_cp_feat_wifi_is_station_connecting() &&
-				    !eh_cp_feat_wifi_is_connect_pending_on_start()) {
-					ESP_LOGW(TAG, "Triggering auto connect on sta start");
-					eh_cp_feat_wifi_request_connect();
-				}
-#endif
-				break;
-
-			case WIFI_EVENT_STA_CONNECTED:
-				ESP_LOGD(TAG, "Wi-Fi connected");
-				nw_split_try_override_sta_rx_cb();
-				break;
-
-			case WIFI_EVENT_STA_DISCONNECTED:
-				ESP_LOGD(TAG, "Wi-Fi disconnected");
-				s_sta_got_ip = false;
-				s_sta_rx_overridden = false;
-				s_sta_netif_input_ready = false;
-				eh_cp_rx_register(ESP_STA_IF, orig_wlan_rx_cb_for_host);
-				nw_split_send_status_event();
-				break;
-
-			default:
-				break;
-		}
-	} else if (event_base == IP_EVENT) {
+	if (event_base == IP_EVENT) {
 		switch (event_id) {
 			case IP_EVENT_STA_GOT_IP: {
 				nw_split_send_status_event();
-				s_sta_got_ip = true;
-				nw_split_try_override_sta_rx_cb();
 				break;
 			}
+			case IP_EVENT_STA_LOST_IP:
+				/* The host shares this lease: tell it, even with the link still up. */
+				nw_split_send_status_event();
+				break;
 
 
 			default:
@@ -916,17 +886,18 @@ static void nw_split_send_status_event(void)
 			 status.iface,
 			 status.dhcp_ip);
 
+	/* Bounded: the IP-owner FSM calls this holding its lock, on the loop task. */
 	ret = esp_event_post(ESP_HOSTED_CP_FEAT_NW_SPLIT_EVENT,
 						event_id,
 						&status,
 						sizeof(eh_cp_feat_nw_split_status_t),
-						portMAX_DELAY);
+						pdMS_TO_TICKS(100));
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to post network event: %d", ret);
 	}
 }
 
-void eh_cp_feat_nw_split_replay_status_if_needed(void)
+void eh_cp_nw_split_replay_status(void)
 {
 	eh_cp_feat_nw_split_status_t status = {0};
 
@@ -939,28 +910,6 @@ void eh_cp_feat_nw_split_replay_status_if_needed(void)
 		nw_split_send_status_event();
 	}
 }
-
-static void nw_split_try_override_sta_rx_cb(void)
-{
-	if (s_sta_rx_overridden) {
-		return;
-	}
-	esp_netif_t *active_netif = nw_split_get_active_sta_netif();
-	if (!active_netif || !esp_netif_is_netif_up(active_netif)) {
-		return;
-	}
-
-	void *netif_impl = esp_netif_get_netif_impl(active_netif);
-	if (!netif_impl) {
-		return;
-	}
-
-	s_nw_split_owns_sta_rxcb = false;  /* temporarily allow the registration */
-	eh_cp_rx_register(ESP_STA_IF, nw_split_wlan_sta_rx_cb);
-	s_nw_split_owns_sta_rxcb = true;   /* lock it — suppress all future overrides */
-	s_sta_rx_overridden = true;
-}
-
 
 static esp_err_t nw_split_get_status(uint8_t iface, eh_cp_feat_nw_split_status_t *status)
 {
@@ -1039,34 +988,21 @@ static esp_err_t nw_split_set_config(uint8_t iface, const char *ip, const char *
 
 	ESP_LOGI(TAG, "Setting network config: iface=%u, IP=%s, NM=%s, GW=%s, DNS=%s",
 			 iface, ip, nm, gw, dns_ip);
+	if (iface != WIFI_IF_STA) {
+		return ESP_ERR_NOT_SUPPORTED;
+	}
 
-	/* Set IP configuration */
 	esp_netif_ip_info_t ip_info = {0};
 	ip_info.ip.addr = esp_ip4addr_aton(ip);
 	ip_info.netmask.addr = esp_ip4addr_aton(nm);
 	ip_info.gw.addr = esp_ip4addr_aton(gw);
 
-	esp_err_t ret = esp_netif_set_ip_info(netif, &ip_info);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to set IP info: %s", esp_err_to_name(ret));
-		return ret;
-	}
-
-	/* Set DNS configuration; 0.0.0.0 means no DNS server (set_dns_info rejects it). */
+	/* 0.0.0.0: no DNS server (set_dns_info rejects it). */
 	esp_netif_dns_info_t dns_info = {0};
 	dns_info.ip.u_addr.ip4.addr = esp_ip4addr_aton(dns_ip);
 	dns_info.ip.type = ESP_IPADDR_TYPE_V4;
 
-	if (dns_info.ip.u_addr.ip4.addr != 0) {
-		ret = esp_netif_set_dns_info(netif, (esp_netif_dns_type_t)dns_type, &dns_info);
-		if (ret != ESP_OK) {
-			ESP_LOGE(TAG, "Failed to set DNS info: %s", esp_err_to_name(ret));
-			return ret;
-		}
-	}
-
-	ESP_LOGI(TAG, "Network configuration set successfully");
-	return ESP_OK;
+	return eh_cp_nw_split_ip_owner_host_lease(&ip_info, &dns_info, dns_type);
 }
 
 static esp_netif_t *eh_cp_feat_nw_split_init_coprocessor_netif(eh_cp_feat_nw_split_config_t *config)
@@ -1080,30 +1016,13 @@ static esp_netif_t *eh_cp_feat_nw_split_init_coprocessor_netif(eh_cp_feat_nw_spl
 	esp_netif_t *existing = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
 	if (existing) {
 		ESP_LOGI(TAG, "Reusing existing WIFI_STA_DEF netif");
-		/* The DHCP owner applies to the netif whoever created it: with owner HOST
-		 * the host runs the only client, and the CP takes the lease it pushes. */
-		if (config->default_nw_stack_dhcp == NW_STACK_HOST) {
-			(void)esp_netif_dhcpc_stop(existing);
-		}
 		coprocessor_sta_netif = existing;
 		return coprocessor_sta_netif;
 	}
 
-	bool dhcp_at_coprocessor = false;
-
-	if (config->default_nw_stack_dhcp == NW_STACK_COPROCESSOR ||
-	    config->default_nw_stack_dhcp == NW_STACK_BOTH) {
-		ESP_LOGI(TAG, "DHCP at coprocessor");
-		dhcp_at_coprocessor = true;
-	} else {
-		ESP_LOGI(TAG, "No DHCP at coprocessor");
-	}
-
+	/* With the DHCP client flag in every owner mode: the owner FSM runs or stops it. */
 	esp_netif_inherent_config_t netif_cfg;
 	memcpy(&netif_cfg, ESP_NETIF_BASE_DEFAULT_WIFI_STA, sizeof(netif_cfg));
-
-	if (!dhcp_at_coprocessor)
-		netif_cfg.flags &= ~ESP_NETIF_DHCP_CLIENT;
 
 	esp_netif_config_t cfg_sta = {
 		.base = &netif_cfg,
@@ -1114,11 +1033,6 @@ static esp_netif_t *eh_cp_feat_nw_split_init_coprocessor_netif(eh_cp_feat_nw_spl
 
 	EH_CHECK_OK(esp_netif_attach_wifi_station(netif_sta));
 	EH_CHECK_OK(esp_wifi_set_default_wifi_sta_handlers());
-
-	if (!dhcp_at_coprocessor) {
-		EH_CHECK_OK(esp_netif_dhcpc_stop(netif_sta));
-	}
-	/* DHCP client auto-starts when netif is created with ESP_NETIF_DHCP_CLIENT. */
 
 	coprocessor_sta_netif = netif_sta;
 	s_owned_sta_netif = netif_sta;
@@ -1155,7 +1069,7 @@ esp_err_t eh_cp_feat_nw_split_init(eh_cp_feat_nw_split_config_t *config)
 	 * The app may call esp_netif_init() later; this is safe to call twice. */
 	EH_CHECK_OK(esp_netif_init());
 
-	orig_wlan_rx_cb_for_host = eh_cp_rx_get(ESP_STA_IF);
+	orig_wlan_rx_cb_for_host = eh_cp_get_traffic_tx_cb(ESP_STA_IF);
 	if (!orig_wlan_rx_cb_for_host) {
 		ESP_LOGE(TAG, "Failed to get default hosted wlan rx callback. have you called eh_cp_init() first?");
 		return ESP_FAIL;
@@ -1171,7 +1085,9 @@ esp_err_t eh_cp_feat_nw_split_init(eh_cp_feat_nw_split_config_t *config)
 	);
 #endif
 
-	populate_dhcp_owner(config->default_nw_stack_dhcp);
+	s_dhcp_policy = config->default_nw_stack_dhcp;
+	eh_cp_add_feat_cap_bits(0, ESP_EXT_CAP_NW_SPLIT |
+	                           dhcp_owner_cap() << ESP_EXT_CAP_NW_SPLIT_DHCP_SHIFT);
 
 	/* Create coprocessor netif for station mode */
 	coprocessor_sta_netif = eh_cp_feat_nw_split_init_coprocessor_netif(config);
@@ -1179,36 +1095,25 @@ esp_err_t eh_cp_feat_nw_split_init(eh_cp_feat_nw_split_config_t *config)
 		ESP_LOGE(TAG, "Failed to create coprocessor netif");
 		return ESP_FAIL;
 	}
-
-	/* Register event handlers */
-	EH_CHECK_OK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
-		wifi_event_handler, NULL));
+	/* Handlers first, then the driver's state: no link change falls in between. */
 	EH_CHECK_OK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID,
 		wifi_event_handler, NULL));
-	EH_CHECK_OK(esp_event_handler_register(EH_CP_EVENT,
-		EH_CP_EVT_PRIVATE_RPC_READY, nw_split_core_event_handler, NULL));
-
-
-	nw_split_wlan_sta_rx_cb = config->wlan_sta_rx_callback_for_coprocessor;
-
-	/* Replay missed lifecycle if Wi-Fi already started before nw_split init. */
-	if (coprocessor_sta_netif && eh_cp_feat_wifi_is_started()) {
-		if (!esp_netif_is_netif_up(coprocessor_sta_netif)) {
-			esp_netif_action_start(coprocessor_sta_netif,
-				WIFI_EVENT, WIFI_EVENT_STA_START, NULL);
-		}
-		if (eh_cp_feat_wifi_is_station_connected()) {
-			esp_netif_dhcp_status_t dhcpc_status = ESP_NETIF_DHCP_INIT;
-			if (esp_netif_dhcpc_get_status(coprocessor_sta_netif, &dhcpc_status) == ESP_OK &&
-			    dhcpc_status != ESP_NETIF_DHCP_STARTED) {
-				esp_netif_action_connected(coprocessor_sta_netif,
-					WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, NULL);
-			}
-		}
+	for (size_t k = 0; k < sizeof(s_station_ids) / sizeof(s_station_ids[0]); k++) {
+		EH_CHECK_OK(esp_event_handler_register(EH_CP_FEAT_WIFI_EVENT, s_station_ids[k],
+			on_cp_station, NULL));
 	}
 
-	/* Lock STA rxcb ownership — wrap now suppresses esp_wifi_internal_reg_rxcb(STA,...). */
-	s_nw_split_owns_sta_rxcb = true;
+	nw_split_wlan_sta_rx_cb = config->wlan_sta_rx_callback_for_coprocessor;
+	/* Ours from now to deinit: it sends to the host while the CP netif is not up. */
+	EH_CHECK_OK(eh_cp_set_traffic_tx_cb(ESP_STA_IF, nw_split_wlan_sta_rx_cb));
+	EH_CHECK_OK(eh_cp_set_traffic_rx_cb(ESP_STA_IF, nw_split_filter_bus_rx));
+
+	EH_CHECK_OK(eh_cp_nw_split_ip_owner_fsm_start(coprocessor_sta_netif, s_owned_sta_netif != NULL,
+		s_dhcp_policy == NW_STACK_HOST ? ESP_EXT_CAP_NW_SPLIT_DHCP_HOST : ESP_EXT_CAP_NW_SPLIT_DHCP_CP,
+		s_dhcp_policy != NW_STACK_COPROCESSOR));
+#if EH_CP_FEAT_NW_SPLIT_WIFI_AUTO_CONNECT_ON_STA_START
+	eh_cp_feat_wifi_set_auto_connect(true);     /* last: nothing above can fail after it */
+#endif
 
 	return ESP_OK;
 }
@@ -1220,14 +1125,18 @@ esp_err_t eh_cp_feat_nw_split_deinit(void)
     /* Unsubscription is handled by each RPC adapter in its own deinit(). */
 
     /* Unregister event handlers. */
-	EH_CHECK_OK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
-											   wifi_event_handler), ESP_ERR_NOT_FOUND);
 	EH_CHECK_OK(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID,
 											   wifi_event_handler), ESP_ERR_NOT_FOUND);
-	EH_CHECK_OK(esp_event_handler_unregister(EH_CP_EVENT,
-		EH_CP_EVT_PRIVATE_RPC_READY, nw_split_core_event_handler), ESP_ERR_NOT_FOUND);
-	s_nw_split_owns_sta_rxcb = false;  /* allow restore */
-	eh_cp_rx_register(ESP_STA_IF, orig_wlan_rx_cb_for_host);
+	for (size_t k = 0; k < sizeof(s_station_ids) / sizeof(s_station_ids[0]); k++) {
+		EH_CHECK_OK(esp_event_handler_unregister(EH_CP_FEAT_WIFI_EVENT, s_station_ids[k],
+			on_cp_station), ESP_ERR_NOT_FOUND);
+	}
+#if EH_CP_FEAT_NW_SPLIT_WIFI_AUTO_CONNECT_ON_STA_START
+	eh_cp_feat_wifi_set_auto_connect(false);
+#endif
+	(void)eh_cp_set_traffic_tx_cb(ESP_STA_IF, orig_wlan_rx_cb_for_host);
+	(void)eh_cp_set_traffic_rx_cb(ESP_STA_IF, NULL);
+	eh_cp_nw_split_ip_owner_fsm_stop();
 
 	/* Stop the STA netif before destroying an owned netif. */
 	esp_netif_t *sta = coprocessor_sta_netif ? coprocessor_sta_netif
@@ -1245,22 +1154,10 @@ esp_err_t eh_cp_feat_nw_split_deinit(void)
 		s_owned_sta_netif = NULL;
 	}
 	coprocessor_sta_netif = NULL;
-	s_sta_netif_input_ready = false;
+	eh_cp_clear_feat_cap_bits(0, ESP_EXT_CAP_NW_SPLIT | ESP_EXT_CAP_NW_SPLIT_DHCP_MASK);
 
 	ESP_LOGI(TAG, "Network split deinitialization completed");
 	return ESP_OK;
-}
-
-void eh_cp_feat_nw_split_reset_rx_override(void)
-{
-	s_sta_got_ip = false;
-	s_sta_rx_overridden = false;
-	s_sta_netif_input_ready = false;
-	s_nw_split_owns_sta_rxcb = false;  /* allow restore */
-	coprocessor_sta_netif = NULL;
-	if (orig_wlan_rx_cb_for_host) {
-		eh_cp_rx_register(ESP_STA_IF, orig_wlan_rx_cb_for_host);
-	}
 }
 
 esp_err_t eh_cp_feat_nw_split_get_status(uint8_t iface,

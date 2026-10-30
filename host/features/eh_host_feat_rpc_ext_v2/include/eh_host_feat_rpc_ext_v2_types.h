@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* PUBLIC types for the MCU V1 Rpc extension (ctrl_cmd + payloads). */
 
 #ifndef EH_HOST_FEAT_RPC_EXT_V2_TYPES_H_
@@ -510,6 +514,15 @@ typedef struct {
     int32_t        resp;             /* event-only */
 } eh_rpc_dhcp_dns_t;
 
+/* Req_SetContext / Resp_SetContext / Event_Context: type + packed struct
+ * (eh_common_ctx.h). data holds the largest context type. */
+#define EH_RPC_CTX_DATA_MAX 32
+typedef struct {
+    uint32_t type;
+    uint16_t len;
+    uint8_t  data[EH_RPC_CTX_DATA_MAX];
+} eh_rpc_ctx_t;
+
 /* iTWT_Setup event: status/reason + flattened WifiItwtSetupConfig. */
 typedef struct {
     int32_t   status;
@@ -673,6 +686,7 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_dpp_init_t          dpp_init;
         eh_rpc_dpp_bootstrap_t     dpp_bootstrap;
         eh_rpc_dhcp_dns_t          dhcp_dns;
+        eh_rpc_ctx_t               ctx;
 
         eh_rpc_esp_init_t          e_init;
         eh_rpc_heartbeat_evt_t     e_heartbeat;

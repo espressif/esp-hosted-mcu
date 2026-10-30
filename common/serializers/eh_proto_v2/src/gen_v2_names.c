@@ -173,6 +173,7 @@ static const char s_pool[] =
     "PhyBleTx\0"
     "PhyBleRx\0"
     "PhyBtTxTone\0"
+    "SetContext\0"
     "ESPInit\0"
     "Heartbeat\0"
     "AP_StaConnected\0"
@@ -192,6 +193,7 @@ static const char s_pool[] =
     "WifiDppUriReady\0"
     "WifiDppCfgRecvd\0"
     "WifiDppFail\0"
+    "Context\0"
     ;
 
 static const uint16_t s_req_resp[] = {
@@ -347,31 +349,33 @@ static const uint16_t s_req_resp[] = {
     2447,    /* PhyBleTx */
     2456,    /* PhyBleRx */
     2465,    /* PhyBtTxTone */
+    2477,    /* SetContext */
 };
 
 static const uint16_t s_event[] = {
     NO_NAME,   /* - */
-    2477,    /* ESPInit */
-    2485,    /* Heartbeat */
-    2495,    /* AP_StaConnected */
-    2511,    /* AP_StaDisconnected */
-    2530,    /* WifiEventNoArgs */
-    2546,    /* StaScanDone */
-    2558,    /* StaConnected */
-    2571,    /* StaDisconnected */
-    2587,    /* DhcpDnsStatus */
-    2601,    /* StaItwtSetup */
-    2614,    /* StaItwtTeardown */
-    2630,    /* StaItwtSuspend */
-    2645,    /* StaItwtProbe */
-    2658,    /* SuppDppUriReady */
-    2674,    /* SuppDppCfgRecvd */
-    2690,    /* SuppDppFail */
-    2702,    /* WifiDppUriReady */
-    2718,    /* WifiDppCfgRecvd */
-    2734,    /* WifiDppFail */
+    2488,    /* ESPInit */
+    2496,    /* Heartbeat */
+    2506,    /* AP_StaConnected */
+    2522,    /* AP_StaDisconnected */
+    2541,    /* WifiEventNoArgs */
+    2557,    /* StaScanDone */
+    2569,    /* StaConnected */
+    2582,    /* StaDisconnected */
+    2598,    /* DhcpDnsStatus */
+    2612,    /* StaItwtSetup */
+    2625,    /* StaItwtTeardown */
+    2641,    /* StaItwtSuspend */
+    2656,    /* StaItwtProbe */
+    2669,    /* SuppDppUriReady */
+    2685,    /* SuppDppCfgRecvd */
+    2701,    /* SuppDppFail */
+    2713,    /* WifiDppUriReady */
+    2729,    /* WifiDppCfgRecvd */
+    2745,    /* WifiDppFail */
     2227,    /* CustomRpc */
     158,     /* MemMonitor */
+    2757,    /* Context */
 };
 
 static const char *name_at(const uint16_t *t, size_t n, int32_t i)

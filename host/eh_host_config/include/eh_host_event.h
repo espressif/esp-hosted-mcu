@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* EH_HOST_EVENT bus — base, unified ID enum, lifecycle payloads. */
 
 #ifndef EH_HOST_EVENT_H_
@@ -32,6 +36,7 @@ enum {
     EH_HOST_EVENT_PEER_DATA_RX        = 6,  /* feat_peer_data; payload = eh_host_event_peer_data_t (eh_host_peer_data.h) */
     EH_HOST_EVENT_NW_SPLIT_STATUS     = 7,  /* feat_nw_split; payload = eh_host_nw_split_status_t (eh_host_nw_split.h) */
     EH_HOST_EVENT_GPIO_EXP_INT        = 8,  /* feat_gpio_exp; payload TBD when wire carries the event */
+    EH_HOST_EVENT_NW_SPLIT_IP_OWNER   = 9,  /* feat_nw_split; payload = eh_host_nw_split_ip_owner_evt_t (eh_host_feat_nw_split.h) */
 };
 
 /* ── Lifecycle payloads (CP_INIT / CP_HEARTBEAT) ───────────────── */

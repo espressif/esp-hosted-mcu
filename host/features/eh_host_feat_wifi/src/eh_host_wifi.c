@@ -23,13 +23,15 @@
 #include "eh_host_port.h"
 #include "esp_event.h"
 #include "eh_host_port_wifi.h"
+#include "eh_host_port_master_config.h"
 
 #include "esp_event.h"
 #include "esp_wifi_types.h"
+#include "esp_wifi.h"
 
 #include "eh_host_wifi.h"
-#include "eh_host_port_master_config.h"
 #include "eh_host_wifi_priv.h"
+#include "eh_host_sta_fsm.h"
 
 #include "eh_host_feat_rpc_ext_v2_api_common.h"
 
@@ -39,6 +41,13 @@
 
 esp_err_t eh_host_wifi_init(const wifi_init_config_t *cfg)
 {
+    /* The station FSM keeps the app's own init state, as IDF does. The CP's Wi-Fi
+     * state cannot stand in: CP code may run Wi-Fi the app never inited. */
+    if (!eh_host_sta_fsm_claim_init()) {
+        ESP_LOGE(EH_HOST_WIFI_TAG, "Failed to init, WiFi is initialized by esp_wifi_init");
+        return ESP_ERR_INVALID_STATE;
+    }
+
     /* CP validates magic == WIFI_INIT_CONFIG_MAGIC. NULL cfg => DEFAULT(). */
     wifi_init_config_t fallback;
     if (!cfg) {
@@ -48,7 +57,10 @@ esp_err_t eh_host_wifi_init(const wifi_init_config_t *cfg)
     }
 
     eh_rpc_ctrl_cmd_t *req = eh_rpc_ctrl_cmd_alloc();
-    if (!req) return ESP_FAIL;
+    if (!req) {
+        eh_host_sta_fsm_request(EH_STA_EV_INIT_FAIL);
+        return ESP_FAIL;
+    }
 
     eh_rpc_wifi_init_cfg_t *p = &req->u.wifi_init_cfg;
     p->static_rx_buf_num     = cfg->static_rx_buf_num;
@@ -92,26 +104,45 @@ esp_err_t eh_host_wifi_init(const wifi_init_config_t *cfg)
     eh_rpc_ctrl_cmd_t *r = NULL;
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_WifiInit, req,
                                           (void **)&r) != 0) {
+        eh_host_sta_fsm_request(EH_STA_EV_INIT_FAIL);
         return ESP_FAIL;
     }
     int status = r->resp_event_status;
     eh_rpc_ctrl_cmd_free(r);
+    eh_host_sta_fsm_request(status == ESP_OK ? EH_STA_EV_INIT_REQ : EH_STA_EV_INIT_FAIL);
     return (esp_err_t)status;
 }
-esp_err_t eh_host_wifi_deinit(void)  { return eh_rpc_do_empty_request(RPC_ID__Req_WifiDeinit); }
-static void sta_app_started(void);
-
-esp_err_t eh_host_wifi_start(void)
+/* The app's calls reach the station FSM only once the CP accepted them. */
+static esp_err_t app_request(int32_t rpc_id, eh_host_sta_ev_t ev)
 {
-    esp_err_t rc = eh_rpc_do_empty_request(RPC_ID__Req_WifiStart);
+    esp_err_t rc = eh_rpc_do_empty_request(rpc_id);
 
     if (rc == ESP_OK) {
-        sta_app_started();
+        eh_host_sta_fsm_request(ev);
     }
     return rc;
 }
 
-esp_err_t eh_host_wifi_stop(void)    { return eh_rpc_do_empty_request(RPC_ID__Req_WifiStop); }
+/* Stop goes to the FSM before the RPC, as disconnect: its CP reports can land
+ * before the answer, and IDF posts the events before esp_wifi_stop returns. */
+static esp_err_t app_request_first(int32_t rpc_id, eh_host_sta_ev_t ev)
+{
+    if (eh_host_sta_fsm_app_rc() != ESP_ERR_WIFI_NOT_INIT) {
+        eh_host_sta_fsm_request(ev);
+    }
+    return eh_rpc_do_empty_request(rpc_id);
+}
+
+esp_err_t eh_host_wifi_deinit(void)
+{
+    if (!eh_host_sta_fsm_inited()) {
+        return ESP_ERR_WIFI_NOT_INIT;
+    }
+    return app_request(RPC_ID__Req_WifiDeinit, EH_STA_EV_DEINIT_REQ);
+}
+
+esp_err_t eh_host_wifi_start(void)   { return app_request(RPC_ID__Req_WifiStart, EH_STA_EV_START_REQ); }
+esp_err_t eh_host_wifi_stop(void)    { return app_request_first(RPC_ID__Req_WifiStop, EH_STA_EV_STOP_REQ); }
 esp_err_t eh_host_wifi_restore(void) { return eh_rpc_do_empty_request(RPC_ID__Req_WifiRestore); }
 
 esp_err_t eh_host_wifi_set_mode(wifi_mode_t mode)
@@ -119,10 +150,21 @@ esp_err_t eh_host_wifi_set_mode(wifi_mode_t mode)
     eh_rpc_ctrl_cmd_t *req = eh_rpc_ctrl_cmd_alloc();
     if (!req) return ESP_FAIL;
     req->u.wifi_mode.mode = (int32_t)mode;
+    bool sta_gone = (mode == WIFI_MODE_AP || mode == WIFI_MODE_NULL) && eh_host_sta_fsm_take_sta();
     eh_rpc_ctrl_cmd_t *r = NULL;
-    if (eh_host_feat_rpc_request_sync(RPC_ID__Req_SetWifiMode, req, (void **)&r) != 0) return ESP_FAIL;
+    if (eh_host_feat_rpc_request_sync(RPC_ID__Req_SetWifiMode, req, (void **)&r) != 0) {
+        if (sta_gone) eh_host_sta_fsm_give_sta_back();
+        return ESP_FAIL;
+    }
     int rc = r->resp_event_status;
     eh_rpc_ctrl_cmd_free(r);
+    if (rc != ESP_OK && sta_gone) {
+        eh_host_sta_fsm_give_sta_back();
+    }
+    if (rc == ESP_OK) {
+        eh_host_sta_fsm_set_mode(mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA,
+                                 mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA);
+    }
     return (esp_err_t)rc;
 }
 
@@ -431,8 +473,47 @@ esp_err_t eh_host_wifi_get_config(wifi_interface_t iface, wifi_config_t *out)
     return (esp_err_t)rc;
 }
 
-esp_err_t eh_host_wifi_connect(void)    { return eh_rpc_do_empty_request(RPC_ID__Req_WifiConnect); }
-esp_err_t eh_host_wifi_disconnect(void) { return eh_rpc_do_empty_request(RPC_ID__Req_WifiDisconnect); }
+/* Before the RPC, as the disconnect: the attempt's report can land before the answer.
+ * An attempt the app did not make (CP, policy) is joined: OK, its outcome is the app's. */
+esp_err_t eh_host_wifi_connect(void)
+{
+    esp_err_t rc = eh_host_sta_fsm_app_rc();
+
+    if (rc == ESP_OK) {
+        rc = eh_host_sta_fsm_connect_begin();
+    }
+    if (rc != ESP_OK) {
+        return rc;
+    }
+    rc = eh_host_wifi_policy_connect();
+    if (rc == ESP_ERR_WIFI_CONN) {
+        return ESP_OK;
+    }
+    if (rc != ESP_OK) {
+        eh_host_sta_fsm_request(EH_STA_EV_CONNECT_FAIL);
+    }
+    return rc;
+}
+
+esp_err_t eh_host_wifi_policy_connect(void)
+{
+    return eh_rpc_do_empty_request(RPC_ID__Req_WifiConnect);
+}
+/* DISCONNECTING before the RPC: the CP's DISCONNECTED can land before its answer. */
+esp_err_t eh_host_wifi_disconnect(void)
+{
+    esp_err_t rc = eh_host_sta_fsm_app_rc();
+
+    if (rc != ESP_OK) {
+        return rc;
+    }
+    eh_host_sta_fsm_request(EH_STA_EV_DISCONNECT_REQ);
+    rc = eh_rpc_do_empty_request(RPC_ID__Req_WifiDisconnect);
+    if (rc != ESP_OK) {
+        eh_host_sta_fsm_request(EH_STA_EV_DISCONNECT_FAIL);
+    }
+    return rc;
+}
 
 /* RPC mirror -> IDF struct; shared by sta_get_ap_info and scan_get_ap_record(s). */
 static void ap_record_to_idf(wifi_ap_record_t *dst,
@@ -495,6 +576,39 @@ esp_err_t eh_host_wifi_sta_get_ap_info(wifi_ap_record_t *out)
     }
     eh_rpc_ctrl_cmd_free(r);
     return (esp_err_t)rc;
+}
+
+/* After a CP (re)connection: an association the CP no longer holds (it
+ * rebooted) ends the host's. A CP that kept it (deinit/init) is silent. */
+static void cp_link_answer(void *resp, void *ctx, int status)
+{
+    eh_rpc_ctrl_cmd_t *r = (eh_rpc_ctrl_cmd_t *)resp;
+    esp_err_t rc = r ? (esp_err_t)r->resp_event_status : ESP_FAIL;
+
+    (void)ctx;
+    if (r) {
+        eh_rpc_ctrl_cmd_free(r);
+    }
+    if (status != EH_RPC_STATUS_OK) {
+        return;
+    }
+    if (rc == ESP_ERR_WIFI_NOT_CONNECT) {
+        eh_host_sta_fsm_report(EH_STA_EV_CP_UNLINKED, NULL, 0);
+    } else if (rc == ESP_ERR_WIFI_NOT_INIT || rc == ESP_ERR_WIFI_NOT_STARTED) {
+        eh_host_sta_fsm_report(EH_STA_EV_RADIO_STOPPED, NULL, 0);  /* its STA_START follows */
+    }
+}
+
+esp_err_t eh_host_wifi_check_cp_link(void)
+{
+    eh_rpc_ctrl_cmd_t *req = eh_rpc_ctrl_cmd_alloc();
+
+    if (!req) return ESP_FAIL;
+    req->msg_id         = RPC_ID__Req_WifiStaGetApInfo;
+    req->rpc_rsp_cb     = cp_link_answer;
+    req->rpc_rsp_cb_ctx = NULL;
+    return eh_host_feat_rpc_request(RPC_ID__Req_WifiStaGetApInfo, req, 0, NULL) == 0 ?
+           ESP_OK : ESP_FAIL;
 }
 
 esp_err_t eh_host_wifi_scan_start(const wifi_scan_config_t *cfg, bool block)
@@ -654,41 +768,11 @@ static void wifi_event_post_logged(int32_t evt_id, const void *data, size_t size
                          evt_id, (int)rc);
 }
 
-/* RX-admission flags [0]=STA [1]=AP, read per-frame by the wifi_remote_glue's
- * channel-RX guard (glue → feat_wifi, the existing link direction — no back-edge).
- * Set below at the definitive lifecycle points so a frame is delivered only while
- * its iface is up and bound, replicating native Wi-Fi's start/stop-scoped RX
- * gating. Default false → post-wake-reboot frames are dropped until reconnect. */
-static volatile bool s_rx_admit[2];
-
-/* Netif-started guard [0]=STA [1]=AP: guarantees STA_START (netif add) is posted
- * before STA_CONNECTED (netif up). On a host-power-save wake the CP replays the
- * connected state before STA_START arrives, so without this the netif is upped
- * before it is added and wlanif_input faults on a NULL netif->input. */
-static bool s_sta_netif_started;
-static bool s_ap_netif_started;
-
-/* The app sees STA events only after its esp_wifi_start(), as with a local
- * radio. A CP that kept its link (host deep-sleep wake) replays STA_CONNECTED
- * and the IP status before the app has registered handlers; until the app
- * starts, the CP link is only recorded, then posted once on the start. */
-static eh_host_port_mutex_t       *s_sta_mtx;
-static bool                        s_app_sta_started;
-static bool                        s_cp_sta_connected;
-static wifi_event_sta_connected_t  s_cp_conn_evt;
-static volatile uint32_t           s_cp_sta_down_gen;   /* bumped per CP disconnect/stop */
-
-static void sta_lock(void)   { if (s_sta_mtx) eh_host_port_mutex_lock(s_sta_mtx); }
-static void sta_unlock(void) { if (s_sta_mtx) eh_host_port_mutex_unlock(s_sta_mtx); }
-
+/* Read per frame by the wifi_remote glue's RX guard: the station or AP FSM is on.
+ * A frame before either is dropped. */
 bool eh_host_wifi_rx_admitted(bool is_ap)
 {
-    return s_rx_admit[is_ap ? 1 : 0];
-}
-
-void eh_host_wifi_admit_rx(bool is_ap, bool admit)
-{
-    s_rx_admit[is_ap ? 1 : 0] = admit;
+    return is_ap ? eh_host_ap_fsm_on() : eh_host_sta_fsm_connected();
 }
 
 static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
@@ -711,20 +795,7 @@ static void wifi_sta_connected_handler(const void *ctrl_cmd, void *ctx)
     ESP_LOGD(EH_HOST_WIFI_TAG,
              "rx RPC StaConnected ssid=\"%.32s\" aid=%u ch=%u auth=%u",
              (const char *)evt.ssid, evt.aid, evt.channel, evt.authmode);
-    sta_lock();
-    s_cp_conn_evt = evt;
-    s_cp_sta_connected = true;
-    /* A replay while CONNECTED is already shown (rx admitted) is not a new link. */
-    if (s_app_sta_started && !s_rx_admit[0]) {
-        /* STA_START first, so esp_netif adds the netif before STA_CONNECTED ups it. */
-        if (!s_sta_netif_started) {
-            s_sta_netif_started = true;
-            wifi_event_post_logged(WIFI_EVENT_STA_START, NULL, 0);
-        }
-        s_rx_admit[0] = true;
-        wifi_event_post_logged(WIFI_EVENT_STA_CONNECTED, &evt, sizeof(evt));
-    }
-    sta_unlock();
+    eh_host_sta_fsm_report(EH_STA_EV_ASSOCIATED, &evt, sizeof(evt));
 }
 
 static void wifi_sta_disconnected_handler(const void *ctrl_cmd, void *ctx)
@@ -746,15 +817,7 @@ static void wifi_sta_disconnected_handler(const void *ctrl_cmd, void *ctx)
     ESP_LOGI(EH_HOST_WIFI_TAG,
              "rx RPC StaDisconnected ssid=\"%.32s\" reason=%u rssi=%d",
              (const char *)evt.ssid, evt.reason, evt.rssi);
-    sta_lock();
-    s_cp_sta_down_gen++;
-    s_cp_sta_connected = false;
-    /* Link down → stop admitting DATA RX before any netif teardown. */
-    s_rx_admit[0] = false;
-    if (s_app_sta_started) {
-        wifi_event_post_logged(WIFI_EVENT_STA_DISCONNECTED, &evt, sizeof(evt));
-    }
-    sta_unlock();
+    eh_host_sta_fsm_report(EH_STA_EV_DISASSOCIATED, &evt, sizeof(evt));
 }
 
 static void wifi_scan_done_handler(const void *ctrl_cmd, void *ctx)
@@ -876,40 +939,19 @@ static void wifi_event_no_args_handler(const void *ctrl_cmd, void *ctx)
 
     switch (evt_id) {
     case WIFI_EVENT_STA_START:
-        sta_lock();
-        if (s_app_sta_started && !s_sta_netif_started) {
-            s_sta_netif_started = true;
-            wifi_event_post_logged(evt_id, NULL, 0);
-        }
-        sta_unlock();
+        eh_host_sta_fsm_report(EH_STA_EV_RADIO_STARTED, NULL, 0);
         break;
     case WIFI_EVENT_STA_STOP:
-        sta_lock();
-        s_cp_sta_down_gen++;
-        s_cp_sta_connected = false;
-        s_rx_admit[0] = false;  /* link down: deny DATA RX either way */
-        s_sta_netif_started = false;
-        if (s_app_sta_started) {
-            wifi_event_post_logged(evt_id, NULL, 0);
-        }
-        sta_unlock();
+        eh_host_sta_fsm_report(EH_STA_EV_RADIO_STOPPED, NULL, 0);
         break;
     case WIFI_EVENT_AP_START:
-        if (!s_ap_netif_started) {
-            s_ap_netif_started = true;
-            s_rx_admit[1] = true;   /* AP netif up → admit DATA RX */
-            wifi_event_post_logged(evt_id, NULL, 0);
-        }
+        eh_host_ap_fsm_report(EH_AP_EV_STARTED);
         break;
     case WIFI_EVENT_AP_STOP:
-        s_rx_admit[1] = false;   /* deny before netif teardown */
-        s_ap_netif_started = false;
-        wifi_event_post_logged(evt_id, NULL, 0);
+        eh_host_ap_fsm_report(EH_AP_EV_STOPPED);
         break;
 
     case WIFI_EVENT_WIFI_READY:
-    case WIFI_EVENT_STA_AUTHMODE_CHANGE:
-    case WIFI_EVENT_HOME_CHANNEL_CHANGE:
         wifi_event_post_logged(evt_id, NULL, 0);
         break;
     default:
@@ -917,46 +959,9 @@ static void wifi_event_no_args_handler(const void *ctrl_cmd, void *ctx)
     }
 }
 
-/* The app started Wi-Fi: post the CP link it has not seen yet, once. A CP that
- * kept its link reports no new STA_CONNECTED, so ask for it; a CP disconnect
- * during the query is newer, and the answer is dropped. */
-static void sta_app_started(void)
-{
-    uint32_t gen = s_cp_sta_down_gen;
-    wifi_ap_record_t ap;
-    /* Only a network-split CP shares its link with every host session; a plain
-     * CP may hold a link of a previous host app, which this app never asked for. */
-    bool kept = EH_HOST_FEAT_NW_SPLIT_READY && (eh_host_wifi_sta_get_ap_info(&ap) == ESP_OK);
-
-    sta_lock();
-    if (kept && !s_cp_sta_connected && gen == s_cp_sta_down_gen) {
-        memset(&s_cp_conn_evt, 0, sizeof(s_cp_conn_evt));
-        memcpy(s_cp_conn_evt.ssid, ap.ssid, sizeof(s_cp_conn_evt.ssid));
-        s_cp_conn_evt.ssid_len = (uint8_t)strnlen((const char *)ap.ssid, sizeof(ap.ssid));
-        memcpy(s_cp_conn_evt.bssid, ap.bssid, sizeof(s_cp_conn_evt.bssid));
-        s_cp_conn_evt.channel  = ap.primary;
-        s_cp_conn_evt.authmode = ap.authmode;
-        s_cp_sta_connected = true;
-    }
-    s_app_sta_started = true;
-    if (!s_sta_netif_started) {
-        s_sta_netif_started = true;
-        wifi_event_post_logged(WIFI_EVENT_STA_START, NULL, 0);
-    }
-    if (s_cp_sta_connected && !s_rx_admit[0]) {
-        s_rx_admit[0] = true;
-        wifi_event_post_logged(WIFI_EVENT_STA_CONNECTED, &s_cp_conn_evt, sizeof(s_cp_conn_evt));
-    }
-    sta_unlock();
-}
-
 int eh_host_feat_rpc_ext_v2_register_wifi_event_handlers(void)
 {
-    int rc = 0;
-
-    if (!s_sta_mtx) {
-        s_sta_mtx = eh_host_port_mutex_create();
-    }
+    int rc = eh_host_sta_fsm_init();
     rc |= eh_host_feat_rpc_register_event(
         RPC_ID__Event_StaConnected,    wifi_sta_connected_handler,    NULL);
     rc |= eh_host_feat_rpc_register_event(
@@ -985,15 +990,9 @@ int eh_host_feat_rpc_ext_v2_register_wifi_event_handlers(void)
 
 int eh_host_feat_rpc_ext_v2_unregister_wifi_event_handlers(void)
 {
-    /* Reset start-latches so a hosted reinit re-delivers STA_START/AP_START to
-     * the app. Without this the post-recovery STA_START is dropped here and the
-     * app never (re)connects (no STA_STOP arrives when the slave just reboots). */
-    s_sta_netif_started = false;
-    s_ap_netif_started = false;
-    s_app_sta_started = false;
-    s_cp_sta_connected = false;
-    s_rx_admit[0] = false;  /* teardown → deny RX until the iface re-associates */
-    s_rx_admit[1] = false;
+    /* A hosted reinit re-delivers STA_START/AP_START to the app: no STA_STOP
+     * arrives when the CP just reboots. */
+    eh_host_sta_fsm_deinit();
 
     eh_host_feat_rpc_unregister_event(
         RPC_ID__Event_StaConnected,    wifi_sta_connected_handler,    NULL);

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """IDF event-loop bridge — Python <-> esp_event_handler_register.
 
 Exposes the small slice of `esp_event_*` that ctypes consumers need
@@ -62,6 +64,7 @@ EH_HOST_EVENT_MEM_MONITOR        = 5
 EH_HOST_EVENT_PEER_DATA_RX       = 6
 EH_HOST_EVENT_NW_SPLIT_STATUS    = 7
 EH_HOST_EVENT_GPIO_EXP_INT       = 8
+EH_HOST_EVENT_NW_SPLIT_IP_OWNER  = 9
 
 # Upstream-MCU spellings (back-compat aliases for ESP_HOSTED_EVENT_*).
 ESP_HOSTED_EVENT_CP_INIT             = EH_HOST_EVENT_CP_INIT
@@ -73,6 +76,7 @@ ESP_HOSTED_EVENT_MEM_MONITOR         = EH_HOST_EVENT_MEM_MONITOR
 ESP_HOSTED_EVENT_PEER_DATA_RX        = EH_HOST_EVENT_PEER_DATA_RX
 ESP_HOSTED_EVENT_NW_SPLIT_STATUS     = EH_HOST_EVENT_NW_SPLIT_STATUS
 ESP_HOSTED_EVENT_GPIO_EXP_INT        = EH_HOST_EVENT_GPIO_EXP_INT
+ESP_HOSTED_EVENT_NW_SPLIT_IP_OWNER   = EH_HOST_EVENT_NW_SPLIT_IP_OWNER
 
 ESP_EVENT_ANY_ID = -1
 

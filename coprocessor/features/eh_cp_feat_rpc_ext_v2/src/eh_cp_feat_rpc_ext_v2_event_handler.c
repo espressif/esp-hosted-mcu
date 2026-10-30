@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,6 +23,7 @@
 
 #if EH_CP_FEAT_NW_SPLIT_READY
 #include "eh_cp_feat_nw_split_events.h"
+#include "eh_common_ctx.h"
 #endif
 
 #if EH_CP_FEAT_WIFI_EXT_DPP_READY
@@ -56,8 +57,6 @@ static void rpc_send_event_if_ready(int32_t event_id, int msg_id, void *data, si
 }
 
 #if EH_CP_FEAT_WIFI_READY
-EH_CP_BSS_STORE wifi_event_sta_connected_t mcu_lkg_sta_connected_event = {0};
-EH_CP_BSS_STORE static bool mcu_scan_done = false;
 #endif
 EH_CP_BSS_STORE TimerHandle_t handle_heartbeat_task = NULL;
 EH_CP_BSS_STORE uint32_t hb_num = 0;
@@ -91,6 +90,19 @@ static void ext_nw_split_event_dispatcher(void *handler_args, esp_event_base_t b
 				event_data, sizeof(eh_cp_feat_nw_split_status_t));
 			break;
 
+		case ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_IP_OWNER: {
+			const uint32_t type = EH_CTX_NW_SPLIT_IP_OWNER;
+			const eh_ctx_ip_owner_t a = {
+				.owner = event_data ? *(const uint8_t *)event_data : 0,
+			};
+			uint8_t buf[sizeof(type) + sizeof(a)];
+
+			memcpy(buf, &type, sizeof(type));
+			memcpy(buf + sizeof(type), &a, sizeof(a));
+			rpc_send_event_if_ready(event_id, RPC_ID__Event_Context, buf, sizeof(buf));
+			break;
+		}
+
 		default:
 			ESP_LOGW(TAG, "Unknown network split event ID: %ld", event_id);
 			break;
@@ -101,7 +113,8 @@ static void ext_nw_split_event_dispatcher(void *handler_args, esp_event_base_t b
 /* Network split events */
 #define DEFINE_NW_SPLIT_EVENTS eh_cp_feat_nw_split_evt_t nw_split_events[] = {     \
     ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_NETWORK_UP,                                     \
-    ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_NETWORK_DOWN                                    \
+    ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_NETWORK_DOWN,                                   \
+    ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_IP_OWNER                                        \
 }
 
 #if EH_CP_FEAT_NW_SPLIT_READY
@@ -211,7 +224,12 @@ static void wifi_event_dispatcher(void *handler_args, esp_event_base_t base,
 	}
 
 	switch (event_id) {
-		case EH_CP_FEAT_WIFI_EVT_STA_STARTED: {
+		case EH_CP_FEAT_WIFI_EVT_WITH_NO_ARGS: {
+			rpc_send_event_if_ready(event_id, RPC_ID__Event_WifiEventNoArgs,
+				event_data, sizeof(int32_t));
+			break;
+
+		} case EH_CP_FEAT_WIFI_EVT_STA_STARTED: {
 			int32_t wifi_event_id = WIFI_EVENT_STA_START;
 			rpc_send_event_if_ready(event_id,
 									RPC_ID__Event_WifiEventNoArgs,
@@ -247,7 +265,6 @@ static void wifi_event_dispatcher(void *handler_args, esp_event_base_t base,
 								RPC_ID__Event_StaConnected,
 				event_data, sizeof(wifi_event_sta_connected_t));
 
-			memcpy(&mcu_lkg_sta_connected_event, event_data, sizeof(wifi_event_sta_connected_t));
 			break;
 
 		} case EH_CP_FEAT_WIFI_EVT_STA_DISCONNECTED_FROM_AP: {
@@ -273,7 +290,6 @@ static void wifi_event_dispatcher(void *handler_args, esp_event_base_t base,
 
 		} case EH_CP_FEAT_WIFI_EVT_SCAN_DONE: {
 			ESP_LOGI(TAG, "Wi-Fi sta scan done");
-			mcu_scan_done = true;
 			rpc_send_event_if_ready(event_id,
 								RPC_ID__Event_StaScanDone,
 				event_data, sizeof(wifi_event_sta_scan_done_t));

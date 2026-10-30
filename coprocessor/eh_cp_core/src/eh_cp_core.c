@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +13,6 @@
 #include "soc/soc.h"
 #include "eh_cp_master_config.h"
 #include <unistd.h>
-#include <inttypes.h>
 #ifndef CONFIG_IDF_TARGET_ARCH_RISCV
 #include "xtensa/core-macros.h"
 #endif
@@ -77,6 +76,12 @@ static struct serial_rx_data {
 	uint8_t *data;
 } s_serial_rx;
 
+static void serial_rx_reset(void)
+{
+	free(s_serial_rx.data);
+	s_serial_rx = (struct serial_rx_data){0};
+}
+
 #if CONFIG_EH_TRANSPORT_CP_SPI
     #define ESP_GPIO_SLAVE_RESET CONFIG_EH_TRANSPORT_CP_SPI_GPIO_RESET
 #elif CONFIG_EH_TRANSPORT_CP_SDIO
@@ -93,8 +98,6 @@ static struct serial_rx_data {
 
 volatile uint8_t datapath = 0;
 static volatile uint8_t datapath_open_pending = 0;
-volatile uint8_t station_connected = 0;
-volatile uint8_t softap_started = 0;
 
 
 /* Default V1 until host ACK upgrades to V2; readers safe before negotiation. */
@@ -246,7 +249,13 @@ static esp_err_t default_wlan_sta_rx_callback(void *buffer, uint16_t len, void *
 }
 #endif
 
-static eh_cp_rx_cb_t s_rx_cb[ESP_MAX_IF];
+/* ESP_ERR_NOT_FOUND: nobody claimed it (STA/AP then go to the air). */
+static esp_err_t host_rx(eh_if_type_t if_type, void *buf, uint16_t len)
+{
+	eh_cp_traffic_cb_t cb = eh_cp_get_traffic_rx_cb(if_type);
+
+	return cb ? cb(buf, len, NULL) : ESP_ERR_NOT_FOUND;
+}
 
 static void process_tx_pkt(interface_buffer_handle_t *buf_handle)
 {
@@ -562,8 +571,8 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 #if EH_CP_FEAT_WIFI_READY
 	} else if (buf_handle->if_type == ESP_STA_IF) {
 		/* Registry dispatch first; fall back to direct WiFi TX if no RX cb. */
-		esp_err_t reg_ret = eh_cp_dispatch_rx(ESP_STA_IF, payload, payload_len, NULL);
-		if (reg_ret == ESP_ERR_NOT_FOUND && station_connected) {
+		esp_err_t reg_ret = host_rx(ESP_STA_IF, payload, payload_len);
+		if (reg_ret == ESP_ERR_NOT_FOUND) {
 			int ret = wifi_tx_with_retry(WIFI_IF_STA, payload, payload_len);
   #if ESP_PKT_STATS
 			if (ret)
@@ -575,8 +584,8 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
   #endif
 		}
 	} else if (buf_handle->if_type == ESP_AP_IF) {
-		esp_err_t reg_ret = eh_cp_dispatch_rx(ESP_AP_IF, payload, payload_len, NULL);
-		if (reg_ret == ESP_ERR_NOT_FOUND && softap_started) {
+		esp_err_t reg_ret = host_rx(ESP_AP_IF, payload, payload_len);
+		if (reg_ret == ESP_ERR_NOT_FOUND) {
 			wifi_tx_with_retry(WIFI_IF_AP, payload, payload_len);
 			ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
 		}
@@ -602,15 +611,9 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 			ESP_LOGW(TAG, "serial_rx_pkt: seq mismatch (got %u expected %u), flushing",
 			         buf_handle->seq_num, s_serial_rx.cur_seq_no);
 			if (s_serial_rx.len > 0 && s_serial_rx.data) {
-				eh_cp_dispatch_rx(ESP_SERIAL_IF,
-				                                s_serial_rx.data,
-				                                (uint16_t)s_serial_rx.len,
-				                                NULL);
+				host_rx(ESP_SERIAL_IF, s_serial_rx.data, (uint16_t)s_serial_rx.len);
 			}
-			free(s_serial_rx.data);
-			s_serial_rx.data = NULL;
-			s_serial_rx.len = 0;
-			s_serial_rx.cur_seq_no = 0;
+			serial_rx_reset();
 			goto done;
 		}
 
@@ -618,10 +621,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		if (!new_buf) {
 			ESP_LOGE(TAG, "serial_rx_pkt: realloc failed (need %d bytes)",
 			         s_serial_rx.len + payload_len);
-			free(s_serial_rx.data);
-			s_serial_rx.data = NULL;
-			s_serial_rx.len = 0;
-			s_serial_rx.cur_seq_no = 0;
+			serial_rx_reset();
 			goto done;
 		}
 		s_serial_rx.data = new_buf;
@@ -633,21 +633,15 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 				ESP_LOGE(TAG, "serial_rx_pkt: reassembled msg too large (%d bytes), drop",
 				         s_serial_rx.len);
 			} else {
-				eh_cp_dispatch_rx(ESP_SERIAL_IF,
-				                                s_serial_rx.data,
-				                                (uint16_t)s_serial_rx.len,
-				                                NULL);
+				host_rx(ESP_SERIAL_IF, s_serial_rx.data, (uint16_t)s_serial_rx.len);
 			}
 			/* Consumer takes its own copy; safe to free reassembly buffer. */
-			free(s_serial_rx.data);
-			s_serial_rx.data = NULL;
-			s_serial_rx.len = 0;
-			s_serial_rx.cur_seq_no = 0;
+			serial_rx_reset();
 		}
 
 	}
 	else if (buf_handle->if_type == ESP_HCI_IF) {
-		eh_cp_dispatch_rx(ESP_HCI_IF, payload, payload_len, NULL);
+		host_rx(ESP_HCI_IF, payload, payload_len);
 	}
 #if TEST_RAW_TP
 	else if (buf_handle->if_type == ESP_TEST_IF) {
@@ -927,38 +921,6 @@ static void host_reset_task(void* pvParameters)
 }
 
 
-esp_err_t eh_cp_rx_register(eh_if_type_t if_type, eh_cp_rx_cb_t cb)
-{
-	if (if_type <= ESP_INVALID_IF || if_type >= ESP_MAX_IF) {
-		return ESP_ERR_INVALID_ARG;
-	}
-
-	s_rx_cb[if_type] = cb;
-
-#if EH_CP_FEAT_WIFI_READY
-	if (if_type == ESP_STA_IF) {
-		esp_wifi_internal_reg_rxcb(WIFI_IF_STA, (wifi_rxcb_t)cb);
-	} else if (if_type == ESP_AP_IF) {
-		esp_wifi_internal_reg_rxcb(WIFI_IF_AP, (wifi_rxcb_t)cb);
-	}
-#endif
-
-	return ESP_OK;
-}
-
-esp_err_t eh_cp_rx_unregister(eh_if_type_t if_type)
-{
-	return eh_cp_rx_register(if_type, NULL);
-}
-
-eh_cp_rx_cb_t eh_cp_rx_get(eh_if_type_t if_type)
-{
-	if (if_type <= ESP_INVALID_IF || if_type >= ESP_MAX_IF) {
-		return NULL;
-	}
-	return s_rx_cb[if_type];
-}
-
 esp_err_t eh_cp_init_internal(void)
 {
     if (g_eh_cp_state == EH_CP_UP) {
@@ -989,8 +951,8 @@ esp_err_t eh_cp_init_internal(void)
 
     print_firmware_version();
 #if EH_CP_FEAT_WIFI_READY
-    EH_CHECK_OK_WARN(eh_cp_rx_register(ESP_STA_IF, default_wlan_sta_rx_callback));
-    EH_CHECK_OK_WARN(eh_cp_rx_register(ESP_AP_IF, wlan_ap_rx_callback));
+    EH_CHECK_OK_WARN(eh_cp_set_traffic_tx_cb(ESP_STA_IF, default_wlan_sta_rx_callback));
+    EH_CHECK_OK_WARN(eh_cp_set_traffic_tx_cb(ESP_AP_IF, wlan_ap_rx_callback));
 #endif
 
 #if defined(ESP_GPIO_SLAVE_RESET) && (ESP_GPIO_SLAVE_RESET != -1)
@@ -1155,6 +1117,9 @@ static void populate_core_caps(void)
     ext_caps |= ESP_WLAN_UART_SUPPORT;
 #endif
 
+    /* This CP reports network split (bit 11, set by its init); the host checks the pairing. */
+    ext_caps |= ESP_EXT_CAP_NW_SPLIT_REPORTED;
+
     eh_cp_add_feat_cap_bits(caps, ext_caps);
 
     ESP_LOGI(TAG, "Core caps: 0x%02x  ext_caps: 0x%08"PRIx32, caps, ext_caps);
@@ -1243,8 +1208,8 @@ static void deinit_features(void)
 static void deinit_transport(void)
 {
 #if EH_CP_FEAT_WIFI_READY
-    eh_cp_rx_unregister(ESP_STA_IF);
-    eh_cp_rx_unregister(ESP_AP_IF);
+    (void)eh_cp_set_traffic_tx_cb(ESP_STA_IF, NULL);
+    (void)eh_cp_set_traffic_tx_cb(ESP_AP_IF, NULL);
 #endif
     if (if_context && if_context->if_ops && if_context->if_ops->deinit)
         if_context->if_ops->deinit(if_handle);

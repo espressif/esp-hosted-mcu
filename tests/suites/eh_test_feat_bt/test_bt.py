@@ -149,10 +149,8 @@ def _bumble_bench(bench, lab_tmp, worker_id, example, transport, ready, wait_bum
     _cc("esp_hosted_nimble/bleprph_gatt", "uart"),
     _cc("esp_hosted_nimble/bleprph_gatt", "spi_fd"),
     _cc("esp_hosted_nimble/bleprph_gatt", "spi_hd"),
+    # Stack-level: ACL per wire is proven by bleprph_gatt above.
     _cc("esp_hosted_bluedroid/ble_gatt_server", "sdio", sanity=True),
-    _cc("esp_hosted_bluedroid/ble_gatt_server", "uart"),
-    _cc("esp_hosted_bluedroid/ble_gatt_server", "spi_fd"),
-    _cc("esp_hosted_bluedroid/ble_gatt_server", "spi_hd"),
     # Second Bluedroid GATTS example (full compatibility-test attribute table),
     # proving the connect path beyond ble_gatt_server. Its advertise log differs.
     _cc("esp_hosted_bluedroid/ble_compatibility_test", "sdio",

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,9 +21,6 @@
 /* host_power_save.c — no ops registry dependency */
 #if EH_CP_FEAT_WIFI_READY
 #include "eh_cp_feat_wifi.h"
-#endif
-#if EH_CP_FEAT_NW_SPLIT_READY
-#include "eh_cp_feat_nw_split.h"
 #endif
 
 static char *TAG = "ehcp_host_ps";
@@ -541,10 +538,7 @@ int host_power_save_alert(uint32_t ps_evt)
 		/* Wake recv_task after clearing the power-save gate. */
 		eh_cp_recv_kick();
 #if EH_CP_FEAT_WIFI_READY
-		eh_cp_feat_wifi_replay_connected_event_if_needed();
-#endif
-#if EH_CP_FEAT_NW_SPLIT_READY
-		eh_cp_feat_nw_split_replay_status_if_needed();
+		eh_cp_feat_wifi_resync_host();      /* the link, then network split's lease */
 #endif
   #if EH_CP_FEAT_HOST_PS_DEEP_SLEEP
 		if (wakeup_sem) {

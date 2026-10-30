@@ -12,6 +12,7 @@
 
 #include "esp_console.h"
 #include "esp_err.h"
+#include "esp_system.h"
 #include "esp_wifi_types.h"
 
 #include "eh_api_cmd.h"
@@ -420,12 +421,17 @@ static int cmd_wifi_scan_start(int argc, char **argv)
     }
     wifi_scan_config_t cfg;
     memset(&cfg, 0, sizeof(cfg));
-    cfg.ssid        = (uint8_t *)argv[2];
+    cfg.ssid        = strcmp(argv[2], "-") ? (uint8_t *)argv[2] : NULL;
     cfg.channel     = (argc >= 4) ? (uint8_t)atoi(argv[3]) : 0;
     cfg.show_hidden = (argc >= 5) ? (atoi(argv[4]) != 0) : false;
-    cfg.scan_type   = WIFI_SCAN_TYPE_ACTIVE;
-    cfg.scan_time.active.min = 100;
-    cfg.scan_time.active.max = 300;
+    if (argc >= 6 && !strcmp(argv[5], "passive")) {
+        cfg.scan_type = WIFI_SCAN_TYPE_PASSIVE;
+        cfg.scan_time.passive = 360;
+    } else {
+        cfg.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+        cfg.scan_time.active.min = 100;
+        cfg.scan_time.active.max = 300;
+    }
     eh_out_rc("wifi_scan_start", eh_host_wifi_scan_start(&cfg, block));
     return 0;
 }
@@ -497,6 +503,17 @@ static int cmd_wifi_scan_dump(int argc, char **argv)
 static int cmd_wifi_connect(int argc, char **argv)    { eh_out_rc("wifi_connect",    eh_host_wifi_connect());    return 0; }
 static int cmd_wifi_disconnect(int argc, char **argv) { eh_out_rc("wifi_disconnect", eh_host_wifi_disconnect()); return 0; }
 static int cmd_wifi_restore(int argc, char **argv)    { eh_out_rc("wifi_restore",    eh_host_wifi_restore());    return 0; }
+
+#ifdef ESP_PLATFORM
+/* The host reboots; by default its bring-up resets the CP too. */
+static int cmd_host_restart(int argc, char **argv)
+{
+    eh_out("host_restart", 0, "");
+    fflush(stdout);
+    esp_restart();
+    return 0;
+}
+#endif
 
 static int cmd_wifi_set_storage(int argc, char **argv)
 {
@@ -792,7 +809,7 @@ static const eh_api_entry_t s_cmds[] = {
     { "wifi_set_config",        cmd_wifi_set_config,         "wifi_set_config <sta|ap> — apply staged config" },
     { "wifi_get_config",        cmd_wifi_get_config,         "wifi_get_config <sta|ap>" },
     { "wifi_set_config_null",   cmd_wifi_set_config_null,    "wifi_set_config_null — NULL-arg guard (neg)" },
-    { "wifi_scan_start",        cmd_wifi_scan_start,         "wifi_scan_start [block 0|1] [ssid] [channel] [show_hidden]" },
+    { "wifi_scan_start",        cmd_wifi_scan_start,         "wifi_scan_start [block 0|1] [ssid|-] [channel] [show_hidden] [active|passive]" },
     { "wifi_scan_stop",         cmd_wifi_scan_stop,          "wifi_scan_stop" },
     { "wifi_clear_ap_list",     cmd_wifi_clear_ap_list,      "wifi_clear_ap_list" },
     { "wifi_scan_get_ap_num",   cmd_wifi_scan_get_ap_num,    "wifi_scan_get_ap_num" },
@@ -805,6 +822,9 @@ static const eh_api_entry_t s_cmds[] = {
     { "wifi_set_okc_support",   cmd_wifi_set_okc_support,    "wifi_set_okc_support <0|1>" },
 #endif
     { "wifi_set_storage",       cmd_wifi_set_storage,        "wifi_set_storage <0=flash|1=ram>" },
+#ifdef ESP_PLATFORM
+    { "host_restart",           cmd_host_restart,            "host_restart — esp_restart() the host" },
+#endif
     { "wifi_ap_get_sta_list",   cmd_wifi_ap_get_sta_list,    "wifi_ap_get_sta_list (AP: associated STAs)" },
     { "wifi_ap_get_sta_aid",    cmd_wifi_ap_get_sta_aid,     "wifi_ap_get_sta_aid <aa:bb:cc:dd:ee:ff>" },
     { "wifi_deauth_sta",        cmd_wifi_deauth_sta,         "wifi_deauth_sta <aid>" },

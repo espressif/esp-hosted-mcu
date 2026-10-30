@@ -13,9 +13,6 @@
 #if EH_CP_FEAT_WIFI_READY
 #include "eh_cp_feat_wifi.h"
 #endif
-#if EH_CP_FEAT_NW_SPLIT_READY
-#include "eh_cp_feat_nw_split.h"
-#endif
 
 /* Priority 50 — must init before RPC adapters (100). */
 #if EH_CP_FEAT_HOST_PS_AUTO_INIT

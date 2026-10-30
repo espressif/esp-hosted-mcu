@@ -5,6 +5,7 @@ endif()
 
 add_library(eh_cp_feat_nw_split STATIC
     "src/eh_cp_feat_nw_split.c"
+    "src/eh_cp_nw_split_ip_owner_fsm.c"
 )
 
 target_include_directories(eh_cp_feat_nw_split
@@ -33,9 +34,6 @@ if(CONFIG_ESP_HOSTED_CP_FEAT_WIFI_READY)
     target_link_libraries(eh_cp_feat_nw_split PUBLIC eh_cp_feat_wifi)
 endif()
 
-target_link_libraries(eh_cp_feat_nw_split INTERFACE
-    -Wl,--wrap=esp_wifi_internal_reg_rxcb
-)
 
 # 1. Override lwIP's ephemeral port range for network split.
 # 2. Force-include the shared header into all lwIP source files.

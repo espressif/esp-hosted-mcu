@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* API exerciser host: bring up the hosted link + wifi, then drop into a console
  * whose commands drive the native eh_host_* surface (see eh_api_cmd.c). Test
  * scenarios are data over that console, not per-scenario firmware. */
@@ -29,11 +33,29 @@ static const char *TAG = "api_exerciser";
 static void eh_wifi_evt(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg; (void)data;
-    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
+    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
+        printf("EH event wifi_sta_start\n");
+        fflush(stdout);
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_STOP) {
+        printf("EH event wifi_sta_stop\n");
+        fflush(stdout);
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
         printf("EH event wifi_sta_connected\n");
         fflush(stdout);
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
-        printf("EH event wifi_sta_disconnected\n");
+        printf("EH event wifi_sta_disconnected reason=%u\n",
+               data ? (unsigned int)((wifi_event_sta_disconnected_t *)data)->reason : 0u);
+        fflush(stdout);
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_AP_START) {
+        printf("EH event wifi_ap_start\n");
+        fflush(stdout);
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_AP_STOP) {
+        printf("EH event wifi_ap_stop\n");
+        fflush(stdout);
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_SCAN_DONE && data) {
+        const wifi_event_sta_scan_done_t *e = data;
+        printf("EH event wifi_scan_done status=%u number=%u\n",
+               (unsigned int)e->status, (unsigned int)e->number);
         fflush(stdout);
     }
 }

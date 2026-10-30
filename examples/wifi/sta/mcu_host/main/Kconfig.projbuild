@@ -1,5 +1,12 @@
 menu "Example Configuration"
 
+    config EXAMPLE_TEST_HOST_RESTART_ONCE
+        bool "Test: restart the host once after it got an IP"
+        default n
+        help
+            Test hook: log STA_CONNECTED and restart the host once (cold boot
+            only), with the coprocessor not reset.
+
     config ESP_WIFI_SSID
         string "WiFi SSID"
         default "myssid"

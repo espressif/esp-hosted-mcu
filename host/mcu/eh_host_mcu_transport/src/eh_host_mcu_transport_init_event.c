@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* SPDX-License-Identifier: Apache-2.0 */
 #include <stdint.h>
 #include <stddef.h>
@@ -382,6 +387,28 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
              (unsigned int)s_chip_id, chip_id_name(s_chip_id),
              (unsigned int)s_fw_version,
              (unsigned int)s_capabilities, (unsigned int)s_ext_caps);
+    (void)eh_host_mcu_transport_nw_split_check();
+    return 0;
+}
+
+#define NW_SPLIT_TAG "eh_nw_split"
+
+/* The CP runs network split and this host was built without it: logged, never
+ * fatal. The opposite case is the host feature's (it runs as plain hosted). */
+int eh_host_mcu_transport_nw_split_check(void)
+{
+    uint32_t ext = s_ext_caps;
+    bool cp_split = ext & ESP_EXT_CAP_NW_SPLIT;
+
+    if (!(ext & ESP_EXT_CAP_NW_SPLIT_REPORTED)) {
+        return 0;                   /* older CP: nothing reported, nothing to check */
+    }
+    if (cp_split && !EH_HOST_FEAT_NW_SPLIT_READY) {
+        ESP_LOGE(NW_SPLIT_TAG, "CP has network split (CONFIG_ESP_HOSTED_CP_FEAT_NW_SPLIT=y), "
+                 "host does not: the host gets no IP unless the CP DHCP owner is HOST. Enable "
+                 "CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT, or build the CP without it");
+        return -1;
+    }
     return 0;
 }
 

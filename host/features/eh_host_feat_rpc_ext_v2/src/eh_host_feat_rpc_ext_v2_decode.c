@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Parse inbound Rpc frames; populate ctrl_cmd per msg_id. */
 
 #include <string.h>
@@ -32,6 +36,7 @@ static int parse_resp(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #if EH_HOST_FEAT_FEATURE_CONTROL_READY
     #include "feature_control_resp_ids.inc"
 #endif
+    #include "context_resp_ids.inc"
 #if EH_HOST_FEAT_WIFI_READY
     #include "eh_host_feat_wifi_v2_resp_ids.inc"
 #endif
@@ -82,6 +87,7 @@ static int parse_event(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #if EH_HOST_FEAT_FEATURE_CONTROL_READY
     #include "feature_control_evt_ids.inc"
 #endif
+    #include "context_evt_ids.inc"
 #if EH_HOST_FEAT_WIFI_READY
     #include "eh_host_feat_wifi_v2_evt_ids.inc"
 #endif

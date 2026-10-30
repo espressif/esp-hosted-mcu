@@ -60,6 +60,9 @@ esp_err_t eh_cp_feat_rpc_ext_v2_rpc_evt_dispatcher(Rpc *ntfy, void *priv_data, c
         } case RPC_ID__Event_DhcpDnsStatus: {
             ret = rpc_evt_Event_DhcpDnsStatus(ntfy, inbuf, inlen_s);
             break;
+        } case RPC_ID__Event_Context: {
+            ret = rpc_evt_context(ntfy, inbuf, (size_t)inlen_s);
+            break;
 #if EH_CP_FEAT_WIFI_EXT_DPP_READY
 		} case RPC_ID__Event_WifiDppUriReady: {
 			ret = rpc_evt_wifi_dpp_uri_ready(ntfy, inbuf, inlen_s);

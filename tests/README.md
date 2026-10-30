@@ -4,6 +4,7 @@ One test corpus runs on two benches: the **emulator** (no hardware) and **real
 boards**. A test does not know which bench it runs on.
 
 User guide: [docs/testing.md](../docs/testing.md).
+What each test proves: [SCENARIOS.md](SCENARIOS.md).
 
 ---
 

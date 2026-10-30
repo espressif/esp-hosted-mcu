@@ -1,5 +1,8 @@
-// Copyright 2025 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0
+ */
 
 #ifndef EH_COMMON_CAPS_H
 #define EH_COMMON_CAPS_H
@@ -33,6 +36,14 @@
 #define ESP_EXT_CAP_NW_SPLIT                      (1u << 11)
 #define ESP_EXT_CAP_CUSTOM_RPC                    (1u << 12)
 #define EH_EXT_CAP_BT_INTERFACE                   (1u << 13)
+/* The CP reports its network split build (bit 11) and DHCP owner (below). */
+#define ESP_EXT_CAP_NW_SPLIT_REPORTED             (1u << 14)
+#define ESP_EXT_CAP_NW_SPLIT_DHCP_SHIFT           15
+#define ESP_EXT_CAP_NW_SPLIT_DHCP_MASK            (3u << ESP_EXT_CAP_NW_SPLIT_DHCP_SHIFT)
+#define ESP_EXT_CAP_NW_SPLIT_DHCP_NONE            0u   /* owner not reported */
+#define ESP_EXT_CAP_NW_SPLIT_DHCP_CP              1u
+#define ESP_EXT_CAP_NW_SPLIT_DHCP_HOST            2u
+#define ESP_EXT_CAP_NW_SPLIT_DHCP_BOTH            3u
 
 /* ── Tier 3: feat_caps[8] indices ──────────────────────────────────────── */
 /* Do not reuse indices; retired slots stay RSVD. */
@@ -60,6 +71,6 @@
 #define EH_PRIV_FIRMWARE_CHIP_ESP32H4       0x1Cu
 
 /* Bump when any bit above changes. */
-#define EH_CAPS_VERSION                   2u
+#define EH_CAPS_VERSION                   3u
 
 #endif /* EH_COMMON_CAPS_H */

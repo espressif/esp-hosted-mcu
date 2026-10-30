@@ -1,9 +1,9 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* Interface RX/TX table + capability accumulator (spinlock-guarded). */
+/* Per-interface traffic callbacks + capability accumulator (spinlock-guarded). */
 
 #include <string.h>
 #include <stdlib.h>
@@ -22,72 +22,46 @@
 
 static const char TAG[] = "ehcp_reg";
 
-eh_iface_entry_t g_iface_table[ESP_IF_TYPE_MAX];
+static struct {
+    eh_cp_traffic_cb_t rx;
+    eh_cp_traffic_cb_t tx;
+} s_traffic[ESP_IF_TYPE_MAX];
 
-esp_err_t eh_cp_register_rx_cb(eh_if_type_t iface_type,
-                                       hosted_rx_cb_t rx_cb, void *ctx)
+/* STA/AP may be taken over (network split); any other interface has one owner. */
+static esp_err_t set_cb(eh_if_type_t if_type, bool tx, eh_cp_traffic_cb_t cb)
 {
-    if (iface_type >= ESP_IF_TYPE_MAX) {
-        ESP_LOGE(TAG, "register_rx_cb: invalid iface_type %d", iface_type);
+    if (if_type <= ESP_INVALID_IF || if_type >= ESP_IF_TYPE_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!rx_cb) {
-        ESP_LOGE(TAG, "register_rx_cb: rx_cb is NULL");
-        return ESP_ERR_INVALID_ARG;
-    }
-    /* STA/AP allow re-registration so network-split can override. */
-    if (g_iface_table[iface_type].rx != NULL &&
-        iface_type != ESP_STA_IF && iface_type != ESP_AP_IF) {
-        ESP_LOGE(TAG, "register_rx_cb: iface %d already claimed", iface_type);
+    eh_cp_traffic_cb_t *slot = tx ? &s_traffic[if_type].tx : &s_traffic[if_type].rx;
+
+    if (cb && *slot && if_type != ESP_STA_IF && if_type != ESP_AP_IF) {
+        ESP_LOGE(TAG, "iface %d already claimed", if_type);
         return ESP_ERR_INVALID_STATE;
     }
-    g_iface_table[iface_type].rx  = rx_cb;
-    g_iface_table[iface_type].ctx = ctx;
-    ESP_LOGD(TAG, "RX cb registered for iface %d", iface_type);
+    *slot = cb;
     return ESP_OK;
 }
 
-esp_err_t eh_cp_unregister_rx_cb(eh_if_type_t iface_type)
+esp_err_t eh_cp_set_traffic_rx_cb(eh_if_type_t if_type, eh_cp_traffic_cb_t cb)
 {
-    if (iface_type >= ESP_IF_TYPE_MAX) {
-        ESP_LOGE(TAG, "unregister_rx_cb: invalid iface_type %d", iface_type);
-        return ESP_ERR_INVALID_ARG;
-    }
-    g_iface_table[iface_type].rx  = NULL;
-    g_iface_table[iface_type].ctx = NULL;
-    ESP_LOGD(TAG, "RX cb cleared for iface %d", iface_type);
-    return ESP_OK;
+    return set_cb(if_type, false, cb);
 }
 
-esp_err_t eh_cp_register_tx_cb(eh_if_type_t iface_type,
-                                       hosted_tx_cb_t tx_cb, void *ctx)
+esp_err_t eh_cp_set_traffic_tx_cb(eh_if_type_t if_type, eh_cp_traffic_cb_t cb)
 {
-    if (iface_type >= ESP_IF_TYPE_MAX) {
-        ESP_LOGE(TAG, "register_tx_cb: invalid iface_type %d", iface_type);
-        return ESP_ERR_INVALID_ARG;
-    }
-    /* NULL clears any existing TX override. */
-    g_iface_table[iface_type].tx  = tx_cb;
-    g_iface_table[iface_type].ctx = ctx;
-    ESP_LOGD(TAG, "TX cb %s for iface %d", tx_cb ? "registered" : "cleared", iface_type);
-    return ESP_OK;
+    return set_cb(if_type, true, cb);
 }
 
-esp_err_t eh_cp_dispatch_rx(eh_if_type_t iface_type,
-                                    void *buf, uint16_t len, void *eb)
+eh_cp_traffic_cb_t eh_cp_get_traffic_rx_cb(eh_if_type_t if_type)
 {
-    if (iface_type >= ESP_IF_TYPE_MAX) {
-        ESP_LOGE(TAG, "dispatch_rx: invalid iface_type %d", iface_type);
-        return ESP_ERR_INVALID_ARG;
-    }
-    const eh_iface_entry_t *e = &g_iface_table[iface_type];
-    if (!e->rx) {
-        /* NOT_FOUND lets callers (e.g. STA fallback) know nobody consumed it. */
-        return ESP_ERR_NOT_FOUND;
-    }
-    return e->rx(e->ctx, buf, len, eb);
+    return if_type < ESP_IF_TYPE_MAX ? s_traffic[if_type].rx : NULL;
 }
 
+eh_cp_traffic_cb_t eh_cp_get_traffic_tx_cb(eh_if_type_t if_type)
+{
+    return if_type < ESP_IF_TYPE_MAX ? s_traffic[if_type].tx : NULL;
+}
 
 static uint8_t  s_caps     = 0;
 static uint32_t s_ext_caps = 0;

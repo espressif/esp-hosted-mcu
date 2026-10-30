@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Back-compat aliases for the native eh_host_event.h surface. */
 
 #ifndef __ESP_HOSTED_EVENT_H__
@@ -24,6 +28,7 @@ extern const char *const ESP_HOSTED_EVENT;
 #define ESP_HOSTED_EVENT_PEER_DATA_RX        EH_HOST_EVENT_PEER_DATA_RX
 #define ESP_HOSTED_EVENT_NW_SPLIT_STATUS     EH_HOST_EVENT_NW_SPLIT_STATUS
 #define ESP_HOSTED_EVENT_GPIO_EXP_INT        EH_HOST_EVENT_GPIO_EXP_INT
+#define ESP_HOSTED_EVENT_NW_SPLIT_IP_OWNER   EH_HOST_EVENT_NW_SPLIT_IP_OWNER
 
 #define esp_hosted_event_init_t              eh_host_event_init_t
 #define esp_hosted_event_heartbeat_t         eh_host_event_heartbeat_t

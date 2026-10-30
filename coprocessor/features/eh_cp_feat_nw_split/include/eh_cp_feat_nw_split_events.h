@@ -44,7 +44,8 @@ typedef struct {
 /* Network split event IDs (extension-local numbering starts at 0) */
 typedef enum {
     ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_NETWORK_UP = 0,
-    ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_NETWORK_DOWN = 1
+    ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_NETWORK_DOWN = 1,
+    ESP_HOSTED_CP_FEAT_NW_SPLIT_EVT_IP_OWNER = 2,   /* uint8_t: ESP_EXT_CAP_NW_SPLIT_DHCP_CP/_HOST */
 } eh_cp_feat_nw_split_evt_t;
 
 #ifdef __cplusplus

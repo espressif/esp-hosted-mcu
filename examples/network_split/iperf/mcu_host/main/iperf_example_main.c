@@ -14,7 +14,7 @@
  * - Host handles ports 49152-61439
  * - Slave handles ports 61440-65535
  *
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -133,14 +133,36 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
 
 		/* Connect via console sta_connect, or the network-split auto-connect feature. */
+		ESP_LOGI(TAG, "sta start");
+
+	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_STOP) {
+
+		ESP_LOGI(TAG, "sta stop");
+
+	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_START) {
+
+		ESP_LOGI(TAG, "ap start");
+
+	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STOP) {
+
+		ESP_LOGI(TAG, "ap stop");
+
+	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE) {
+
+		ESP_LOGI(TAG, "scan done");
 
 	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
 
-		ESP_LOGI(TAG, "sta connected");
+		const wifi_event_sta_connected_t *c = event_data;
+
+		ESP_LOGI(TAG, "sta connected ssid=%.*s bssid=" MACSTR,
+				 c ? (int)c->ssid_len : 0, c ? (const char *)c->ssid : "",
+				 MAC2STR(c ? c->bssid : (const uint8_t[6]){0}));
 
 	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
 
-		ESP_LOGI(TAG, "sta disconnected");
+		ESP_LOGI(TAG, "sta disconnected reason=%u",
+				 event_data ? ((wifi_event_sta_disconnected_t *)event_data)->reason : 0);
 
 		#ifdef CONFIG_ESP_HOSTED_CP_EXAMPLE_MQTT_CLIENT
 			example_mqtt_pause();
@@ -156,7 +178,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 	} else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
 
 		ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-		ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+		ESP_LOGI(TAG, "got ip:" IPSTR " changed=%d", IP2STR(&event->ip_info.ip), event->ip_changed);
 		s_retry_num = 0;
 		xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
 		esp_netif_dns_info_t dns_info;
@@ -193,9 +215,6 @@ void wifi_init_sta(void)
 	uint8_t * ssid_used = NULL;
 	s_wifi_event_group = xEventGroupCreate();
 
-	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-	ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
 	esp_event_handler_instance_t instance_any_id;
 	esp_event_handler_instance_t instance_got_ip;
 	esp_event_handler_instance_t instance_lost_ip;
@@ -215,6 +234,12 @@ void wifi_init_sta(void)
 														NULL,
 														&instance_lost_ip));
 
+#if CONFIG_EXAMPLE_BOOT_WIFI_NONE
+	ESP_LOGI(TAG, "wifi_init_sta: no Wi-Fi calls (test hook)");
+	return;
+#endif
+	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+	ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 	ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
 
 	/* Store project-config Wi-Fi creds if set (used by auto-connect); does not connect. */
@@ -236,6 +261,10 @@ void wifi_init_sta(void)
 
 	/* Start the station; connect via sta_connect or the network-split auto-connect feature. */
 	(void)ssid_used;
+#if CONFIG_EXAMPLE_BOOT_WIFI_INIT
+	ESP_LOGI(TAG, "wifi_init_sta: init only (test hook)");
+	return;
+#endif
 	ESP_ERROR_CHECK(esp_wifi_start() );
 
 	/* Started, not connected — connect happens later (console or feature). */
@@ -320,9 +349,27 @@ static int network_split_info_cmd(int argc, char **argv)
 	return 0;
 }
 
+/* Test use: the app creates WIFI_STA_DEF late, after hosted is up. */
+static int netif_create_cmd(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	esp_netif_t *n = esp_netif_create_default_wifi_sta();
+
+	printf("netif_create: %s\n", n ? "created" : "failed");
+	return n ? 0 : 1;
+}
+
 /* Register custom CLI commands */
 static void register_custom_commands(void)
 {
+	const esp_console_cmd_t netif_create_cmd_def = {
+		.command = "netif_create",
+		.help = "TEST: create WIFI_STA_DEF now",
+		.func = &netif_create_cmd,
+	};
+
+	esp_console_cmd_register(&netif_create_cmd_def);
 	const esp_console_cmd_t network_split_info_cmd_def = {
 		.command = "network-split-info",
 		.help = "Show network split configuration and demo information",
@@ -351,12 +398,15 @@ void app_main(void)
 
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-	/* INTERNAL_* network-split netif modes create WIFI_STA_DEF themselves. */
-#if !CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT || CONFIG_ESP_HOSTED_HOST_FEAT_NW_SPLIT_NETIF_APP_EXTERNAL
+#if CONFIG_EXAMPLE_APP_STA_NETIF_BEFORE_HOSTED_INIT
 	esp_netif_create_default_wifi_sta();
 #endif
 
 	ESP_ERROR_CHECK(esp_hosted_init());
+
+#if CONFIG_EXAMPLE_APP_STA_NETIF_AFTER_HOSTED_INIT
+	esp_netif_create_default_wifi_sta();
+#endif
 	esp_hosted_connect_to_slave();
 
 	/* Initialize WiFi with basic configuration */

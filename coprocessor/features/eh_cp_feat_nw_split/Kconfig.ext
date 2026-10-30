@@ -58,25 +58,33 @@ if ESP_HOSTED_CP_FEAT_NW_SPLIT
 	endchoice
 
 	choice ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP
-		prompt "Default DHCP client location"
+		prompt "IP owner (DHCP client location)"
 		default ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP_BOTH
 		help
-			Select where the DHCP client should run.
+			Who acquires the one IPv4 address the CP and host share. Only one
+			DHCP client runs. The host asks for an owner at every connection
+			(its netif mode, or eh_host_nw_split_set_ip_owner()); the CP decides.
+			Nothing is stored: every CP boot starts from this choice.
 
 		config ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP_COPROCESSOR
-			bool "Use DHCP at co-processor"
+			bool "Co-processor only"
 			help
-				Run the DHCP client on the co-processor. Host would simply query the co-processor for IP to be used at its network stack.
+				The CP's DHCP client acquires the address and gives it to the
+				host. A host request to own it is refused.
 
 		config ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP_HOST
-			bool "Use DHCP at Host"
+			bool "Host, co-processor on request"
 			help
-				Run the DHCP client on the host.
+				The host acquires the address (DHCP or static) and gives it to
+				the CP; the CP DHCP client never starts unless the host asks
+				the CP to own it.
 
 		config ESP_HOSTED_DEFAULT_NETWORK_STACK_DHCP_BOTH
-			bool "Use DHCP at Both sides"
+			bool "Co-processor, host on request"
 			help
-				Replicate the DHCP response to both co-processor and host.
+				The CP's DHCP client acquires the address unless the host asks
+				to own it. Asked while associated, the switch happens at the
+				next disconnect, so a lease in use is never released.
 
 	endchoice
 

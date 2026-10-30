@@ -1,6 +1,8 @@
-/* SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD */
-/* SPDX-License-Identifier: Apache-2.0 */
-
+/*
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #ifndef __ESP_HOSTED_CP_H__
 #define __ESP_HOSTED_CP_H__
 
@@ -38,37 +40,14 @@ esp_err_t eh_cp_init(void);
  */
 esp_err_t eh_cp_deinit(void);
 
-/**
- * @brief Function type for RX callbacks registered by interface type
- *
- * The third argument is per-packet context (e.g., WiFi RX buffer handle).
- */
-typedef esp_err_t (*eh_cp_rx_cb_t)(void *buffer, uint16_t len, void *priv);
+/* Traffic per interface. rx: from the host over the bus; tx: from the air (or the
+ * CP) to the host. eb: the Wi-Fi RX buffer, NULL otherwise. NULL cb clears. */
+typedef esp_err_t (*eh_cp_traffic_cb_t)(void *buf, uint16_t len, void *eb);
 
-/**
- * @brief Register RX callback for a specific interface type
- *
- * @param if_type Interface type (eh_if_type_t)
- * @param cb Callback to register (NULL to clear)
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t eh_cp_rx_register(eh_if_type_t if_type, eh_cp_rx_cb_t cb);
-
-/**
- * @brief Unregister RX callback for a specific interface type
- *
- * @param if_type Interface type (eh_if_type_t)
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t eh_cp_rx_unregister(eh_if_type_t if_type);
-
-/**
- * @brief Get the RX callback registered for a specific interface type
- *
- * @param if_type Interface type (eh_if_type_t)
- * @return The callback function or NULL if none registered
- */
-eh_cp_rx_cb_t eh_cp_rx_get(eh_if_type_t if_type);
+esp_err_t          eh_cp_set_traffic_rx_cb(eh_if_type_t if_type, eh_cp_traffic_cb_t cb);
+eh_cp_traffic_cb_t eh_cp_get_traffic_rx_cb(eh_if_type_t if_type);
+esp_err_t          eh_cp_set_traffic_tx_cb(eh_if_type_t if_type, eh_cp_traffic_cb_t cb);
+eh_cp_traffic_cb_t eh_cp_get_traffic_tx_cb(eh_if_type_t if_type);
 
 #ifdef __cplusplus
 }

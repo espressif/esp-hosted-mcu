@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -15,6 +15,8 @@
 #ifndef EH_CP_FEAT_NW_SPLIT_APIS_H
 #define EH_CP_FEAT_NW_SPLIT_APIS_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "esp_err.h"
 #include "eh_cp_feat_nw_split_events.h"
 
@@ -50,6 +52,20 @@ esp_err_t eh_cp_feat_nw_split_set_config(uint8_t iface,
                                                     const char *ip, const char *nm,
                                                     const char *gw,
                                                     const char *dns_ip, uint8_t dns_type);
+
+/**
+ * @brief Ask who acquires the shared IPv4: the CP's DHCP client or the host.
+ *
+ * Asked while associated, the switch happens at the next disconnect. Nothing is
+ * stored: a CP boot starts from the Kconfig DHCP owner.
+ *
+ * @param want     ESP_EXT_CAP_NW_SPLIT_DHCP_CP or ESP_EXT_CAP_NW_SPLIT_DHCP_HOST
+ * @param owner    Out (optional): the owner in effect now
+ * @param pending  Out (optional): the switch waits for the next disconnect
+ * @return ESP_OK, ESP_ERR_NOT_ALLOWED (refused, *owner unchanged),
+ *         ESP_ERR_INVALID_STATE (network split not initialised)
+ */
+esp_err_t eh_cp_feat_nw_split_set_ip_owner(uint8_t want, uint8_t *owner, bool *pending);
 
 #ifdef __cplusplus
 }

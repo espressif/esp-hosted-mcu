@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Compose+pack outbound Rpc requests; dispatch on ctx.msg_id. */
 
 #include <string.h>
@@ -66,6 +70,7 @@ static compose_fn pick_compose(int32_t msg_id)
 #if EH_HOST_FEAT_FEATURE_CONTROL_READY
     #include "feature_control_req_ids.inc"
 #endif
+    #include "context_req_ids.inc"
 #if EH_HOST_FEAT_PEER_DATA_READY
     #include "eh_host_feat_peer_data_v2_req_ids.inc"
 #endif

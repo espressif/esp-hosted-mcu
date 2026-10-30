@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Network-split: host-side netif setup + DHCP/DNS status exchange. */
 
 #ifndef EH_HOST_FEAT_NW_SPLIT_H_
@@ -53,6 +57,29 @@ esp_err_t eh_host_nw_split_set_status(uint32_t iface,
                                       uint8_t dns_up,
                                       const char *dns_ip,
                                       uint8_t dns_type);
+
+/* Who acquires the shared IPv4. The CP decides; the host asks at every CP
+ * connection (from the netif mode, or the last eh_host_nw_split_set_ip_owner()). */
+typedef enum {
+    EH_HOST_NW_SPLIT_IP_OWNER_UNKNOWN = 0,
+    EH_HOST_NW_SPLIT_IP_OWNER_CP      = 1,   /* the CP's DHCP client; the host gets a copy */
+    EH_HOST_NW_SPLIT_IP_OWNER_HOST    = 2,   /* host DHCP or static; the CP gets a copy */
+} eh_host_nw_split_ip_owner_t;
+
+/* EH_HOST_EVENT_NW_SPLIT_IP_OWNER payload: the CP's answer to a request. */
+typedef struct {
+    eh_host_nw_split_ip_owner_t want;
+    eh_host_nw_split_ip_owner_t owner;      /* in effect now */
+    bool                        pending;    /* want applies at the next disconnect */
+    esp_err_t                   rc;
+} eh_host_nw_split_ip_owner_evt_t;
+
+/* Ask the CP for an IP owner. ESP_OK: granted (*owner == want, or *pending).
+ * ESP_ERR_NOT_ALLOWED: refused, the host runs with *owner. Before the CP is
+ * connected the request is kept and sent at connection: ESP_ERR_NOT_FINISHED. */
+esp_err_t eh_host_nw_split_set_ip_owner(eh_host_nw_split_ip_owner_t want,
+                                        eh_host_nw_split_ip_owner_t *owner, bool *pending);
+eh_host_nw_split_ip_owner_t eh_host_nw_split_get_ip_owner(void);
 
 #ifdef __cplusplus
 }

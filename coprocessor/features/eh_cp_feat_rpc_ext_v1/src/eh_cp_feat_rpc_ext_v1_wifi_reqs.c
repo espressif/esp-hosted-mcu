@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -268,14 +268,6 @@ esp_err_t req_set_wifi_mode_handler (const CtrlMsg *req,
 		ESP_LOGI(TAG,"WiFi mode unchanged");
 		resp_payload->resp = SUCCESS;
 		return ESP_OK;
-	}
-
-	if (mode != WIFI_MODE_STA && eh_cp_feat_wifi_is_station_connected()) {
-		/* Station is connected to AP, and the user is trying to change
-		 * mode to either AP or APSTA, we must disconnect the station from AP, to initiate new mode
-		 */
-		ESP_LOGI(TAG,"Station connected, disconnecting it before reconfiguring WiFi");
-		eh_cp_feat_wifi_request_disconnect(false);
 	}
 
 	ret = esp_wifi_set_mode(mode);
@@ -554,7 +546,7 @@ esp_err_t req_disconnect_ap_handler (const CtrlMsg *req,
 		goto err;
 	}
 
-	ret = eh_cp_feat_wifi_request_disconnect(false);
+	ret = eh_cp_feat_wifi_request_disconnect();
 	if (ret) {
 		ESP_LOGE(TAG,"Failed to disconnect");
 		goto err;
@@ -743,7 +735,10 @@ esp_err_t req_start_softap_handler (const CtrlMsg *req,
 		goto err;
 	}
 
-	if (eh_cp_feat_wifi_is_station_connected()) {
+	/* Keep a station the app runs (connected or not): a mode with STA stays APSTA. */
+	wifi_mode_t cur_mode = WIFI_MODE_NULL;
+
+	if (esp_wifi_get_mode(&cur_mode) == ESP_OK && (cur_mode & WIFI_MODE_STA)) {
 		ret = esp_wifi_set_mode(WIFI_MODE_APSTA);
 		ESP_LOGI(TAG,"station+softap mode set");
 	} else {

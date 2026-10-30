@@ -6,6 +6,7 @@ endif()
 
 add_library(eh_host_feat_nw_split STATIC
     "src/eh_host_feat_nw_split.c"
+    "src/eh_host_nw_split_lease_fsm.c"
 )
 
 target_include_directories(eh_host_feat_nw_split
@@ -50,6 +51,10 @@ target_sources(eh_host_feat_nw_split PRIVATE
     "src/eh_host_feat_nw_split_v2_req.c"
     "src/eh_host_feat_nw_split_v2_resp_evt.c"
 )
+# The CP's network split build and Kconfig IP owner come from its INIT caps.
+if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_MCU_READY)
+    target_link_libraries(eh_host_feat_nw_split PRIVATE eh_host_mcu_transport)
+endif()
 target_link_libraries(eh_host_feat_nw_split PRIVATE
     eh_host_feat_rpc_ext_v2
     eh_host_feat_rpc
