@@ -20,6 +20,7 @@ so a bad reading explains itself instead of looking like a mystery.
   EH_TP_PEER_RUN            prefix for the peer-side RX client (e.g. a launcher)
   EH_TP_PROTO               tcp | udp                  (default tcp)
   EH_TP_UDP_BW              udp offered load, Mbits/sec (uart default: just above 0.8 x baud)
+  EH_TP_SETTLE              seconds to idle before reading the logs (default 0)
 
 UDP is read at the receiver only: the peer server for TX, the board server
 for RX (the board prints binary megabits; converted to 10^6).

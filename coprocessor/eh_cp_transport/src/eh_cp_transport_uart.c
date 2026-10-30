@@ -229,6 +229,13 @@ static void uart_rx_drop_log(void)
 			", resync bytes=%" PRIu32, rx_drop_no_buf, rx_drop_q_full, rx_resync_bytes);
 }
 
+#if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
+/* Cooperative-exit flag: deinit sets it and the tasks observe it and suspend
+ * themselves, so they're never vTaskDelete'd mid-malloc (the heap-lock
+ * corruption the SDIO path hit — see its deinit + commit fba4a6a6). */
+static volatile bool uart_exit_requested = false;
+#endif
+
 static void uart_evt_task(void *arg)
 {
 	uint32_t fifo_ovf = 0, buf_full = 0, frame_err = 0, parity_err = 0;
@@ -236,8 +243,14 @@ static void uart_evt_task(void *arg)
 	uart_event_t ev;
 
 	for (;;) {
+#if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
+		if (uart_exit_requested) { vTaskSuspend(NULL); continue; }
+		if (xQueueReceive(uart_evt_q, &ev, pdMS_TO_TICKS(50)) != pdTRUE)
+			continue;
+#else
 		if (xQueueReceive(uart_evt_q, &ev, portMAX_DELAY) != pdTRUE)
 			continue;
+#endif
 		switch (ev.type) {
 		case UART_FIFO_OVF:    fifo_ovf++;   break;
 		case UART_BUFFER_FULL: buf_full++;   break;
@@ -255,12 +268,6 @@ static void uart_evt_task(void *arg)
 		}
 	}
 }
-#if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
-/* Cooperative-exit flag: deinit sets it and the tasks observe it and suspend
- * themselves, so they're never vTaskDelete'd mid-malloc (the heap-lock
- * corruption the SDIO path hit — see its deinit + commit fba4a6a6). */
-static volatile bool uart_exit_requested = false;
-#endif
 
 #define IS_HOST_POWER_SAVING() (!eh_cp_host_ps_reachable())
 
@@ -823,10 +830,9 @@ static void h_uart_deinit(interface_handle_t * handle)
 	uart_exit_requested = true;
 	if (flow_ctrl_sem)
 		xSemaphoreGive(flow_ctrl_sem);
-	vTaskDelay(pdMS_TO_TICKS(100));   // > the rx task's 50ms poll
+	vTaskDelay(pdMS_TO_TICKS(100));   // > the rx and evt tasks' 50ms poll
 	if (uart_rx_task_handle)   { vTaskDelete(uart_rx_task_handle);   uart_rx_task_handle = NULL; }
 	if (flow_ctrl_task_handle) { vTaskDelete(flow_ctrl_task_handle); flow_ctrl_task_handle = NULL; }
-	/* Blocked on uart_evt_q, which uart_driver_delete() frees below. */
 	if (uart_evt_task_handle)  { vTaskDelete(uart_evt_task_handle);  uart_evt_task_handle = NULL; }
 	vTaskDelay(pdMS_TO_TICKS(20));    // let IDLE reap the TCBs/stacks
 

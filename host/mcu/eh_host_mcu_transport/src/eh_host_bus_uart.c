@@ -573,7 +573,7 @@ int eh_host_bus_tx(interface_buffer_handle_t *bh)
             s_cr_wait_n++;
         waited = true;
         vTaskDelay(1);
-        s_cr_wait_ms++;
+        s_cr_wait_ms += portTICK_PERIOD_MS;
     }
     if (data && s_cr_stuck)
         eh_host_wifi_tx_set_throttle(true);

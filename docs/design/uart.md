@@ -47,7 +47,7 @@ sequenceDiagram
     participant CW as CP Wi-Fi
 
     Note over HS,CW: Host to CP
-    HS->>HU: frame (eh_host_bus_write)
+    HS->>HU: frame (eh_host_bus_tx)
     HU->>CU: bytes on the wire
     Note over CU: FIFO 128 B → ISR in IRAM → ring (10 ms, min 8 KB)
     CU->>CU: uart_rx_task: resync + decode

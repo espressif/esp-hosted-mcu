@@ -24,8 +24,9 @@ SEQ = re.compile(r'raw_tp seq: rx frames=(\d+) lost=(\d+) restarts=(\d+) tx fram
 KBPS_HOST = re.compile(r'sec Tx:(\d+) Rx:(\d+) Kbps')
 KBPS_CP = re.compile(r'sec\s+Rx: ([0-9.]+) Tx: ([0-9.]+) kbps')
 # Transport drop and recovery markers, either end.
-DROP = re.compile(r'uart evt: .*|uart rx: dropped frames: .*|RX FIFO overflow.*|'
-                  r'accumulator full.*|send buffer\[\d+\] malloc fail|'
+DROP = re.compile(r'uart evt: .*|uart rx: dropped frames: .*|'
+                  r'UART RX: fifo_ovf\[[1-9].*|UART RX: fifo_ovf\[\d+\] resync_bytes\[[1-9].*|'
+                  r'send buffer\[\d+\] malloc fail|'
                   r'Host is power saving, skipping write')
 
 
