@@ -1,6 +1,8 @@
-/* SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD */
-/* SPDX-License-Identifier: Apache-2.0 */
-
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* The host's power-save phase (CP side): one copy, owned by the core.
  *
  *        host announces sleep          worker tears the bus down
@@ -12,15 +14,14 @@
  *     └───────────── AWAKE ◀── WAKING ◀──────────────────────────┘  ASLEEP->WAKING,
  *          host announces awake  (reinit fresh, then deliver)        reinits + pulses
  *
- * Rules (the whole contract):
+ * Rules (the whole contract, one eh_fsm table in eh_cp_host_ps_state.c):
  *   - Teardown happens ONLY from ANNOUNCED (eh_cp_feat_host_ps worker).
- *   - Waking happens ONLY from ASLEEP: callers race eh_cp_host_ps_transition(
- *     ASLEEP, WAKING); the single winner owns the pulse, the rest converge.
+ *   - Waking happens ONLY from ASLEEP: the caller whose WAKE moves the phase
+ *     owns the pulse, the rest converge.
  *   - Triggers are interchangeable - packet-driven (the automatic default),
  *     CLI, or serial message all funnel through
  *     eh_cp_feat_host_ps_wakeup_host(); the state decides, not the trigger.
- *   - Every transition is a guarded compare-and-set and idempotent: an event
- *     whose goal is already reached (or in progress) is a no-op success; only
+ *   - An event whose goal is already reached (or in progress) is ignored; only
  *     a transport reinit failure is an error.
  *   - AWAKE is the hot path: delivery reads the state once and writes.
  */
@@ -31,6 +32,7 @@
 
 #include "esp_err.h"
 #include "eh_frame.h"            /* interface_buffer_handle_t */
+#include "eh_fsm.h"
 #include "eh_cp_master_config.h"
 
 #ifdef __cplusplus
@@ -46,18 +48,23 @@ typedef enum {
 	EH_HOST_PS_WAKING,       /* Host waking; stay awake until bring-up completes. */
 } eh_cp_host_ps_state_t;
 
-extern volatile eh_cp_host_ps_state_t g_eh_cp_host_ps_state;
+typedef enum {
+	EH_HOST_PS_EV_SLEEP,     /* the host announced sleep */
+	EH_HOST_PS_EV_AWAKE,     /* the host announced awake, or opened the data path */
+	EH_HOST_PS_EV_DOWN,      /* the bus is torn down (or failed to come back on a wake) */
+	EH_HOST_PS_EV_WAKE,      /* a wake trigger */
+	EH_HOST_PS_EV_COUNT
+} eh_cp_host_ps_ev_t;
+
+extern eh_fsm_t g_eh_cp_host_ps_fsm;
 
 static inline eh_cp_host_ps_state_t eh_cp_host_ps_get(void)
 {
-	return g_eh_cp_host_ps_state;
+	return (eh_cp_host_ps_state_t)g_eh_cp_host_ps_fsm.state;
 }
 
-void eh_cp_host_ps_set(eh_cp_host_ps_state_t st);
-
-/* Atomic transition; fails if the state has already changed. */
-bool eh_cp_host_ps_transition(eh_cp_host_ps_state_t expect,
-                              eh_cp_host_ps_state_t next);
+/* ISR-safe. True when the event moved the phase. */
+bool eh_cp_host_ps_input(eh_cp_host_ps_ev_t ev);
 
 static inline bool eh_cp_host_ps_reachable(void)
 {

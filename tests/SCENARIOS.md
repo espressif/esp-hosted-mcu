@@ -139,3 +139,20 @@ appear in the test IDs.
 |---|---|
 | `unit/eh_fsm/test_eh_fsm_engine` | the FSM engine: every cell is called, entry and exit order, re-entry, out-of-range events |
 | `unit/eh_ctx/test_eh_ctx_payload_compat` | SetContext payload rule: an older peer's missing fields read 0; a newer peer's extra fields are ignored; a too-short payload is refused |
+
+## 6. Host power save and wake delivery
+
+`emu-mcu/eh_test_feat_power_save/`, `test_nw_split_scenarios.py`
+
+```
+  AP ──frame──► CP (host asleep) ──wake pin──► host boots ──► host path opens
+                  │                                            ▲
+                  └── unicast or ARP only (broadcast ignored)  │
+                  frames before the path opens: held (max 10), delivered at GOT_IP / AP_START
+```
+
+| Test | Rows | Proves |
+|---|---|---|
+| `test_power_save_wake_mem` | SDIO, UART, SPI-FD, SPI-HD | one datagram on a host port wakes the host, and that same datagram reaches the host app; then GOT_IP and ping; the heap comes back |
+| `test_power_save_wake_burst` | 4 wires | more frames than the host can hold arrive before its path opens: the waking frame is still delivered (the hold refuses the newest, never the first) |
+| `test_plain_wake_app_quiet` | B5: no Wi-Fi call / init only | plain mode, CP code holds the link: an app that has not started Wi-Fi sees nothing at boot or after a wake; its start then adopts the link: `conn` 1, `got` 1 |

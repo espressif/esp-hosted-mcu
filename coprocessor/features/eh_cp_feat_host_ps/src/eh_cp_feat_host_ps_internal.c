@@ -373,7 +373,9 @@ int wakeup_host_mandate(uint32_t timeout_ms)
 
 	do {
 		if (!power_save_on) {
+			/* Awake by another path (data path opened first): the held frame goes. */
 			ESP_LOGI(TAG, "Host awake (power_save_on=0), stop wakeup loop");
+			wakeup_success = 1;
 			break;
 		}
 		ESP_LOGW(TAG, "wakeup_toggle: set gpio=%u level(before)=%u",
@@ -459,17 +461,17 @@ int wakeup_host(uint32_t timeout_ms)
 		}
 
 		/* ASLEEP -> WAKING: this caller wins the wake. Re-init a FRESH transport
-		 * to match the host, which rebuilt its side on its own wake, then pulse.
-		 * The compare-and-set makes exactly one caller the pulse owner. */
-		if (eh_cp_host_ps_transition(EH_HOST_PS_ASLEEP, EH_HOST_PS_WAKING)) {
+		 * to match the host, which rebuilt its side on its own wake, then pulse. */
+		if (eh_cp_host_ps_input(EH_HOST_PS_EV_WAKE)) {
 			if (hps_cbs.host_power_save_off_prepare_cb)
 				hps_cbs.host_power_save_off_prepare_cb();
-			if (if_handle->state < DEACTIVE) {
+			if (!if_handle || if_handle->state < DEACTIVE) {
 				if_handle = if_context->if_ops->init();
 				if (!if_handle) {
+					(void)eh_cp_host_ps_input(EH_HOST_PS_EV_DOWN);  /* still asleep: the next wake retries */
 					ps_transition_unlock();
 					ESP_LOGE(TAG, "%s:%u Failed to initialize driver", __func__, __LINE__);
-					return ESP_FAIL;
+					return 0;                       /* not awake: the caller drops */
 				}
 				eh_cp_recv_kick();
 			}
@@ -524,11 +526,11 @@ int host_power_save_alert(uint32_t ps_evt)
 			if (hps_cbs.host_power_save_on_ready_cb) {
 				hps_cbs.host_power_save_on_ready_cb();
 			}
-			eh_cp_host_ps_transition(EH_HOST_PS_ANNOUNCED, EH_HOST_PS_ASLEEP);
+			(void)eh_cp_host_ps_input(EH_HOST_PS_EV_DOWN);
 		}
 		ps_transition_unlock();
 	} else if ((ESP_POWER_SAVE_OFF == ps_evt) || (ESP_OPEN_DATA_PATH == ps_evt)) {
-		ESP_LOGI(TAG, "Host Awake, transport state: %u", if_handle->state);
+		ESP_LOGI(TAG, "Host Awake, transport state: %u", if_handle ? if_handle->state : 0);
 
 		/* USER CALLBACK: Prepare to exit power save */
 		if (hps_cbs.host_power_save_off_prepare_cb) {

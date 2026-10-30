@@ -1090,6 +1090,42 @@ def test_wake_after_link_lost(bench, wifi_ap, mode):
     led.verdict()
 
 
+# ── B5: plain, the app makes no Wi-Fi call (or init only) across a wake ─────
+@pytest.mark.nw_split
+@pytest.mark.wifi
+@pytest.mark.parametrize('boot', ['none', 'init'])
+def test_plain_wake_app_quiet(bench, wifi_ap, boot):
+    """Plain mode, CP code holds the link. A host app that has not started Wi-Fi sees
+    nothing at boot nor after a wake (as IDF before esp_wifi_start); its start then
+    adopts the link and its DHCP runs: STA_START, STA_CONNECTED, got ip."""
+    led = Ledger(f'[B5 plain/wake/{boot}]')
+    hook = {'none': BOOT_NO_WIFI, 'init': 'CONFIG_EXAMPLE_BOOT_WIFI_INIT=y'}[boot]
+    host = _bring_up(bench, wifi_ap, mode='app_external', host_split=False, cp_split=False,
+                     trigger='stop_start', app_netif='none' if boot == 'none' else None,
+                     host_extra=[*HOST_PS, hook],
+                     cp_extra=CP_PS)
+    host.cp.write('lease cp_connect')
+    eh_test_expect(host.cp, CP_ASSOC, fail=FAIL, timeout=T_IP)
+    time.sleep(T_NOIP)
+    led.phase(host, 0, 'boot, cp link', got=0, conn=0, disc=0, ping=None)
+    host.write('host_power_save')
+    eh_test_expect(host, r'entering power-save', fail=FAIL, timeout=T_IP)
+    time.sleep(3)
+    mark = _mark(host)
+    host.net.wake()
+    if not eh_test_expect(host, r'Host woke up from power save', fail=FAIL, timeout=60).ok:
+        led.bad.append('host did not wake')
+        led.verdict()
+    eh_test_expect(host, r'network-split-iperf>', fail=FAIL, timeout=T_CONSOLE)
+    time.sleep(T_NOIP)
+    led.phase(host, mark, 'wake, quiet', got=0, conn=0, disc=0, ping=None)
+    mark = _mark(host)
+    fails = _wifi_cmd(host, *(['wifi init'] if boot == 'none' else []), 'wifi start')
+    led.expect(not fails, f'init/start calls: {fails}')
+    led.phase(host, mark, 'start adopts', got=1, conn=1, disc=0)
+    led.verdict()
+
+
 WAKE_IP_MS = 1500         # HW ~700-800 ms; the DHCP/DNS status fast path must hold
 
 

@@ -745,7 +745,7 @@ static int event_handler(uint8_t val)
 				if_handle->state = ACTIVE;
 				datapath = 1;
 #if EH_CP_FEAT_HOST_PS_READY
-				eh_cp_host_ps_set(EH_HOST_PS_AWAKE);
+				(void)eh_cp_host_ps_input(EH_HOST_PS_EV_AWAKE);
 #endif
 				eh_cp_recv_kick();
 				ESP_EARLY_LOGI(TAG, "Open Data Path");
@@ -777,9 +777,8 @@ static int event_handler(uint8_t val)
 
 		case ESP_POWER_SAVE_ON:
 #if EH_CP_FEAT_HOST_PS_READY
-			/* Announce only from AWAKE (guarded). A PS_ON in any other state is
-			 * stale/duplicate - ignore it rather than tear down under a wake. */
-			if (eh_cp_host_ps_transition(EH_HOST_PS_AWAKE, EH_HOST_PS_ANNOUNCED)) {
+			/* Announced only from AWAKE: a PS_ON in any other phase is stale. */
+			if (eh_cp_host_ps_input(EH_HOST_PS_EV_SLEEP)) {
 				const eh_cp_host_ps_ops_t *o = eh_cp_host_ps_ops();
 				eh_cp_recv_kick();
 				if (o && o->on_ps_event)
@@ -796,9 +795,10 @@ static int event_handler(uint8_t val)
 		case ESP_POWER_SAVE_OFF:
 			ESP_EARLY_LOGI(TAG, "event_handler: ESP_POWER_SAVE_OFF");
 			datapath = 1;
-			if_handle->state = ACTIVE;
+			if (if_handle)
+				if_handle->state = ACTIVE;
 #if EH_CP_FEAT_HOST_PS_READY
-			eh_cp_host_ps_set(EH_HOST_PS_AWAKE);
+			(void)eh_cp_host_ps_input(EH_HOST_PS_EV_AWAKE);
 #endif
 			eh_cp_recv_kick();
 #if EH_CP_FEAT_HOST_PS_READY

@@ -25,6 +25,7 @@ flowchart LR
     cpsta["cp_sta FSM<br/>station"]
     cpap["cp_ap FSM<br/>soft-AP"]
     owner["ip_owner FSM<br/>who runs DHCP<br/>(network split)"]
+    hps["host_ps FSM<br/>host asleep/awake"]
   end
   subgraph HOST["Host"]
     app["host app<br/>(IDF Wi-Fi API)"]
@@ -50,6 +51,7 @@ flowchart LR
 | `cp_sta` | CP | The station as IDF runs it: radio, link, attempt, held after a disconnect. |
 | `cp_ap` | CP | Soft-AP on or off. |
 | `ip_owner` | CP | Network split: who runs DHCP for the shared address, the CP or the host. |
+| `host_ps` | CP | Host power save: awake, announced sleep, asleep, waking. |
 | `sta_cp` | host | Copy of the CP station (off / on / connected), whatever the app did. |
 | `sta` | host | The station as the host app sees it, in IDF's event order. |
 | `ap` | host | The soft-AP as the host app sees it. |
@@ -131,6 +133,24 @@ stateDiagram-v2
   Stopping a bound DHCP client would release an address the other side is using.
 - HOST_LEASE: the host pushes its address. The CP takes it only when the host
   owns the IP.
+
+### `host_ps`: the host's power state, as the CP sees it
+
+```mermaid
+stateDiagram-v2
+  [*] --> AWAKE
+  AWAKE --> ANNOUNCED: SLEEP (host says it will sleep)
+  ANNOUNCED --> ASLEEP: DOWN (transport unloaded)
+  ASLEEP --> WAKING: WAKE (CP pulses the wake pin)
+  WAKING --> AWAKE: AWAKE (host back)
+  WAKING --> ASLEEP: DOWN (wake did not finish)
+  ANNOUNCED --> AWAKE: AWAKE
+  ASLEEP --> AWAKE: AWAKE
+```
+
+While ASLEEP, a frame for the host wakes it only if it is unicast to the host or
+an ARP request. Broadcast and multicast IP is not delivered
+(`HOST_PS_IGNORE_NON_UNICAST`, default on).
 
 ---
 
@@ -293,7 +313,7 @@ sequenceDiagram
   Note over H: sta_cp = ASSOC (app not started: nothing posted)
   App->>H: esp_wifi_init, esp_wifi_start
   H-->>App: STA_START, STA_CONNECTED (adopted)
-  H-->>App: GOT_IP (CP lease)
+  H-->>App: GOT_IP (CP lease), held wake frames delivered
 ```
 
 ### Host app AP only; CP code connects the station; app later adds a station
