@@ -35,6 +35,8 @@ if ESP_HOSTED_HOST_TRANSPORT_MCU
 			bool "SPI Half Duplex"
 		config ESP_HOSTED_HOST_TRANSPORT_BUS_UART
 			bool "UART"
+			# A flash-resident ISR stalls during flash ops and the 128-byte RX FIFO overflows.
+			select UART_ISR_IN_IRAM if !RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH
 	endchoice
 
 	# _READY = bus selected AND parent transport compiled-in. Gates source pulls.

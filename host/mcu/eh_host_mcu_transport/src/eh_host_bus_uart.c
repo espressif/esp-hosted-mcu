@@ -36,9 +36,12 @@
 #define EH_UART_TASK_PRIO       22
 
 #define EH_UART_MAX_BUF         ESP_TRANSPORT_HOST_MAX_BUF_SIZE
-#define EH_UART_RX_BUF_SIZE     (EH_UART_MAX_BUF * 2)
+/* ~7.7 ms of line time at 8 Mbaud, so a short RX task stall does not
+ * overflow the driver ring. */
+#define EH_UART_RX_BUF_SIZE     (EH_UART_MAX_BUF * 4)
 #define EH_UART_TX_BUF_SIZE     0   /* 0 -> driver ring; caller blocks */
 #define EH_UART_EVT_QUEUE_LEN   20
+#define EH_UART_RX_FULL_THRESH  64
 #define EH_UART_EVT_STOP        UART_EVENT_MAX
 
 static const char *TAG = "eh_bus_uart";
@@ -96,14 +99,16 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
         payload_len = (uint16_t)acc[10] | ((uint16_t)acc[11] << 8);
     }
 
+    /* Same bounds as the CP: a resync must not trust an offset that skips
+     * past the next frame. */
     uint32_t total = (uint32_t)offset_val + (uint32_t)payload_len;
-    if (total == 0 || total > EH_UART_MAX_BUF) {
+    if (offset_val < hdr_sz || offset_val > hdr_sz + 7 || total > EH_UART_MAX_BUF) {
         return -1;
     }
     if (acc_len < total) return 0;
 
     interface_buffer_handle_t h = {0};
-    eh_frame_result_t r = eh_frame_decode(acc, (uint16_t)total, &h);
+    eh_frame_result_t r = eh_frame_decode_quiet(acc, (uint16_t)total, &h);
     if (r == EH_FRAME_OK && h.payload && h.payload_len) {
         if (h.if_type == ESP_HCI_IF) {
             eh_host_mcu_hci_rx_deliver(h.payload, h.payload_len);
@@ -125,7 +130,7 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
         size_t room = cap - *acc_len;
         if (room == 0) {
             /* Accumulator full but no complete frame — framing lost. */
-            ESP_LOGW(TAG, "accumulator full; resyncing");
+            ESP_LOGD(TAG, "accumulator full; resyncing");
             memmove(acc, acc + 1, *acc_len - 1);
             *acc_len -= 1;
             room = 1;
@@ -136,21 +141,22 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
         *acc_len += (size_t)n;
         avail -= (size_t)n;
 
-        for (;;) {
-            int consumed = eh_uart_try_decode_one(acc, *acc_len);
+        /* Decode at a read offset and move the leftover down once. A memmove
+         * per skipped byte is quadratic: during a resync the task then falls
+         * behind the line, the ring overflows, and the resync never ends. */
+        size_t start = 0;
+        while (start < *acc_len) {
+            int consumed = eh_uart_try_decode_one(acc + start, *acc_len - start);
             if (consumed == 0) break;
             if (consumed < 0) {
-                memmove(acc, acc + 1, *acc_len - 1);
-                *acc_len -= 1;
-                if (*acc_len == 0) break;
-                continue;
-            }
-            if ((size_t)consumed >= *acc_len) {
-                *acc_len = 0;
+                start++;
             } else {
-                memmove(acc, acc + consumed, *acc_len - (size_t)consumed);
-                *acc_len -= (size_t)consumed;
+                start += (size_t)consumed;
             }
+        }
+        if (start) {
+            *acc_len -= start;
+            memmove(acc, acc + start, *acc_len);
         }
     }
 }
@@ -180,10 +186,10 @@ static void eh_uart_rx_task(void *arg)
         if (xQueueReceive(s_uart_q, &ev, portMAX_DELAY) != pdTRUE) continue;
         if (ev.type == EH_UART_EVT_STOP) break;
         if (ev.type == UART_FIFO_OVF) {
-            /* Bytes were lost: drop the partial frame and resync. */
-            ESP_LOGW(TAG, "RX FIFO overflow; resyncing");
-            uart_flush_input((uart_port_t)s_cfg.port);
-            acc_len = 0;
+            /* Bytes were lost in the FIFO. The bytes in the ring before them
+             * are good, so keep them; the resync skips the damaged frame.
+             * No console output here: a line stalls this task. */
+            ESP_LOGD(TAG, "RX FIFO overflow");
             continue;
         }
         if (ev.type == UART_DATA || ev.type == UART_BUFFER_FULL) {
@@ -248,6 +254,12 @@ int eh_host_bus_init(void)
         goto fail;
     }
     s_driver_installed = 1;
+    /* Default threshold (~120 of 128) leaves ~18 us of ISR latency at 4.5 Mbaud. */
+    ret = uart_set_rx_full_threshold((uart_port_t)s_cfg.port, EH_UART_RX_FULL_THRESH);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "uart_set_rx_full_threshold failed: %d", (int)ret);
+        goto fail_drv;
+    }
     uint32_t baud = 0;
     uart_get_baudrate((uart_port_t)s_cfg.port, &baud);
     ESP_LOGI(TAG, "bus applied: baud=%lu", (unsigned long)baud);

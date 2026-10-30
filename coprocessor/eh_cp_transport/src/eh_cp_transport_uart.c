@@ -141,6 +141,63 @@ static QueueHandle_t uart_rx_queue[MAX_PRIORITY_QUEUES];
 
 static TaskHandle_t uart_rx_task_handle = NULL;
 static TaskHandle_t flow_ctrl_task_handle = NULL;
+
+/* Driver event queue: the only place RX FIFO overflow and line errors are
+ * reported. Without it the driver drops bytes silently. */
+#define UART_EVT_Q_SIZE 64
+#define UART_RX_FULL_THRESH 64
+/* Driver RX ring: ~10 ms of line time at 8 Mbaud, so a short uart_rx_task
+ * stall does not lose bytes. */
+#define UART_RX_RING_SIZE 8192
+static QueueHandle_t uart_evt_q = NULL;
+static TaskHandle_t uart_evt_task_handle = NULL;
+
+/* Frames dropped intact by uart_rx_task. Logged at debug level only: a
+ * console line from uart_rx_task stalls it for milliseconds on a 115200
+ * console, and the RX ring overflows meanwhile. */
+static uint32_t rx_drop_no_buf, rx_drop_q_full, rx_resync_bytes;
+/* Given when the consumer frees an RX buffer. */
+static SemaphoreHandle_t rx_buf_freed;
+
+static void uart_rx_drop(uint32_t *counter, uint32_t n)
+{
+	static TickType_t last_log;
+	TickType_t now = xTaskGetTickCount();
+
+	*counter += n;
+	if (now - last_log >= pdMS_TO_TICKS(1000)) {
+		last_log = now;
+		ESP_LOGD(TAG, "uart rx: dropped frames: no rx buffer=%" PRIu32 " queue full=%" PRIu32
+				", resync bytes=%" PRIu32, rx_drop_no_buf, rx_drop_q_full, rx_resync_bytes);
+	}
+}
+
+static void uart_evt_task(void *arg)
+{
+	uint32_t fifo_ovf = 0, buf_full = 0, frame_err = 0, parity_err = 0;
+	TickType_t last_log = 0;
+	uart_event_t ev;
+
+	for (;;) {
+		if (xQueueReceive(uart_evt_q, &ev, portMAX_DELAY) != pdTRUE)
+			continue;
+		switch (ev.type) {
+		case UART_FIFO_OVF:    fifo_ovf++;   break;
+		case UART_BUFFER_FULL: buf_full++;   break;
+		case UART_FRAME_ERR:   frame_err++;  break;
+		case UART_PARITY_ERR:  parity_err++; break;
+		default: continue;
+		}
+		/* At most 10 lines/s: the 115200 console must not become the stall. */
+		TickType_t now = xTaskGetTickCount();
+		if (now - last_log >= pdMS_TO_TICKS(100)) {
+			last_log = now;
+			ESP_LOGW(TAG, "uart evt: fifo_ovf=%" PRIu32 " buf_full=%" PRIu32
+					" frame_err=%" PRIu32 " parity_err=%" PRIu32,
+					fifo_ovf, buf_full, frame_err, parity_err);
+		}
+	}
+}
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
 /* Cooperative-exit flag: deinit sets it and the tasks observe it and suspend
  * themselves, so they're never vTaskDelete'd mid-malloc (the heap-lock
@@ -268,6 +325,8 @@ static void uart_rx_read_done(void *handle)
 	uint8_t * buf = (uint8_t *)handle;
 
 	h_uart_buffer_rx_free(buf);
+	if (rx_buf_freed)
+		xSemaphoreGive(rx_buf_freed);
 }
 
 static uint8_t * uart_scratch_buf = NULL;
@@ -299,11 +358,77 @@ static void uart_apply_ps_flags(uint8_t flags)
 	}
 }
 
+/* uart_scratch_buf holds acc_len bytes: the next frame, and after a resync
+ * possibly the start of the ones behind it. A failed candidate header is
+ * dropped and the search moves to the next byte that can start a header, so a
+ * lost byte costs the frames around it, not the link. */
+static size_t acc_len;
+
+/* Total frame length if h can start a frame, 0 if more bytes are needed to
+ * tell, -1 if it cannot. Wire offsets: V1 len @2, offset @4; V2 offset @8,
+ * len @10 (LE). */
+static int uart_rx_check_hdr(const uint8_t *h, size_t avail)
+{
+	uint8_t ver = (h[0] == 0xE9) ? ESP_HOSTED_HDR_VERSION_V2 : ESP_HOSTED_HDR_VERSION_V1;
+	int hsz = eh_frame_hdr_size_for_ver(ver);
+	int off, len;
+
+	if ((int)avail < hsz)
+		return 0;
+	if (ver == ESP_HOSTED_HDR_VERSION_V1) {
+		len = h[2] | h[3] << 8;
+		off = h[4] | h[5] << 8;
+	} else {
+		if (h[1] != ESP_HOSTED_HDR_VERSION_V2)
+			return -1;
+		off = h[8] | h[9] << 8;
+		len = h[10] | h[11] << 8;
+	}
+	if (off < hsz || off > hsz + 7 || off + len > (int)uart_transfer_size)
+		return -1;
+	return off + len;
+}
+
+/* Waits at most twice the wire time of the missing bytes plus 20 ms, so a
+ * false header that claims more bytes than the host sends costs this wait,
+ * not a stall until the next frame arrives. */
+static bool uart_rx_fill(size_t need)
+{
+	while (acc_len < need) {
+		TickType_t tmo = pdMS_TO_TICKS((need - acc_len) * 20 * 1000 /
+				HOSTED_UART_BAUD_RATE + 20);
+		int n = uart_read_bytes(HOSTED_UART, uart_scratch_buf + acc_len,
+				need - acc_len, tmo);
+		if (n <= 0)
+			return false;
+		acc_len += n;
+	}
+	return true;
+}
+
+static void uart_rx_consume(size_t n)
+{
+	memmove(uart_scratch_buf, uart_scratch_buf + n, acc_len - n);
+	acc_len -= n;
+}
+
+/* Drop byte 0 and every following byte that cannot start a header, with one
+ * memmove: a memmove per byte is quadratic in the frame size, and the time it
+ * takes overflows the RX ring, which loses more bytes. */
+static void uart_rx_slide(void)
+{
+	size_t p = 1;
+
+	while (p < acc_len && uart_rx_check_hdr(uart_scratch_buf + p, acc_len - p) < 0)
+		p++;
+	uart_rx_consume(p);
+	uart_rx_drop(&rx_resync_bytes, p);
+}
+
 static void uart_rx_task(void* pvParameters)
 {
 	interface_buffer_handle_t buf_handle = {0};
 	uint8_t * buf = NULL;
-	int bytes_read;
 	int total_len;
 
 	// delay for a while to let app main threads start and become ready
@@ -323,66 +448,42 @@ static void uart_rx_task(void* pvParameters)
 
 	while (1) {
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
-		if (uart_exit_requested) { vTaskSuspend(NULL); continue; }
-		/* Bounded first-byte read so we can poll the exit flag while idle; once a
-		 * byte lands, block for the rest of the header (byte-stream framing intact). */
-		bytes_read = uart_read_bytes(HOSTED_UART, uart_scratch_buf, 1, pdMS_TO_TICKS(50));
-		if (bytes_read <= 0)
-			continue;
-		bytes_read += uart_read_bytes(HOSTED_UART, uart_scratch_buf + 1,
-				eh_frame_hdr_size() - 1, portMAX_DELAY);
+		if (uart_exit_requested) { acc_len = 0; vTaskSuspend(NULL); continue; }
+		/* Bounded first-byte read so we can poll the exit flag while idle. */
+		const TickType_t idle_wait = pdMS_TO_TICKS(50);
 #else
-		/* Read wire header bytes (fixed-size UART framing) */
-		bytes_read = uart_read_bytes(HOSTED_UART, uart_scratch_buf,
-				eh_frame_hdr_size(), portMAX_DELAY);
+		const TickType_t idle_wait = portMAX_DELAY;
 #endif
-		ESP_LOGD(TAG, "Read %d bytes (header)", bytes_read);
-		if (bytes_read < (int)eh_frame_hdr_size()) {
-			ESP_LOGE(TAG, "Failed to read header");
-			continue;
+		if (acc_len == 0) {
+			if (uart_read_bytes(HOSTED_UART, uart_scratch_buf, 1, idle_wait) <= 0)
+				continue;
+			acc_len = 1;
 		}
-
-		/* Byte-stream transport: only the header has arrived so far. eh_frame
-		 * has no partial-decode, so read len + flags from the wire header. */
-		const struct esp_payload_header *hdr =
-			(const struct esp_payload_header *)uart_scratch_buf;
-		uart_apply_ps_flags(hdr->flags);
-		total_len = (int)(le16toh(hdr->len) + eh_frame_hdr_size());
-
-		UPDATE_HEADER_RX_PKT_NO((struct esp_payload_header *)uart_scratch_buf);
-
-		if (total_len > uart_transfer_size) {
-			ESP_LOGE(TAG, "incoming data too big: %d", total_len);
-			int left = total_len - (int)eh_frame_hdr_size();
-			while (left > 0) {
-				int chunk = (left > BUFFER_SIZE) ? BUFFER_SIZE : left;
-				int n = uart_read_bytes(HOSTED_UART, uart_scratch_buf, chunk,
-						portMAX_DELAY);
-				if (n <= 0)
-					break;
-				left -= n;
-			}
-			continue;
+		total_len = uart_rx_check_hdr(uart_scratch_buf, acc_len);
+		if (total_len == 0) {
+			int hsz = eh_frame_hdr_size_for_ver((uart_scratch_buf[0] == 0xE9) ?
+					ESP_HOSTED_HDR_VERSION_V2 : ESP_HOSTED_HDR_VERSION_V1);
+			if (uart_rx_fill(hsz))
+				total_len = uart_rx_check_hdr(uart_scratch_buf, acc_len);
 		}
-
-		/* Read payload bytes directly after the header */
-		bytes_read = uart_read_bytes(HOSTED_UART,
-				uart_scratch_buf + eh_frame_hdr_size(),
-				total_len - (int)eh_frame_hdr_size(), portMAX_DELAY);
-		ESP_LOGD(TAG, "Read %d bytes (payload)", bytes_read);
-		if (bytes_read < total_len - (int)eh_frame_hdr_size()) {
-			ESP_LOGE(TAG, "Failed to read payload");
+		if (total_len <= 0 || !uart_rx_fill(total_len)) {
+			uart_rx_slide();
 			continue;
 		}
 
 		/* Full decode + checksum verify */
 		buf_handle = (interface_buffer_handle_t){0};
-		eh_frame_result_t fres = eh_frame_decode(uart_scratch_buf, total_len, &buf_handle);
+		eh_frame_result_t fres = eh_frame_decode_quiet(uart_scratch_buf, total_len, &buf_handle);
+		if (fres != EH_FRAME_OK && fres != EH_FRAME_DUMMY) {
+			uart_rx_slide();
+			continue;
+		}
+		/* buf_handle.flags: decode reads them at the V1 or V2 offset. */
+		uart_apply_ps_flags(buf_handle.flags);
+		UPDATE_HEADER_RX_PKT_NO((struct esp_payload_header *)uart_scratch_buf);
+		/* DUMMY = idle/PS-flag control frame: flags consumed above. */
 		if (fres != EH_FRAME_OK) {
-			/* DUMMY = idle/PS-flag control frame — flag already consumed by
-			 * uart_apply_ps_flags above; discard silently (matches SDIO). */
-			if (fres != EH_FRAME_DUMMY)
-				ESP_LOGE(TAG, "uart rx: frame_decode err %d, drop", fres);
+			uart_rx_consume(total_len);
 			continue;
 		}
 
@@ -392,15 +493,24 @@ static void uart_rx_task(void* pvParameters)
 		 * consumer gets the offset-applied payload (matches the SDIO path). */
 		uint16_t off = (uint16_t)((const uint8_t *)buf_handle.payload - uart_scratch_buf);
 		buf = h_uart_buffer_rx_alloc(MEMSET_REQUIRED);
+		/* Wait for the consumer to free a buffer instead of dropping the
+		 * frame. The driver RX ring holds the bytes that arrive meanwhile. */
+		while (!buf) {
+			xSemaphoreTake(rx_buf_freed, pdMS_TO_TICKS(10));
+#if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
+			if (uart_exit_requested)
+				break;
+#endif
+			buf = h_uart_buffer_rx_alloc(MEMSET_REQUIRED);
+		}
 		if (!buf) {
-			/* RX pool momentarily drained (host not consuming fast enough) —
-			 * drop this frame instead of aborting, matching the SDIO path's
-			 * alloc-failure handling. The link stays up; RPC retransmits. */
-			ESP_LOGW(TAG, "uart rx: no rx buffer (pool drained), drop frame");
+			uart_rx_consume(total_len);
+			uart_rx_drop(&rx_drop_no_buf, 1);
 			continue;
 		}
 
 		memcpy(buf, uart_scratch_buf, total_len);
+		uart_rx_consume(total_len);
 
 		buf_handle.payload         = buf + off;
 		buf_handle.free_buf_handle = uart_rx_read_done;
@@ -414,12 +524,15 @@ static void uart_rx_task(void* pvParameters)
 		if (buf_handle.if_type == ESP_STA_IF)
 			pkt_stats.hs_bus_sta_in++;
 #endif
-		if (buf_handle.if_type == ESP_SERIAL_IF) {
-			xQueueSend(uart_rx_queue[PRIO_Q_SERIAL], &buf_handle, portMAX_DELAY);
-		} else if (buf_handle.if_type == ESP_HCI_IF) {
-			xQueueSend(uart_rx_queue[PRIO_Q_BT], &buf_handle, portMAX_DELAY);
-		} else {
-			xQueueSend(uart_rx_queue[PRIO_Q_OTHERS], &buf_handle, portMAX_DELAY);
+		/* Never block: while this task waits, nothing drains the UART and the
+		 * driver ring overflows, which loses bytes and the framing with them. */
+		QueueHandle_t q = (buf_handle.if_type == ESP_SERIAL_IF) ? uart_rx_queue[PRIO_Q_SERIAL] :
+				  (buf_handle.if_type == ESP_HCI_IF)    ? uart_rx_queue[PRIO_Q_BT] :
+									  uart_rx_queue[PRIO_Q_OTHERS];
+		if (xQueueSend(q, &buf_handle, 0) != pdTRUE) {
+			uart_rx_read_done(buf);
+			uart_rx_drop(&rx_drop_q_full, 1);
+			continue;
 		}
 		xSemaphoreGive(uart_rx_sem);
 	}
@@ -611,11 +724,14 @@ static interface_handle_t * h_uart_init(void)
 		.source_clk = UART_SCLK_DEFAULT,
 	};
 
-	EH_CHECK_OK(uart_driver_install(HOSTED_UART, BUFFER_SIZE, BUFFER_SIZE,
-			0, NULL, 0));
+	EH_CHECK_OK(uart_driver_install(HOSTED_UART, UART_RX_RING_SIZE, BUFFER_SIZE,
+			UART_EVT_Q_SIZE, &uart_evt_q, 0));
 	EH_CHECK_OK(uart_param_config(HOSTED_UART, &uart_config));
 	EH_CHECK_OK(uart_set_pin(HOSTED_UART, HOSTED_UART_GPIO_TX, HOSTED_UART_GPIO_RX,
 			UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+	/* Default threshold (~120 of 128) leaves ~18 us of ISR latency at 4.5 Mbaud;
+	 * half the FIFO gives ~140 us. */
+	EH_CHECK_OK(uart_set_rx_full_threshold(HOSTED_UART, UART_RX_FULL_THRESH));
 	/* Pins/baud/queue dimensions are already in the show_config()
 	 * banner above; no need to re-log here. */
 
@@ -623,6 +739,9 @@ static interface_handle_t * h_uart_init(void)
 	h_uart_mempool_create();
 
 	uart_rx_sem = xSemaphoreCreateCounting(HOSTED_UART_RX_QUEUE_SIZE * MAX_PRIORITY_QUEUES, 0);
+	if (!rx_buf_freed)
+		rx_buf_freed = xSemaphoreCreateBinary();
+	assert(rx_buf_freed);
 	assert(uart_rx_sem != NULL);
 	for (prio_q_idx = 0; prio_q_idx < MAX_PRIORITY_QUEUES; prio_q_idx++) {
 		uart_rx_queue[prio_q_idx] = xQueueCreate(HOSTED_UART_RX_QUEUE_SIZE, sizeof(interface_buffer_handle_t));
@@ -633,6 +752,11 @@ static interface_handle_t * h_uart_init(void)
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
 	uart_exit_requested = false;
 #endif
+	if (uart_evt_task_handle == NULL)
+		assert(xTaskCreate(uart_evt_task, "uart_evt_task",
+				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
+				CONFIG_ESP_HOSTED_TASK_PRIORITY_DEFAULT, &uart_evt_task_handle) == pdTRUE);
+
 	if (uart_rx_task_handle == NULL)
 		assert(xTaskCreate(uart_rx_task, "uart_rx_task" ,
 				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
@@ -686,6 +810,8 @@ static void h_uart_deinit(interface_handle_t * handle)
 	vTaskDelay(pdMS_TO_TICKS(100));   // > the rx task's 50ms poll
 	if (uart_rx_task_handle)   { vTaskDelete(uart_rx_task_handle);   uart_rx_task_handle = NULL; }
 	if (flow_ctrl_task_handle) { vTaskDelete(flow_ctrl_task_handle); flow_ctrl_task_handle = NULL; }
+	/* Blocked on uart_evt_q, which uart_driver_delete() frees below. */
+	if (uart_evt_task_handle)  { vTaskDelete(uart_evt_task_handle);  uart_evt_task_handle = NULL; }
 	vTaskDelay(pdMS_TO_TICKS(20));    // let IDLE reap the TCBs/stacks
 
 	/* No ESP_CLOSE_DATA_PATH: an unload, not a shutdown. */

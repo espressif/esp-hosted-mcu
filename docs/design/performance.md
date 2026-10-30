@@ -151,6 +151,39 @@ SDIO transport, 4-bit, 40 MHz, 5 GHz network, over the air:
 | iPerf, TCP | Test PC to P4 | 32 |
 | iPerf, UDP | Test PC to P4 | 68 |
 
+UART transport, 921600 baud, 2.4 GHz network, over the air:
+
+| Type | Direction | MBits/s |
+|------------|---------------|--------:|
+| Raw | P4 to C5 | 0.74 |
+| Raw | C5 to P4 | 0.74 |
+| iPerf, TCP | P4 to Test PC | 0.71 |
+| iPerf, UDP | P4 to Test PC | 0.71 |
+| iPerf, TCP | Test PC to P4 | 0.65 |
+| iPerf, UDP | Test PC to P4 | 0.70 |
+
+UART transport, 5 Mbaud, 2.4 GHz network, over the air:
+
+| Type | Direction | MBits/s |
+|------------|---------------|--------:|
+| Raw | P4 to C5 | &lt;TBD&gt; |
+| Raw | C5 to P4 | &lt;TBD&gt; |
+| iPerf, TCP | P4 to Test PC | 3.82 |
+| iPerf, UDP | P4 to Test PC | 3.86 |
+| iPerf, TCP | Test PC to P4 | 3.66 |
+| iPerf, UDP | Test PC to P4 | 3.73 |
+
+UART transport, 8 Mbaud, 2.4 GHz network, over the air (outside the SoC specification, maximum 5 Mbaud; tested on the P4-C5 core board):
+
+| Type | Direction | MBits/s |
+|------------|---------------|--------:|
+| Raw | P4 to C5 | 6.34 |
+| Raw | C5 to P4 | 6.26 |
+| iPerf, TCP | P4 to Test PC | 5.78 |
+| iPerf, UDP | P4 to Test PC | 6.12 |
+| iPerf, TCP | Test PC to P4 | 5.75 |
+| iPerf, UDP | Test PC to P4 | 6.11 |
+
 ### 1.3 ESP32-C61 as co-processor
 
 ```ini
@@ -349,8 +382,10 @@ CONFIG_ESP_HOSTED_SPI_CLK_FREQ=40
 
 ### 2.4 UART (lowest performance)
 
-- **Baud rate:** use 921600 (highest stable rate).
+- **Baud rate:** up to 5 Mbaud, the ESP32-P4 and ESP32-C5 maximum. Kconfig accepts up to 8 Mbaud, which is outside the SoC specification. Higher rates lose frames: see [UART timing budget](uart.md#timing-budget). Use 921600 for jumper wires.
+- **ISR placement:** the co-processor UART ISR must be in IRAM (`CONFIG_UART_ISR_IN_IRAM`). The UART transport selects it.
 - **Best for:** low-throughput applications and debugging.
+- **Measured values:** see [ESP32-C5 as co-processor](#12-esp32-c5-as-co-processor).
 
 ---
 

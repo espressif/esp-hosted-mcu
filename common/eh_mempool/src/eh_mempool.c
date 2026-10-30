@@ -124,7 +124,7 @@ void * hosted_mempool_alloc(struct hosted_mempool *mempool,
 		memset(mem, 0, nbytes);
 
 	if (!mem) {
-		ESP_LOGE(TAG, "mempool %p alloc failed nbytes[%u]", mempool, nbytes);
+		ESP_LOGD(TAG, "mempool %p alloc failed nbytes[%u]", mempool, nbytes);
 	}
 	return mem;
 }
