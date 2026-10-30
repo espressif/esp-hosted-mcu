@@ -1,4 +1,45 @@
 menu "ESP-Hosted Example Config"
+	choice EXAMPLE_APP_STA_NETIF
+		prompt "When the app creates WIFI_STA_DEF (relative to esp_hosted_init)"
+		default EXAMPLE_APP_STA_NETIF_BEFORE_HOSTED_INIT
+		help
+			The app creates WIFI_STA_DEF before or after esp_hosted_init(), or
+			not at all.
+
+		config EXAMPLE_APP_STA_NETIF_BEFORE_HOSTED_INIT
+			bool "Before esp_hosted_init()"
+		config EXAMPLE_APP_STA_NETIF_AFTER_HOSTED_INIT
+			bool "After esp_hosted_init()"
+		config EXAMPLE_APP_STA_NETIF_NONE
+			bool "Never"
+	endchoice
+
+	choice EXAMPLE_BOOT_WIFI
+		prompt "Test hook: Wi-Fi calls the app makes at boot"
+		default EXAMPLE_BOOT_WIFI_INIT_START
+		help
+			Test use: an app that makes fewer Wi-Fi calls at boot. The console's
+			wifi commands do the rest.
+
+		config EXAMPLE_BOOT_WIFI_INIT_START
+			bool "esp_wifi_init + esp_wifi_start"
+		config EXAMPLE_BOOT_WIFI_INIT
+			bool "esp_wifi_init only"
+		config EXAMPLE_BOOT_WIFI_NONE
+			bool "None"
+	endchoice
+
+	config EXAMPLE_LOG_STA_NETIF_AFTER_CONNECT
+		bool "Log whether WIFI_STA_DEF exists when esp_hosted_connect_to_slave() returns"
+		default n
+
+	config EXAMPLE_SLOW_FEATURE_INIT_MS
+		int "Test hook: a hosted feature init that takes this long (ms), 0 = none"
+		default 0
+		help
+			Registers a feature that runs just before network split and sleeps,
+			as a slower board would. Test use only.
+
 	config EXAMPLE_NW_SPLIT_ECHO_SERVER
 		bool "Run a TCP echo server on the host stack (network-split routing test)"
 		default n

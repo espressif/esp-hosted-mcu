@@ -9,6 +9,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_private/wifi.h"
@@ -25,8 +26,6 @@
 #endif
 
 static const char* TAG = "ehcp_wifi_rpc";
-
-static bool s_mcu_wifi_initialized = false;
 
 #if EH_CP_FEAT_WIFI_EXT_ITWT_READY
 #include "esp_wifi_he.h"
@@ -157,166 +156,6 @@ esp_err_t req_wifi_get_ps(Rpc *req,
 	return ESP_OK;
 }
 
-/* External declaration of the real esp_wifi_init function */
-extern esp_err_t __real_esp_wifi_init(const wifi_init_config_t *config);
-
-/* Compare only fields set by req_wifi_init() — decides if reinit is needed. */
-static bool wifi_init_config_changed(const wifi_init_config_t *new_cfg, const wifi_init_config_t *cached_cfg)
-{
-	if (!new_cfg || !cached_cfg) {
-		ESP_LOGI(TAG, "WiFi init config comparison: One of the configs is NULL");
-		return true;
-	}
-
-	/* Compare only the fields that are explicitly set in req_wifi_init */
-	bool changed = false;
-
-	if (new_cfg->static_rx_buf_num != cached_cfg->static_rx_buf_num) {
-		ESP_LOGI(TAG, "WiFi init config: static_rx_buf_num changed: %lu -> %lu",
-				(unsigned long)cached_cfg->static_rx_buf_num, (unsigned long)new_cfg->static_rx_buf_num);
-		changed = true;
-	}
-
-	if (new_cfg->dynamic_rx_buf_num != cached_cfg->dynamic_rx_buf_num) {
-		ESP_LOGI(TAG, "WiFi init config: dynamic_rx_buf_num changed: %lu -> %lu",
-				(unsigned long)cached_cfg->dynamic_rx_buf_num, (unsigned long)new_cfg->dynamic_rx_buf_num);
-		changed = true;
-	}
-
-	if (new_cfg->tx_buf_type != cached_cfg->tx_buf_type) {
-		ESP_LOGI(TAG, "WiFi init config: tx_buf_type changed: %lu -> %lu",
-				(unsigned long)cached_cfg->tx_buf_type, (unsigned long)new_cfg->tx_buf_type);
-		changed = true;
-	}
-
-	if (new_cfg->static_tx_buf_num != cached_cfg->static_tx_buf_num) {
-		ESP_LOGI(TAG, "WiFi init config: static_tx_buf_num changed: %lu -> %lu",
-				(unsigned long)cached_cfg->static_tx_buf_num, (unsigned long)new_cfg->static_tx_buf_num);
-		changed = true;
-	}
-
-	if (new_cfg->dynamic_tx_buf_num != cached_cfg->dynamic_tx_buf_num) {
-		ESP_LOGI(TAG, "WiFi init config: dynamic_tx_buf_num changed: %lu -> %lu",
-				(unsigned long)cached_cfg->dynamic_tx_buf_num, (unsigned long)new_cfg->dynamic_tx_buf_num);
-		changed = true;
-	}
-
-	if (new_cfg->cache_tx_buf_num != cached_cfg->cache_tx_buf_num) {
-		ESP_LOGI(TAG, "WiFi init config: cache_tx_buf_num changed: %lu -> %lu",
-				(unsigned long)cached_cfg->cache_tx_buf_num, (unsigned long)new_cfg->cache_tx_buf_num);
-		changed = true;
-	}
-
-	if (new_cfg->csi_enable != cached_cfg->csi_enable) {
-		ESP_LOGI(TAG, "WiFi init config: csi_enable changed: %lu -> %lu",
-				(unsigned long)cached_cfg->csi_enable, (unsigned long)new_cfg->csi_enable);
-		changed = true;
-	}
-
-	if (new_cfg->ampdu_rx_enable != cached_cfg->ampdu_rx_enable) {
-		ESP_LOGI(TAG, "WiFi init config: ampdu_rx_enable changed: %lu -> %lu",
-				(unsigned long)cached_cfg->ampdu_rx_enable, (unsigned long)new_cfg->ampdu_rx_enable);
-		changed = true;
-	}
-
-	if (new_cfg->ampdu_tx_enable != cached_cfg->ampdu_tx_enable) {
-		ESP_LOGI(TAG, "WiFi init config: ampdu_tx_enable changed: %lu -> %lu",
-				(unsigned long)cached_cfg->ampdu_tx_enable, (unsigned long)new_cfg->ampdu_tx_enable);
-		changed = true;
-	}
-
-	if (new_cfg->amsdu_tx_enable != cached_cfg->amsdu_tx_enable) {
-		ESP_LOGI(TAG, "WiFi init config: amsdu_tx_enable changed: %lu -> %lu",
-				(unsigned long)cached_cfg->amsdu_tx_enable, (unsigned long)new_cfg->amsdu_tx_enable);
-		changed = true;
-	}
-
-	if (new_cfg->nvs_enable != cached_cfg->nvs_enable) {
-		ESP_LOGI(TAG, "WiFi init config: nvs_enable changed: %lu -> %lu",
-				(unsigned long)cached_cfg->nvs_enable, (unsigned long)new_cfg->nvs_enable);
-		changed = true;
-	}
-
-	if (new_cfg->nano_enable != cached_cfg->nano_enable) {
-		ESP_LOGI(TAG, "WiFi init config: nano_enable changed: %lu -> %lu",
-				(unsigned long)cached_cfg->nano_enable, (unsigned long)new_cfg->nano_enable);
-		changed = true;
-	}
-
-	if (new_cfg->rx_ba_win != cached_cfg->rx_ba_win) {
-		ESP_LOGI(TAG, "WiFi init config: rx_ba_win changed: %lu -> %lu",
-				(unsigned long)cached_cfg->rx_ba_win, (unsigned long)new_cfg->rx_ba_win);
-		changed = true;
-	}
-
-	if (new_cfg->wifi_task_core_id != cached_cfg->wifi_task_core_id) {
-		ESP_LOGI(TAG, "WiFi init config: wifi_task_core_id changed: %lu -> %lu",
-				(unsigned long)cached_cfg->wifi_task_core_id, (unsigned long)new_cfg->wifi_task_core_id);
-		changed = true;
-	}
-
-	if (new_cfg->beacon_max_len != cached_cfg->beacon_max_len) {
-		ESP_LOGI(TAG, "WiFi init config: beacon_max_len changed: %lu -> %lu",
-				(unsigned long)cached_cfg->beacon_max_len, (unsigned long)new_cfg->beacon_max_len);
-		changed = true;
-	}
-
-	if (new_cfg->mgmt_sbuf_num != cached_cfg->mgmt_sbuf_num) {
-		ESP_LOGI(TAG, "WiFi init config: mgmt_sbuf_num changed: %lu -> %lu",
-				(unsigned long)cached_cfg->mgmt_sbuf_num, (unsigned long)new_cfg->mgmt_sbuf_num);
-		changed = true;
-	}
-
-	if (new_cfg->feature_caps != cached_cfg->feature_caps) {
-		ESP_LOGI(TAG, "WiFi init config: feature_caps changed: %lu -> %lu",
-				(unsigned long)cached_cfg->feature_caps, (unsigned long)new_cfg->feature_caps);
-		changed = true;
-	}
-
-	if (new_cfg->sta_disconnected_pm != cached_cfg->sta_disconnected_pm) {
-		ESP_LOGI(TAG, "WiFi init config: sta_disconnected_pm changed: %lu -> %lu",
-				(unsigned long)cached_cfg->sta_disconnected_pm, (unsigned long)new_cfg->sta_disconnected_pm);
-		changed = true;
-	}
-
-	if (new_cfg->espnow_max_encrypt_num != cached_cfg->espnow_max_encrypt_num) {
-		ESP_LOGI(TAG, "WiFi init config: espnow_max_encrypt_num changed: %lu -> %lu",
-				(unsigned long)cached_cfg->espnow_max_encrypt_num, (unsigned long)new_cfg->espnow_max_encrypt_num);
-		changed = true;
-	}
-
-	if (new_cfg->magic != cached_cfg->magic) {
-		ESP_LOGI(TAG, "WiFi init config: magic changed: %lu -> %lu",
-				(unsigned long)cached_cfg->magic, (unsigned long)new_cfg->magic);
-		changed = true;
-	}
-
-#ifdef WIFI_PRIVACY_ENHANCEMENTS_ENABLED
-	if (new_cfg->privacy_enhancements != cached_cfg->privacy_enhancements) {
-		ESP_LOGI(TAG, "WiFi init config: privacy_enhancements changed: %d -> %d",
-				cached_cfg->privacy_enhancements, new_cfg->privacy_enhancements);
-		changed = true;
-	}
-#endif
-
-#ifdef WIFI_RMAC_AUTO_RESET_INTERVAL
-	if (new_cfg->rmac_auto_reset_int != cached_cfg->rmac_auto_reset_int) {
-		ESP_LOGI(TAG, "WiFi init config: rmac_auto_reset_int changed: %u -> %u",
-				cached_cfg->rmac_auto_reset_int, new_cfg->rmac_auto_reset_int);
-		changed = true;
-	}
-#endif
-
-#ifdef WIFI_TASK_STACK_SIZE
-	if (new_cfg->wifi_task_stack_size != cached_cfg->wifi_task_stack_size) {
-		ESP_LOGI(TAG, "WiFi init config: wifi_task_stack_size changed: %d -> %d",
-				cached_cfg->wifi_task_stack_size, new_cfg->wifi_task_stack_size);
-		changed = true;
-	}
-#endif
-
-	return changed;
-}
 
 
 // macros to format output
@@ -455,52 +294,6 @@ static wifi_init_config_t * get_merged_init_config(wifi_init_config_t *dst_confi
 }
 
 
-/* Caches config; if changed and Wi-Fi up, stops/deinits before re-init. */
-esp_err_t __wrap_esp_wifi_init(const wifi_init_config_t *config);
-esp_err_t __wrap_esp_wifi_init(const wifi_init_config_t *config)
-{
-	esp_err_t ret;
-
-	EH_CP_BSS_STORE static wifi_init_config_t cached_wifi_init_config = {0};
-	EH_CP_BSS_STORE static bool has_cached_config = false;
-
-	ESP_LOGI(TAG, "=== __wrap_esp_wifi_init called ===");
-
-	if (s_mcu_wifi_initialized) {
-		/* Compare with cached config */
-		if (has_cached_config && wifi_init_config_changed(config, &cached_wifi_init_config)) {
-			ESP_LOGI(TAG, "WiFi init config changed, reinitializing");
-#if EH_CP_FEAT_NW_SPLIT_READY
-			eh_cp_feat_nw_split_reset_rx_override();
-#endif
-			esp_wifi_stop();
-			esp_wifi_deinit();
-			s_mcu_wifi_initialized = false;
-		} else {
-			ESP_LOGW(TAG, "WiFi already initialized with same parameters");
-			return ESP_OK;
-		}
-	} else {
-		ESP_LOGI(TAG, "First-time WiFi initialization");
-	}
-
-	/* Cache the config for future comparisons */
-	if (config) {
-		memcpy(&cached_wifi_init_config, config, sizeof(wifi_init_config_t));
-		has_cached_config = true;
-	}
-
-	/* Call the real init function */
-	ESP_LOGI(TAG, "Calling __real_esp_wifi_init...");
-	ret = __real_esp_wifi_init(config);
-	ESP_LOGI(TAG, "__real_esp_wifi_init returned: %d", ret);
-
-	if (ret == ESP_OK) {
-		s_mcu_wifi_initialized = true;
-	}
-
-	return ret;
-}
 
 esp_err_t req_wifi_init(Rpc *req, Rpc *resp, void *priv_data)
 {
@@ -582,31 +375,7 @@ esp_err_t req_wifi_start(Rpc *req, Rpc *resp, void *priv_data)
 			RpcReqWifiStart, req_wifi_start,
 			rpc__resp__wifi_start__init);
 
-	if (!eh_cp_feat_wifi_is_started()) {
-		RPC_RET_FAIL_IF(esp_wifi_start());
-	}
-
-	/* Replay STA/AP start events for hosts waking from deep sleep. */
-	wifi_mode_t mode;
-	int event_id;
-	esp_err_t res = esp_wifi_get_mode(&mode);
-	if (res == ESP_OK) {
-		if ((mode == WIFI_MODE_STA) || (mode == WIFI_MODE_APSTA)) {
-			ESP_LOGI(TAG, "send WIFI_EVENT_STA_START");
-			event_id = WIFI_EVENT_STA_START;
-			eh_cp_rpc_send_event(
-								RPC_ID__Event_WifiEventNoArgs,
-				&event_id, sizeof(event_id));
-		}
-		if ((mode == WIFI_MODE_AP) || (mode == WIFI_MODE_APSTA)) {
-			ESP_LOGI(TAG, "send WIFI_EVENT_AP_START");
-			event_id = WIFI_EVENT_AP_START;
-			eh_cp_rpc_send_event(
-								RPC_ID__Event_WifiEventNoArgs,
-				&event_id, sizeof(event_id));
-		}
-	}
-
+	RPC_RET_FAIL_IF(eh_cp_feat_wifi_request_start());
 	return ESP_OK;
 }
 
@@ -626,19 +395,7 @@ esp_err_t req_wifi_connect(Rpc *req, Rpc *resp, void *priv_data)
 			RpcReqWifiConnect, req_wifi_connect,
 			rpc__resp__wifi_connect__init);
 
-	int ret = eh_cp_feat_wifi_request_connect();
-	if (ret != ESP_OK) {
-		resp_payload->resp = ret;
-		return ESP_OK;
-	}
-
-	if (eh_cp_feat_wifi_is_station_connected()) {
-		ESP_LOGI(TAG, "connect recvd while already connected; replaying last real connected event");
-		eh_cp_feat_wifi_replay_connected_event_if_needed();
-	}
-
-	resp_payload->resp = ESP_OK;
-
+	resp_payload->resp = eh_cp_feat_wifi_request_connect();
 	return ESP_OK;
 }
 
@@ -648,7 +405,7 @@ esp_err_t req_wifi_disconnect(Rpc *req, Rpc *resp, void *priv_data)
 			RpcReqWifiDisconnect, req_wifi_disconnect,
 			rpc__resp__wifi_disconnect__init);
 
-	RPC_RET_FAIL_IF(eh_cp_feat_wifi_request_disconnect(false));
+	RPC_RET_FAIL_IF(eh_cp_feat_wifi_request_disconnect());
 
 	return ESP_OK;
 }
@@ -752,12 +509,6 @@ esp_err_t req_wifi_set_config(Rpc *req, Rpc *resp, void *priv_data)
 		p_a_sta->he_reserved = WIFI_STA_CONFIG_2_GET_RESERVED_VAL(p_c_sta->he_bitmask);
 #endif
 #endif
-
-		/* Avoid using fast scan, which leads to faster SSID selection,
-		 * but faces data throughput issues when same SSID broadcasted by weaker AP
-		 */
-		p_a_sta->scan_method = WIFI_ALL_CHANNEL_SCAN;
-		p_a_sta->sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
 
 		RPC_REQ_COPY_STR(p_a_sta->sae_h2e_identifier, p_c_sta->sae_h2e_identifier, SAE_H2E_IDENTIFIER_LEN);
 		RPC_RET_FAIL_IF(eh_cp_feat_wifi_set_sta_config(req_payload->iface, &cfg));

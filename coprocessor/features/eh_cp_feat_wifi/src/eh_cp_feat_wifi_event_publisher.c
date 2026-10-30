@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/timers.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 
 #include "esp_private/wifi.h"
@@ -22,392 +23,74 @@
 #include "eh_cp_feat_wifi.h"
 #include "eh_cp_feat_wifi_event_publisher.h"
 #include "eh_check.h"
+#include "eh_cp_core.h"
+#include "eh_cp_feat_wifi_sta_fsm.h"
 
 ESP_EVENT_DEFINE_BASE(EH_CP_FEAT_WIFI_EVENT);
+ESP_EVENT_DEFINE_BASE(EH_CP_WIFI_FLUSH_EVENT);
+
+/* Event-loop hops of a station report: IDF event -> station FSM -> RPC event,
+ * and in network split -> nw_split status -> RPC event. */
+#define REPORT_HOPS 3
+
+static SemaphoreHandle_t s_flush_mtx;
+static SemaphoreHandle_t s_flush_mark;
+static bool s_flush_on;
 
 static const char* TAG = "ehcp_event_client";
-
-/* Global variables for WiFi state */
-extern uint8_t station_connected;
-extern uint8_t softap_started;
 
 #define MAC2STR(a)                  (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR                      "%02x:%02x:%02x:%02x:%02x:%02x"
 
-/* WiFi extension local state */
-static wifi_config_t s_pending_sta_config = {0};
-static bool s_pending_sta_config_valid = false;
-static bool s_suppress_disconnect = false;
-static bool s_station_connecting = false;
-static bool s_sta_reconnect_required = false;
-static wifi_event_sta_connected_t s_last_sta_connected = {0};
-static bool s_last_sta_connected_valid = false;
-static bool s_pending_connect_on_start = false;
-
-esp_err_t __real_esp_wifi_connect(void);
-esp_err_t __wrap_esp_wifi_connect(void);
-
-esp_err_t __wrap_esp_wifi_connect(void)
+/* This feature is the only caller for the station; other STA registrations
+ * (IDF's default netif glue on STA_CONNECTED) are swallowed. */
+esp_err_t __real_esp_wifi_internal_reg_rxcb(wifi_interface_t ifx, wifi_rxcb_t fn);
+esp_err_t __wrap_esp_wifi_internal_reg_rxcb(wifi_interface_t ifx, wifi_rxcb_t fn);
+esp_err_t __wrap_esp_wifi_internal_reg_rxcb(wifi_interface_t ifx, wifi_rxcb_t fn)
 {
-	/* Centralize connect state tracking for all callers (app/host/auto). */
-	s_station_connecting = true;
-	esp_err_t ret = __real_esp_wifi_connect();
-	if (ret == ESP_ERR_WIFI_NOT_INIT || ret == ESP_ERR_WIFI_NOT_STARTED) {
-		/* WiFi not started yet — defer connect until STA_START. */
-		s_station_connecting = false;
-		s_pending_connect_on_start = true;
+	if (ifx == WIFI_IF_STA) {
 		return ESP_OK;
 	}
-	if (ret == ESP_ERR_WIFI_CONN) {
-		ESP_LOGD(TAG, "esp_wifi_connect: already connecting");
+	return __real_esp_wifi_internal_reg_rxcb(ifx, fn);
+}
+
+/* The driver keeps the pointer it was given; the registry may change while the
+ * link is up (network split), so look it up per frame. */
+static esp_err_t wifi_rx(eh_if_type_t if_type, void *buf, uint16_t len, void *eb)
+{
+	eh_cp_traffic_cb_t cb = eh_cp_get_traffic_tx_cb(if_type);
+
+	if (!cb) {
+		esp_wifi_internal_free_rx_buffer(eb);
 		return ESP_OK;
 	}
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "esp_wifi_connect failed: 0x%x", ret);
-		s_station_connecting = false;
-	}
-	return ret;
-}
-static bool s_wifi_started = false;
-#ifdef CONFIG_ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_DISCONNECT
-static int s_wifi_reconnect_retries = 0;
-#endif
-
-
-
-/* External callback declarations */
-extern esp_err_t wlan_ap_rx_callback(void *buffer, uint16_t len, void *eb);
-
-esp_err_t eh_cp_feat_wifi_set_pending_sta_config(const wifi_config_t *cfg, bool pending)
-{
-	if (!cfg) {
-		return ESP_ERR_INVALID_ARG;
-	}
-	if (pending) {
-		memcpy(&s_pending_sta_config, cfg, sizeof(wifi_config_t));
-		s_pending_sta_config_valid = true;
-	} else {
-		s_pending_sta_config_valid = false;
-	}
-	return ESP_OK;
+	return cb(buf, len, eb);
 }
 
-void eh_cp_feat_wifi_set_station_connecting(bool connecting)
+static esp_err_t sta_rx(void *buf, uint16_t len, void *eb)
 {
-	s_station_connecting = connecting;
+	return wifi_rx(ESP_STA_IF, buf, len, eb);
 }
 
-bool eh_cp_feat_wifi_is_station_connecting(void)
+static esp_err_t ap_rx(void *buf, uint16_t len, void *eb)
 {
-	return s_station_connecting;
+	return wifi_rx(ESP_AP_IF, buf, len, eb);
 }
 
-bool eh_cp_feat_wifi_is_connect_pending_on_start(void)
+void eh_cp_feat_wifi_link(wifi_interface_t ifx, bool up)
 {
-	return s_pending_connect_on_start;
-}
+	wifi_rxcb_t rx = ifx == WIFI_IF_STA ? sta_rx : ap_rx;
 
-bool eh_cp_feat_wifi_is_station_connected(void)
-{
-	return station_connected ? true : false;
-}
-
-bool eh_cp_feat_wifi_is_started(void)
-{
-	return s_wifi_started;
-}
-
-bool eh_cp_feat_wifi_is_softap_started(void)
-{
-	return softap_started ? true : false;
-}
-
-bool eh_cp_feat_wifi_get_last_sta_connected(wifi_event_sta_connected_t *out)
-{
-	if (!out || !s_last_sta_connected_valid) {
-		return false;
-	}
-	memcpy(out, &s_last_sta_connected, sizeof(wifi_event_sta_connected_t));
-	return true;
-}
-
-void eh_cp_feat_wifi_replay_connected_event_if_needed(void)
-{
-	wifi_event_sta_connected_t connected_event;
-	if (!eh_cp_feat_wifi_is_station_connected()) {
-		return;
-	}
-	if (!eh_cp_feat_wifi_get_last_sta_connected(&connected_event)) {
-		return;
-	}
-
-	esp_event_post(
-		EH_CP_FEAT_WIFI_EVENT,
-		EH_CP_FEAT_WIFI_EVT_STA_CONNECTED_TO_AP,
-		&connected_event, sizeof(wifi_event_sta_connected_t),
-		EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
-}
-
-esp_err_t eh_cp_feat_wifi_request_disconnect(bool suppress_event)
-{
-	s_suppress_disconnect = suppress_event;
-	return esp_wifi_disconnect();
-}
-
-esp_err_t eh_cp_feat_wifi_request_connect(void)
-{
-	wifi_config_t cfg = {0};
-	if (s_station_connecting || s_pending_connect_on_start) {
-		ESP_LOGD(TAG, "Connect already pending/in progress");
-		return ESP_OK;
-	}
-	if (esp_wifi_get_config(WIFI_IF_STA, &cfg) != ESP_OK) {
-		ESP_LOGE(TAG, "Failed to get WiFi config");
-		return ESP_ERR_WIFI_NOT_INIT;
-	}
-	if (strnlen((char *)cfg.sta.ssid, sizeof(cfg.sta.ssid)) == 0) {
-		ESP_LOGE(TAG, "No SSID configured, cannot connect");
-		return ESP_ERR_WIFI_SSID;
-	}
-
-	if (s_pending_sta_config_valid) {
-		ESP_LOGI(TAG, "Applying cached STA config before connect");
-		if (esp_wifi_set_config(WIFI_IF_STA, &s_pending_sta_config) == ESP_OK) {
-			s_pending_sta_config_valid = false;
-		} else {
-			ESP_LOGW(TAG, "Failed to apply cached STA config");
-			return ESP_FAIL;
-		}
-	}
-
-	if (eh_cp_feat_wifi_is_station_connected()) {
-		if (!s_sta_reconnect_required) {
-			ESP_LOGI(TAG, "Station already connected");
-			return ESP_OK;
-		}
-		ESP_LOGW(TAG, "STA config changed; reconnecting");
-		return eh_cp_feat_wifi_request_disconnect(true);
-	}
-	s_station_connecting = true;
-	esp_err_t ret = esp_wifi_connect();
-	if (ret != ESP_OK) {
-		if (ret == ESP_ERR_WIFI_CONN) {
-			ESP_LOGD(TAG, "Connect already in progress");
-			return ESP_OK;
-		}
-		ESP_LOGE(TAG, "Failed to connect to WiFi: 0x%x", ret);
-		s_station_connecting = false;
-		return ret;
-	}
-	return ESP_OK;
-}
-
-esp_err_t eh_cp_feat_wifi_request_connect_with_config(const wifi_config_t *cfg)
-{
-	if (!cfg) {
-		return ESP_ERR_INVALID_ARG;
-	}
-
-	ESP_LOGI(TAG, "Apply STA config SSID: %.*s",
-			(int)sizeof(cfg->sta.ssid), (const char *)cfg->sta.ssid);
-
-	wifi_mode_t mode = WIFI_MODE_NULL;
-	if (esp_wifi_get_mode(&mode) == ESP_OK) {
-		if (!eh_cp_feat_wifi_is_softap_started()) {
-			if (mode != WIFI_MODE_STA) {
-				EH_CHECK_OK_WARN(esp_wifi_set_mode(WIFI_MODE_STA));
-			}
-		} else {
-			if (mode != WIFI_MODE_STA && mode != WIFI_MODE_APSTA) {
-				EH_CHECK_OK_WARN(esp_wifi_set_mode(WIFI_MODE_APSTA));
-			}
-		}
-	}
-
-	if (eh_cp_feat_wifi_is_station_connected()) {
-		ESP_LOGI(TAG, "Station connected; applying new config with reconnect");
-		eh_cp_feat_wifi_set_pending_sta_config(cfg, true);
-		return eh_cp_feat_wifi_request_disconnect(true);
-	}
-
-	wifi_config_t applied = *cfg;
-	if (esp_wifi_set_config(WIFI_IF_STA, &applied) != ESP_OK) {
-		ESP_LOGW(TAG, "Failed to set config immediately; caching");
-		eh_cp_feat_wifi_set_pending_sta_config(cfg, true);
-		return ESP_FAIL;
-	}
-
-	return eh_cp_feat_wifi_request_connect();
-}
-
-esp_err_t eh_cp_feat_wifi_set_sta_config(wifi_interface_t iface, const wifi_config_t *cfg)
-{
-	wifi_config_t current_cfg = {0};
-	bool changed = true;
-
-	if (!cfg) {
-		return ESP_ERR_INVALID_ARG;
-	}
-
-	if (iface == WIFI_IF_STA && esp_wifi_get_config(iface, &current_cfg) == ESP_OK) {
-		changed = (memcmp(&current_cfg, cfg, sizeof(wifi_config_t)) != 0);
-	}
-
-	/* IDF takes a config while stopped or associated, and refuses it only while
-	 * a connect is running. */
-	wifi_config_t applied = *cfg;
-	esp_err_t ret = esp_wifi_set_config(iface, &applied);
-
-	if (ret == ESP_ERR_WIFI_STATE && iface == WIFI_IF_STA) {
-		/* Kick in-flight attempt so disconnect handler applies the cached cfg. */
-		ESP_LOGW(TAG, "Caching new WiFi config SSID: %.*s",
-				sizeof(cfg->sta.ssid), (const char *)cfg->sta.ssid);
-		s_sta_reconnect_required = true;
-		eh_cp_feat_wifi_set_pending_sta_config(cfg, true);
-		return eh_cp_feat_wifi_request_disconnect(true);
-	}
-	if (ret != ESP_OK) {
-		ESP_LOGW(TAG, "failed to set wifi config, caching instead");
-		s_sta_reconnect_required = true;
-		return eh_cp_feat_wifi_set_pending_sta_config(cfg, true);
-	}
-
-	ESP_LOGW(TAG, "Applied WiFi config SSID: %.*s",
-			(int)sizeof(cfg->sta.ssid), (const char *)cfg->sta.ssid);
-	if (iface == WIFI_IF_STA) {
-		s_sta_reconnect_required = changed;
-	}
-	return eh_cp_feat_wifi_set_pending_sta_config(cfg, false);
+	(void)__real_esp_wifi_internal_reg_rxcb(ifx, up ? rx : NULL);
 }
 
 /* WiFi Event Handlers */
 static void station_event_handler(void *arg, esp_event_base_t event_base,
 		int32_t event_id, void *event_data)
 {
-	/* Event handlers are called from event loop callbacks.
-	 * Please make sure that this callback function is as small as possible to avoid stack overflow */
 	ESP_LOGD(TAG, "WIFI_EVENT rx on CP: event_id=%ld", (long)event_id);
 
-	if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
-		bool reconnect_pending = false;
-		wifi_event_sta_disconnected_t *disconnected_event =
-			(wifi_event_sta_disconnected_t *) event_data;
-
-		if (s_pending_sta_config_valid) {
-			ESP_LOGI(TAG, "New wifi config still unapplied, applying it");
-			int ret = esp_wifi_set_config(WIFI_IF_STA, &s_pending_sta_config);
-			if (ret) {
-				ESP_LOGE(TAG, "Error[0x%x] while setting the wifi config", ret);
-			} else {
-				s_pending_sta_config_valid = false;
-				reconnect_pending = true;
-			}
-		}
-
-			station_connected = false;
-			memset(&s_last_sta_connected, 0, sizeof(s_last_sta_connected));
-			s_last_sta_connected_valid = false;
-			esp_wifi_internal_reg_rxcb(WIFI_IF_STA, NULL);
-
-		/* Clear unconditionally; __wrap_esp_wifi_connect re-asserts on retry. */
-		s_station_connecting = false;
-
-		if (reconnect_pending) {
-			ESP_LOGW(TAG, "Triggering connect as reconnect_pending");
-			eh_cp_feat_wifi_request_connect();
-		}
-
-		bool suppress = s_suppress_disconnect;
-
-			if (suppress) {
-				ESP_LOGW(TAG, "Suppressing disconnect event due to new config");
-				s_suppress_disconnect = false;
-				if (s_sta_reconnect_required) {
-					ESP_LOGW(TAG, "Triggering connect after config-change disconnect");
-					eh_cp_feat_wifi_request_connect();
-				}
-			} else {
-			esp_event_post(
-				EH_CP_FEAT_WIFI_EVENT,
-				EH_CP_FEAT_WIFI_EVT_STA_DISCONNECTED_FROM_AP,
-				disconnected_event, sizeof(wifi_event_sta_disconnected_t),
-				EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
-
-			ESP_LOGV(TAG, "Station disconnected, reason[%u]", disconnected_event->reason);
-#ifdef CONFIG_ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_DISCONNECT
-			if (s_wifi_reconnect_retries < CONFIG_ESP_HOSTED_WIFI_AUTO_RECONNECT_MAX_RETRY) {
-				ESP_LOGI(TAG, "Auto-reconnecting to WiFi, attempt %d", s_wifi_reconnect_retries + 1);
-				eh_cp_feat_wifi_request_connect();
-				s_wifi_reconnect_retries++;
-			} else {
-				ESP_LOGE(TAG, "Max auto-reconnect retries reached, reset retry count");
-				s_wifi_reconnect_retries = 0;
-			}
-#endif
-		}
-
-	} else if (event_id == WIFI_EVENT_STA_CONNECTED) {
-		wifi_event_sta_connected_t * connected_event =
-			(wifi_event_sta_connected_t *) event_data;
-
-		if (s_pending_sta_config_valid) {
-			ESP_LOGW(TAG, "New wifi config still unapplied, applying it");
-			int ret = esp_wifi_set_config(WIFI_IF_STA, &s_pending_sta_config);
-			if (ret) {
-				ESP_LOGE(TAG, "Error[0x%x] while setting the wifi config", ret);
-			} else {
-				s_pending_sta_config_valid = false;
-			}
-			esp_wifi_disconnect();
-			s_suppress_disconnect = true;
-			return;
-		}
-
-			s_station_connecting = false;
-			s_sta_reconnect_required = false;
-#ifdef CONFIG_ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_DISCONNECT
-			s_wifi_reconnect_retries = 0;
-#endif
-		/* Event should not be triggered if event handler is
-		 * called as part of host triggered procedure like sta_disconnect etc
-		 **/
-		esp_event_post(
-			EH_CP_FEAT_WIFI_EVENT,
-			EH_CP_FEAT_WIFI_EVT_STA_CONNECTED_TO_AP,
-			connected_event, sizeof(wifi_event_sta_connected_t),
-			EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
-
-		memcpy(&s_last_sta_connected, connected_event, sizeof(wifi_event_sta_connected_t));
-		s_last_sta_connected_valid = true;
-
-		esp_wifi_internal_reg_rxcb(WIFI_IF_STA, (wifi_rxcb_t)eh_cp_rx_get(ESP_STA_IF));
-		station_connected = true;
-		size_t cl = connected_event->ssid_len;
-		if (cl > sizeof(connected_event->ssid)) cl = sizeof(connected_event->ssid);
-		ESP_LOGI(TAG, "--- Station connected %.*s ---", (int)cl, connected_event->ssid);
-
-	} else if (event_id == WIFI_EVENT_STA_START) {
-		s_wifi_started = true;
-		if (s_pending_connect_on_start) {
-			s_pending_connect_on_start = false;
-			__wrap_esp_wifi_connect();
-		}
-		esp_event_post(
-			EH_CP_FEAT_WIFI_EVENT,
-			EH_CP_FEAT_WIFI_EVT_STA_STARTED, NULL, 0, EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
-
-		} else if (event_id == WIFI_EVENT_STA_STOP) {
-				s_wifi_started = false;
-				station_connected = false;
-				s_station_connecting = false;
-				s_sta_reconnect_required = false;
-				memset(&s_last_sta_connected, 0, sizeof(s_last_sta_connected));
-				s_last_sta_connected_valid = false;
-				esp_wifi_internal_reg_rxcb(WIFI_IF_STA, NULL);
-			esp_event_post(
-				EH_CP_FEAT_WIFI_EVENT,
-				EH_CP_FEAT_WIFI_EVT_STA_STOPPED, NULL, 0, EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
-	}
+	eh_cp_sta_fsm_wifi_event(event_id, event_data);
 }
 
 /* event handler for starting softap */
@@ -438,22 +121,8 @@ static void softap_event_handler(void *arg, esp_event_base_t event_base,
 				EH_CP_FEAT_WIFI_EVT_STA_DISCONNECTED_FROM_ESP_SOFTAP,
 				event, sizeof(wifi_event_ap_stadisconnected_t),
 				EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
-	} else if (event_id == WIFI_EVENT_AP_START) {
-
-		softap_started = true;
-		esp_wifi_internal_reg_rxcb(WIFI_IF_AP, (wifi_rxcb_t)eh_cp_rx_get(ESP_AP_IF));
-		esp_event_post(
-			EH_CP_FEAT_WIFI_EVENT,
-			EH_CP_FEAT_WIFI_EVT_SOFTAP_STARTED, NULL, 0, EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
-
-	} else if (event_id == WIFI_EVENT_AP_STOP) {
-
-		ESP_LOGI(TAG,"softap stop handler stop");
-		softap_started = false;
-		esp_wifi_internal_reg_rxcb(WIFI_IF_AP,NULL);
-		esp_event_post(
-			EH_CP_FEAT_WIFI_EVENT,
-			EH_CP_FEAT_WIFI_EVT_SOFTAP_STOPPED, NULL, 0, EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT));
+	} else {
+		eh_cp_ap_fsm_wifi_event(event_id);     /* AP_START / AP_STOP */
 	}
 }
 
@@ -533,15 +202,75 @@ static void eh_cp_wifi_event_publisher_stop_ap_scan_list_events(void)
 	esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &ap_scan_list_event_handler);
 }
 
+/* The host (re)connected (boot, wake, CP re-handshake): its view of the station
+ * comes from the FSM; network split follows with the lease. */
+static void on_host_connected(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+	(void)arg;
+	(void)base;
+	(void)id;
+	(void)data;
+	eh_cp_feat_wifi_resync_host();
+}
+
+static void on_flush_mark(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+	(void)arg;
+	(void)base;
+	(void)id;
+	(void)data;
+	xSemaphoreGive(s_flush_mark);
+}
+
+void eh_cp_feat_wifi_reports_flush(void)
+{
+	if (!s_flush_on || strcmp(pcTaskGetName(NULL), "sys_evt") == 0) {
+		return;
+	}
+	xSemaphoreTake(s_flush_mtx, portMAX_DELAY);
+	for (int hop = 0; hop < REPORT_HOPS; hop++) {
+		(void)xSemaphoreTake(s_flush_mark, 0);       /* a mark from a timed-out round */
+		if (esp_event_post(EH_CP_WIFI_FLUSH_EVENT, 0, NULL, 0, pdMS_TO_TICKS(10)) != ESP_OK ||
+		    xSemaphoreTake(s_flush_mark, pdMS_TO_TICKS(100)) != pdTRUE) {
+			ESP_LOGW(TAG, "event loop busy: reply may overtake a report");
+			break;
+		}
+	}
+	xSemaphoreGive(s_flush_mtx);
+}
+
 /* Initialize event trigger */
 esp_err_t eh_cp_wifi_event_publisher_init(void)
 {
 	ESP_LOGI(TAG, "Initializing event trigger");
 
-	/* Register WiFi event handlers */
+	if (!s_flush_mark) {
+		s_flush_mtx = xSemaphoreCreateMutex();
+		s_flush_mark = xSemaphoreCreateBinary();
+		if (!s_flush_mtx || !s_flush_mark) {
+			return ESP_ERR_NO_MEM;
+		}
+	}
+	if (esp_event_handler_register(EH_CP_WIFI_FLUSH_EVENT, 0, on_flush_mark, NULL) != ESP_OK) {
+		return ESP_FAIL;
+	}
+	s_flush_on = true;
+
+	/* Handlers first: the FSM then syncs to a radio already running. */
 	eh_cp_wifi_event_publisher_start_station_events();
 	eh_cp_wifi_event_publisher_start_softap_events();
 	eh_cp_wifi_event_publisher_start_ap_scan_list_events();
+	esp_err_t rc = eh_cp_sta_fsm_init();
+	if (rc == ESP_OK) {
+		rc = eh_cp_ap_fsm_init();
+	}
+	if (rc != ESP_OK) {
+		return rc;
+	}
+	rc = esp_event_handler_register(EH_CP_EVENT, EH_CP_EVT_ESP_INIT, on_host_connected, NULL);
+	if (rc != ESP_OK) {
+		return rc;
+	}
 
 	ESP_LOGI(TAG, "Event trigger initialized");
 	return ESP_OK;
@@ -556,9 +285,11 @@ esp_err_t eh_cp_wifi_event_publisher_deinit(void)
 	eh_cp_wifi_event_publisher_stop_station_events();
 	eh_cp_wifi_event_publisher_stop_softap_events();
 	eh_cp_wifi_event_publisher_stop_ap_scan_list_events();
-	s_sta_reconnect_required = false;
-	memset(&s_last_sta_connected, 0, sizeof(s_last_sta_connected));
-	s_last_sta_connected_valid = false;
+	(void)esp_event_handler_unregister(EH_CP_EVENT, EH_CP_EVT_ESP_INIT, on_host_connected);
+	s_flush_on = false;
+	(void)esp_event_handler_unregister(EH_CP_WIFI_FLUSH_EVENT, 0, on_flush_mark);
+	eh_cp_ap_fsm_deinit();
+	eh_cp_sta_fsm_deinit();
 
 	ESP_LOGI(TAG, "Event trigger deinitialized");
 	return ESP_OK;

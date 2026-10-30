@@ -8692,6 +8692,96 @@ void   rpc__resp__get_dhcp_dns_status__free_unpacked
   assert(message->base.descriptor == &rpc__resp__get_dhcp_dns_status__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   rpc__req__set_context__init
+                     (RpcReqSetContext         *message)
+{
+  static const RpcReqSetContext init_value = RPC__REQ__SET_CONTEXT__INIT;
+  *message = init_value;
+}
+size_t rpc__req__set_context__get_packed_size
+                     (const RpcReqSetContext *message)
+{
+  assert(message->base.descriptor == &rpc__req__set_context__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__req__set_context__pack
+                     (const RpcReqSetContext *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__req__set_context__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__req__set_context__pack_to_buffer
+                     (const RpcReqSetContext *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__req__set_context__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcReqSetContext *
+       rpc__req__set_context__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcReqSetContext *)
+     protobuf_c_message_unpack (&rpc__req__set_context__descriptor,
+                                allocator, len, data);
+}
+void   rpc__req__set_context__free_unpacked
+                     (RpcReqSetContext *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__req__set_context__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   rpc__resp__set_context__init
+                     (RpcRespSetContext         *message)
+{
+  static const RpcRespSetContext init_value = RPC__RESP__SET_CONTEXT__INIT;
+  *message = init_value;
+}
+size_t rpc__resp__set_context__get_packed_size
+                     (const RpcRespSetContext *message)
+{
+  assert(message->base.descriptor == &rpc__resp__set_context__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__resp__set_context__pack
+                     (const RpcRespSetContext *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__resp__set_context__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__resp__set_context__pack_to_buffer
+                     (const RpcRespSetContext *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__resp__set_context__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcRespSetContext *
+       rpc__resp__set_context__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcRespSetContext *)
+     protobuf_c_message_unpack (&rpc__resp__set_context__descriptor,
+                                allocator, len, data);
+}
+void   rpc__resp__set_context__free_unpacked
+                     (RpcRespSetContext *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__resp__set_context__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   rpc__req__supp_dpp_init__init
                      (RpcReqSuppDppInit         *message)
 {
@@ -14450,6 +14540,51 @@ void   rpc__event__mem_monitor__free_unpacked
   if(!message)
     return;
   assert(message->base.descriptor == &rpc__event__mem_monitor__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   rpc__event__context__init
+                     (RpcEventContext         *message)
+{
+  static const RpcEventContext init_value = RPC__EVENT__CONTEXT__INIT;
+  *message = init_value;
+}
+size_t rpc__event__context__get_packed_size
+                     (const RpcEventContext *message)
+{
+  assert(message->base.descriptor == &rpc__event__context__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__event__context__pack
+                     (const RpcEventContext *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__event__context__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__event__context__pack_to_buffer
+                     (const RpcEventContext *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__event__context__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcEventContext *
+       rpc__event__context__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcEventContext *)
+     protobuf_c_message_unpack (&rpc__event__context__descriptor,
+                                allocator, len, data);
+}
+void   rpc__event__context__free_unpacked
+                     (RpcEventContext *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__event__context__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   rpc__init
@@ -23487,6 +23622,106 @@ const ProtobufCMessageDescriptor rpc__resp__get_dhcp_dns_status__descriptor =
   (ProtobufCMessageInit) rpc__resp__get_dhcp_dns_status__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+static const ProtobufCFieldDescriptor rpc__req__set_context__field_descriptors[2] =
+{
+  {
+    NULL, /* CODE_SIZE */
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqSetContext, type),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BYTES,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqSetContext, data),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const ProtobufCIntRange rpc__req__set_context__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor rpc__req__set_context__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  NULL,NULL,NULL,NULL, /* CODE_SIZE */
+  sizeof(RpcReqSetContext),
+  2,
+  rpc__req__set_context__field_descriptors,
+  NULL, /* CODE_SIZE */
+  1,  rpc__req__set_context__number_ranges,
+  (ProtobufCMessageInit) rpc__req__set_context__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rpc__resp__set_context__field_descriptors[3] =
+{
+  {
+    NULL, /* CODE_SIZE */
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespSetContext, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespSetContext, type),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BYTES,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespSetContext, data),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const ProtobufCIntRange rpc__resp__set_context__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 3 }
+};
+const ProtobufCMessageDescriptor rpc__resp__set_context__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  NULL,NULL,NULL,NULL, /* CODE_SIZE */
+  sizeof(RpcRespSetContext),
+  3,
+  rpc__resp__set_context__field_descriptors,
+  NULL, /* CODE_SIZE */
+  1,  rpc__resp__set_context__number_ranges,
+  (ProtobufCMessageInit) rpc__resp__set_context__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
 static const ProtobufCFieldDescriptor rpc__req__supp_dpp_init__field_descriptors[1] =
 {
   {
@@ -28862,7 +29097,63 @@ const ProtobufCMessageDescriptor rpc__event__mem_monitor__descriptor =
   (ProtobufCMessageInit) rpc__event__mem_monitor__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rpc__field_descriptors[270] =
+static const ProtobufCFieldDescriptor rpc__event__context__field_descriptors[3] =
+{
+  {
+    NULL, /* CODE_SIZE */
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventContext, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventContext, type),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BYTES,
+    0,   /* quantifier_offset */
+    offsetof(RpcEventContext, data),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const ProtobufCIntRange rpc__event__context__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 3 }
+};
+const ProtobufCMessageDescriptor rpc__event__context__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  NULL,NULL,NULL,NULL, /* CODE_SIZE */
+  sizeof(RpcEventContext),
+  3,
+  rpc__event__context__field_descriptors,
+  NULL, /* CODE_SIZE */
+  1,  rpc__event__context__number_ranges,
+  (ProtobufCMessageInit) rpc__event__context__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rpc__field_descriptors[273] =
 {
   {
     NULL, /* CODE_SIZE */
@@ -30378,6 +30669,18 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[270] =
   },
   {
     NULL, /* CODE_SIZE */
+    408,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, req_set_context),
+    &rpc__req__set_context__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
     513,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
@@ -31854,6 +32157,18 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[270] =
   },
   {
     NULL, /* CODE_SIZE */
+    664,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, resp_set_context),
+    &rpc__resp__set_context__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
     769,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
@@ -32104,6 +32419,18 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[270] =
     PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    NULL, /* CODE_SIZE */
+    790,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, event_context),
+    &rpc__event__context__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const ProtobufCIntRange rpc__number_ranges[16 + 1] =
 {
@@ -32115,22 +32442,22 @@ static const ProtobufCIntRange rpc__number_ranges[16 + 1] =
   { 334, 54 },
   { 337, 56 },
   { 341, 59 },
-  { 513, 126 },
-  { 553, 164 },
-  { 567, 172 },
-  { 581, 175 },
-  { 590, 177 },
-  { 593, 179 },
-  { 597, 182 },
-  { 769, 249 },
-  { 0, 270 }
+  { 513, 127 },
+  { 553, 165 },
+  { 567, 173 },
+  { 581, 176 },
+  { 590, 178 },
+  { 593, 180 },
+  { 597, 183 },
+  { 769, 251 },
+  { 0, 273 }
 };
 const ProtobufCMessageDescriptor rpc__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   NULL,NULL,NULL,NULL, /* CODE_SIZE */
   sizeof(Rpc),
-  270,
+  273,
   rpc__field_descriptors,
   NULL, /* CODE_SIZE */
   16,  rpc__number_ranges,
@@ -32338,7 +32665,7 @@ const ProtobufCEnumDescriptor rpc_feature_option__descriptor =
   rpc_feature_option__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue rpc_id__enum_values_by_number[326] =
+static const ProtobufCEnumValue rpc_id__enum_values_by_number[329] =
 {
   { NULL, NULL, 0 }, /* CODE_SIZE */
   { NULL, NULL, 256 }, /* CODE_SIZE */
@@ -32492,6 +32819,7 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[326] =
   { NULL, NULL, 406 }, /* CODE_SIZE */
   { NULL, NULL, 407 }, /* CODE_SIZE */
   { NULL, NULL, 408 }, /* CODE_SIZE */
+  { NULL, NULL, 409 }, /* CODE_SIZE */
   { NULL, NULL, 512 }, /* CODE_SIZE */
   { NULL, NULL, 513 }, /* CODE_SIZE */
   { NULL, NULL, 514 }, /* CODE_SIZE */
@@ -32643,6 +32971,7 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[326] =
   { NULL, NULL, 662 }, /* CODE_SIZE */
   { NULL, NULL, 663 }, /* CODE_SIZE */
   { NULL, NULL, 664 }, /* CODE_SIZE */
+  { NULL, NULL, 665 }, /* CODE_SIZE */
   { NULL, NULL, 768 }, /* CODE_SIZE */
   { NULL, NULL, 769 }, /* CODE_SIZE */
   { NULL, NULL, 770 }, /* CODE_SIZE */
@@ -32666,15 +32995,16 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[326] =
   { NULL, NULL, 788 }, /* CODE_SIZE */
   { NULL, NULL, 789 }, /* CODE_SIZE */
   { NULL, NULL, 790 }, /* CODE_SIZE */
+  { NULL, NULL, 791 }, /* CODE_SIZE */
 };
 static const ProtobufCIntRange rpc_id__value_ranges[] = {
-{0, 0},{256, 1},{297, 40},{512, 152},{553, 191},{768, 303},{0, 326}
+{0, 0},{256, 1},{297, 40},{512, 153},{553, 192},{768, 305},{0, 329}
 };
 const ProtobufCEnumDescriptor rpc_id__descriptor =
 {
   PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
   NULL,NULL,NULL,NULL, /* CODE_SIZE */
-  326,
+  329,
   rpc_id__enum_values_by_number,
   0, NULL, /* CODE_SIZE */
   6,

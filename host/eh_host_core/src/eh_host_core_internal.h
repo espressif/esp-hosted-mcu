@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Private to eh_host_core sources (incl. per-port reconfigure TUs). */
 
 #ifndef EH_HOST_CORE_INTERNAL_H_
@@ -19,5 +23,8 @@
     ((EH_HOST_CONNECT_DOER_TIMEOUT_MS > EH_HOST_CONNECT_WAITER_FLOOR_MS) \
         ? EH_HOST_CONNECT_DOER_TIMEOUT_MS \
         : EH_HOST_CONNECT_WAITER_FLOOR_MS)
+
+/* Feature auto-init after the CP's INIT (MCU: own task), as long as a waiter waits. */
+#define EH_HOST_FEAT_INIT_WAIT_MS EH_HOST_CONNECT_WAITER_TIMEOUT_MS
 
 #endif /* EH_HOST_CORE_INTERNAL_H_ */

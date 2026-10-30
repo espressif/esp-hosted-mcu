@@ -264,6 +264,7 @@ int eh_host_mcu_transport_deinit(void)
     /* Re-arm auto-init so the next INIT event re-spawns feature init; without
      * this the second bring-up skips it and CP async events go unhandled. */
     s_auto_init_started = 0;
+    eh_host_auto_init_rearm();
 #endif
     eh_host_port_mutex_unlock(s_mtx);
     eh_host_mcu_transport_state_set(EH_HOST_MCU_TRANSPORT_INACTIVE);

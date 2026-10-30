@@ -1,5 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -25,6 +30,36 @@ size_t eh_host_auto_init_count(void)
         return 0;
     }
     return bytes / sizeof(eh_host_feat_desc_t);
+}
+
+/* 0 while a bring-up's feature init is pending (only when features exist). */
+static volatile int s_done = -1;
+
+static int done(void)
+{
+    if (s_done < 0) {
+        s_done = eh_host_auto_init_count() == 0;
+    }
+    return s_done;
+}
+
+void eh_host_auto_init_rearm(void)
+{
+    s_done = eh_host_auto_init_count() == 0;
+}
+
+int eh_host_auto_init_wait(uint32_t timeout_ms)
+{
+    uint32_t waited = 0;
+
+    while (!done()) {
+        if (waited >= timeout_ms) {
+            return -ETIMEDOUT;
+        }
+        eh_host_port_task_delay_ms(10);
+        waited += 10;
+    }
+    return 0;
 }
 
 static uint8_t *g_inited_flags;
@@ -76,6 +111,7 @@ int eh_host_auto_init_features(void)
     size_t n = eh_host_auto_init_count();
     if (n == 0) {
         EH_AUTO_INIT_LOG("auto_init: no registered features");
+        s_done = 1;
         return 0;
     }
     EH_AUTO_INIT_LOG("auto_init: found %u descriptor(s)", (unsigned int)n);
@@ -129,6 +165,7 @@ int eh_host_auto_init_features(void)
     if (heap_buf) {
         free(heap_buf);
     }
+    s_done = 1;
     return first_err;
 }
 

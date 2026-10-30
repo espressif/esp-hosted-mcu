@@ -26,6 +26,7 @@ if _tests_dir not in sys.path:
 
 from targets.base import BenchSpec   # noqa: E402
 from targets.emu import EmuTarget    # noqa: E402
+from infra import ps_wake            # noqa: E402
 
 _PS_EXAMPLE = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
 
@@ -42,7 +43,8 @@ def _bench(lab_tmp, worker_id):
     fixtures — one specific BenchSpec of the emu Target."""
     b = EmuTarget().make(
         BenchSpec(example=_PS_EXAMPLE, host_role='esp_host', transport='sdio',
-                  wake=True, timeout='200s'),
+                  wake=True, timeout='200s', cp_extra_ovl=ps_wake.CP_OVL,
+                  extra_ovl=ps_wake.HOST_OVL),
         worker_id=worker_id, lab_tmp=lab_tmp)
     yield {'host': b.host, 'cp': b.cp, 'net': b.net,
            'artifacts': b.artifacts}

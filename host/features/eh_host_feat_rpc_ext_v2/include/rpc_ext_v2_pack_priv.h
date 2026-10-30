@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #ifndef EH_HOST_FEAT_RPC_EXT_V2_PACK_PRIV_H_
 #define EH_HOST_FEAT_RPC_EXT_V2_PACK_PRIV_H_
 
@@ -42,6 +46,7 @@ compose_fn rpc_ext_v2_pick_req_gpio_exp(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_rf_cert(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_ext_coex(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_feature_control(int32_t msg_id);
+compose_fn rpc_ext_v2_pick_req_context(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_wifi(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_wifi_ext_dpp(int32_t msg_id);
 compose_fn rpc_ext_v2_pick_req_wifi_ext_ent(int32_t msg_id);

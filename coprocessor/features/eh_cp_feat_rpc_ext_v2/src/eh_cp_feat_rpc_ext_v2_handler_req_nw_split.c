@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,6 +20,7 @@
 #if EH_CP_FEAT_NW_SPLIT_READY
 #include "eh_cp_feat_nw_split_apis.h"
 #include "eh_cp_feat_nw_split_events.h"
+#include "eh_common_ctx.h"
 #endif
 #if EH_CP_FEAT_WIFI_READY
 #include "eh_cp_feat_wifi.h"
@@ -29,43 +30,6 @@
 static const char *TAG = "mcu_nw_split_rpc";
 
 #if EH_CP_FEAT_NW_SPLIT_READY
-/* DHCP/DNS event handling - uses extension system like Linux FG */
-static void rpc_mcu_send_dhcp_dns_info_to_host(uint8_t network_up, uint8_t send_wifi_connected)
-{
-	eh_cp_feat_nw_split_status_t status = {0};
-
-	if (network_up) {
-		esp_err_t ret = eh_cp_feat_nw_split_get_status(WIFI_IF_STA, &status);
-		if (ret != ESP_OK) {
-			ESP_LOGW(TAG, "Failed to get network status, sending DOWN status");
-			memset(&status, 0, sizeof(status));
-		}
-	}
-
-	EH_CHECK_OK_WARN(eh_cp_rpc_send_event(
-				RPC_ID__Event_DhcpDnsStatus,
-		&status, sizeof(eh_cp_feat_nw_split_status_t)));
-
-	vTaskDelay(pdMS_TO_TICKS(10));
-	if (send_wifi_connected && eh_cp_feat_wifi_is_station_connected()) {
-		eh_cp_rpc_send_event(
-						RPC_ID__Event_StaConnected,
-			&mcu_lkg_sta_connected_event, sizeof(wifi_event_sta_connected_t));
-	}
-
-	ESP_EARLY_LOGI(TAG, "Send DHCP-DNS status to Host: IP: %s, NM: %s, GW: %s, DNS IP: %s, Type: %"PRId32,
-			(char *)status.dhcp_ip,
-			(char *)status.dhcp_nm,
-			(char *)status.dhcp_gw,
-			(char *)status.dns_ip,
-			status.dns_type);
-}
-
-void send_dhcp_dns_info_to_host(uint8_t network_up, uint8_t send_wifi_connected)
-{
-	rpc_mcu_send_dhcp_dns_info_to_host(network_up, send_wifi_connected);
-}
-
 /* Get DHCP/DNS status handler */
 esp_err_t req_get_dhcp_dns_status(Rpc *req, Rpc *resp, void *priv_data)
 {
@@ -130,6 +94,26 @@ esp_err_t req_set_dhcp_dns_status(Rpc *req, Rpc *resp, void *priv_data)
 	}
 
 	return ESP_OK;
+}
+
+int32_t ctx_nw_split_ip_owner(const ProtobufCBinaryData *in, ProtobufCBinaryData *out)
+{
+	eh_ctx_ip_owner_req_t rq;
+	eh_ctx_ip_owner_t a = {0};
+	bool pending = false;
+
+	if (!eh_ctx_unpack(&rq, sizeof(rq), sizeof(rq), in->data, in->len)) {
+		return ESP_ERR_INVALID_ARG;
+	}
+	esp_err_t rc = eh_cp_feat_nw_split_set_ip_owner(rq.owner, &a.owner, &pending);
+	a.pending = pending;
+	out->data = malloc(sizeof(a));
+	if (!out->data) {
+		return ESP_ERR_NO_MEM;
+	}
+	memcpy(out->data, &a, sizeof(a));
+	out->len = sizeof(a);
+	return rc;
 }
 
 #endif /* EH_CP_FEAT_NW_SPLIT_READY */

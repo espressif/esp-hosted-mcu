@@ -399,6 +399,20 @@ int eh_host_deinit(void)
     return 0;
 }
 
+/* Features create what an app looks up right after connect (nw_split's WIFI_STA_DEF):
+ * connect returns once they are up. */
+static int features_up(void)
+{
+#if EH_HOST_AUTO_FEAT_INIT
+    if (eh_host_auto_init_wait(EH_HOST_FEAT_INIT_WAIT_MS) != 0) {
+        ESP_LOGE("eh_host_core", "feature init not done after %u ms",
+                 (unsigned int)EH_HOST_FEAT_INIT_WAIT_MS);
+        return -ETIMEDOUT;
+    }
+#endif
+    return 0;
+}
+
 int eh_host_connect_to_slave(void)
 {
     if (s_init_state != INIT_DONE) {
@@ -424,7 +438,7 @@ int eh_host_connect_to_slave(void)
 
     if (s_bringup_state == BRINGUP_DONE) {
         eh_host_port_mutex_unlock(s_bringup_lock);
-        return 0;
+        return features_up();
     }
     if (s_bringup_state == BRINGUP_FAILED) {
         eh_host_port_mutex_unlock(s_bringup_lock);
@@ -438,5 +452,5 @@ int eh_host_connect_to_slave(void)
         esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_UP, NULL, 0, 0);
     }
     eh_host_port_mutex_unlock(s_bringup_lock);
-    return rc;
+    return rc == 0 ? features_up() : rc;
 }

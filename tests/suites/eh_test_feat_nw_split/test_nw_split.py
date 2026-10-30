@@ -108,10 +108,8 @@ def test_nwsplit_cp_autoconnect_host_receives_ip(bench, wifi_ap, transport):
 # ── Owner 2: host CLI — nobody auto-connects; console drives it ──────────────
 @pytest.mark.nw_split
 @pytest.mark.wifi
-@pytest.mark.parametrize('transport', [
-    pytest.param('sdio', marks=pytest.mark.sanity),
-    'uart', 'spi_hd', 'spi_fd'])
-@pytest.mark.second_chance
+# Feature test: split traffic per wire is test_nwsplit_cp_autoconnect_host_receives_ip.
+@pytest.mark.parametrize('transport', [pytest.param('sdio', marks=pytest.mark.sanity)])
 def test_nwsplit_host_cli_connect(bench, wifi_ap, transport):
     """Host CLI owns the connect: CP auto OFF, host feature auto OFF, so NO IP
     until the console `sta_connect`. The negative ("no IP before connect") now
@@ -137,10 +135,8 @@ def test_nwsplit_host_cli_connect(bench, wifi_ap, transport):
 # ── Owner 3: host nw_split feature auto-connect (no CLI) ─────────────────────
 @pytest.mark.nw_split
 @pytest.mark.wifi
-@pytest.mark.parametrize('transport', [
-    pytest.param('sdio', marks=pytest.mark.sanity),
-    'uart', 'spi_hd', 'spi_fd'])
-@pytest.mark.second_chance
+# Feature test: split traffic per wire is test_nwsplit_cp_autoconnect_host_receives_ip.
+@pytest.mark.parametrize('transport', [pytest.param('sdio', marks=pytest.mark.sanity)])
 def test_nwsplit_host_feature_autoconnect(bench, wifi_ap, transport):
     """Host feature owns the connect: CP auto OFF, host feature auto ON with creds
     provisioned at build. The host obtains the IP on STA_START with NO CLI — this
@@ -164,7 +160,6 @@ def test_nwsplit_host_feature_autoconnect(bench, wifi_ap, transport):
 @pytest.mark.nw_split
 @pytest.mark.wifi
 @pytest.mark.parametrize('transport', [pytest.param('sdio', marks=pytest.mark.sanity)])
-@pytest.mark.second_chance
 def test_nwsplit_host_station_example_connect(bench, wifi_ap, transport):
     """Host application owns the connect: the station example's own event handler
     connects on STA_START and retries on disconnect. CP auto OFF so the app is the
@@ -184,11 +179,8 @@ def test_nwsplit_host_station_example_connect(bench, wifi_ap, transport):
 # ── Port-class routing: host-range -> host stack, CP-local -> CP stack ───────
 @pytest.mark.nw_split
 @pytest.mark.wifi
-@pytest.mark.parametrize('transport', [
-    pytest.param('sdio', marks=pytest.mark.sanity),
-    'uart', 'spi_hd', 'spi_fd'])  # spi_fd was allow_fail: fixed by esp-emu gpspi_slave
-    # HS/DR wall-time re-broadcast gate; blanket @second_chance below covers contention.
-@pytest.mark.second_chance
+# Feature test: split traffic per wire is test_nwsplit_cp_autoconnect_host_receives_ip.
+@pytest.mark.parametrize('transport', [pytest.param('sdio', marks=pytest.mark.sanity)])
 @pytest.mark.xdist_group("emu_heavy")  # serialize heavy spi_fd echo under parallel load
 def test_nwsplit_port_routing_host_vs_cp(bench, wifi_ap, transport):
     """Single owner (host CLI), then prove the 802.3 split routes by port class:

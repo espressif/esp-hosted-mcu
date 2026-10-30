@@ -293,9 +293,11 @@ enum RpcId {
 	Req_PhyBleRx                      = 406; // 0x196
 	Req_PhyBtTxTone                   = 407; // 0x197
 
+	Req_SetContext                    = 408; // 0x198
+
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 408; //0x198
+	Req_Max = 409; //0x199
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -488,9 +490,11 @@ enum RpcId {
 	Resp_PhyBleRx                             = 662;
 	Resp_PhyBtTxTone                          = 663;
 
+	Resp_SetContext                           = 664;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 664;
+	Resp_Max = 665;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -522,10 +526,11 @@ enum RpcId {
 	Event_CustomRpc = 788;
 
 	Event_MemMonitor = 789;
+	Event_Context = 790;
 
 	/* Add new control path command notification before Event_Max
 	 * and update Event_Max */
-	Event_Max = 790;
+	Event_Max = 791;
 }
 
 message wifi_init_config {
@@ -1668,6 +1673,20 @@ message Rpc_Resp_GetDhcpDnsStatus {
 	int32 resp = 10;
 }
 
+/* type: eh_ctx_type_t (eh_common_ctx.h); data: that type's packed little-endian
+ * struct. Types and fields are only ever added: an unknown type is refused,
+ * a longer data is read up to the fields the receiver knows. */
+message Rpc_Req_SetContext {
+	uint32 type = 1;
+	bytes data = 2;
+}
+
+message Rpc_Resp_SetContext {
+	int32 resp = 1;
+	uint32 type = 2;
+	bytes data = 3;
+}
+
 message Rpc_Req_SuppDppInit {
 	bool cb = 1; // enables sending of Event_SuppDpp to host via callback
 }
@@ -2333,6 +2352,13 @@ message Rpc_Event_MemMonitor {
 	heap_info curr_external = 5;           // current heap levels for external memory
 }
 
+/* A context the CP changed on its own; same type and data as Rpc_Resp_SetContext. */
+message Rpc_Event_Context {
+	int32 resp = 1;
+	uint32 type = 2;
+	bytes data = 3;
+}
+
 message Rpc {
 	/* msg_type could be req, resp or Event */
 	RpcType msg_type = 1;
@@ -2496,6 +2522,7 @@ message Rpc {
 		Rpc_Req_PhyBleTx                    req_phy_ble_tx                    = 405;
 		Rpc_Req_PhyBleRx                    req_phy_ble_rx                    = 406;
 		Rpc_Req_PhyBtTxTone                 req_phy_bt_tx_tone                = 407;
+		Rpc_Req_SetContext                  req_set_context                   = 408;
 
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
@@ -2647,6 +2674,7 @@ message Rpc {
 		Rpc_Resp_PhyBleTx                   resp_phy_ble_tx                   = 661;
 		Rpc_Resp_PhyBleRx                   resp_phy_ble_rx                   = 662;
 		Rpc_Resp_PhyBtTxTone                resp_phy_bt_tx_tone               = 663;
+		Rpc_Resp_SetContext                 resp_set_context                  = 664;
 
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;
@@ -2671,5 +2699,6 @@ message Rpc {
 
 		Rpc_Event_CustomRpc                 event_custom_rpc                   = 788;
 		Rpc_Event_MemMonitor                event_mem_monitor                  = 789;
+		Rpc_Event_Context                   event_context                      = 790;
 	}
 }

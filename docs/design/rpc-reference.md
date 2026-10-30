@@ -140,6 +140,7 @@ Each request has a corresponding response.
 | 121 | 405 | PhyBleTx | Unreleased |
 | 122 | 406 | PhyBleRx | Unreleased |
 | 123 | 407 | PhyBtTxTone | Unreleased |
+| 124 | 408 | SetContext | Unreleased |
 
 ---
 
@@ -170,3 +171,17 @@ Events are pushed from the co-processor to the host asynchronously.
 | 19 | 787 | WifiDppFail | 2.4.3 |
 | 20 | 788 | CustomRpc | 2.8.1 |
 | 21 | 789 | MemMonitor | 2.11.7 |
+| 22 | 790 | Context | Unreleased |
+
+---
+
+## Context types
+
+`SetContext` (request), its response, and the `Context` event carry a `type` and a packed, little-endian `data` struct, listed in `common/eh_common/include/eh_common_ctx.h`. A new setting is a new type there, not a new RPC.
+
+- A receiver that does not know a type answers `ESP_ERR_NOT_SUPPORTED`.
+- Fields are only appended. A newer `data` is read up to the fields the receiver knows; an older one leaves the missing fields at 0.
+
+| Type | Name | Request `data` | Response / event `data` | Added in Release |
+|----:|------|----------------|-------------------------|-----------------:|
+| 1 | NW_SPLIT_IP_OWNER | `iface`, `owner` (1 CP, 2 host) | `owner` in effect, `pending` (applies at the next disconnect) | Unreleased |

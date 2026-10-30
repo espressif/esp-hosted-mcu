@@ -79,8 +79,9 @@ class EmuDut:
         from infra import lab
         self.proc = lab.track(subprocess.Popen(
             argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, text=True, bufsize=1, env=env))
-        threading.Thread(target=self._pump, daemon=True).start()
+            stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1, env=env))
+        self._pump_t = threading.Thread(target=self._pump, daemon=True)
+        self._pump_t.start()
 
     def _pump(self):
         for line in self.proc.stdout:
@@ -105,19 +106,28 @@ class EmuDut:
         wants = [success] if isinstance(success, str) else list(success)
         t0 = time.time()
         end = t0 + timeout
-        while time.time() < end and self.proc.poll() is None:
+        while time.time() < end:
+            # After the emu exits, scan once more what its last output left behind.
+            done = self.proc.poll() is not None and not self._pump_t.is_alive()
             text = self._unconsumed()
-            for fp in fails:
-                if (fp in text) if exact else re.search(fp, text):
-                    raise RuntimeError(f'not_matching pattern hit: {fp!r}')
+            hit = None                          # (start, end, result) of the first want found
             for w in wants:
                 idx = text.find(w) if exact else None
                 m = None if exact else re.search(w, text)
                 if (exact and idx >= 0) or m:
-                    hit_end = (idx + len(w)) if exact else m.end()
-                    with self._lock:
-                        self._cursor += hit_end
-                    return w if exact else m   # like pytest-embedded: the match for a regex
+                    hit = (idx, idx + len(w), w) if exact else (m.start(), m.end(), m)
+                    break
+            # As pytest-embedded: only a fail pattern BEFORE the match fails it.
+            before = text[:hit[0]] if hit else text
+            for fp in fails:
+                if (fp in before) if exact else re.search(fp, before):
+                    raise RuntimeError(f'not_matching pattern hit: {fp!r}')
+            if hit:
+                with self._lock:
+                    self._cursor += hit[1]
+                return hit[2]                   # like pytest-embedded: the match for a regex
+            if done:
+                break
             time.sleep(0.05)
         # Distinguish a DEAD process from a genuine slow-timeout: if the loop exited
         # because the emu exited (crash / OOM-kill / its own --timeout self-destruct),
@@ -140,6 +150,8 @@ class EmuDut:
         """First unambiguous crash signature in the full log, or None. Used for
         the post-success settle check (a test can pass its expects, then the
         firmware panics a moment later)."""
+        if getattr(self, 'crash_expected', False):
+            return None             # the test asserted this stop itself
         with self._lock:
             text = self._buf
         for p in _FATAL:

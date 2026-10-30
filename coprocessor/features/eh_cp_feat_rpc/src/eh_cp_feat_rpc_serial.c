@@ -100,10 +100,8 @@ esp_err_t eh_cp_feat_rpc_serial_write(uint8_t *data, ssize_t len)
     return ESP_OK;
 }
 
-esp_err_t eh_cp_feat_rpc_serial_rx(void *ctx, void *buf,
-                                           uint16_t len, void *eb)
+esp_err_t eh_cp_feat_rpc_serial_rx(void *buf, uint16_t len, void *eb)
 {
-    (void)ctx;
     (void)eb;
 
     if (!buf || len == 0) {

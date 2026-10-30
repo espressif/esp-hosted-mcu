@@ -1,5 +1,8 @@
-/* SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD */
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef EH_CP_FEAT_WIFI_EVENT_H
 #define EH_CP_FEAT_WIFI_EVENT_H
@@ -20,6 +23,7 @@ typedef enum {
     EH_CP_FEAT_WIFI_EVT_STA_STOPPED = 7,
     EH_CP_FEAT_WIFI_EVT_SOFTAP_STARTED = 8,
     EH_CP_FEAT_WIFI_EVT_SOFTAP_STOPPED = 9,
+    EH_CP_FEAT_WIFI_EVT_STA_REPLAYED = 10,      /* the station was replayed to the host */
 } eh_cp_feat_wifi_evt_t;
 
 #endif /* EH_CP_FEAT_WIFI_EVENT_H */

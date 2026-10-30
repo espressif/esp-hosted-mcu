@@ -18,6 +18,8 @@ set(SRCS
 # rpc_ext_v2_priv.h is the only place the feature list lives.
 list(APPEND SRCS "src/feature_control_req.c")
 list(APPEND SRCS "src/feature_control_resp_evt.c")
+list(APPEND SRCS "src/context_req.c")
+list(APPEND SRCS "src/context_resp_evt.c")
 
 add_library(eh_host_feat_rpc_ext_v2 STATIC ${SRCS})
 

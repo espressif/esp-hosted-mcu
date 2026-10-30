@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __TRANSPORT_LAYER_INTERFACE_H
 #define __TRANSPORT_LAYER_INTERFACE_H
@@ -124,10 +127,6 @@ int interface_remove_driver(void);
 void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
                             const uint32_t feat_caps[8]);
 int send_to_host_queue(interface_buffer_handle_t *buf_handle, uint8_t queue_type);
-#include "eh_cp_master_config.h"
-#if EH_CP_FEAT_NW_SPLIT_READY
-void send_dhcp_dns_info_to_host(uint8_t network_up, uint8_t send_wifi_connected);
-#endif
 
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))

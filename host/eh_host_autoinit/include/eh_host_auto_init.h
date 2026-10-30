@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Linker-section feature registry (mirrors eh_cp_core's pattern).
  * Each feature .c places one descriptor via EH_HOST_FEAT_REGISTER().
  * Priority tiers: 100=base RPC ext, 200=feature layer, 300=late. */
@@ -7,6 +11,7 @@
 #define EH_HOST_AUTO_INIT_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,6 +59,11 @@ int eh_host_auto_init_features(void);
 int eh_host_auto_deinit_features(void);
 
 size_t eh_host_auto_init_count(void);
+
+/* Done: eh_host_auto_init_features() returned for this bring-up. Re-armed by a
+ * transport deinit. Wait: 0 once done, -ETIMEDOUT after timeout_ms. */
+void eh_host_auto_init_rearm(void);
+int  eh_host_auto_init_wait(uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }

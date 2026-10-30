@@ -171,7 +171,8 @@ static int cycles_start_cmd(int argc, char *argv[])
 }
 
 /* Register once: this runs from the feature walk, which every cycle repeats. */
-static esp_err_t cp_cycles_spawn(void)
+esp_err_t cp_cycles_spawn(void);
+esp_err_t cp_cycles_spawn(void)
 {
 	static bool spawned;
 

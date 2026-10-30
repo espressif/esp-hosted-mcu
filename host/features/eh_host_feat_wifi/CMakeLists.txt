@@ -35,6 +35,7 @@ endif()
 
 target_sources(eh_host_feat_wifi PRIVATE
     "src/eh_host_wifi.c"
+    "src/eh_host_sta_fsm.c"
     "src/eh_host_feat_wifi_v2_req.c"
     "src/eh_host_feat_wifi_v2_resp_evt.c"
 )

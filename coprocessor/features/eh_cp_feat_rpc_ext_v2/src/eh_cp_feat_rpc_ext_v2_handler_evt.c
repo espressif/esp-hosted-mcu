@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -461,6 +461,35 @@ esp_err_t rpc_evt_Event_WifiEventNoArgs(Rpc *ntfy,
     ntfy_payload->event_id = event_id;
 
     ntfy_payload->resp = SUCCESS;
+    return ESP_OK;
+}
+
+/* data: [type (4 bytes LE)][that type's struct]. */
+esp_err_t rpc_evt_context(Rpc *ntfy, const uint8_t *data, size_t len)
+{
+    uint32_t type;
+
+    if (!data || len < sizeof(type)) {
+        ESP_LOGE(TAG, "Context event: invalid data (len=%u)", (unsigned int)len);
+        return ESP_FAIL;
+    }
+    memcpy(&type, data, sizeof(type));
+
+    NTFY_TEMPLATE(RPC_ID__Event_Context,
+            RpcEventContext, event_context,
+            rpc__event__context__init);
+
+    ntfy_payload->type = type;
+    len -= sizeof(type);
+    if (len) {
+        ntfy_payload->data.data = (uint8_t *)malloc(len);
+        if (!ntfy_payload->data.data) {
+            ntfy_payload->resp = FAILURE;
+            return ESP_OK;
+        }
+        memcpy(ntfy_payload->data.data, data + sizeof(type), len);
+        ntfy_payload->data.len = len;
+    }
     return ESP_OK;
 }
 

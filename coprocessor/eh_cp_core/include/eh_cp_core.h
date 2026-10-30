@@ -1,15 +1,20 @@
-/* SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD */
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef EH_CP_CORE_H
 #define EH_CP_CORE_H
 
 /* Sole header extensions include; dependency flows extensions -> core only. */
 
+#include <stdbool.h>
 #include "esp_err.h"
 #include "eh_common_interface.h"
 #include "eh_common_caps.h"
 #include "eh_cp_master_config.h"
+#include "eh_cp.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
@@ -17,28 +22,8 @@
 extern "C" {
 #endif
 
-typedef esp_err_t (*hosted_rx_cb_t)(void *ctx, void *buf, uint16_t len, void *eb);
-typedef int       (*hosted_tx_cb_t)(void *ctx, void *frame, uint16_t len);
-
-typedef struct {
-    hosted_rx_cb_t rx;
-    hosted_tx_cb_t tx;
-    void          *ctx;
-} eh_iface_entry_t;
-
-extern eh_iface_entry_t g_iface_table[ESP_IF_TYPE_MAX];
-
 extern volatile uint8_t hdr_ver_negotiated;
 extern volatile uint8_t rpc_ver_negotiated;
-
-esp_err_t eh_cp_register_rx_cb(eh_if_type_t iface_type,
-                                       hosted_rx_cb_t rx_cb, void *ctx);
-esp_err_t eh_cp_unregister_rx_cb(eh_if_type_t iface_type);
-esp_err_t eh_cp_register_tx_cb(eh_if_type_t iface_type,
-                                       hosted_tx_cb_t tx_cb, void *ctx);
-esp_err_t eh_cp_dispatch_rx(eh_if_type_t iface_type,
-                                    void *buf, uint16_t len, void *eb);
-
 
 void     eh_cp_add_feat_cap_bits(uint8_t caps_bits, uint32_t ext_caps_bits);
 void     eh_cp_add_feat_cap_bits_idx(uint8_t index, uint32_t feature_bitmask);

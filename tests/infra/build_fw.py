@@ -17,6 +17,7 @@ import functools
 import hashlib
 import importlib.util
 import json
+import re
 import logging
 import os
 import shutil
@@ -205,6 +206,9 @@ def _defaults_hash(workdir: Path) -> str:
     for f in sorted(workdir.glob("sdkconfig.defaults*")) + [workdir / ".ovl.defaults"]:
         if f.is_file():
             h.update(f.name.encode() + b"\0" + f.read_bytes() + b"\0")
+    # A component added or removed changes the CMake graph, which ninja alone never sees.
+    for c in sorted(workdir.glob("components/*/CMakeLists.txt")):
+        h.update(str(c.relative_to(workdir)).encode() + b"\0")
     return h.hexdigest()
 
 
@@ -319,6 +323,10 @@ def _build_shared(owner: Path, owner_proj: Path, key: str, stage, key_of, alias_
         stage(owner, owner_proj)
         if key_of(owner) != key:
             return None
+        # Only a configure picks up an added component; that dir's own build does it.
+        hf = owner_proj / ".defaults_hash"
+        if not hf.is_file() or hf.read_text().strip() != _defaults_hash(owner):
+            return None
         log = owner / "build.log"
         if _run_in(_NOOP_CHECK, owner / ".noop.log", cwd=owner) != 0:
             with lab.build_slot():
@@ -331,6 +339,15 @@ def _build_shared(owner: Path, owner_proj: Path, key: str, stage, key_of, alias_
         lab.touch_last_used(owner_proj)
         lab.touch_last_used(alias_proj)
         return _result(owner, log)
+
+
+_SECRET_KEY = re.compile(r"PASSWORD|PASSPHRASE|PSK|SECRET|TOKEN", re.I)
+
+
+def _shown(overlay):
+    """Overlay for a log line: secret values (Wi-Fi passwords etc.) masked."""
+    return "+".join(re.sub(r"=.*", '="***"', o) if _SECRET_KEY.search(o.split("=", 1)[0]) else o
+                    for o in overlay)
 
 
 def build(example_rel: str, role: str, target: str, overlay=None, inject=None) -> dict:
@@ -371,7 +388,7 @@ def _build(example_rel: str, role: str, target: str, overlay=None, inject=None) 
     hash_file = proj / ".defaults_hash"
     alias = proj / ".alias"
     app = f"{example_rel}/{role}"
-    label = (f"{app} [{target}]" + (f" overlay={'+'.join(overlay)}" if overlay else ""))
+    label = (f"{app} [{target}]" + (f" overlay={_shown(overlay)}" if overlay else ""))
 
     def stage(wd: Path, pj: Path) -> None:
         # Refresh the copy: only changed files are rewritten, so mtimes stay put and
@@ -723,7 +740,7 @@ def _build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
     hit = _hit()
     if hit:
         _log.info("[build-linux] %s/%s%s — cache hit", example_rel, role,
-                  f" overlay={'+'.join(overlay)}" if overlay else "")
+                  f" overlay={_shown(overlay)}" if overlay else "")
         return hit
 
     locks = _WORK / ".locks"
@@ -770,7 +787,7 @@ def _build_linux_host(example_rel: str, role: str, overlay=None) -> dict:
             if clean:  # drop a wedged build/ so set-target reconfigures from scratch
                 shutil.rmtree(workdir / "build", ignore_errors=True)
             _log.info("[build-linux] %s/%s%s — %s%s…", example_rel, role,
-                      f" overlay={'+'.join(overlay)}" if overlay else "",
+                      f" overlay={_shown(overlay)}" if overlay else "",
                       "clean rebuild" if clean else "building",
                       " (fresh)" if fresh else "")
             with open(build_log, "w") as blf:

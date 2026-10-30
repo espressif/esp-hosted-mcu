@@ -4,7 +4,10 @@ endif()
 
 set(srcs
     "src/eh_cp_feat_wifi.c"
+    "src/eh_cp_feat_wifi_init.c"
     "src/eh_cp_feat_wifi_event_publisher.c"
+    "src/eh_cp_feat_wifi_sta_fsm.c"
+    "src/eh_cp_feat_wifi_ap_fsm.c"
 )
 
 add_library(eh_cp_feat_wifi STATIC ${srcs})
@@ -21,7 +24,9 @@ target_link_libraries(eh_cp_feat_wifi
         idf::esp_wifi
 )
 target_link_options(eh_cp_feat_wifi INTERFACE
-    "-Wl,--wrap=esp_wifi_connect")
+    "-Wl,--wrap=esp_wifi_connect"
+    "-Wl,--wrap=esp_wifi_internal_reg_rxcb"
+    "-Wl,--wrap=esp_wifi_init")
 if(CONFIG_ESP_HOSTED_CP_FEAT_WIFI_AUTO_INIT)
     target_link_options(eh_cp_feat_wifi INTERFACE
         "-Wl,--undefined=eh_cp_feat_wifi_init")

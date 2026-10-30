@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Network split: per-port packet routing between host and coprocessor stacks. */
 #ifndef EH_CP_FEAT_NW_SPLIT_H
 #define EH_CP_FEAT_NW_SPLIT_H
@@ -36,7 +41,7 @@ typedef struct {
     eh_cp_feat_nw_split_nw_stack_e default_nw_stack;
     eh_cp_feat_nw_split_nw_stack_e default_nw_stack_dhcp;
     eh_cp_feat_nw_split_host_reserved_ports_t host_reserved_ports;
-    eh_cp_rx_cb_t wlan_sta_rx_callback_for_coprocessor;
+    eh_cp_traffic_cb_t wlan_sta_rx_callback_for_coprocessor;
 } eh_cp_feat_nw_split_config_t;
 
 #if EH_CP_FEAT_NW_SPLIT_READY
@@ -88,9 +93,6 @@ esp_err_t eh_cp_feat_nw_split_init(eh_cp_feat_nw_split_config_t *config);
  */
 esp_err_t eh_cp_feat_nw_split_deinit(void);
 
-/* Reset rx override and internal netif state (used during WiFi reinit). */
-void eh_cp_feat_nw_split_reset_rx_override(void);
-void eh_cp_feat_nw_split_replay_status_if_needed(void);
 
 
 

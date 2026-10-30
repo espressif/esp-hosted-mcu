@@ -17,7 +17,9 @@ Connect-dependent STA queries live in test_wifi_connected (separate bench: conne
 mutates wifi state, so it cannot share the not-connected sweep's bench).
 """
 import os
+import re
 import sys
+import time
 
 import pytest
 
@@ -48,6 +50,13 @@ def _ready(bench, t, wake=False):
     r = eh_test_expect(b['host'], r'EH api_exerciser ready', fail=FAIL, timeout=60)
     assert r.ok, f'[{t}] ready: {r.matched}'
     return b['host'], b['caps']
+
+
+def _component_version():
+    """The CP and host report the component version; idf_component.yml is its source."""
+    yml = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'idf_component.yml')
+    with open(yml) as f:
+        return re.search(r'^version:\s*"([^"]+)"', f.read(), re.M).group(1)
 
 
 def _ok(host, t, cmd, extra=''):
@@ -114,7 +123,7 @@ def test_control_plane(bench, transport, bench_gpio):
     t = transport
 
     # ── system ──────────────────────────────────────────────────────────
-    _ok(host, t, 'sys_fw_version', r'ver=\d+\.\d+\.\d+')
+    _ok(host, t, 'sys_fw_version', 'ver=' + re.escape(_component_version()))
 
     # Heartbeat interval range is 1 s..7 days: outside is rejected, not
     # clamped (2.x behaviour). A 1 s heartbeat must tick within a few seconds,
@@ -296,6 +305,85 @@ _SPI_ASSOC_FLAKE = ("emu-under-load: post-assoc wifi_sta_get_ap_info times out (
     "resolved (or regression runs at non-oversubscribed concurrency).")
 
 
+# ── scan against measured IDF (intent/idf-measured.md M32-M40) ──────────
+SCAN_DONE = re.compile(r'EH event wifi_scan_done status=(\d+) number=(\d+)')
+NOT_STARTED = 12290
+
+
+def _mark(dut):
+    with dut._lock:
+        return len(dut._buf)
+
+
+def _since(dut, mark):
+    with dut._lock:
+        return dut._buf[mark:]
+
+
+def _scan_step(host, cmds, settle=3.0, wait=20):
+    """Run cmds; return (rcs, scan-done list [(status, number)], log segment)."""
+    mark = _mark(host)
+    for cmd in cmds:
+        host.write(cmd)
+        eh_test_expect(host, r'EH rc=-?\d+ cmd=' + cmd.split()[0], fail=FAIL, timeout=wait)
+    time.sleep(settle)
+    seg = _since(host, mark)
+    rcs = [int(x) for x in re.findall(r'EH rc=(-?\d+) cmd=wifi_scan_\w+', seg)]
+    done = [(int(a), int(b)) for a, b in SCAN_DONE.findall(seg)]
+    return rcs, done, seg
+
+
+def _scan_checks(host, ssid, bad):
+    """Idle station, started: every row's rc and SCAN_DONE as IDF posts them."""
+    def row(name, ok, got):
+        if not ok:
+            bad.append(f'{name}: {got}')
+
+    _ok_rc = lambda rcs: rcs and all(r == 0 for r in rcs)
+    host.write('wifi_stop')
+    eh_test_expect(host, r'EH rc=0 cmd=wifi_stop', fail=FAIL, timeout=20)
+    rcs, done, _ = _scan_step(host, ['wifi_scan_start 1'], settle=2)
+    row('M32 scan before start', rcs == [NOT_STARTED] and not done, (rcs, done))
+    host.write('wifi_start')
+    eh_test_expect(host, r'EH rc=0 cmd=wifi_start', fail=FAIL, timeout=20)
+    time.sleep(1)
+
+    rcs, done, seg = _scan_step(host, ['wifi_clear_ap_list', 'wifi_scan_start 1'])
+    row('M33 blocking active', _ok_rc(rcs) and len(done) == 1 and done[0][0] == 0 and done[0][1] >= 1,
+        (rcs, done))
+    rc_at, ev_at = seg.find('cmd=wifi_scan_start'), seg.find('EH event wifi_scan_done')
+    row('M33 SCAN_DONE before the blocking scan returns', 0 <= ev_at < rc_at, (ev_at, rc_at))
+
+    host.write('wifi_scan_dump')
+    mark = _mark(host)
+    rec = rf'EH scan ap ssid="?{re.escape(ssid)}"? rssi=-\d+ ch=(\d+)'
+    m = eh_test_expect(host, rec, fail=FAIL, timeout=20)
+    found = re.search(rec, _since(host, mark)) if m.ok else None
+    if not found:
+        bad.append(f'scan dump has no record for {ssid}')
+    else:
+        ch = int(found.group(1))
+        other = 6 if ch != 6 else 11
+        rcs, done, _ = _scan_step(host, [f'wifi_scan_start 1 {ssid} {ch}'])
+        row(f'M34 channel {ch}', _ok_rc(rcs) and done == [(0, 1)], (rcs, done))
+        rcs, done, _ = _scan_step(host, [f'wifi_scan_start 1 {ssid} {other}'])
+        row(f'M34 channel {other}', _ok_rc(rcs) and done == [(0, 0)], (rcs, done))
+
+    rcs, done, _ = _scan_step(host, ['wifi_scan_start 1 - 0 0 passive'], settle=4, wait=30)
+    row('M33 blocking passive', _ok_rc(rcs) and len(done) == 1 and done[0][0] == 0 and
+        done[0][1] >= 1, (rcs, done))
+
+    rcs, done, _ = _scan_step(host, ['wifi_scan_start 0'], settle=8)
+    row('M35 non-blocking', _ok_rc(rcs) and len(done) == 1 and done[0][0] == 0, (rcs, done))
+    rcs, done, _ = _scan_step(host, ['wifi_scan_start 0', 'wifi_scan_start 0'], settle=8)
+    row('M36 non-blocking while scanning', _ok_rc(rcs) and [d[0] for d in done] == [1, 0],
+        (rcs, done))
+    rcs, done, _ = _scan_step(host, ['wifi_scan_start 0', 'wifi_scan_stop'], settle=3)
+    row('M37 stop while scanning', _ok_rc(rcs) and [d[0] for d in done] == [1], (rcs, done))
+    rcs, done, _ = _scan_step(host, ['wifi_scan_stop'], settle=2)
+    row('M38 stop idle', rcs == [0] and not done, (rcs, done))
+
+
 @pytest.mark.system
 @pytest.mark.wifi
 @pytest.mark.parametrize('transport', [
@@ -334,6 +422,8 @@ def test_wifi_connected(bench, transport, sta_ap):
     for c in ('wifi_cfg_reset', f'wifi_cfg_set sta_ssid {ssid}',
               f'wifi_cfg_set sta_password {pw}', 'wifi_set_config sta'):
         _ok(host, t, c)
+    scan_bad = []
+    _scan_checks(host, ssid, scan_bad)
     _ok(host, t, 'wifi_connect')
 
     # Association is async — WAIT for the STA_CONNECTED event the host surfaces on
@@ -367,4 +457,10 @@ def test_wifi_connected(bench, transport, sta_ap):
     _reaches_cp(host, t, 'wifi_sta_get_rssi')
     _reaches_cp(host, t, 'wifi_sta_get_aid')
     _reaches_cp(host, t, 'wifi_sta_get_negotiated_phymode')
+
+    rcs, done, seg = _scan_step(host, ['wifi_scan_start 1'])
+    if not (rcs == [0] and len(done) == 1 and done[0][0] == 0 and
+            'EH event wifi_sta_disconnected' not in seg):
+        scan_bad.append(f'M40 scan while connected: {(rcs, done)}')
     _ok(host, t, 'wifi_disconnect')
+    assert not scan_bad, f'[{t}] scan vs IDF:\n' + '\n'.join(scan_bad)

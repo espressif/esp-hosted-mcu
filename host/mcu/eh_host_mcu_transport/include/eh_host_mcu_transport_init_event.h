@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* SPDX-License-Identifier: Apache-2.0 */
 /* Slave PRIV_EVENT_INIT TLV parser + host/slave compat verifiers. */
 
@@ -17,6 +22,10 @@ uint8_t  eh_host_mcu_transport_get_chip_id(void);
 uint32_t eh_host_mcu_transport_get_fw_version(void);
 uint8_t  eh_host_mcu_transport_get_capabilities(void);
 uint32_t eh_host_mcu_transport_get_ext_capabilities(void);
+
+/* The CP runs network split, this host has none: -1 after logging it and the
+ * option to change; 0 otherwise. */
+int eh_host_mcu_transport_nw_split_check(void);
 
 /* true once the CP init event has been parsed AND it carried the
  * EH_PRIV_RPC_VERSION TLV (tag 0x1A).  Callers that build the host->CP

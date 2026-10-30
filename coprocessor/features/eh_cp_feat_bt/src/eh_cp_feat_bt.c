@@ -1,6 +1,8 @@
-/* SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD */
-/* SPDX-License-Identifier: Apache-2.0 */
-
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #include "eh_cp_feat_bt.h"
 #include "eh_cp_core.h"          /* EH_CP_FEAT_REGISTER */
 #include "eh_common_caps.h"
@@ -14,9 +16,8 @@ static const char *TAG = "ehcp_bt";
 /* Only the VHCI path registers this rx cb (see common_init); guard the
  * definition on the same condition so UART-HCI builds don't warn unused. */
 #if EH_CP_FEAT_BT_READY && EH_CP_BT_HCI
-static esp_err_t bt_hci_rx_cb(void *ctx, void *buf, uint16_t len, void *eb)
+static esp_err_t bt_hci_rx_cb(void *buf, uint16_t len, void *eb)
 {
-	(void)ctx;
 	(void)eb;
 	process_hci_rx_pkt((uint8_t *)buf, len);
 	return ESP_OK;
@@ -30,7 +31,7 @@ static esp_err_t eh_cp_feat_bt_common_init(void)
 	                           eh_cp_bt_get_ext_capabilities());
 	eh_cp_add_feat_cap_bits_idx(EH_FEAT_IDX_BT, 0x1u /* BT_BASIC */);
 #if EH_CP_BT_HCI
-	EH_CHECK_OK_WARN(eh_cp_register_rx_cb(ESP_HCI_IF, bt_hci_rx_cb, NULL));
+	EH_CHECK_OK_WARN(eh_cp_set_traffic_rx_cb(ESP_HCI_IF, bt_hci_rx_cb));
 #endif
 #if EH_CP_AUTO_START_BT
 	EH_CHECK_OK_WARN(eh_cp_bt_init());

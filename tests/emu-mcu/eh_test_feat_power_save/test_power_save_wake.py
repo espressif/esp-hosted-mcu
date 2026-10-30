@@ -12,11 +12,13 @@ import sys
 import os
 import re
 import statistics
+import time
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))  # tests/
 from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
+from infra import ps_wake
 
 PS_FAIL = FATAL_PATTERNS + [
     'bring-up timed out',
@@ -36,6 +38,17 @@ LEAK_EPS = 2048
 # reboots on its own (no CP wake GPIO) shows its boot line inside this window.
 HOLD_S = 1.5
 BOOT = r'rst:0x'
+
+
+def _seen(dut, start, pattern, timeout):
+    """pattern in the DUT log after offset start (the cursor-based expect may have
+    read past it): the wake payload and GOT_IP come in either order."""
+    end = time.time() + timeout
+    while time.time() < end:
+        if re.search(pattern, getattr(dut, '_buf', '')[start:]):
+            return True
+        time.sleep(0.2)
+    return False
 
 
 # allow_fail is GONE from both cells, deliberately. It used to blame "shared-box CPU
@@ -99,7 +112,8 @@ def test_power_save_wake_mem(emu_bench, transport):
     # EH_CP_EXTRA_OVL lets a diagnostic run add CP sdkconfig lines (e.g. a trace
     # facility) without editing the checked-in defaults.
     cp_ovl = [x for x in os.environ.get('EH_CP_EXTRA_OVL', '').split(',') if x]
-    b = emu_bench(EXAMPLE, 'esp_host', transport, wake=True,
+    cp_ovl = list(ps_wake.CP_OVL) + cp_ovl
+    b = emu_bench(EXAMPLE, 'esp_host', transport, wake=True, extra_ovl=ps_wake.HOST_OVL,
                   timeout=f'{90 + CYCLES * 20}s', cp_extra_ovl=cp_ovl)
     host, cp, net = b['host'], b['cp'], b['net']
 
@@ -142,8 +156,10 @@ def test_power_save_wake_mem(emu_bench, transport):
             failures.append(f'cycle {i}: host left deep sleep before the wake packet')
             break
 
-        # external packet wakes the host via the CP's wake GPIO
-        net.wake()
+        # One datagram wakes the host via the CP's wake GPIO; it has no retransmit,
+        # so it must itself reach the host app once the host is up.
+        wake_mark = len(getattr(host, '_buf', ''))
+        net.wake_udp(ps_wake.payload(i))
         r = eh_test_expect(host, r'rst:0x5 \(PMU_SYS_PWR_DOWN_RESET\)', fail=PS_FAIL, timeout=60)
         if not r.ok:
             failures.append(f'cycle {i}: host deep-sleep reset after wake: {r.matched}')
@@ -160,11 +176,21 @@ def test_power_save_wake_mem(emu_bench, transport):
         # host_power_save, else the command is written before the console is ready
         # and the CP never re-sleeps. Match app_main's return (a newline-terminated
         # once-per-boot line) — the bare "host>" prompt has no trailing newline so
-        # the line-based expect can miss it. (Wake is CP-driven via net.wake(), so
-        # host connectivity isn't required to cycle.)
+        # the line-based expect can miss it.
         r = eh_test_expect(host, r'Returned from app_main', fail=PS_FAIL, timeout=45)
         if not r.ok:
             failures.append(f'cycle {i}: host boot complete after wake: {r.matched}')
+            break
+        if not _seen(host, wake_mark, r'IP_EVENT_STA_GOT_IP', 30):
+            failures.append(f'cycle {i}: no GOT_IP after wake')
+            break
+        if not _seen(host, wake_mark, ps_wake.rx_line(i), 30):
+            failures.append(f'cycle {i}: the packet that woke the host never reached it')
+            break
+        host.write('ping 192.168.4.1 -c 2')
+        r = eh_test_expect(host, r'packets transmitted, [1-9]\d* received', fail=PS_FAIL, timeout=20)
+        if not r.ok:
+            failures.append(f'cycle {i}: ping after wake: {r.matched}')
             break
         # The CP light-sleeps through the cycle; a boot line means it was reset.
         if len(re.findall(BOOT, getattr(cp, '_buf', ''))) != cp_boots:
@@ -226,3 +252,46 @@ def test_power_save_wake_mem(emu_bench, transport):
                 print(f'  {line}')
 
     assert not failures, '; '.join(failures)
+
+
+BURST = 20          # datagrams after the waking one; the host holds at most 10
+
+
+@pytest.mark.power_save
+@pytest.mark.parametrize('transport', ['sdio', 'uart', 'spi_fd', 'spi_hd'])
+def test_power_save_wake_burst(emu_bench, transport):
+    """More frames than the host can hold reach it before its path opens: the
+    waking datagram is still delivered (the hold refuses the newest, never the
+    first), the overflow is counted, no frame is delivered twice, ping works."""
+    b = emu_bench(EXAMPLE, 'esp_host', transport, wake=True, extra_ovl=ps_wake.HOST_OVL,
+                  timeout='240s', cp_extra_ovl=list(ps_wake.CP_OVL))
+    host, cp, net = b['host'], b['cp'], b['net']
+    assert eh_test_expect(host, r'host>', timeout=60).ok, 'CLI ready'
+    host.write('sta myssid mypassword')
+    assert eh_test_expect(host, r'IP_EVENT_STA_GOT_IP', fail=PS_FAIL, timeout=60).ok, 'GOT_IP'
+
+    host.write('host_power_save')
+    assert eh_test_expect(cp, r'Light sleep ENABLED', fail=PS_FAIL, timeout=60).ok, 'CP sleep'
+    assert eh_test_expect(host, r'deep-sleep wakeup armed', fail=PS_FAIL, timeout=30).ok, 'host sleep'
+    time.sleep(HOLD_S)
+    mark = len(getattr(host, '_buf', ''))
+    for n in range(BURST + 1):
+        net.wake_udp(ps_wake.payload(n))
+    assert eh_test_expect(host, r'Host woke up from power save', fail=PS_FAIL, timeout=60).ok, 'wake'
+    assert _seen(host, mark, r'IP_EVENT_STA_GOT_IP', 60), 'no GOT_IP after wake'
+    assert _seen(host, mark, ps_wake.rx_line(0), 30), 'the waking datagram was not delivered'
+    # The console takes commands only once app_main returns.
+    assert _seen(host, mark, r'Returned from app_main', 45), 'host boot complete after wake'
+
+    seg = getattr(host, '_buf', '')[mark:]
+    held = sum(int(x) for x in re.findall(r'sta: (\d+) held frames delivered', seg))
+    refused = len(re.findall(r'sta: path not open, \d+ held, \d+ bytes refused', seg))
+    got = [n for n in range(BURST + 1) if re.search(ps_wake.rx_line(n), seg)]
+    print(f'[burst] {transport}: held-delivered={held} refused={refused} received={got}')
+    assert held <= 10, f'{held} held frames delivered (max 10)'
+    assert held + refused >= 1, 'no frame reached the hold: the burst did not test it'
+    for n in got:
+        assert len(re.findall(ps_wake.rx_line(n), seg)) == 1, f'datagram {n} delivered twice'
+    host.write('ping 192.168.4.1 -c 2')
+    assert eh_test_expect(host, r'packets transmitted, [1-9]\d* received',
+                          fail=PS_FAIL, timeout=20).ok, 'ping after wake'

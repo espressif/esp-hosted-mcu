@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """
 Flash orchestration for dual-DUT (host P4 + slave C6).
 
@@ -123,11 +125,14 @@ def _hash_build_dir(build_dir):
     """Hash app binary to detect app changes."""
     if not os.path.isdir(build_dir):
         return None
+    # The app image the build names: listdir order is arbitrary, and constant
+    # images (ota_data_initial.bin, …) would hide an app change.
     app_bin = None
-    for f in os.listdir(build_dir):
-        if f.endswith('.bin') and not f.startswith('partition') and not f.startswith('bootloader'):
-            app_bin = os.path.join(build_dir, f)
-            break
+    try:
+        with open(os.path.join(build_dir, 'project_description.json')) as f:
+            app_bin = os.path.join(build_dir, json.load(f)['app_bin'])
+    except (OSError, ValueError, KeyError):
+        pass
     if not app_bin or not os.path.exists(app_bin):
         return None
     h = hashlib.md5()

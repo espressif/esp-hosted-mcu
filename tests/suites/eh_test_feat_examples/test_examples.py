@@ -13,6 +13,8 @@ A row needing external infra (a real AP, a BT peer, …) declares a required cap
 and SKIPs unless the bench reports it — no build/flash wasted on it.
 """
 import os
+import re
+import time
 import sys
 
 import pytest
@@ -95,10 +97,9 @@ _SPI_FD_ASSOC_FLAKE = ("emu spi_fd assoc flake under parallel load — same spi_
 
 
 @pytest.mark.wifi
+# Feature test: Wi-Fi data per wire is test_api_control_plane::test_wifi_connected.
 @pytest.mark.parametrize('transport', [
     pytest.param('sdio', marks=pytest.mark.sanity),  # sanity: real Wi-Fi join on the reliable wire
-    'uart', 'spi_hd',
-    pytest.param('spi_fd', marks=pytest.mark.second_chance),
 ])
 @pytest.mark.xdist_group("emu_heavy")  # serialize heavy spi_fd assoc under parallel load
 def test_wifi_sta_connect(bench, bench_caps, wifi_ap, transport):
@@ -167,3 +168,35 @@ def test_wifi_scan_example_completes(bench, substrate, transport):
     r = eh_test_expect(host, r'Total APs scanned = \d+',
                        fail=FAIL + ['request: no response'], timeout=90)
     assert r.ok, f'[{transport}] wifi/scan completed without starving the CP dispatcher: {r.matched}'
+
+
+@pytest.mark.wifi
+def test_sta_example_restart_connects_afresh(bench, bench_caps, wifi_ap):
+    """Plain mode, reset only if needed (SDIO): the unmodified IDF station app
+    restarts with esp_restart, whose Wi-Fi shutdown handler stops the CP's radio
+    first, as on IDF. The new boot connects afresh: one STA_CONNECTED and an IP."""
+    if "wifi_ap" not in bench_caps or not wifi_ap:
+        pytest.skip("no 'wifi_ap' cap / creds")
+    ovl = [f'CONFIG_ESP_WIFI_SSID="{wifi_ap["ssid"]}"',
+           f'CONFIG_ESP_WIFI_PASSWORD="{wifi_ap["password"]}"',
+           'CONFIG_ESP_MAXIMUM_RETRY=100',
+           'CONFIG_EXAMPLE_TEST_HOST_RESTART_ONCE=y',
+           'CONFIG_ESP_HOSTED_HOST_CP_RESET_STRATEGY_ONLY_IF_NECESSARY=y']
+    b = bench('wifi/sta', 'mcu_host', 'sdio', timeout='240s', overlay=ovl)
+    host = b['host']
+    fail = FATAL_PATTERNS + ['bring-up timed out']
+    assert eh_test_expect(host, r'test: restarting the host', fail=fail, timeout=180).ok, 'first join'
+    assert eh_test_expect(host, r'rst:0x', fail=fail, timeout=60).ok, 'host did not reboot'
+    mark = len(host._buf)
+    assert eh_test_expect(host, r'wifi_init_sta finished', fail=fail, timeout=90).ok, 'host back'
+    eh_test_expect(host, r'connected to ap SSID', fail=fail, timeout=60)
+    time.sleep(10)
+    seg = host._buf[mark:]
+    reset = bool(re.search(r'Reset co-processor|Attempt slave reset|Slave reset issued', seg))
+    conn = seg.count('test: STA_CONNECTED')
+    ips = re.findall(r'got ip:(\S+)', seg)
+    disc = seg.count('connect to the AP fail')
+    assert not reset, 'the CP was reset: the case needs a running CP'
+    assert conn == 1, f'STA_CONNECTED x{conn}'
+    assert disc == 0, 'a failed connect after the restart'
+    assert ips, 'no IP after the restart'

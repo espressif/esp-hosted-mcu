@@ -35,6 +35,7 @@ ALLOWED_DRIFT_BYTES = 0
 # and go, so free moves by up to 64 B with nothing leaked (heap trace: same 16/64 B
 # after every cycle, never growing). A leak repeats every cycle and crosses this.
 LWIP_TIMER_CHURN_BYTES = 4 * 16
+GW = '192.168.4.1'                # emu --net user gateway
 FAIL = FATAL_PATTERNS + ['CORRUPT HEAP', 'Firmware abort', 'tasks still running']
 ROW = re.compile(r'\[cycles\] cycle=(\d+) init=(-?\d+) deinit=(-?\d+) '
                  r'bytes=(-?\d+) recs=(\d+) ovf=(\d+) polls=(\d+) free=(\d+)')
@@ -100,6 +101,31 @@ def _assert_cycles_built(bench, cycles):
             pytest.fail(f'{key} absent from {f}')
         d = os.path.dirname(d)
     pytest.fail(f'no sdkconfig found above {elf}')
+
+
+def _handshake_problems(cp_log, host_log, transport):
+    # spi_fd opens its datapath at transport init and raises no event for it.
+    start = cp_log.find('[cycles] priming')
+    if start < 0:
+        return ['no priming line: handshake not checked']
+    ends = [m.start() for m in re.finditer(r'\[cycles\] cycle=\d+ ', cp_log[start:])]
+    bounds = [0] + ends + [len(cp_log) - start]
+    counts = {'core init': r'ESP-Hosted core initialized', 'slave-up': r'Send slave up event'}
+    if transport != 'spi_fd':
+        counts['datapath open'] = r'Open Data Path$'
+    out = []
+    cp_up = len(re.findall(counts['slave-up'], cp_log))
+    host_init = len(re.findall(r'eh_init_evt: chip=', host_log))
+    if host_init != cp_up:
+        out.append(f'host INIT events={host_init}, CP slave-up events={cp_up}')
+    for i in range(len(bounds) - 1):
+        seg = cp_log[start + bounds[i]:start + bounds[i + 1]]
+        name = f'cycle {i + 1}' if i < len(bounds) - 2 else 'final re-init'
+        bad = [f'{k}={n}' for k, pat in counts.items()
+               if (n := len(re.findall(pat, seg, re.M))) != 1]
+        if bad:
+            out.append(f'{name}: {" ".join(bad)} (want 1 each)')
+    return out[:3] + ([f'... {len(out) - 3} more'] if len(out) > 3 else [])
 
 
 @pytest.mark.power_save
@@ -258,6 +284,16 @@ def test_cp_deinit_init_cycles_return_heap(emu_bench, transport, unload, wifi_ap
                   f'({", ".join(where)})')
             problems.append(f'{total} B outstanding after deinit: ' +
                             ', '.join(where))
+
+    # The link must survive the cycles: a host ping goes host -> bus -> CP -> AP.
+    if wifi_ap and wifi_ap.get('ssid'):
+        host.write(f'ping {GW} -c 4 -i 0.5')
+        if not eh_test_expect(host, r'\d+ packets transmitted, [1-9]\d* received',
+                              fail=FAIL, timeout=60).ok:
+            problems.append('host link dead after the cycles: ping to the AP failed')
+
+    problems += _handshake_problems(getattr(cp, '_buf', ''), getattr(host, '_buf', ''),
+                                    transport)
 
     assert not problems, 'run problems: ' + '; '.join(problems)
 

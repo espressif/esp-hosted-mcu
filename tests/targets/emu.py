@@ -77,6 +77,10 @@ def _emu_supports(emu, flag: str) -> bool:
     return flag in _emu_help_cache[key]
 
 
+# UDP port the power-save wake tests reserve for the host (their CP overlay).
+WAKE_UDP_PORT = 60000
+
+
 class Net:
     """Stimulus provider over the CP's user-net host-forward. `wake()` fires a
     fire-and-forget packet at the host-reserved port (wake-on-packet). `request()`
@@ -101,6 +105,12 @@ class Net:
 
     def wake(self, payload=b"wakeup-host"):
         self._shoot(payload, self._port)
+
+    def wake_udp(self, payload):
+        """One datagram to guest UDP WAKE_UDP_PORT: no retransmit, so its arrival on
+        the host proves the frame that woke it was delivered."""
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.sendto(payload, ("127.0.0.1", self._port))
 
     def request(self, guest_port, payload=b"", read_bytes=512, timeout=4):
         """Connect to the CP guest `guest_port` (via its host-forward), send
@@ -292,8 +302,10 @@ class EmuTarget(BenchProvider):
             fwd[22] = port
         for i, gp in enumerate(spec.hostfwd):
             fwd[int(gp)] = port + 1 + i
-        net_arg = ["--net", "user," + ",".join(
-            f"hostfwd=tcp:127.0.0.1:{hp}-:{gp}" for gp, hp in fwd.items())] if fwd else []
+        rules = [f"hostfwd=tcp:127.0.0.1:{hp}-:{gp}" for gp, hp in fwd.items()]
+        if spec.wake:
+            rules.append(f"hostfwd=udp:127.0.0.1:{port}-:{WAKE_UDP_PORT}")
+        net_arg = ["--net", "user," + ",".join(rules)] if rules else []
 
         # BLE connect/GATT via Bumble: forward the CP's HCI to a Bumble virtual
         # controller (the host's peripheral HCI reaches it over the transport).

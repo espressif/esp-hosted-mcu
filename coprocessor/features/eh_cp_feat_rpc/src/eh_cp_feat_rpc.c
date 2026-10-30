@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -65,9 +65,7 @@ static esp_err_t eh_cp_feat_rpc_init(void)
         return ret;
     }
 
-    ret = eh_cp_register_rx_cb(ESP_SERIAL_IF,
-                                       eh_cp_feat_rpc_serial_rx,
-                                       NULL);
+    ret = eh_cp_set_traffic_rx_cb(ESP_SERIAL_IF, eh_cp_feat_rpc_serial_rx);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "register rx cb failed: %s", esp_err_to_name(ret));
         return ret;
@@ -93,7 +91,7 @@ static esp_err_t eh_cp_feat_rpc_deinit(void)
                                  EH_CP_EVT_PRIVATE_RPC_READY,
                                  ext_rpc_private_ready_handler);
 	/* Release the RX callback registered during init. */
-    eh_cp_unregister_rx_cb(ESP_SERIAL_IF);
+    (void)eh_cp_set_traffic_rx_cb(ESP_SERIAL_IF, NULL);
     return eh_cp_protocomm_deinit();
 }
 

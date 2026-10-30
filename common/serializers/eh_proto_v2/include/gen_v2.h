@@ -208,6 +208,8 @@ typedef struct RpcReqSetDhcpDnsStatus RpcReqSetDhcpDnsStatus;
 typedef struct RpcRespSetDhcpDnsStatus RpcRespSetDhcpDnsStatus;
 typedef struct RpcReqGetDhcpDnsStatus RpcReqGetDhcpDnsStatus;
 typedef struct RpcRespGetDhcpDnsStatus RpcRespGetDhcpDnsStatus;
+typedef struct RpcReqSetContext RpcReqSetContext;
+typedef struct RpcRespSetContext RpcRespSetContext;
 typedef struct RpcReqSuppDppInit RpcReqSuppDppInit;
 typedef struct RpcRespSuppDppInit RpcRespSuppDppInit;
 typedef struct RpcReqSuppDppDeinit RpcReqSuppDppDeinit;
@@ -336,6 +338,7 @@ typedef struct RpcReqCustomRpc RpcReqCustomRpc;
 typedef struct RpcRespCustomRpc RpcRespCustomRpc;
 typedef struct RpcEventCustomRpc RpcEventCustomRpc;
 typedef struct RpcEventMemMonitor RpcEventMemMonitor;
+typedef struct RpcEventContext RpcEventContext;
 typedef struct Rpc Rpc;
 
 
@@ -1094,13 +1097,17 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_PhyBtTxTone = 407,
   /*
+   * 0x198
+   */
+  RPC_ID__Req_SetContext = 408,
+  /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   *0x198
+   *0x199
    */
-  RPC_ID__Req_Max = 408,
+  RPC_ID__Req_Max = 409,
   /*
    ** Response Msgs *
    */
@@ -1276,11 +1283,12 @@ typedef enum _RpcId {
   RPC_ID__Resp_PhyBleTx = 661,
   RPC_ID__Resp_PhyBleRx = 662,
   RPC_ID__Resp_PhyBtTxTone = 663,
+  RPC_ID__Resp_SetContext = 664,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 664,
+  RPC_ID__Resp_Max = 665,
   /*
    ** Event Msgs *
    */
@@ -1315,11 +1323,12 @@ typedef enum _RpcId {
    */
   RPC_ID__Event_CustomRpc = 788,
   RPC_ID__Event_MemMonitor = 789,
+  RPC_ID__Event_Context = 790,
   /*
    * Add new control path command notification before Event_Max
    * and update Event_Max 
    */
-  RPC_ID__Event_Max = 790
+  RPC_ID__Event_Max = 791
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC_ID)
 } RpcId;
 typedef enum _RpcGpioMode {
@@ -4413,6 +4422,34 @@ struct  RpcRespGetDhcpDnsStatus
 , 0, 0, 0, {0,NULL}, {0,NULL}, {0,NULL}, 0, {0,NULL}, 0, 0 }
 
 
+/*
+ * type: eh_ctx_type_t (eh_common_ctx.h); data: that type's packed little-endian
+ * struct. Types and fields are only ever added: an unknown type is refused,
+ * a longer data is read up to the fields the receiver knows. 
+ */
+struct  RpcReqSetContext
+{
+  ProtobufCMessage base;
+  uint32_t type;
+  ProtobufCBinaryData data;
+};
+#define RPC__REQ__SET_CONTEXT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__set_context__descriptor) \
+, 0, {0,NULL} }
+
+
+struct  RpcRespSetContext
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  uint32_t type;
+  ProtobufCBinaryData data;
+};
+#define RPC__RESP__SET_CONTEXT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__set_context__descriptor) \
+, 0, 0, {0,NULL} }
+
+
 struct  RpcReqSuppDppInit
 {
   ProtobufCMessage base;
@@ -6037,6 +6074,21 @@ struct  RpcEventMemMonitor
 , 0, 0, 0, NULL, NULL }
 
 
+/*
+ * A context the CP changed on its own; same type and data as Rpc_Resp_SetContext. 
+ */
+struct  RpcEventContext
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  uint32_t type;
+  ProtobufCBinaryData data;
+};
+#define RPC__EVENT__CONTEXT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__event__context__descriptor) \
+, 0, 0, {0,NULL} }
+
+
 typedef enum {
   RPC__PAYLOAD__NOT_SET = 0,
   RPC__PAYLOAD_REQ_GET_MAC_ADDRESS = 257,
@@ -6162,6 +6214,7 @@ typedef enum {
   RPC__PAYLOAD_REQ_PHY_BLE_TX = 405,
   RPC__PAYLOAD_REQ_PHY_BLE_RX = 406,
   RPC__PAYLOAD_REQ_PHY_BT_TX_TONE = 407,
+  RPC__PAYLOAD_REQ_SET_CONTEXT = 408,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -6285,6 +6338,7 @@ typedef enum {
   RPC__PAYLOAD_RESP_PHY_BLE_TX = 661,
   RPC__PAYLOAD_RESP_PHY_BLE_RX = 662,
   RPC__PAYLOAD_RESP_PHY_BT_TX_TONE = 663,
+  RPC__PAYLOAD_RESP_SET_CONTEXT = 664,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -6305,7 +6359,8 @@ typedef enum {
   RPC__PAYLOAD_EVENT_WIFI_DPP_CFG_RECVD = 786,
   RPC__PAYLOAD_EVENT_WIFI_DPP_FAIL = 787,
   RPC__PAYLOAD_EVENT_CUSTOM_RPC = 788,
-  RPC__PAYLOAD_EVENT_MEM_MONITOR = 789
+  RPC__PAYLOAD_EVENT_MEM_MONITOR = 789,
+  RPC__PAYLOAD_EVENT_CONTEXT = 790
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(RPC__PAYLOAD__CASE)
 } Rpc__PayloadCase;
 
@@ -6328,6 +6383,7 @@ struct  Rpc
   union {
     RpcEventAPStaConnected *event_ap_sta_connected;
     RpcEventAPStaDisconnected *event_ap_sta_disconnected;
+    RpcEventContext *event_context;
     RpcEventCustomRpc *event_custom_rpc;
     RpcEventDhcpDnsStatus *event_dhcp_dns;
     /*
@@ -6409,6 +6465,7 @@ struct  Rpc
     RpcReqPhyWifiRx *req_phy_wifi_rx;
     RpcReqPhyWifiTx *req_phy_wifi_tx;
     RpcReqPhyWifiTxTone *req_phy_wifi_tx_tone;
+    RpcReqSetContext *req_set_context;
     RpcReqSetDhcpDnsStatus *req_set_dhcp_dns;
     RpcReqSetMacAddress *req_set_mac_address;
     RpcReqWifiSetMaxTxPower *req_set_wifi_max_tx_power;
@@ -6535,6 +6592,7 @@ struct  Rpc
     RpcRespPhyWifiRx *resp_phy_wifi_rx;
     RpcRespPhyWifiTx *resp_phy_wifi_tx;
     RpcRespPhyWifiTxTone *resp_phy_wifi_tx_tone;
+    RpcRespSetContext *resp_set_context;
     RpcRespSetDhcpDnsStatus *resp_set_dhcp_dns;
     RpcRespSetMacAddress *resp_set_mac_address;
     RpcRespWifiSetMaxTxPower *resp_set_wifi_max_tx_power;
@@ -10276,6 +10334,44 @@ RpcRespGetDhcpDnsStatus *
 void   rpc__resp__get_dhcp_dns_status__free_unpacked
                      (RpcRespGetDhcpDnsStatus *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqSetContext methods */
+void   rpc__req__set_context__init
+                     (RpcReqSetContext         *message);
+size_t rpc__req__set_context__get_packed_size
+                     (const RpcReqSetContext   *message);
+size_t rpc__req__set_context__pack
+                     (const RpcReqSetContext   *message,
+                      uint8_t             *out);
+size_t rpc__req__set_context__pack_to_buffer
+                     (const RpcReqSetContext   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqSetContext *
+       rpc__req__set_context__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__set_context__free_unpacked
+                     (RpcReqSetContext *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespSetContext methods */
+void   rpc__resp__set_context__init
+                     (RpcRespSetContext         *message);
+size_t rpc__resp__set_context__get_packed_size
+                     (const RpcRespSetContext   *message);
+size_t rpc__resp__set_context__pack
+                     (const RpcRespSetContext   *message,
+                      uint8_t             *out);
+size_t rpc__resp__set_context__pack_to_buffer
+                     (const RpcRespSetContext   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespSetContext *
+       rpc__resp__set_context__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__set_context__free_unpacked
+                     (RpcRespSetContext *message,
+                      ProtobufCAllocator *allocator);
 /* RpcReqSuppDppInit methods */
 void   rpc__req__supp_dpp_init__init
                      (RpcReqSuppDppInit         *message);
@@ -12708,6 +12804,25 @@ RpcEventMemMonitor *
 void   rpc__event__mem_monitor__free_unpacked
                      (RpcEventMemMonitor *message,
                       ProtobufCAllocator *allocator);
+/* RpcEventContext methods */
+void   rpc__event__context__init
+                     (RpcEventContext         *message);
+size_t rpc__event__context__get_packed_size
+                     (const RpcEventContext   *message);
+size_t rpc__event__context__pack
+                     (const RpcEventContext   *message,
+                      uint8_t             *out);
+size_t rpc__event__context__pack_to_buffer
+                     (const RpcEventContext   *message,
+                      ProtobufCBuffer     *buffer);
+RpcEventContext *
+       rpc__event__context__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__event__context__free_unpacked
+                     (RpcEventContext *message,
+                      ProtobufCAllocator *allocator);
 /* Rpc methods */
 void   rpc__init
                      (Rpc         *message);
@@ -13308,6 +13423,12 @@ typedef void (*RpcReqGetDhcpDnsStatus_Closure)
 typedef void (*RpcRespGetDhcpDnsStatus_Closure)
                  (const RpcRespGetDhcpDnsStatus *message,
                   void *closure_data);
+typedef void (*RpcReqSetContext_Closure)
+                 (const RpcReqSetContext *message,
+                  void *closure_data);
+typedef void (*RpcRespSetContext_Closure)
+                 (const RpcRespSetContext *message,
+                  void *closure_data);
 typedef void (*RpcReqSuppDppInit_Closure)
                  (const RpcReqSuppDppInit *message,
                   void *closure_data);
@@ -13692,6 +13813,9 @@ typedef void (*RpcEventCustomRpc_Closure)
 typedef void (*RpcEventMemMonitor_Closure)
                  (const RpcEventMemMonitor *message,
                   void *closure_data);
+typedef void (*RpcEventContext_Closure)
+                 (const RpcEventContext *message,
+                  void *closure_data);
 typedef void (*Rpc_Closure)
                  (const Rpc *message,
                   void *closure_data);
@@ -13908,6 +14032,8 @@ extern const ProtobufCMessageDescriptor rpc__req__set_dhcp_dns_status__descripto
 extern const ProtobufCMessageDescriptor rpc__resp__set_dhcp_dns_status__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__get_dhcp_dns_status__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__get_dhcp_dns_status__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__set_context__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__set_context__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_init__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__supp_dpp_init__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__supp_dpp_deinit__descriptor;
@@ -14036,6 +14162,7 @@ extern const ProtobufCMessageDescriptor rpc__req__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__mem_monitor__descriptor;
+extern const ProtobufCMessageDescriptor rpc__event__context__descriptor;
 extern const ProtobufCMessageDescriptor rpc__descriptor;
 
 PROTOBUF_C__END_DECLS
