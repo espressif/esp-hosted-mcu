@@ -292,6 +292,15 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
                          (unsigned int)s_cp_transfer_size);
             }
             break;
+#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART
+        case EH_PRIV_UART_CREDIT:
+            if (tlen >= 4) {
+                extern void eh_host_bus_uart_set_credit(uint16_t unit, uint16_t window);
+                eh_host_bus_uart_set_credit((uint16_t)(val[0] | val[1] << 8),
+                                            (uint16_t)(val[2] | val[3] << 8));
+            }
+            break;
+#endif
         case EH_PRIV_TRANS_SDIO_MODE:
             if (tlen >= 1) {
                 s_slave_sdio_streaming_mode = val[0];

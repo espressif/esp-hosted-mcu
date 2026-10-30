@@ -136,6 +136,7 @@ static uint8_t encode_v1(uint8_t *buf,
     hdr->offset        = _to_le16((uint16_t)sizeof(*hdr));
     hdr->seq_num       = _to_le16(h->seq_num);
     hdr->throttle_cmd  = h->throttle_cmd & 0x03u;
+    hdr->rx_credit     = h->rx_credit & 0x3Fu;
     /* priv_pkt_type and hci_pkt_type alias the same union byte. */
     hdr->priv_pkt_type = h->pkt_type;
 
@@ -165,6 +166,7 @@ static uint8_t encode_v2(uint8_t *buf,
     hdr->offset        = _to_le16((uint16_t)sizeof(*hdr));
     hdr->len           = _to_le16(payload_len);
     hdr->tlv_offset    = h->tlv_offset;
+    hdr->rx_credit     = h->rx_credit & 0x3Fu;
     /* byte 19 union — same alias as V1 byte 11. */
     hdr->priv_pkt_type = h->pkt_type;
 
@@ -234,9 +236,11 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
     len    = _from_le16(hdr->len);
     offset = _from_le16(hdr->offset);
 
-    /* A flagged len==0 frame (power save) is validated below before its flags
-       are returned. Dummies never carry flags, so a flag on one is dropped. */
-    if (hdr->if_type == eh_if_type_dummy_wire() || (len == 0 && !hdr->flags)) {
+    /* A len==0 frame with flags (power save) or a credit is validated below
+       before they are returned. Dummies never carry flags, so a flag on one
+       is dropped. */
+    if (hdr->if_type == eh_if_type_dummy_wire() ||
+        (len == 0 && !hdr->flags && !hdr->rx_credit)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
@@ -271,7 +275,7 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
     /* A power-save frame may carry no checksum: the host can send its wake frame
        before it learns from the CP that checksums are on, and the 2.x SPI host
        never sets one on power-save frames. */
-    if (s_cfg.checksum_enabled && !(len == 0 && hdr->checksum == 0)) {
+    if (s_cfg.checksum_enabled && !(len == 0 && hdr->flags && hdr->checksum == 0)) {
         uint16_t stored = _from_le16(hdr->checksum);
         uint16_t calc = frame_checksum_zeroed(buf, total, FRAME_V1_CKSUM_OFF);
 #ifdef EH_FRAME_DEBUG
@@ -289,9 +293,10 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
 
     if (len == 0) {
         if (h) {
-            h->if_type = eh_if_type_from_wire(hdr->if_type);
-            h->if_num  = hdr->if_num;
-            h->flags   = hdr->flags;
+            h->if_type   = eh_if_type_from_wire(hdr->if_type);
+            h->if_num    = hdr->if_num;
+            h->flags     = hdr->flags;
+            h->rx_credit = hdr->rx_credit;
         }
         return EH_FRAME_DUMMY;
     }
@@ -305,6 +310,7 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
     h->payload_len  = len;
     h->payload      = (uint8_t *)(uintptr_t)buf + offset;
     h->throttle_cmd = hdr->throttle_cmd;
+    h->rx_credit    = hdr->rx_credit;
 
     return EH_FRAME_OK;
 }
@@ -331,9 +337,11 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
     len    = _from_le16(hdr->len);
     offset = _from_le16(hdr->offset);
 
-    /* A flagged len==0 frame (power save) is validated below before its flags
-       are returned. Dummies never carry flags, so a flag on one is dropped. */
-    if (hdr->if_type == eh_if_type_dummy_wire() || (len == 0 && !hdr->flags)) {
+    /* A len==0 frame with flags (power save) or a credit is validated below
+       before they are returned. Dummies never carry flags, so a flag on one
+       is dropped. */
+    if (hdr->if_type == eh_if_type_dummy_wire() ||
+        (len == 0 && !hdr->flags && !hdr->rx_credit)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
@@ -363,7 +371,7 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
     /* A power-save frame may carry no checksum: the host can send its wake frame
        before it learns from the CP that checksums are on, and the 2.x SPI host
        never sets one on power-save frames. */
-    if (s_cfg.checksum_enabled && !(len == 0 && hdr->checksum == 0)) {
+    if (s_cfg.checksum_enabled && !(len == 0 && hdr->flags && hdr->checksum == 0)) {
         uint16_t stored = _from_le16(hdr->checksum);
         uint16_t calc = frame_checksum_zeroed(buf, total, FRAME_V2_CKSUM_OFF);
 #ifdef EH_FRAME_DEBUG
@@ -381,9 +389,10 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
 
     if (len == 0) {
         if (h) {
-            h->if_type = eh_if_type_from_wire(hdr->if_type);
-            h->if_num  = hdr->if_num;
-            h->flags   = hdr->flags;
+            h->if_type   = eh_if_type_from_wire(hdr->if_type);
+            h->if_num    = hdr->if_num;
+            h->flags     = hdr->flags;
+            h->rx_credit = hdr->rx_credit;
         }
         return EH_FRAME_DUMMY;
     }
@@ -398,6 +407,7 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
     h->payload      = (uint8_t *)(uintptr_t)buf + offset;
     h->frag_seq     = hdr->frag_seq_num;
     h->tlv_offset   = hdr->tlv_offset;
+    h->rx_credit    = hdr->rx_credit;
 
     return EH_FRAME_OK;
 }

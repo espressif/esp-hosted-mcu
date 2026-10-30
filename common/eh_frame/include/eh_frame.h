@@ -37,6 +37,11 @@ typedef struct {
     /* CP TX: V1 throttle_cmd:2 (V2 ignores). RX: extracted from V1 hdr. */
     uint8_t   throttle_cmd;
 
+    /* UART, CP to host: bytes the CP has read from its RX ring, in units
+     * announced by EH_PRIV_UART_CREDIT, modulo 64. RX: left unchanged when
+     * the frame carries none, so the caller presets EH_FRAME_NO_CREDIT. */
+    uint8_t   rx_credit;
+
     /* MCU SPI-HD TX only: 1 = don't free payload after DMA. */
     uint8_t   payload_zcopy;
 
@@ -47,6 +52,8 @@ typedef struct {
     /* Caller-set free callback for the DMA buf. */
     void    (*free_buf_handle)(void *priv_buffer_handle);
 } interface_buffer_handle_t;
+
+#define EH_FRAME_NO_CREDIT 0xFFu
 
 typedef enum {
     EH_FRAME_OK      = 0,

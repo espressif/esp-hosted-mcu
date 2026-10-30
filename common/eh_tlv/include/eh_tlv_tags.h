@@ -22,7 +22,7 @@
 
 /* ── Tag-ID namespace map ───────────────────────────────────────────────────
  *   0x00–0x05   legacy FG (V1 wire only)
- *   0x11–0x1B   MCU caps / slave→host basic + extended
+ *   0x11–0x1D   MCU caps / slave→host basic + extended
  *   0x20–0x2F   bootstrap negotiation (header/RPC version, RPC endpoints)
  *   0x44–0x48   host→slave config
  *
@@ -45,6 +45,7 @@
 #define EH_PRIV_RPC_VERSION                       0x1A  /* both directions: wire RPC version (uint8) — strict-match required */
 #define EH_PRIV_SDIO_BUF_CONFIG                   0x1B  /* slave→host: struct eh_priv_sdio_buf_config (5B, eh_common_sdio_cfg.h) */
 #define EH_PRIV_TRANSFER_SIZE                     0x1C
+#define EH_PRIV_UART_CREDIT                       0x1D  /* slave→host: credit unit, window (2x uint16 LE, bytes) */
 
 /* ── Bootstrap negotiation TLVs (0x20–0x2F) ─────────────────────────────── */
 #define ESP_PRIV_HEADER_VERSION                   0x20  /* slave→host: proposed wire-hdr version (uint8) */

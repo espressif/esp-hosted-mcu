@@ -18,7 +18,7 @@ struct esp_payload_header {
 	uint16_t         checksum;
 	uint16_t         seq_num;
 	uint8_t          throttle_cmd:2;
-	uint8_t          reserved2:6;
+	uint8_t          rx_credit:6;     /* UART, CP to host: see eh_frame.h */
 #ifdef ESP_PKT_NUM_DEBUG
 	uint16_t         pkt_num;
 #endif

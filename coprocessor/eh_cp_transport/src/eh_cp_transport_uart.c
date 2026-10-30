@@ -88,9 +88,6 @@ static void show_config(void)
 		(int)HOSTED_UART_RX_QUEUE_SIZE);
 }
 
-// UART is low throughput, so throttling should not be needed
-#define USE_DATA_THROTTLING (0)
-
 // check if HOSTED_UART is the same as debug console uart
 #if CONFIG_ESP_CONSOLE_UART
 #if CONFIG_ESP_CONSOLE_UART_NUM == HOSTED_UART
@@ -108,7 +105,6 @@ static void show_config(void)
 #endif
 
 // for flow control
-static volatile uint8_t wifi_flow_ctrl = 0;
 static void flow_ctrl_task(void* pvParameters);
 static SemaphoreHandle_t flow_ctrl_sem = NULL;
 #define TRIGGER_FLOW_CTRL() if(flow_ctrl_sem) xSemaphoreGive(flow_ctrl_sem);
@@ -146,9 +142,62 @@ static TaskHandle_t flow_ctrl_task_handle = NULL;
  * reported. Without it the driver drops bytes silently. */
 #define UART_EVT_Q_SIZE 64
 #define UART_RX_FULL_THRESH 64
-/* Driver RX ring: ~10 ms of line time at 8 Mbaud, so a short uart_rx_task
- * stall does not lose bytes. */
-#define UART_RX_RING_SIZE 8192
+/* Driver RX ring: 10 ms of line time, at least 8 KB. It holds the bytes that
+ * arrive while uart_rx_task waits for a free buffer. */
+#define UART_RX_RING_10MS  (HOSTED_UART_BAUD_RATE / 10 / 100)
+#define UART_RX_RING_SIZE  (UART_RX_RING_10MS > 8192 ? UART_RX_RING_10MS : 8192)
+
+/* No hardware flow control: the host sends at most UART_CREDIT_WINDOW bytes
+ * that uart_rx_task has not read yet, so the ring cannot overflow however
+ * long the consumer blocks. Every frame to the host carries the bytes read,
+ * in units, modulo 64. 32 units per ring keeps a window under half the wrap. */
+#define UART_CREDIT_UNIT     (UART_RX_RING_SIZE / 32)
+#define UART_CREDIT_WINDOW   (UART_RX_RING_SIZE - UART_CREDIT_UNIT)
+/* Units read, not yet reported, that make flow_ctrl_task send a frame. */
+#define UART_CREDIT_REPORT   8
+/* flow_ctrl_task repeats the credit this long after the last read, so the
+ * host recovers from a lost credit frame or lost bytes. */
+#define UART_CREDIT_REPEAT_MS 500
+static volatile uint32_t rx_bytes_read;
+static volatile TickType_t rx_read_tick;
+/* Several tasks write frames (send_to_host_queue() writes in the caller's
+ * task). The credit is stamped and the frame written under this lock, so
+ * the credit never goes back on the wire. */
+static SemaphoreHandle_t uart_tx_lock;
+static volatile uint8_t credit_sent;
+/* Tick a credit frame was queued, 0 once written. The core drops frames
+ * before the data path opens, so a mark older than 20 ms is ignored. */
+static volatile TickType_t credit_frame_queued;
+
+static inline bool uart_credit_frame_pending(void)
+{
+	return credit_frame_queued &&
+		(int32_t)(xTaskGetTickCount() - credit_frame_queued) < (int32_t)pdMS_TO_TICKS(20);
+}
+
+static inline uint8_t uart_rx_credit(void)
+{
+	return (uint8_t)((rx_bytes_read / UART_CREDIT_UNIT) & 0x3F);
+}
+
+static inline uint8_t uart_credit_owed(void)
+{
+	return (uint8_t)((uart_rx_credit() - credit_sent) & 0x3F);
+}
+
+static inline int uart_rx_read(uint8_t *buf, size_t len, TickType_t tmo)
+{
+	int n = uart_read_bytes(HOSTED_UART, buf, len, tmo);
+
+	if (n > 0) {
+		rx_bytes_read += n;
+		rx_read_tick = xTaskGetTickCount();
+		if (uart_credit_owed() >= UART_CREDIT_REPORT && !uart_credit_frame_pending())
+			TRIGGER_FLOW_CTRL();
+	}
+	return n;
+}
+
 static QueueHandle_t uart_evt_q = NULL;
 static TaskHandle_t uart_evt_task_handle = NULL;
 
@@ -247,6 +296,9 @@ static inline void h_uart_buffer_rx_free(void *buf)
 	hosted_mempool_free(buf_mp_rx_g, buf);
 }
 
+/* Sends a header-only frame with the credit when no frame to the host
+ * carried it. Also on a 20 ms tick, as the trigger from uart_rx_task can
+ * come while a credit frame is still queued, and to repeat the credit. */
 static void flow_ctrl_task(void* pvParameters)
 {
 	flow_ctrl_sem = xSemaphoreCreateBinary();
@@ -255,70 +307,20 @@ static void flow_ctrl_task(void* pvParameters)
 	for(;;) {
 		interface_buffer_handle_t buf_handle = {0};
 
-		xSemaphoreTake(flow_ctrl_sem, portMAX_DELAY);
+		xSemaphoreTake(flow_ctrl_sem, pdMS_TO_TICKS(20));
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
 		if (uart_exit_requested) { vTaskSuspend(NULL); continue; }
 #endif
+		if (uart_credit_frame_pending() || IS_HOST_POWER_SAVING() || (!uart_credit_owed() &&
+		    xTaskGetTickCount() - rx_read_tick > pdMS_TO_TICKS(UART_CREDIT_REPEAT_MS)))
+			continue;
 
-		if (wifi_flow_ctrl)
-			buf_handle.throttle_cmd = EH_FRAME_FLOW_CTRL_ON;
-		else
-			buf_handle.throttle_cmd = EH_FRAME_FLOW_CTRL_OFF;
-
-		ESP_LOGV(TAG, "flow_ctrl %u", buf_handle.throttle_cmd);
-		send_to_host_queue(&buf_handle, PRIO_Q_SERIAL);
+		credit_frame_queued = xTaskGetTickCount() | 1;
+		buf_handle.if_type = ESP_SERIAL_IF;
+		if (send_to_host_queue(&buf_handle, PRIO_Q_SERIAL))
+			credit_frame_queued = 0;
 	}
 }
-
-#if USE_DATA_THROTTLING
-static void start_rx_data_throttling_if_needed(void)
-{
-	uint32_t queue_load;
-	uint8_t load_percent;
-
-	if (slv_cfg_g.throttle_high_threshold > 0) {
-
-		/* Already throttling, nothing to be done */
-		if (slv_state_g.current_throttling)
-			return;
-
-		queue_load = uxQueueMessagesWaiting(uart_rx_queue[PRIO_Q_OTHERS]);
-
-
-		load_percent = (queue_load*100/HOSTED_UART_RX_QUEUE_SIZE);
-		if (load_percent > slv_cfg_g.throttle_high_threshold) {
-			slv_state_g.current_throttling = 1;
-			wifi_flow_ctrl = 1;
-#if ESP_PKT_STATS
-		pkt_stats.sta_flowctrl_on++;
-#endif
-			TRIGGER_FLOW_CTRL();
-		}
-	}
-}
-
-static void stop_rx_data_throttling_if_needed(void)
-{
-	uint32_t queue_load;
-	uint8_t load_percent;
-
-	if (slv_state_g.current_throttling) {
-
-		queue_load = uxQueueMessagesWaiting(uart_rx_queue[PRIO_Q_OTHERS]);
-
-
-		load_percent = (queue_load*100/HOSTED_UART_RX_QUEUE_SIZE);
-		if (load_percent < slv_cfg_g.throttle_low_threshold) {
-			slv_state_g.current_throttling = 0;
-			wifi_flow_ctrl = 0;
-#if ESP_PKT_STATS
-		pkt_stats.sta_flowctrl_off++;
-#endif
-			TRIGGER_FLOW_CTRL();
-		}
-	}
-}
-#endif
 
 static void uart_rx_read_done(void *handle)
 {
@@ -397,8 +399,7 @@ static bool uart_rx_fill(size_t need)
 	while (acc_len < need) {
 		TickType_t tmo = pdMS_TO_TICKS((need - acc_len) * 20 * 1000 /
 				HOSTED_UART_BAUD_RATE + 20);
-		int n = uart_read_bytes(HOSTED_UART, uart_scratch_buf + acc_len,
-				need - acc_len, tmo);
+		int n = uart_rx_read(uart_scratch_buf + acc_len, need - acc_len, tmo);
 		if (n <= 0)
 			return false;
 		acc_len += n;
@@ -455,7 +456,7 @@ static void uart_rx_task(void* pvParameters)
 		const TickType_t idle_wait = portMAX_DELAY;
 #endif
 		if (acc_len == 0) {
-			if (uart_read_bytes(HOSTED_UART, uart_scratch_buf, 1, idle_wait) <= 0)
+			if (uart_rx_read(uart_scratch_buf, 1, idle_wait) <= 0)
 				continue;
 			acc_len = 1;
 		}
@@ -516,10 +517,6 @@ static void uart_rx_task(void* pvParameters)
 		buf_handle.free_buf_handle = uart_rx_read_done;
 		buf_handle.priv_buffer_handle = buf;
 
-#if USE_DATA_THROTTLING
-		start_rx_data_throttling_if_needed();
-#endif
-
 #if ESP_PKT_STATS
 		if (buf_handle.if_type == ESP_STA_IF)
 			pkt_stats.hs_bus_sta_in++;
@@ -574,10 +571,6 @@ static int h_uart_read(interface_handle_t *if_handle, interface_buffer_handle_t 
 		return ESP_FAIL;
 	}
 
-#if USE_DATA_THROTTLING
-	stop_rx_data_throttling_if_needed();
-#endif
-
 	return buf_handle->payload_len;
 }
 
@@ -592,6 +585,9 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 		return ESP_FAIL;
 	}
 
+	if (!buf_handle->payload_len)
+		credit_frame_queued = 0;
+
 	if (handle->state != ACTIVE) {
 		return ESP_FAIL;
 	}
@@ -601,11 +597,10 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 		return ESP_FAIL;
 	}
 
-	if (!buf_handle->throttle_cmd) {
-		if (!buf_handle->payload_len || !buf_handle->payload){
-			ESP_LOGE(TAG , "Invalid arguments, len:%"PRIu16, buf_handle->payload_len);
-			return ESP_FAIL;
-		}
+	/* No payload: a credit frame from flow_ctrl_task. */
+	if (buf_handle->payload_len && !buf_handle->payload) {
+		ESP_LOGE(TAG , "Invalid arguments, len:%"PRIu16, buf_handle->payload_len);
+		return ESP_FAIL;
 	}
 
 	total_len = buf_handle->payload_len + eh_frame_hdr_size();
@@ -617,8 +612,10 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 		return ESP_FAIL;
 	}
 
-	memcpy(sendbuf + eh_frame_hdr_size(), buf_handle->payload, buf_handle->payload_len);
+	if (buf_handle->payload_len)
+		memcpy(sendbuf + eh_frame_hdr_size(), buf_handle->payload, buf_handle->payload_len);
 
+	xSemaphoreTake(uart_tx_lock, portMAX_DELAY);
 	/* Encode wire header via frame component */
 	{
 		interface_buffer_handle_t h = {0};
@@ -627,6 +624,8 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 		h.flags         = buf_handle->flags;
 		h.seq_num       = buf_handle->seq_num;
 		h.throttle_cmd  = buf_handle->throttle_cmd;
+		h.rx_credit     = uart_rx_credit();
+		credit_sent     = h.rx_credit;
 		UPDATE_HEADER_TX_PKT_NO_IBUF(&h);
 		eh_frame_encode(sendbuf, &h, buf_handle->payload_len);
 	}
@@ -639,6 +638,7 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 	 * RX consumer, which frees the RX pool buffers. */
 	uart_wait_tx_done(HOSTED_UART, portMAX_DELAY);
 	tx_len = uart_write_bytes(HOSTED_UART, (const char*)sendbuf, total_len);
+	xSemaphoreGive(uart_tx_lock);
 
 	if ((tx_len < 0) || (tx_len != total_len)) {
 		ESP_LOGE(TAG , "uart transmit error");
@@ -649,7 +649,7 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 #if ESP_PKT_STATS
 	if (buf_handle->if_type == ESP_STA_IF)
 		pkt_stats.sta_sh_out++;
-	else if (buf_handle->if_type == ESP_SERIAL_IF)
+	else if (buf_handle->if_type == ESP_SERIAL_IF && buf_handle->payload_len)
 		pkt_stats.serial_tx_total++;
 #endif
 
@@ -740,6 +740,10 @@ static interface_handle_t * h_uart_init(void)
 	// prepare buffers
 	h_uart_mempool_create();
 
+	if (!uart_tx_lock)
+		uart_tx_lock = xSemaphoreCreateMutex();
+	assert(uart_tx_lock);
+
 	uart_rx_sem = xSemaphoreCreateCounting(HOSTED_UART_RX_QUEUE_SIZE * MAX_PRIORITY_QUEUES, 0);
 	if (!rx_buf_freed)
 		rx_buf_freed = xSemaphoreCreateBinary();
@@ -751,6 +755,7 @@ static interface_handle_t * h_uart_init(void)
 	}
 
 	// start up tasks (guard on NULL so a deinit->init cycle never double-spawns)
+	credit_frame_queued = 0;
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
 	uart_exit_requested = false;
 #endif
@@ -942,6 +947,10 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 	else
 		ESP_LOGI(TAG, "advertising transfer size %u", (unsigned)uart_transfer_size);
 
+	if (eh_tlv_add_u32_le(&tlv, EH_PRIV_UART_CREDIT,
+			(uint32_t)UART_CREDIT_UNIT | (uint32_t)UART_CREDIT_WINDOW << 16))
+		ESP_LOGW(TAG, "no room for credit TLV");
+
 	len = eh_tlv_builder_len(&tlv);
 	event->event_len = len;
 	len += 2;
@@ -952,6 +961,8 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 		h.if_type  = ESP_PRIV_IF;
 		h.if_num   = 0;
 		h.pkt_type = eh_priv_pkt_type_event_wire();
+		xSemaphoreTake(uart_tx_lock, portMAX_DELAY);
+		h.rx_credit = uart_rx_credit();
 		UPDATE_HEADER_TX_PKT_NO_IBUF(&h);
 		eh_frame_encode(buf_handle.payload, &h, len);
 	}
@@ -960,6 +971,7 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 	buf_handle.payload_len = total_len;
 
 	tx_len = uart_write_bytes(HOSTED_UART, (const char*)buf_handle.payload, buf_handle.payload_len);
+	xSemaphoreGive(uart_tx_lock);
 	if ((tx_len < 0) || (tx_len != (int)buf_handle.payload_len)) {
 		ESP_LOGE(TAG , "startup: uart slave transmit error");
 	}

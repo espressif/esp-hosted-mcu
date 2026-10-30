@@ -31,7 +31,7 @@ typedef struct {
 		uint8_t   tlv_offset;   /* byte offset to optional TLV block (0 = none) */
 		uint8_t   reserved_2;
 	};
-	uint8_t   reserved_3;
+	uint8_t   rx_credit;        /* UART, CP to host: see eh_frame.h */
 	uint8_t   reserved_4;
 	uint8_t   reserved_5;
 	uint8_t   reserved_6;

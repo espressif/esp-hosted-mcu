@@ -49,7 +49,7 @@ sequenceDiagram
     Note over HS,CW: Host to CP
     HS->>HU: frame (eh_host_bus_write)
     HU->>CU: bytes on the wire
-    Note over CU: FIFO 128 B → ISR in IRAM → ring 8 KB
+    Note over CU: FIFO 128 B → ISR in IRAM → ring (10 ms, min 8 KB)
     CU->>CU: uart_rx_task: resync + decode
     CU->>CW: queue → Wi-Fi TX
 
@@ -93,18 +93,27 @@ The host does not send a checksum (`checksum_enabled = 0`). Without a checksum, 
 | HW RX FIFO (128 B) | ISR too late | `uart evt: fifo_ovf` (CP), `RX FIFO overflow` (host, debug level) | Bytes lost; resync |
 | Driver RX ring | RX task too slow | `uart evt: buf_full` (CP) | Bytes lost; resync |
 | CP Wi-Fi TX | Wi-Fi TX full for 16 retries | `STA: ... H2S(... fail[])` (CP packet stats) | Frame dropped by Wi-Fi |
+| Host frame without credit | Network data, or a frame from the host UART RX task | busy error to the stack (`ERR_BUF` for network data) | Frame dropped or repeated by the stack |
 
 Neither end writes console output from the RX path. One line on a 115200 console takes about 5 ms, and the ring can overflow in that time. Other tasks print the counters.
 
-### Backpressure
+### Flow control
 
-The link has no hardware flow control. The CP does not send `throttle_cmd`. The transport waits instead of dropping frames:
+The link has no hardware flow control. The host uses byte credit: it never has more unread bytes at the CP than the CP RX ring can hold. Nothing in the transport drops a frame.
 
-- Host to CP: if the RX pool is empty, `uart_rx_task` waits for a free buffer. The bytes wait in the driver ring.
-- Host to CP: if Wi-Fi TX is full, `wifi_tx_with_retry()` retries for up to 16 ms per frame. The bytes from the host wait in the driver ring.
-- CP to host: the CP TX blocks until the line is free.
+- In its init event, the CP sends `EH_PRIV_UART_CREDIT`: the credit unit (ring / 32) and the window (ring minus one unit), in bytes.
+- Each frame from the CP carries `rx_credit`: the bytes that `uart_rx_task` has read from the RX ring, in units, modulo 64. V1 has it in byte 10, bits 2 to 7. V2 has it in byte 15.
+- When the CP has no frame to send, a header-only frame carries the credit. The CP sends one after 8 units, and every 20 ms for 500 ms after the last read.
+- The host counts every byte that it writes. It sends a frame only if the bytes not yet read by the CP, plus the frame, fit in the window.
+- Without credit, RPC, raw TP and HCI frames wait.
+- Without credit, network data and frames from the host UART RX task get a busy error. lwIP sends them with its core lock held, and the RX task needs that lock to keep reading. For network data, the host sets the Wi-Fi TX throttle (`ERR_BUF` to lwIP) until the window has room for one frame.
+- If the window has no room and the credit does not change for 200 ms, the host assumes that bytes were lost on the line. It starts the window again and counts the event.
+- An older CP sends no credit TLV, so the host does not use credit. An older host ignores `rx_credit`.
 
-The host cannot be stopped, so the wait is limited by the CP buffering: the 8 KB ring and the RX pool. If Wi-Fi TX stays full longer, the ring overflows and bytes are lost (`uart evt: buf_full`). Hardware flow control (RTS/CTS) would stop the host instead.
+On the CP:
+
+- If the RX pool is empty, `uart_rx_task` waits for a free buffer. The bytes wait in the driver ring.
+- If Wi-Fi TX is full, `wifi_tx_with_retry()` retries for up to 16 ms per frame. Then Wi-Fi drops the frame. The host does not send more than the window meanwhile, so the ring does not overflow.
 
 ### Timing budget
 
@@ -127,7 +136,7 @@ Code that runs with interrupts disabled delays the ISR. For this reason the rang
 | Range | 9600 – 8000000 (above 5000000 is outside the SoC specification) | same |
 | ISR in IRAM | selected by `ESP_HOSTED_HOST_TRANSPORT_BUS_UART` | selected by `EH_TRANSPORT_CP_UART` |
 | FIFO IRQ threshold | 64 B (`EH_UART_RX_FULL_THRESH`) | 64 B (`UART_RX_FULL_THRESH`) |
-| Driver RX ring | 6144 B (`EH_UART_RX_BUF_SIZE`) | 8192 B (`UART_RX_RING_SIZE`) |
+| Driver RX ring | 6144 B (`EH_UART_RX_BUF_SIZE`) | 10 ms of line time, at least 8192 B (`UART_RX_RING_SIZE`) |
 | RX queue / pool | – | `CONFIG_EH_TRANSPORT_CP_UART_RX_Q_SIZE` (default 5) |
 | HW flow control | off | off |
 
