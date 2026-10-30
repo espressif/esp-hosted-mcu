@@ -39,15 +39,15 @@ from infra import wifi_diag
 EX = 'power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep'
 FAIL_PATTERNS = FATAL_PATTERNS + ['bring-up timed out']
 IPERF_SECS = 10
-# UART corruption: any one means the link lost framing, so the reading is void.
-UART_ERR = re.compile(r'RX FIFO overflow|accumulator full|frame_decode err|'
-                      r'Failed to read (header|payload)|incoming data too big|'
-                      r'uart transmit error')
-# Bytes lost and recovered by the CP resync. TCP never overloads the wire, so
-# any is a defect there; UDP offered above the 8N1 ceiling must lose some.
-UART_RESYNC = re.compile(r'resync bytes=[1-9]')
-# CP buffer pool exhausted under load: frames dropped intact, TCP retransmits.
-UART_DROP = re.compile(r'no rx buffer')
+# UART faults. Credit keeps the CP RX ring from overflowing, so any one is a
+# defect. The RX tasks do not log; these lines come from other tasks.
+UART_ERR = re.compile(r'uart transmit error|incoming data too big')
+# CP: uart_evt_task and flow_ctrl_task, last line wins.
+CP_EVT = re.compile(r'uart evt: fifo_ovf=(\d+) buf_full=(\d+)')
+CP_DROP = re.compile(r'dropped frames: no rx buffer=(\d+) queue full=(\d+), resync bytes=(\d+)')
+# Host packet stats (ESP_PKT_STATS), last line wins.
+HOST_UART = re.compile(r'UART RX: fifo_ovf\[(\d+)\] resync_bytes\[(\d+)\] TX credit: '
+                       r'unit\[(\d+)\] .*reset\[(\d+)\] bad\[(\d+)\]')
 
 
 def _env(name, default=None, required=False):
@@ -200,7 +200,7 @@ def test_tcp_throughput(bench, transport, request):
         tx = peer_tx if 'tx' in dirs else []
         rx = [round(v * 1.048576, 3) for v in _totals(host_txt[rx_from:])][:n]
     else:
-        tx = _totals(host_txt)[:n]
+        tx = _totals(host_txt[:rx_from])[:n]
 
     d = wifi_diag.parse(cp_log, host_txt)
     report = wifi_diag.summary(d, tx, rx, ssid=ssid, transport=transport)
@@ -209,7 +209,7 @@ def test_tcp_throughput(bench, transport, request):
 
     problems = [f'{t}' for v, t, _ in wifi_diag.check(d) if v == wifi_diag.FAIL]
     if transport == 'uart':
-        problems += _uart_checks(cp_log, host_txt, baud, tx, rx, udp)
+        problems += _uart_checks(cp_log, host_txt, baud, tx, rx)
     if not tx and 'tx' in dirs:
         problems.append('no TX total captured')
     if board_ip and not rx and 'rx' in dirs:
@@ -254,7 +254,7 @@ def _write_artifact(request, report):
         pass
 
 
-def _uart_checks(cp_log, host_txt, baud, tx, rx, udp):
+def _uart_checks(cp_log, host_txt, baud, tx, rx):
     """Prove the claimed baud on both ends and that no reading beats the wire.
     8N1 puts 8 payload bits in 10, so goodput can never exceed 0.8 x baud."""
     out = []
@@ -275,15 +275,25 @@ def _uart_checks(cp_log, host_txt, baud, tx, rx, udp):
                 print(f'[tp] {name} {v:.3f} Mbits/sec = {v / ceil * 100:.0f}% of 8N1 ceiling {ceil:.3f}')
                 if v > ceil:
                     out.append(f'{name} {v:.3f} > 8N1 ceiling {ceil:.3f}: traffic bypassed UART')
-    logs = cp_log + '\n' + host_txt
-    n_err, n_drop = len(UART_ERR.findall(logs)), len(UART_DROP.findall(logs))
-    print(f'[tp] uart corruption: {n_err}  pool drops: {n_drop}')
-    evt = re.findall(r'uart evt: .*', cp_log)
-    print(f'[tp] cp uart events: {evt[-1] if evt else "none"}')
+    out += uart_faults(cp_log, host_txt)
+    return out
+
+
+def uart_faults(cp_log, host_txt):
+    """UART transport faults from both logs; empty if none."""
+    out = []
+    n_err = len(UART_ERR.findall(cp_log + '\n' + host_txt))
     if n_err:
-        out.append(f'{n_err} UART corruption errors in the logs')
-    resync = UART_RESYNC.findall(cp_log)
-    print(f'[tp] cp resync log lines: {len(resync)}')
-    if resync and not udp:
-        out.append(f'CP resynced the UART stream {len(resync)} times under TCP')
+        out.append(f'{n_err} UART errors in the logs')
+    if 'credit: unit ' not in host_txt:
+        out.append('host did not enable UART credit')
+    for name, rx, vals in (('CP uart evt fifo_ovf/buf_full', CP_EVT, cp_log),
+                           ('CP no rx buffer/queue full/resync bytes', CP_DROP, cp_log),
+                           ('host fifo_ovf/resync_bytes/-/credit reset/bad', HOST_UART, host_txt)):
+        m = rx.findall(vals)
+        print(f'[tp] {name}: {m[-1] if m else "none"}')
+        # credit unit is not a fault
+        last = [int(v) for i, v in enumerate(m[-1]) if not (rx is HOST_UART and i == 2)] if m else []
+        if any(last):
+            out.append(f'{name}: {m[-1]}')
     return out

@@ -45,7 +45,6 @@
 #include "eh_tlv_tags.h"
 #include "eh_frame.h"
 #include "eh_check.h"
-#include "esp_timer.h"
 
 /* Limit feature count to the mask size; overflow could skip init/deinit. */
 #define EH_CP_FEAT_CAP 32
@@ -532,21 +531,6 @@ static void process_priv_command(uint8_t *payload, uint16_t payload_len)
 	ESP_LOGW(TAG, "Legacy priv command 0x%02x ignored (TEST_RAW_TP disabled)", payload[0]);
 #endif
 }
-
-#if CONFIG_EH_DBG_WIFI_NOMEM_MS
-/* Test only: Wi-Fi TX reports full for CONFIG_EH_DBG_WIFI_NOMEM_MS of each
- * second. The window moves each second: TCP retransmits after whole seconds,
- * and a fixed window drops every retry. */
-static int dbg_wifi_tx(wifi_interface_t wifi_if, uint8_t *payload, uint16_t len)
-{
-	int64_t ms = esp_timer_get_time() / 1000;
-
-	if ((ms - ms / 1000 * 389) % 1000 < CONFIG_EH_DBG_WIFI_NOMEM_MS)
-		return ESP_ERR_NO_MEM;
-	return esp_wifi_internal_tx(wifi_if, payload, len);
-}
-#define esp_wifi_internal_tx dbg_wifi_tx
-#endif
 
 /* Hold the frame over transient WiFi pool exhaustion so a burst paces on the
  * bus instead of dropping into a TCP RTO. Any other error is terminal. */

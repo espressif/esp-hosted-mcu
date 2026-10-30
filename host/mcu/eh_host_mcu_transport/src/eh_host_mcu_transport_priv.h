@@ -64,6 +64,22 @@ int eh_host_bus_tx(interface_buffer_handle_t *bh);
 int eh_host_bus_inform_slave_ps_enter(void);
 int eh_host_bus_inform_slave_ps_exit(void);
 
+#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART
+struct eh_host_bus_uart_stats {
+	uint32_t fifo_ovf;        /* UART_FIFO_OVF events */
+	uint32_t resync_bytes;    /* bytes skipped to find a header */
+	uint32_t credit_unit;     /* 0: the CP sent no credit */
+	uint32_t credit_wait;     /* frames that waited for credit */
+	uint32_t credit_wait_ms;
+	uint32_t credit_busy;     /* frames refused for lack of credit */
+	uint32_t credit_reset;    /* windows restarted for lack of credit */
+	uint32_t credit_bad;      /* credits larger than the bytes in flight */
+};
+
+void eh_host_bus_uart_set_credit(uint16_t unit, uint16_t window);
+void eh_host_bus_uart_get_stats(struct eh_host_bus_uart_stats *st);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -201,24 +201,32 @@ static inline int uart_rx_read(uint8_t *buf, size_t len, TickType_t tmo)
 static QueueHandle_t uart_evt_q = NULL;
 static TaskHandle_t uart_evt_task_handle = NULL;
 
-/* Frames dropped intact by uart_rx_task. Logged at debug level only: a
- * console line from uart_rx_task stalls it for milliseconds on a 115200
- * console, and the RX ring overflows meanwhile. */
+/* Frames uart_rx_task dropped (no RX buffer, queue full) and bytes the resync
+ * skipped. flow_ctrl_task logs them: a console line from uart_rx_task stalls
+ * it for milliseconds on a 115200 console, and the RX ring overflows. */
 static uint32_t rx_drop_no_buf, rx_drop_q_full, rx_resync_bytes;
 /* Given when the consumer frees an RX buffer. */
 static SemaphoreHandle_t rx_buf_freed;
 
 static void uart_rx_drop(uint32_t *counter, uint32_t n)
 {
-	static TickType_t last_log;
-	TickType_t now = xTaskGetTickCount();
-
 	*counter += n;
-	if (now - last_log >= pdMS_TO_TICKS(1000)) {
-		last_log = now;
-		ESP_LOGD(TAG, "uart rx: dropped frames: no rx buffer=%" PRIu32 " queue full=%" PRIu32
-				", resync bytes=%" PRIu32, rx_drop_no_buf, rx_drop_q_full, rx_resync_bytes);
-	}
+}
+
+/* At most once per second, and only when a counter went up. */
+static void uart_rx_drop_log(void)
+{
+	static TickType_t last_log;
+	static uint32_t last_sum;
+	TickType_t now = xTaskGetTickCount();
+	uint32_t sum = rx_drop_no_buf + rx_drop_q_full + rx_resync_bytes;
+
+	if (sum == last_sum || now - last_log < pdMS_TO_TICKS(1000))
+		return;
+	last_log = now;
+	last_sum = sum;
+	ESP_LOGW(TAG, "uart rx: dropped frames: no rx buffer=%" PRIu32 " queue full=%" PRIu32
+			", resync bytes=%" PRIu32, rx_drop_no_buf, rx_drop_q_full, rx_resync_bytes);
 }
 
 static void uart_evt_task(void *arg)
@@ -311,6 +319,7 @@ static void flow_ctrl_task(void* pvParameters)
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
 		if (uart_exit_requested) { vTaskSuspend(NULL); continue; }
 #endif
+		uart_rx_drop_log();
 		if (uart_credit_frame_pending() || IS_HOST_POWER_SAVING() || (!uart_credit_owed() &&
 		    xTaskGetTickCount() - rx_read_tick > pdMS_TO_TICKS(UART_CREDIT_REPEAT_MS)))
 			continue;
@@ -386,7 +395,7 @@ static int uart_rx_check_hdr(const uint8_t *h, size_t avail)
 		off = h[8] | h[9] << 8;
 		len = h[10] | h[11] << 8;
 	}
-	if (off < hsz || off > hsz + 7 || off + len > (int)uart_transfer_size)
+	if (off < hsz || off > hsz + EH_FRAME_MAX_PAD_BYTES || off + len > (int)uart_transfer_size)
 		return -1;
 	return off + len;
 }

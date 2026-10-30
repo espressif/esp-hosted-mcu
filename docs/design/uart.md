@@ -26,10 +26,10 @@ flowchart LR
 
 The `if_type` field multiplexes Wi-Fi and Bluetooth over the same link. Bluetooth uses Hosted HCI, not standard UART-HCI. During the handshake, the host and coprocessor negotiate base and extended capabilities, including *WLAN over UART*.
 
-Use the default baud rate initially, then evaluate increasing baud rates up to 8 Mbaud. The baud rate must match on both the host and coprocessor. See [Performance Tuning](performance.md#12-esp32-c5-as-co-processor).
+Use the default baud rate initially, then evaluate higher baud rates. Kconfig accepts up to 8 Mbaud. Rates above 5 Mbaud are outside the SoC specification; see [Timing budget](#timing-budget) for the tested rates. The baud rate must match on both the host and coprocessor. See [Performance Tuning](performance.md#12-esp32-c5-as-co-processor).
 
 > [!NOTE]
-> The framing has no delimiter or escaping. If a byte is lost, the receiver skips to the next byte that can start a header and checks the frame checksum. Header-only frames are checked too, so payload bytes cannot set power-save flags. The frames around the lost byte are lost, but the link stays up. The link has no hardware flow control, so use clean wiring.
+> The framing has no delimiter or escaping. If a byte is lost, the receiver skips to the next byte that can start a header and checks the frame checksum. Header-only frames are checked too. Exception: a header-only frame with power-save flags and a zero checksum field passes on the offset checks alone, because the host can send its wake frame before it knows that checksums are on. The frames around the lost byte are lost, but the link stays up. The link has no hardware flow control, so use clean wiring.
 
 Code: `coprocessor/eh_cp_transport/src/eh_cp_transport_uart.c`, `host/mcu/eh_host_mcu_transport/src/eh_host_bus_uart.c`, `common/eh_frame/`. See [Architecture & Protocol](../architecture.md#3-on-wire-frame-format) for the frame header and handshake.
 
@@ -84,22 +84,36 @@ flowchart TD
 
 Both ends make these checks. On `UART_FIFO_OVF`, the host keeps its buffer. The resync drops only the damaged frame.
 
-The host does not send a checksum (`checksum_enabled = 0`). Without a checksum, the CP depends on the offset and length checks. These checks find most false headers, but not all of them.
+The CP sets the checksum (`CONFIG_EH_TRANSPORT_CP_UART_CHECKSUM`, default on) and tells the host in the init event. Host frames sent before the init event have no checksum. Without a checksum, the receiver depends on the offset and length checks. These checks find most false headers, but not all of them.
 
 ### Where data can be lost
 
 | Point | Cause | Signal | Result |
 | :--- | :--- | :--- | :--- |
-| HW RX FIFO (128 B) | ISR too late | `uart evt: fifo_ovf` (CP), `RX FIFO overflow` (host, debug level) | Bytes lost; resync |
+| HW RX FIFO (128 B) | ISR too late | `uart evt: fifo_ovf` (CP), `fifo_ovf[]` (host packet stats) | Bytes lost; resync |
 | Driver RX ring | RX task too slow | `uart evt: buf_full` (CP) | Bytes lost; resync |
 | CP Wi-Fi TX | Wi-Fi TX full for 16 retries | `STA: ... H2S(... fail[])` (CP packet stats) | Frame dropped by Wi-Fi |
 | Host frame without credit | Network data, or a frame from the host UART RX task | busy error to the stack (`ERR_BUF` for network data) | Frame dropped or repeated by the stack |
 
-Neither end writes console output from the RX path. One line on a 115200 console takes about 5 ms, and the ring can overflow in that time. Other tasks print the counters.
+Neither end writes console output from the RX path. One line on a 115200 console takes about 5 ms, and the ring can overflow in that time. Other tasks print the counters: on the CP, `uart_evt_task` and `flow_ctrl_task` (`uart rx: dropped frames`, at most once per second) at warning level; on the host, the packet stats (`CONFIG_ESP_HOSTED_HOST_PKT_STATS`).
 
 ### Flow control
 
-The link has no hardware flow control. The host uses byte credit: it never has more unread bytes at the CP than the CP RX ring can hold. Nothing in the transport drops a frame.
+The link has no hardware flow control. The host uses byte credit: it never has more unread bytes at the CP than the CP RX ring can hold. Byte credit is used only on UART. With the default configuration (`CONFIG_ESP_CACHE_MALLOC=y`), the transport waits for buffers and credit instead of dropping a frame. Bytes can still be lost in the hardware FIFO (see the table above).
+
+```mermaid
+sequenceDiagram
+    participant H as Host
+    participant C as Coprocessor
+    C->>H: init event: EH_PRIV_UART_CREDIT (unit, window)
+    H->>C: frames, at most window bytes not yet read by the CP
+    Note over H: window full: RPC/HCI wait, network data gets busy
+    Note over C: uart_rx_task reads the RX ring
+    C->>H: any frame (or header-only): rx_credit = units read, modulo 64
+    Note over H: room = window - (bytes sent - bytes read)
+    H->>C: more frames
+```
+
 
 - In its init event, the CP sends `EH_PRIV_UART_CREDIT`: the credit unit (ring / 32) and the window (ring minus one unit), in bytes.
 - Each frame from the CP carries `rx_credit`: the bytes that `uart_rx_task` has read from the RX ring, in units, modulo 64. V1 has it in byte 10, bits 2 to 7. V2 has it in byte 15.
@@ -107,7 +121,8 @@ The link has no hardware flow control. The host uses byte credit: it never has m
 - The host counts every byte that it writes. It sends a frame only if the bytes not yet read by the CP, plus the frame, fit in the window.
 - Without credit, RPC, raw TP and HCI frames wait.
 - Without credit, network data and frames from the host UART RX task get a busy error. lwIP sends them with its core lock held, and the RX task needs that lock to keep reading. For network data, the host sets the Wi-Fi TX throttle (`ERR_BUF` to lwIP) until the window has room for one frame.
-- If the window has no room and the credit does not change for 200 ms, the host assumes that bytes were lost on the line. It starts the window again and counts the event.
+- If the window has no room and the credit does not change for 200 ms, the host assumes that bytes were lost on the line. It resets the window (credit reset) and counts the event.
+- A header-only frame with credit 0 is told from a dummy frame by its checksum. With the CP checksum off, the host misses that credit and waits for the next one, or for the credit reset.
 - An older CP sends no credit TLV, so the host does not use credit. An older host ignores `rx_credit`.
 
 On the CP:
@@ -126,7 +141,10 @@ On the CP:
 
 The ISR must start within the headroom, or the FIFO overflows. While flash operations run, an ISR in flash cannot start. For this reason, both ends select `CONFIG_UART_ISR_IN_IRAM`.
 
-Code that runs with interrupts disabled delays the ISR. For this reason the range stops at 8 Mbaud. On the ESP32-P4 host, iperf from the CP to the host lost one frame in 1 of 20 runs at 10 Mbaud (64 µs) and in about 1 of 4 runs at 16 Mbaud (40 µs). A higher interrupt level did not help.
+Code that runs with interrupts disabled delays the ISR. For this reason the range stops at 8 Mbaud. Tested:
+
+- ESP32-P4 + ESP32-C5 core board, before byte credit: iperf from the CP to the host lost one frame in 1 of 20 runs at 10 Mbaud (64 µs) and in about 1 of 4 runs at 16 Mbaud (40 µs). A higher interrupt level did not help.
+- ESP32-P4X + ESP32-C5 Function EV board, with byte credit: raw throughput both ways at once, TCP and UDP both ways, 921600 to 16 Mbaud: no frame lost. At 20 Mbaud a raw throughput run lost 9 frames (CP RX FIFO overflow).
 
 ### Configuration
 

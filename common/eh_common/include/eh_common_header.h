@@ -41,6 +41,8 @@ struct esp_payload_header {
 #define EH_ESP_PAYLOAD_HEADER_OFFSET              sizeof(struct esp_payload_header)
 
 #define EH_FRAME_V1_MIN_OFFSET_BYTES                 (sizeof(struct esp_payload_header))
-#define EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES    (sizeof(struct esp_payload_header) + 7)
+/* Padding a sender may add between the header and the payload. */
+#define EH_FRAME_MAX_PAD_BYTES                       7
+#define EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES    (sizeof(struct esp_payload_header) + EH_FRAME_MAX_PAD_BYTES)
 
 #endif /* __ESP_HOSTED_COMMON_HEADER__H */

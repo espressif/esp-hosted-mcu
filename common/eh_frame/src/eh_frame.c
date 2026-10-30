@@ -236,11 +236,12 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
     len    = _from_le16(hdr->len);
     offset = _from_le16(hdr->offset);
 
-    /* A len==0 frame with flags (power save) or a credit is validated below
-       before they are returned. Dummies never carry flags, so a flag on one
-       is dropped. */
+    /* A len==0 frame with flags (power save), a credit or a checksum is
+       validated below before they are returned: a credit of 0 is valid, and
+       only the checksum tells that frame from a zeroed dummy. Dummies never
+       carry flags, so a flag on one is dropped. */
     if (hdr->if_type == eh_if_type_dummy_wire() ||
-        (len == 0 && !hdr->flags && !hdr->rx_credit)) {
+        (len == 0 && !hdr->flags && !hdr->rx_credit && !hdr->checksum)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
@@ -249,7 +250,7 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
         return EH_FRAME_DUMMY;
     }
 
-    /* Allow small offset padding (hdr_sz .. hdr_sz+3) for legacy hosts. */
+    /* Allow small offset padding (up to EH_FRAME_MAX_PAD_BYTES) for legacy hosts. */
     if ((offset < EH_FRAME_V1_MIN_OFFSET_BYTES) ||
       (offset > (EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES))) {
         if (warn) {
@@ -337,11 +338,12 @@ static eh_frame_result_t decode_v2(const uint8_t *buf,
     len    = _from_le16(hdr->len);
     offset = _from_le16(hdr->offset);
 
-    /* A len==0 frame with flags (power save) or a credit is validated below
-       before they are returned. Dummies never carry flags, so a flag on one
-       is dropped. */
+    /* A len==0 frame with flags (power save), a credit or a checksum is
+       validated below before they are returned: a credit of 0 is valid, and
+       only the checksum tells that frame from a zeroed dummy. Dummies never
+       carry flags, so a flag on one is dropped. */
     if (hdr->if_type == eh_if_type_dummy_wire() ||
-        (len == 0 && !hdr->flags && !hdr->rx_credit)) {
+        (len == 0 && !hdr->flags && !hdr->rx_credit && !hdr->checksum)) {
         if (h) {
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;

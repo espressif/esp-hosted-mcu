@@ -100,7 +100,8 @@ def test_raw_tp_no_loss(bench, transport, request):
                   f'rx kbps median={_median(kbps):.0f} seq={seq}')
             if not seq or seq[0] == 0:
                 problems.append(f'{d}:{rx}: receiver counted no frames')
-            elif seq[1]:
+            # The CP sender reuses one buffer; only UART copies it before the next frame.
+            elif seq[1] and (rx == 'tx' or transport == 'uart'):
                 problems.append(f'{d}:{rx}: {seq[1]} of {seq[0] + seq[1]} frames lost')
         for line in drops[:8]:
             print(f'[rtp]   {line.strip()}')
