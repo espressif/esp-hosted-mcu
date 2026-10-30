@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 """SerialTarget — the real-hardware substrate: a host + a co-processor on two
 serial ports, joined by their physical transport (SDIO / SPI / UART on the board).
 
@@ -17,6 +19,8 @@ board) is machine-local, resolved by `bench_config()` — never baked into the f
 """
 import json
 import os
+import re
+import socket
 import time
 
 import pytest
@@ -233,6 +237,33 @@ def _transport_overlays(transport):
     return ([], [])  # sdio
 
 
+class HwNet:
+    """Packet stimulus over the bench's real network. wake() connects to the
+    host's current IP (the last `sta ip:` on its console) at the same
+    host-reserved port the emu forwards."""
+
+    def __init__(self, host, port=22):
+        self._host, self._port = host, port
+
+    def wake(self, payload=b"wakeup-host"):
+        with self._host._lock:
+            ips = re.findall(r'sta ip: (\d+\.\d+\.\d+\.\d+)', self._host._buf)
+        if not ips:
+            return
+        try:
+            with socket.create_connection((ips[-1], self._port), timeout=2) as s:
+                s.sendall(payload)
+        except OSError:
+            pass
+
+    def wake_udp(self, payload, port=60000):
+        with self._host._lock:
+            ips = re.findall(r'sta ip: (\d+\.\d+\.\d+\.\d+)', self._host._buf)
+        if ips:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.sendto(payload, (ips[-1], port))
+
+
 class SerialTarget(BenchProvider):
     def __init__(self):
         # Detect this physical bench's properties at runtime from its machine-local
@@ -261,14 +292,15 @@ class SerialTarget(BenchProvider):
         # select the bus; the board symbol in *_board_ovl auto-selects that board's
         # SPI pins + reset line (host/Kconfig.ext, per board + CP target).
         cp_x, host_x = _transport_overlays(spec.transport)
-        cp_ovl = cp_x + bench.cp_board_ovl
+        cp_ovl = cp_x + bench.cp_board_ovl + list(spec.cp_extra_ovl)
         # Ordered layers: transport + board + rev + bench(slave chip) + case.
         # slave_overlay tells the host which CP it drives (its SoC caps), derived
         # from this bench's CP — not pinned in the example.
         host_ovl = (host_x + bench.host_board_ovl + rev_ovl
                     + build_fw.slave_overlay(cp_target) + list(spec.extra_ovl))
 
-        cp_fw = build_fw.build(spec.example, spec.cp_role, cp_target, cp_ovl)
+        cp_fw = build_fw.build(spec.example, spec.cp_role, cp_target, cp_ovl,
+                               inject=spec.cp_inject)
         host_fw = build_fw.build(spec.example, spec.host_role, host_target, host_ovl)
         build_fw.stash_logs(lab_tmp, cp=cp_fw, host=host_fw)
         cp_build_dir = os.path.join(cp_fw["dir"], "build")
@@ -321,7 +353,8 @@ class SerialTarget(BenchProvider):
                 host.stop()
                 cp.stop()
 
-        return Bench(duts=[host, cp], net=None, teardown=down, caps=self.caps)
+        return Bench(duts=[host, cp], net=HwNet(host) if spec.wake else None,
+                     teardown=down, caps=self.caps)
 
     @staticmethod
     def _open(spec, name, port, baud, logpath, retries=5):

@@ -119,6 +119,9 @@ def pytest_addoption(parser):
         help="run the full matrix MINUS the @sanity representatives (only the extra "
              "regression coverage). Pair with a prior default (sanity) run to split "
              "the full matrix into two non-overlapping passes.")
+    parser.addoption(
+        "--sanity", action="store_true", default=False,
+        help="run only the @sanity set (eh.py's default when the run names nothing).")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -129,10 +132,10 @@ def pytest_collection_modifyitems(config, items):
       pass/fail stats. For a case fully covered elsewhere, kept as a record.
     - @pytest.mark.maintenance(reason="...") — SKIPPED: shown as skipped
       'maintenance: <reason>'. Temporarily parked while its support is fixed.
-    - @pytest.mark.sanity — the DEFAULT set. Without --regression, only sanity
-      items run (one representative (test, transport) per scenario, distributed
-      so the set exercises every transport once); the rest are deselected. With
-      --regression the full matrix runs.
+    - @pytest.mark.sanity — one representative (test, transport) per scenario,
+      spread so the set exercises every transport once. --sanity runs only these;
+      no set flag runs every test. -k (pytest's own) narrows whichever set results.
+      eh.py adds --sanity when the run names nothing (no path, -k or set flag).
     - @pytest.mark.allow_fail(reason="...") — RUNS normally, but a FAILURE is
       NON-blocking: eh.py keeps the pipeline exit 0 and reports it truthfully in
       its own 'allow_fail (non-blocking, fix later)' summary group + a red ⊗ matrix
@@ -151,7 +154,7 @@ def pytest_collection_modifyitems(config, items):
     A cell may carry BOTH (second_chance decides the FINAL outcome, THEN allow_fail
     decides whether it blocks) — but spi_fd now carries second_chance ONLY, so a
     genuine spi_fd failure blocks like every other wire."""
-    regression = config.getoption("regression", default=False)
+    sanity_only = config.getoption("sanity", default=False)
     excl_sanity = config.getoption("regression_exclude_sanity", default=False)
     retired, keep = [], []
     for item in items:
@@ -181,8 +184,7 @@ def pytest_collection_modifyitems(config, items):
         sanity = [it for it in keep if it.get_closest_marker("sanity")]
         deselected += sanity
         keep = [it for it in keep if not it.get_closest_marker("sanity")]
-    elif not regression:
-        # Default run: keep only the sanity representatives.
+    elif sanity_only:
         non_sanity = [it for it in keep if not it.get_closest_marker("sanity")]
         deselected += non_sanity
         keep = [it for it in keep if it.get_closest_marker("sanity")]

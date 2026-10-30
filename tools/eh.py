@@ -1380,6 +1380,13 @@ def cmd_test(args) -> int:
                        ("/" in t or "::" in t or t.endswith(".py"))
                        for t in rest)
     targets = [] if named_target else [str(d) for d in suite_dirs]
+    # Sanity is the default set only when the run names nothing; a path/node-id,
+    # -k or a set flag picks from every test.
+    named_set = any(t.startswith("-k") or t == "--keyword" or
+                    t in ("--sanity", "--regression", "--regression-exclude-sanity")
+                    for t in rest)
+    if not named_target and not named_set:
+        rest = rest + ["--sanity"]
     # Caveat: emus hold inotify instances — on EMFILE hangs raise
     # `sudo sysctl -w fs.inotify.max_user_instances=1024`. `--jobs N` overrides.
     if jobs == "auto" and substrate != "hw":
