@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Host-side per-iface channel registry. MCU only. */
 
 #pragma once
@@ -19,6 +23,7 @@ typedef esp_err_t (*eh_host_channel_tx_fn_t)(void *h, void *buf, size_t len);
 typedef struct eh_host_channel_s {
     void                    *api_chan;
     uint8_t                  if_type;
+    uint8_t                  aux_type;   /* ESP_AUX_IF channels only */
     uint8_t                  secure;
     eh_host_channel_tx_fn_t  tx;
     eh_host_channel_rx_fn_t  rx;
@@ -38,6 +43,14 @@ eh_host_channel_t *eh_host_transport_get_channel(uint8_t if_type);
 esp_err_t eh_host_transport_tx(uint8_t if_type, uint8_t if_num,
                                 const uint8_t *payload, uint16_t len,
                                 uint8_t flags);
+
+/* ESP_AUX_IF channel, by aux_type. Send with eh_host_transport_aux_tx(). */
+eh_host_channel_t *eh_host_transport_add_aux_channel(uint8_t aux_type,
+                                                      eh_host_channel_rx_fn_t rx);
+
+esp_err_t eh_host_transport_aux_tx(uint8_t aux_type,
+                                    const uint8_t *payload, uint16_t len,
+                                    uint8_t flags);
 
 /* Zero-copy TX. Caller's buffer must have EH_FRAME_HEADROOM bytes
  * BEFORE payload; we write the wire header in place (no memcpy) and

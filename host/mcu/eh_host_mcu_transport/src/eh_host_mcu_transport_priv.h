@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Shared decls between dispatcher and per-bus backends. Not public. */
 
 #ifndef EH_HOST_TRANSPORT_MCU_PRIV_H_
@@ -53,6 +57,9 @@ void eh_host_mcu_transport_priv_dispatch_rx(
 /* If-type-aware dispatch: PRIV_IF init-event to parser, rest to priv_dispatch_rx. */
 #include "eh_frame.h"
 void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h);
+
+/* Copies to the aux_type's channel, else drops. */
+void eh_host_transport_aux_rx(uint8_t aux_type, const uint8_t *payload, uint16_t len);
 
 /* Per-bus backend contract. Bus owns bh->priv_buffer_handle when free_buf_handle set. */
 int eh_host_bus_init(void);

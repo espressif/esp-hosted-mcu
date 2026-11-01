@@ -106,6 +106,20 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
                     (unsigned int)h->if_type, (unsigned int)h->payload_len);
     }
 
+    /* Wi-Fi first: most of the traffic. */
+    if (h->if_type == ESP_STA_IF || h->if_type == ESP_AP_IF) {
+        eh_host_channel_t *chan = eh_host_transport_get_channel(h->if_type);
+        if (chan && chan->rx) {
+            /* Copy: channel_rx may retain past return; bus frees DMA sync. */
+            uint8_t *copy = (uint8_t *)malloc(h->payload_len);
+            if (copy) {
+                memcpy(copy, h->payload, h->payload_len);
+                (void)chan->rx(chan->api_chan, copy, copy, h->payload_len);
+            }
+            return;
+        }
+    }
+
     if (h->if_type == ESP_PRIV_IF && h->payload_len >= 2) {
         uint8_t event_type = h->payload[0];
         uint8_t event_len  = h->payload[1];
@@ -194,14 +208,8 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
         return;
     }
 
-    /* Copy: channel_rx may retain past return; bus frees DMA sync. */
-    eh_host_channel_t *chan = eh_host_transport_get_channel(h->if_type);
-    if (chan && chan->rx) {
-        uint8_t *copy = (uint8_t *)malloc(h->payload_len);
-        if (copy) {
-            memcpy(copy, h->payload, h->payload_len);
-            (void)chan->rx(chan->api_chan, copy, copy, h->payload_len);
-        }
+    if (h->if_type == ESP_AUX_IF) {
+        eh_host_transport_aux_rx(h->pkt_type, h->payload, h->payload_len);
         return;
     }
 

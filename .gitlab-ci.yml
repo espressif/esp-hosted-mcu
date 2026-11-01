@@ -64,6 +64,22 @@ kconfig_symbols_check:
   script:
     - python3 tools/check_kconfig_symbols.py --strict
 
+# Off-target wire-format test of common/eh_frame (host gcc, no IDF build).
+unit_eh_frame:
+  stage: pre
+  image: espressif/idf:${IDF_VER}
+  tags: [build]
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^release/'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - cmake -S tests/unit/eh_frame -B build_unit
+    - cmake --build build_unit
+    - ctest --test-dir build_unit --output-on-failure
+
 pre_commit:
   stage: pre
   image: espressif/idf:${IDF_VER}

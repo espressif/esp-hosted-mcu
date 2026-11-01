@@ -25,6 +25,16 @@ extern "C" {
 extern volatile uint8_t hdr_ver_negotiated;
 extern volatile uint8_t rpc_ver_negotiated;
 
+/* ESP_AUX_IF rx callback. ctx is the pointer given at registration. */
+typedef esp_err_t (*hosted_rx_cb_t)(void *ctx, void *buf, uint16_t len, void *eb);
+
+/* ESP_AUX_IF rx, by aux_type. To send: if_type = ESP_AUX_IF, pkt_type = aux_type. */
+esp_err_t eh_cp_register_aux_rx_cb(eh_aux_type_t aux_type,
+                                   hosted_rx_cb_t rx_cb, void *ctx);
+esp_err_t eh_cp_unregister_aux_rx_cb(eh_aux_type_t aux_type);
+esp_err_t eh_cp_dispatch_aux_rx(eh_aux_type_t aux_type,
+                                void *buf, uint16_t len, void *eb);
+
 void     eh_cp_add_feat_cap_bits(uint8_t caps_bits, uint32_t ext_caps_bits);
 void     eh_cp_add_feat_cap_bits_idx(uint8_t index, uint32_t feature_bitmask);
 void     eh_cp_clear_feat_cap_bits(uint8_t caps_bits, uint32_t ext_caps_bits);

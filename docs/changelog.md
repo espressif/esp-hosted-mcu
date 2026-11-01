@@ -3,6 +3,8 @@
 - cp/sdio: enabled SDIO packet mode operation
 - host/task: removed division by sizeof(StackType_t). In IDF, the stack size should be specified as bytes
 - host: with `CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=y`, starting a detached Hosted task no longer corrupts the heap ([#254](https://github.com/espressif/esp-hosted-mcu/issues/254))
+- new interface type `ESP_AUX_IF` (wire value 7) for auxiliary streams. The `pkt_type` header byte selects the stream (`eh_aux_type_t`). Co-processor API: `eh_cp_register_aux_rx_cb()`. Host API: `eh_host_transport_add_aux_channel()` and `eh_host_transport_aux_tx()`
+- `ESP_ETH_IF` is renamed to `ESP_AUX_IF`. `ESP_ETH_IF` was never sent. Code that uses the name `ESP_ETH_IF` must change it
 - host: a frame with an `if_type` that has no handler is now dropped. Before, the host parsed it as an RPC message
 - co-processor: a frame from the host with an `if_type` that has no handler is now logged
 

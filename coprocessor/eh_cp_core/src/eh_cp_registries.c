@@ -27,6 +27,12 @@ static struct {
     eh_cp_traffic_cb_t tx;
 } s_traffic[ESP_IF_TYPE_MAX];
 
+/* ESP_AUX_IF handlers, by aux_type. */
+static struct {
+    hosted_rx_cb_t rx;
+    void          *ctx;
+} g_aux_table[ESP_AUX_TYPE_MAX];
+
 /* STA/AP may be taken over (network split); any other interface has one owner. */
 static esp_err_t set_cb(eh_if_type_t if_type, bool tx, eh_cp_traffic_cb_t cb)
 {
@@ -62,6 +68,51 @@ eh_cp_traffic_cb_t eh_cp_get_traffic_tx_cb(eh_if_type_t if_type)
 {
     return if_type < ESP_IF_TYPE_MAX ? s_traffic[if_type].tx : NULL;
 }
+
+esp_err_t eh_cp_register_aux_rx_cb(eh_aux_type_t aux_type,
+                                   hosted_rx_cb_t rx_cb, void *ctx)
+{
+    if (aux_type >= ESP_AUX_TYPE_MAX) {
+        ESP_LOGE(TAG, "register_aux_rx_cb: invalid aux_type %d", aux_type);
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!rx_cb) {
+        ESP_LOGE(TAG, "register_aux_rx_cb: rx_cb is NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (g_aux_table[aux_type].rx != NULL) {
+        ESP_LOGE(TAG, "register_aux_rx_cb: aux_type %d already claimed", aux_type);
+        return ESP_ERR_INVALID_STATE;
+    }
+    g_aux_table[aux_type].rx  = rx_cb;
+    g_aux_table[aux_type].ctx = ctx;
+    ESP_LOGD(TAG, "RX cb registered for aux_type %d", aux_type);
+    return ESP_OK;
+}
+
+esp_err_t eh_cp_unregister_aux_rx_cb(eh_aux_type_t aux_type)
+{
+    if (aux_type >= ESP_AUX_TYPE_MAX) {
+        ESP_LOGE(TAG, "unregister_aux_rx_cb: invalid aux_type %d", aux_type);
+        return ESP_ERR_INVALID_ARG;
+    }
+    g_aux_table[aux_type].rx  = NULL;
+    g_aux_table[aux_type].ctx = NULL;
+    ESP_LOGD(TAG, "RX cb cleared for aux_type %d", aux_type);
+    return ESP_OK;
+}
+
+esp_err_t eh_cp_dispatch_aux_rx(eh_aux_type_t aux_type,
+                                void *buf, uint16_t len, void *eb)
+{
+    if (aux_type >= ESP_AUX_TYPE_MAX)
+        return ESP_ERR_NOT_FOUND;
+
+    if (!g_aux_table[aux_type].rx)
+        return ESP_ERR_NOT_FOUND;
+    return g_aux_table[aux_type].rx(g_aux_table[aux_type].ctx, buf, len, eb);
+}
+
 
 static uint8_t  s_caps     = 0;
 static uint32_t s_ext_caps = 0;

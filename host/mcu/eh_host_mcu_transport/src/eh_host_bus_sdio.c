@@ -728,6 +728,7 @@ static uint32_t sdio_aggr_build_frame(uint8_t *dst, interface_buffer_handle_t *b
 	h->if_num  = bh->if_num & 0xFu;
 	h->seq_num = htole16(bh->seq_num);
 	h->flags   = bh->flags;
+	h->priv_pkt_type = bh->pkt_type;
 	UPDATE_HEADER_TX_PKT_NO(h);
 
 	if (h->if_type == ESP_HCI_IF && bh->payload_zcopy) {
@@ -1016,6 +1017,7 @@ static void sdio_write_streaming_iter(void)
 		payload_header->if_num = buf_handle.if_num & 0x0Fu;
 		payload_header->seq_num = htole16(buf_handle.seq_num);
 		payload_header->flags = buf_handle.flags;
+		payload_header->priv_pkt_type = buf_handle.pkt_type;
 
 		UPDATE_HEADER_TX_PKT_NO(payload_header);
 
@@ -1205,6 +1207,7 @@ static esp_err_t sdio_push_pkt_to_queue(uint8_t * rxbuff, uint16_t len, uint16_t
 	buf_handle.payload            = rxbuff + offset;
 	buf_handle.seq_num            = le16toh(h->seq_num);
 	buf_handle.flags              = h->flags;
+	buf_handle.pkt_type           = h->priv_pkt_type;
 
 	if (buf_handle.if_type == ESP_SERIAL_IF)
 		pkt_prio = PRIO_Q_SERIAL;
@@ -1830,6 +1833,9 @@ static void sdio_process_rx_task(void *pvParameters)
 			/* raw-TP flood sink — count only; a per-frame log here would
 			 * starve the RX task at flood rates. */
 			eh_host_raw_tp_update_rx_len(buf_handle->payload, buf_handle->payload_len);
+		} else if (buf_handle->if_type == ESP_AUX_IF) {
+			eh_host_transport_aux_rx(buf_handle->pkt_type, buf_handle->payload,
+			                         buf_handle->payload_len);
 		} else {
 			ESP_LOGW(TAG, "unknown type %d ", buf_handle->if_type);
 		}

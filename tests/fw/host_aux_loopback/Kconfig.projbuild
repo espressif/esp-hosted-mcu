@@ -1,0 +1,5 @@
+config EH_TEST_HOST_AUX_LOOPBACK
+	bool "Drive ESP_AUX_OT frames against the CP echo"
+	default n
+	help
+		Test-only. Off unless a test enables it.

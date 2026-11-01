@@ -643,6 +643,12 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	else if (buf_handle->if_type == ESP_HCI_IF) {
 		host_rx(ESP_HCI_IF, payload, payload_len);
 	}
+	else if (buf_handle->if_type == ESP_AUX_IF) {
+		if (eh_cp_dispatch_aux_rx(buf_handle->pkt_type, payload, payload_len,
+		                          NULL) == ESP_ERR_NOT_FOUND)
+			ESP_LOGW(TAG, "rx-drop: no handler for aux_type=%u len=%u",
+			         buf_handle->pkt_type, payload_len);
+	}
 #if TEST_RAW_TP
 	else if (buf_handle->if_type == ESP_TEST_IF) {
 		eh_transport_utils_update_raw_tp_rx_count(payload, payload_len);
@@ -1125,6 +1131,9 @@ static void populate_core_caps(void)
 
     /* This CP reports network split (bit 11, set by its init); the host checks the pairing. */
     ext_caps |= ESP_EXT_CAP_NW_SPLIT_REPORTED;
+
+    ESP_LOGI(TAG, "- AUX interface");
+    ext_caps |= ESP_EXT_CAP_AUX_IF;
 
     eh_cp_add_feat_cap_bits(caps, ext_caps);
 

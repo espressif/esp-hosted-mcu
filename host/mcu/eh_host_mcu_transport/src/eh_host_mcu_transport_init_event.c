@@ -108,6 +108,8 @@ static void print_ext_capabilities(uint32_t ext)
     if (ext & ESP_EXT_CAP_NW_SPLIT)    ESP_LOGI(TAG, "\t * Network split");
     if (ext & ESP_EXT_CAP_CUSTOM_RPC)  ESP_LOGI(TAG, "\t * Custom RPC (peer data)");
     if (ext & ESP_EXT_CAP_OT)          ESP_LOGI(TAG, "\t * OpenThread");
+    if (ext & ESP_EXT_CAP_AUX_IF)      ESP_LOGI(TAG, "\t * AUX interface");
+    if (ext & ESP_EXT_CAP_AUX_OT)      ESP_LOGI(TAG, "\t * OpenThread over AUX");
 }
 
 static const char *chip_id_name(uint8_t id)

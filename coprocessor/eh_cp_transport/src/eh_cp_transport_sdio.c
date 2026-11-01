@@ -237,6 +237,7 @@ static inline uint16_t build_frame(uint8_t *dst, interface_buffer_handle_t *b)
 	h->offset  = htole16(SDIO_HDR_SIZE);
 	h->seq_num = htole16(b->seq_num);
 	h->flags   = b->flags;
+	h->priv_pkt_type = b->pkt_type;
 	UPDATE_HEADER_TX_PKT_NO(h);
 
 	memcpy(dst + SDIO_HDR_SIZE, b->payload, b->payload_len);

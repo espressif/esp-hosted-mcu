@@ -880,6 +880,7 @@ static int32_t esp_spi_hd_write(interface_handle_t *handle, interface_buffer_han
 		h.flags          = buf_handle->flags;
 		h.seq_num        = buf_handle->seq_num;
 		h.throttle_cmd   = buf_handle->throttle_cmd;
+		h.pkt_type       = buf_handle->pkt_type;
 		UPDATE_HEADER_TX_PKT_NO_IBUF(&h);
 		eh_frame_encode(sendbuf, &h, buf_handle->payload_len);
 	}

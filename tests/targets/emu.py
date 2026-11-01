@@ -217,7 +217,8 @@ class EmuTarget(BenchProvider):
         # Stage the freshly-built CP app image into the host build (e.g. the host's
         # LittleFS OTA source dir) — app-only .bin, not merged, so the host OTAs
         # exactly the CP app it was built against.
-        host_inject = None
+        host_inject = dict(spec.host_inject or {})
+        ota_inject = None
         if spec.cp_app_to_host:
             ota_fw = cp_fw
             if spec.cp_ota_ovl:
@@ -227,11 +228,13 @@ class EmuTarget(BenchProvider):
                 # cp_overlay must not leak in (choice lines would conflict)
                 ota_fw = build_fw.build(cp_ex, cp_role, spec.cp_target,
                                         cp_bus_ovl + list(spec.cp_ota_ovl))
-            host_inject = {spec.cp_app_to_host: ota_fw["elf"][:-4] + ".bin"}
-        # the super host takes the file in its LittleFS partition at boot, not in the build
-        host_fs = host_inject if scenario else None
+            ota_inject = {spec.cp_app_to_host: ota_fw["elf"][:-4] + ".bin"}
+        # the super host takes the OTA image in its LittleFS partition at boot, not in the build
+        host_fs = ota_inject if scenario else None
+        if ota_inject and not scenario:
+            host_inject.update(ota_inject)
         host_fw = build_fw.build(host_ex, host_role, spec.host_target,
-                                 host_ovl, inject=None if scenario else host_inject)
+                                 host_ovl, inject=host_inject or None)
         if os.environ.get("EH_PLAN"):
             import pytest
             pytest.skip("plan: images recorded")
