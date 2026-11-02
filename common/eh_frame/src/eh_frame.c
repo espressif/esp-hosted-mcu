@@ -135,8 +135,8 @@ static uint8_t encode_v1(uint8_t *buf,
     hdr->len           = _to_le16(payload_len);
     hdr->offset        = _to_le16((uint16_t)sizeof(*hdr));
     hdr->seq_num       = _to_le16(h->seq_num);
-    hdr->throttle_cmd  = h->throttle_cmd & 0x03u;
-    hdr->rx_credit     = h->rx_credit & 0x3Fu;
+    hdr->throttle_cmd  = h->throttle_cmd & THROTTLE_CMD_MASK;
+    hdr->rx_credit     = h->rx_credit & RX_CREDIT_MASK;
     /* priv_pkt_type and hci_pkt_type alias the same union byte. */
     hdr->priv_pkt_type = h->pkt_type;
 
@@ -166,7 +166,7 @@ static uint8_t encode_v2(uint8_t *buf,
     hdr->offset        = _to_le16((uint16_t)sizeof(*hdr));
     hdr->len           = _to_le16(payload_len);
     hdr->tlv_offset    = h->tlv_offset;
-    hdr->rx_credit     = h->rx_credit & 0x3Fu;
+    hdr->rx_credit     = h->rx_credit & RX_CREDIT_MASK;
     /* byte 19 union — same alias as V1 byte 11. */
     hdr->priv_pkt_type = h->pkt_type;
 
@@ -206,7 +206,7 @@ uint8_t eh_frame_encode_dummy(uint8_t *buf, uint8_t throttle_cmd)
         memset(hdr, 0, sizeof(*hdr));
         hdr->if_type     = (uint8_t)(eh_if_type_dummy_wire() & 0x0Fu);
         hdr->if_num      = 0x0Fu;
-        hdr->throttle_cmd = throttle_cmd & 0x03u;
+        hdr->throttle_cmd = throttle_cmd & THROTTLE_CMD_MASK;
         return (uint8_t)sizeof(*hdr);
     }
 }

@@ -144,7 +144,7 @@ static bool eh_uart_credit_take(size_t len)
 /* RX task: v = rx_credit of a valid frame. */
 static void eh_uart_credit_rx(uint8_t v)
 {
-    uint8_t d = (uint8_t)((v - s_cr_read) & 0x3F);
+    uint8_t d = (uint8_t)((v - s_cr_read) & RX_CREDIT_MASK);
 
     s_cr_last = v;
 

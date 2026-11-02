@@ -177,12 +177,12 @@ static inline bool uart_credit_frame_pending(void)
 
 static inline uint8_t uart_rx_credit(void)
 {
-	return (uint8_t)((rx_bytes_read / UART_CREDIT_UNIT) & 0x3F);
+	return (uint8_t)((rx_bytes_read / UART_CREDIT_UNIT) & RX_CREDIT_MASK);
 }
 
 static inline uint8_t uart_credit_owed(void)
 {
-	return (uint8_t)((uart_rx_credit() - credit_sent) & 0x3F);
+	return (uint8_t)((uart_rx_credit() - credit_sent) & RX_CREDIT_MASK);
 }
 
 static inline int uart_rx_read(uint8_t *buf, size_t len, TickType_t tmo)
