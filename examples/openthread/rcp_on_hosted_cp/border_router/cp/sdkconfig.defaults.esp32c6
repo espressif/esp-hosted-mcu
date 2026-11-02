@@ -21,3 +21,7 @@ CONFIG_ESP_WIFI_IRAM_OPT=y
 
 # 6. Optimisations
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# Spinel UART pins to the host, used only on the dedicated UART link.
+CONFIG_EXAMPLE_RCP_UART_TX_PIN=21
+CONFIG_EXAMPLE_RCP_UART_RX_PIN=20

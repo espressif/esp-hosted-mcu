@@ -30,6 +30,12 @@ endif()
 
 target_sources(eh_host_feat_openthread PRIVATE
     "src/eh_host_openthread.c"
+    "src/eh_host_openthread_transport.c"
+)
+
+target_link_libraries(eh_host_feat_openthread PRIVATE
+    eh_host_mcu_transport
+    idf::openthread
 )
 target_link_libraries(eh_host_feat_openthread PRIVATE
     eh_host_feat_rpc_ext_v2

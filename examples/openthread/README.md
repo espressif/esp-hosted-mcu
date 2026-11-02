@@ -25,13 +25,25 @@ examples/openthread/
 
 ## Which setup?
 
-| Setup | Family | Spinel link | Use it when |
+```mermaid
+flowchart TD
+    Q1{"802.15.4 radio on the<br/>ESP-Hosted co-processor?"}
+    Q1 -->|"yes (C6 / C5)"| Q2{"ESP-IDF has the OpenThread<br/>custom transport?"}
+    Q1 -->|"no, a separate H2 / H21"| C["C · rcp_separate_chip<br/>standard OpenThread, spinel on a UART to the RCP chip"]
+    Q2 -->|"yes (default)"| A["A · rcp_on_hosted_cp<br/>hosted OpenThread, spinel over the ESP-Hosted bus"]
+    Q2 -->|"no, or you want a UART"| B["B · rcp_on_hosted_cp<br/>standard OpenThread, spinel on a dedicated UART"]
+```
+
+| Setup | Spinel link | Who starts the RCP | What you set |
 | :--- | :--- | :--- | :--- |
-| B | `rcp_on_hosted_cp` | Dedicated UART to the ESP-Hosted co-processor, which is also the RCP | You want two chips: Wi-Fi and 802.15.4 on one co-processor. |
-| C | `rcp_separate_chip` | Dedicated UART to the RCP chip | You want 802.15.4 on its own radio, with no coexistence with Wi-Fi or BLE. The RCP runs the ESP-IDF `ot_rcp` firmware. |
+| **A** (default) | ESP-Hosted bus, `ESP_AUX_IF` frames | The ESP-Hosted OpenThread feature, on the host's request | Nothing: `sdkconfig.defaults` |
+| **B** | Dedicated UART; ESP-Hosted does not carry spinel | The co-processor app, at boot (as ESP-IDF `ot_rcp`) | `CONFIG_OPENTHREAD_RCP_UART=y` + `EXAMPLE_RCP_UART_*` (co-processor), `CONFIG_OPENTHREAD_RADIO_SPINEL_UART=y` + `EXAMPLE_HOST_UART_*` (host) |
+| **C** | Dedicated UART to the H2 / H21 | The RCP chip (ESP-IDF `ot_rcp` firmware) | See its README |
+
+Like Bluetooth's hosted HCI and standard HCI: in A, ESP-Hosted carries the radio traffic; in B and C, it does not.
 
 ## Zigbee
 
-[`examples/zigbee/thermostat`](../zigbee/thermostat/README.md) uses the same RCP firmware as `rcp_on_hosted_cp/*/cp`, with spinel on the dedicated UART (setup B). The host runs the Zigbee stack instead of OpenThread.
+[`examples/zigbee/thermostat`](../zigbee/thermostat/README.md) uses standard OpenThread on the co-processor, with spinel on the dedicated UART (setup B). The host runs the Zigbee stack instead of OpenThread.
 
 More: [OpenThread feature](../../docs/features/openthread.md).

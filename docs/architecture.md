@@ -276,4 +276,4 @@ Most features are just RPC commands riding the control plane — Wi-Fi control, 
 
 - **Network Split** — host + co-processor share one IP; a routing filter decides, per packet, which stack handles it.
 - **Host Power Save** — a start/wake handshake and a wake-up GPIO let the host sleep while the co-processor stays reachable.
-- **OpenThread / Zigbee** — the co-processor runs an 802.15.4 RCP; the host runs the stack over a dedicated UART.
+- **OpenThread / Zigbee** — the co-processor runs an 802.15.4 RCP; the host runs the stack. Hosted OpenThread carries spinel over the ESP-Hosted transport (`ESP_AUX_IF`); standard OpenThread and Zigbee use a dedicated UART that ESP-Hosted does not touch.

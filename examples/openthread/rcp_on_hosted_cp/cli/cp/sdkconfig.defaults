@@ -44,3 +44,9 @@ CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
 
 # Scenario feature gate
 CONFIG_ESP_HOSTED_CP_FEAT_OPENTHREAD=y
+
+# Spinel over the ESP-Hosted transport (ESP_AUX_IF). Needs an ESP-IDF with the
+# OpenThread custom transport. With CONFIG_OPENTHREAD_RCP_UART=y instead, the
+# app starts a standard RCP on a dedicated UART (EXAMPLE_RCP_UART_*) and the
+# OpenThread feature stays off.
+CONFIG_OPENTHREAD_RCP_CUSTOM=y

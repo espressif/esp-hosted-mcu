@@ -314,8 +314,8 @@ class EmuTarget(BenchProvider):
         # controller (the host's peripheral HCI reaches it over the transport).
         _ble_port = os.environ.get("EH_BLE_HCI_PORT")
         ble_arg = ["--ble-hci", f"tcp:localhost:{_ble_port}"] if _ble_port else []
-        # OpenThread/Zigbee: the RCP↔host spinel link is a DEDICATED UART, separate
-        # from the SDIO/SPI control transport — bridge it as a 2nd --hosted-uart
+        # Standard OpenThread / Zigbee: the RCP↔host spinel link is a DEDICATED UART,
+        # separate from the ESP-Hosted SDIO/SPI transport — bridge it as a 2nd --hosted-uart
         # (UART1) over its own socket. The RCP's 802.15.4 radio rides --thread-sim
         # to a peer (the test sets EH_THREAD_SIM_CP="bind:PA,peer:127.0.0.1:PB" and
         # spawns that peer). Both env-driven, mirroring EH_BLE_HCI_PORT.

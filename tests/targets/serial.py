@@ -209,6 +209,26 @@ def bench_config():
                   monitor_baud, flash_cfg, host_board_ovl, cp_board_ovl)
 
 
+def board_spinel_uart_overlays(transport):
+    """(host_overlay, cp_overlay) for standard OpenThread / Zigbee on a dedicated
+    spinel UART on this bench, from tests/boards/<board>.json["ot_spinel_uart"].
+    None when the board declares no spinel UART, or when the ESP-Hosted bus
+    `transport` uses the lines the spinel UART needs (its "transports" list)."""
+    local = _read_json(lab._REPO / "tests" / "lab.local.json")
+    name = os.environ.get("EH_BOARD") or local.get("board")
+    pins = (_read_json(lab._REPO / "tests" / "boards" / f"{name}.json").get("ot_spinel_uart")
+            if name else None)
+    if not pins or transport not in pins.get("transports", ()):
+        return None
+    host = ("CONFIG_OPENTHREAD_RADIO_SPINEL_UART=y",
+            f"CONFIG_EXAMPLE_HOST_UART_TX_PIN={pins['host_tx']}",
+            f"CONFIG_EXAMPLE_HOST_UART_RX_PIN={pins['host_rx']}")
+    cp = ("CONFIG_OPENTHREAD_RCP_UART=y",
+          f"CONFIG_EXAMPLE_RCP_UART_TX_PIN={pins['cp_tx']}",
+          f"CONFIG_EXAMPLE_RCP_UART_RX_PIN={pins['cp_rx']}")
+    return host, cp
+
+
 def _transport_overlays(transport):
     """(cp_overlay, host_overlay) sdkconfig lines selecting the runtime bus for a
     real-HW build. sdio is the neutral default (no overlay). SPI/SPI-HD only

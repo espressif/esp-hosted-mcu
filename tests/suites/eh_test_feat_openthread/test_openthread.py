@@ -3,8 +3,10 @@
 """Hosted OpenThread on the emulator — end-to-end 2-node Thread association.
 
 Node A is the ESP-Hosted split: a P4 host running the full OpenThread stack,
-driving a C6 Radio Co-Processor (RCP) over TWO links — the ESP-Hosted SDIO
-control transport AND a dedicated spinel UART (2nd --hosted-uart bridge). The
+driving a C6 Radio Co-Processor (RCP). RPC/control uses the ESP-Hosted
+transport. Spinel uses either the same transport as ESP_AUX_IF frames
+(link=hosted, the example default) or a dedicated spinel UART (link=uart, a
+2nd --hosted-uart bridge). The
 RCP's 802.15.4 radio is UDP-bridged (--thread-sim) to Node B, a monolithic C6
 `ot_cli` peer (native radio, built from ESP-IDF). Both sides auto-start Thread
 with the identical compile-time dataset (OPENTHREAD_NETWORK_AUTO_START), so a
@@ -83,6 +85,16 @@ _EMU_HOST_OVL = (
     "CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=n",
     "CONFIG_OPENTHREAD_NETWORK_AUTO_START=y",
 )
+
+# The example defaults carry spinel over the ESP-Hosted transport (ESP_AUX_IF).
+# The "uart" link is standard OpenThread on a dedicated spinel UART on both
+# sides: the CP app starts the RCP at boot and the hosted OT feature is off.
+_UART_HOST_OVL = ("CONFIG_OPENTHREAD_RADIO_SPINEL_UART=y",
+                  "CONFIG_EXAMPLE_HOST_UART_TX_PIN=11",
+                  "CONFIG_EXAMPLE_HOST_UART_RX_PIN=10")
+_UART_CP_OVL = ("CONFIG_OPENTHREAD_RCP_UART=y",
+                "CONFIG_EXAMPLE_RCP_UART_TX_PIN=21",
+                "CONFIG_EXAMPLE_RCP_UART_RX_PIN=20")
 
 
 def _build_peer():
@@ -204,11 +216,14 @@ cd build && python -m esptool --chip esp32c6 merge_bin -o merged_flash.bin @flas
 # UART (UART1) for the 802.15.4 PDUs, so the ESP-Hosted control transport must
 # NOT also be UART (they collide on UART1 and the host never drives the RCP —
 # verified: host fails to attach). NOT spi_fd either (the emu clock-flaky wire).
-@pytest.mark.sanity
 @pytest.mark.xdist_group("emu_heavy")  # serialize with the other heavy/spi_fd cells
-# Feature test: spinel rides its own UART; the hosted wire adds nothing per transport.
-@pytest.mark.parametrize("transport", ["sdio"])
-def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
+@pytest.mark.parametrize("transport,link", [
+    pytest.param("sdio", "hosted", marks=pytest.mark.sanity, id="sdio-hosted"),
+    pytest.param("sdio", "uart", id="sdio-uart"),
+    pytest.param("spi_hd", "hosted", id="spi_hd-hosted"),
+    pytest.param("spi_hd", "uart", marks=pytest.mark.sanity, id="spi_hd-uart"),
+])
+def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport, link):
     peer = _build_peer()
     if peer is None:
         pytest.skip("ESP-IDF / ot_cli peer source unavailable (configure with eh.py set-idf-path)")
@@ -222,7 +237,8 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
     plog = Path(lab_tmp) / "ot_peer.log"
     hlog = Path(lab_tmp) / f"host_{transport}.log"       # bench writes the host DUT here
 
-    os.environ["EH_OT_SPINEL"] = "1"                                          # emu.py: spinel UART bridge
+    if link == "uart":
+        os.environ["EH_OT_SPINEL"] = "1"                                      # emu.py: spinel UART bridge
     os.environ["EH_THREAD_SIM_CP"] = f"bind:{pa},peer:127.0.0.1:{pb},autoack"  # emu.py: RCP radio bridge
     os.environ["EH_EMU_RADIO_PACE"] = "1"     # wall-pace idle WFI so a ping reply-timer can't race the radio round-trip
     started = []
@@ -240,8 +256,11 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
                                 fail=FATAL_PATTERNS, timeout=60)
             assert lr.ok, f"peer never became Leader:\n{plog.read_text()[-1500:]}"
 
+        uart = link == "uart"
         b = bench("openthread/rcp_on_hosted_cp/cli", "esp_host", transport, timeout="150s",
-                  overlay=_EMU_HOST_OVL, pre_launch=_start_peer)
+                  overlay=_EMU_HOST_OVL + (_UART_HOST_OVL if uart else ()),
+                  cp_overlay=_UART_CP_OVL if uart else None,
+                  pre_launch=_start_peer)
         peer = started[0]
         # Host attaches to the peer's partition as a Child — the end-to-end signal.
         r = eh_test_expect(b["host"], r'Role \S+ -> child', fail=FATAL_PATTERNS, timeout=90)
@@ -297,3 +316,33 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
         os.environ.pop("EH_EMU_RADIO_PACE", None)
         for p in started:
             p.stop()
+
+
+# HW single node: the host forms its own partition, or joins one already on
+# the air. Either role needs the RCP to answer spinel, so it proves the host OT
+# stack -> RCP path on real silicon: over ESP_AUX_IF ("hosted"), or standard
+# OpenThread on a spinel UART over bus lines that 2-line SPI-HD leaves free
+# ("uart"; ESP-Hosted keeps running on the bus). The emu is skipped: its RCP radio needs the --thread-sim peer,
+# which the 2-node test above covers.
+@pytest.mark.parametrize("transport,link", [
+    pytest.param("sdio", "hosted", marks=pytest.mark.sanity),
+    ("spi_hd", "hosted"),
+    ("spi_hd_2", "uart")])
+def test_ot_cli_hw_single_node_attach(bench, substrate, transport, link):
+    if substrate != "hw":
+        pytest.skip("emu RCP radio needs the --thread-sim peer: see the 2-node test")
+    host_ovl, cp_ovl = (), ()
+    if link == "uart":
+        from targets.serial import board_spinel_uart_overlays
+        ovl = board_spinel_uart_overlays(transport)
+        if not ovl:
+            pytest.skip(f"bench board has no spinel UART beside {transport} (tests/boards/<board>.json ot_spinel_uart)")
+        host_ovl, cp_ovl = ovl
+    b = bench("openthread/rcp_on_hosted_cp/cli", "esp_host", transport, timeout="150s",
+              overlay=("CONFIG_OPENTHREAD_NETWORK_AUTO_START=y",) + host_ovl,
+              cp_overlay=cp_ovl)
+    r = eh_test_expect(b["host"], r'Role \S+ -> (leader|router|child)',
+                       fail=FATAL_PATTERNS + [r'RCP failure',
+                                              r'does not run OpenThread over the ESP-Hosted'],
+                       timeout=120)
+    assert r.ok, f"[{transport}-{link}] host did not attach to a Thread partition over the RCP: {r.matched}"

@@ -10,3 +10,7 @@ CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=y
 ### SW coexistence on the co-processor is on, so this option must be
 ### disabled on host to keep OpenThread capabilities consistent
 CONFIG_OPENTHREAD_RX_ON_WHEN_IDLE=n
+
+# Spinel UART pins to the RCP, used only on the dedicated UART link.
+CONFIG_EXAMPLE_HOST_UART_TX_PIN=11
+CONFIG_EXAMPLE_HOST_UART_RX_PIN=10

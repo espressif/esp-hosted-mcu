@@ -4,12 +4,15 @@ endif()
 
 add_library(eh_cp_feat_openthread STATIC
     "src/eh_cp_feat_openthread.c"
+    "src/eh_cp_feat_openthread_transport.c"
 )
 target_include_directories(eh_cp_feat_openthread PUBLIC "include")
 target_link_libraries(eh_cp_feat_openthread PUBLIC
     eh_cp_core
+    eh_cp_transport
     eh_common
     idf::esp_common
+    idf::esp_coex
     idf::openthread
     idf::vfs)
 

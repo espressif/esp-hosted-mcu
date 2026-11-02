@@ -15,3 +15,6 @@ CONFIG_OPENTHREAD_DNS_CLIENT=n
 CONFIG_OPENTHREAD_CONSOLE_ENABLE=n
 CONFIG_OPENTHREAD_LOG_LEVEL_DYNAMIC=n
 CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
+# Spinel over the ESP-Hosted transport. ESP-IDF without the OpenThread custom
+# transport leaves the OpenThread feature off.
+CONFIG_OPENTHREAD_RCP_CUSTOM=y

@@ -36,8 +36,6 @@ _APP_OF = {
     "power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep": "cp_nwsplit",
     "rf_cert": "cp_full",
     "test/init_race": "cp_full",
-    # same sdkconfig and main as the OpenThread RCP: only project() differs
-    "zigbee/thermostat": "example:openthread/rcp_on_hosted_cp/cli",
 }
 
 
