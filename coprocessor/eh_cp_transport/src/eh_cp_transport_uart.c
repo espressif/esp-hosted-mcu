@@ -143,9 +143,12 @@ static TaskHandle_t flow_ctrl_task_handle = NULL;
 #define UART_EVT_Q_SIZE 64
 #define UART_RX_FULL_THRESH 64
 /* Driver RX ring: 10 ms of line time, at least 8 KB. It holds the bytes that
- * arrive while uart_rx_task waits for a free buffer. */
+ * arrive while uart_rx_task waits for a free buffer. A power of 2, so
+ * rx_bytes_read / UART_CREDIT_UNIT does not jump when rx_bytes_read wraps. */
 #define UART_RX_RING_10MS  (HOSTED_UART_BAUD_RATE / 10 / 100)
-#define UART_RX_RING_SIZE  (UART_RX_RING_10MS > 8192 ? UART_RX_RING_10MS : 8192)
+#define UART_RX_RING_SIZE  (UART_RX_RING_10MS > 16384 ? 32768 : \
+			    UART_RX_RING_10MS > 8192 ? 16384 : 8192)
+_Static_assert(UART_RX_RING_SIZE >= UART_RX_RING_10MS, "UART RX ring under 10 ms");
 
 /* No hardware flow control: the host sends at most UART_CREDIT_WINDOW bytes
  * that uart_rx_task has not read yet, so the ring cannot overflow however
@@ -153,6 +156,7 @@ static TaskHandle_t flow_ctrl_task_handle = NULL;
  * in units, modulo 64. 32 units per ring keeps a window under half the wrap. */
 #define UART_CREDIT_UNIT     (UART_RX_RING_SIZE / 32)
 #define UART_CREDIT_WINDOW   (UART_RX_RING_SIZE - UART_CREDIT_UNIT)
+_Static_assert((UART_CREDIT_UNIT & (UART_CREDIT_UNIT - 1)) == 0, "credit unit not a power of 2");
 /* Units read, not yet reported, that make flow_ctrl_task send a frame. */
 #define UART_CREDIT_REPORT   8
 /* flow_ctrl_task repeats the credit this long after the last read, so the
