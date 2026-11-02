@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
-"""Hosted Zigbee on the emulator — coordinator network formation.
+"""Zigbee coordinator network formation, on the emulator and on HW.
 
-Node A is the ESP-Hosted split: a P4 host running the esp-zigbee thermostat
-COORDINATOR, driving a C6 Radio Co-Processor over TWO links — the ESP-Hosted
-SDIO control transport AND a dedicated spinel UART. The RCP is the SAME firmware
-as the OpenThread RCP: the 802.15.4 radio is stack-agnostic, so Zigbee and Thread
-share it byte-for-byte.
+Node A: a P4 host running the esp-zigbee thermostat COORDINATOR, and the
+example's own co-processor (examples/zigbee/thermostat/cp). The two are joined
+by TWO links: the ESP-Hosted bus, and a dedicated spinel UART. The co-processor
+app starts a standard OpenThread RCP on that UART at boot (as ESP-IDF ot_rcp);
+ESP-Hosted does not carry spinel and does not control the RCP.
 
 On boot the coordinator drives the RCP through an 802.15.4 energy scan (over the
 spinel/radio path), selects a channel, forms a PAN, and opens it for joining.
@@ -18,7 +18,7 @@ esp_ieee802154 energy-detect -> channel select -> PAN form -> beacon.
     |  bench(): build Node A, spawn RCP (slave) then HOST      |
     |----------------------------------> | SDIO slave up        |
     |------------------------------------------------------->  | boot esp-zigbee
-    |               | <=== SDIO RPC ======>| control-plane up (fw match)
+    |               | <=== SDIO =========>| ESP-Hosted link up
     |               | <--- spinel UART --->| RCP reset OK; radio init
     |               | <-- energy scan ----  | ED over the RCP radio
     |               |                      | pick channel; FORM PAN; open
@@ -50,21 +50,33 @@ from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
 # serializes with the other heavy cells instead of oversubscribing the box.
 @pytest.mark.sanity
 @pytest.mark.xdist_group("emu_heavy")
-@pytest.mark.parametrize("transport", ["sdio"])
-def test_zigbee_coordinator_forms(bench, worker_id, transport):
-    # A --thread-sim radio bind is needed so the RCP's 802.15.4 energy scan
-    # completes; no peer is required (formation is unilateral). autoack + radio
-    # pacing match the OpenThread cell's radio model.
-    port = lab.alloc_bench(worker_id)["port"]
-    pa, pb = port, port + 2
-    os.environ["EH_OT_SPINEL"] = "1"                                          # emu.py: spinel UART bridge
-    os.environ["EH_THREAD_SIM_CP"] = f"bind:{pa},peer:127.0.0.1:{pb},autoack"  # emu.py: RCP radio bridge
-    os.environ["EH_EMU_RADIO_PACE"] = "1"
+@pytest.mark.parametrize("transport", ["sdio", "spi_hd_2"])
+def test_zigbee_coordinator_forms(bench, substrate, worker_id, transport):
+    host_ovl, cp_ovl = (), ()
+    if substrate == "hw":
+        # Spinel on bus lines the ESP-Hosted transport leaves free (board json).
+        from targets.serial import board_spinel_uart_overlays
+        ovl = board_spinel_uart_overlays(transport)
+        if not ovl:
+            pytest.skip(f"bench board has no spinel UART beside {transport} (tests/boards/<board>.json ot_spinel_uart)")
+        host_ovl, cp_ovl = ovl
+    elif transport != "sdio":
+        pytest.skip("emu: the spinel UART bridge is independent of the bus; sdio covers it")
+    else:
+        # A --thread-sim radio bind is needed so the RCP's 802.15.4 energy scan
+        # completes; no peer is required (formation is unilateral). autoack + radio
+        # pacing match the OpenThread cell's radio model.
+        port = lab.alloc_bench(worker_id)["port"]
+        pa, pb = port, port + 2
+        os.environ["EH_OT_SPINEL"] = "1"                                          # emu.py: spinel UART bridge
+        os.environ["EH_THREAD_SIM_CP"] = f"bind:{pa},peer:127.0.0.1:{pb},autoack"  # emu.py: RCP radio bridge
+        os.environ["EH_EMU_RADIO_PACE"] = "1"
     try:
-        b = bench("zigbee/thermostat", "esp_host", transport, timeout="150s")
+        b = bench("zigbee/thermostat", "esp_host", transport, timeout="150s",
+                  overlay=host_ovl, cp_overlay=cp_ovl)
         # Coordinator forms a PAN (energy scan -> channel -> form) over the RCP.
         r = eh_test_expect(b["host"], r'Formed network successfully', fail=FATAL_PATTERNS, timeout=90)
-        assert r.ok, "hosted Zigbee coordinator did not form a network over the RCP"
+        assert r.ok, "Zigbee coordinator did not form a network over the RCP"
         # ...and opens it for joining (the end-to-end formation signal).
         r2 = eh_test_expect(b["host"], r'Network\(0x[0-9a-fA-F]+\) is open', fail=FATAL_PATTERNS, timeout=30)
         assert r2.ok, "coordinator formed but never opened the network for joining"

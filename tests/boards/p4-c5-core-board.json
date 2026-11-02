@@ -9,5 +9,10 @@
   ],
   "cp": [
     "CONFIG_ESP_HOSTED_P4_C5_CORE_BOARD=y"
-  ]
+  ],
+  "ot_spinel_uart": {
+    "_comment": "Dedicated spinel UART for standard OpenThread / Zigbee on the board's bus lines D2 (P4 53 <-> C5 14) and D3 (P4 52 <-> C5 13). They are free only while ESP-Hosted runs on 2-line SPI-HD (CS, CLK, D0, D1).",
+    "transports": ["spi_hd_2"],
+    "host_tx": 53, "host_rx": 52, "cp_tx": 13, "cp_rx": 14
+  }
 }

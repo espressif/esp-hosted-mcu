@@ -13,3 +13,7 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_eh_cp_ota_4m.csv"
 
 # 5. Optimisations
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# Spinel UART pins to the host, used only on the dedicated UART link.
+CONFIG_EXAMPLE_RCP_UART_TX_PIN=21
+CONFIG_EXAMPLE_RCP_UART_RX_PIN=20

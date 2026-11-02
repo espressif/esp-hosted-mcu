@@ -1,5 +1,8 @@
-/* SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD */
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef EH_CP_MASTER_CONFIG_H
 #define EH_CP_MASTER_CONFIG_H
@@ -193,6 +196,12 @@
 #  define EH_CP_FEAT_OPENTHREAD_READY  1
 #else
 #  define EH_CP_FEAT_OPENTHREAD_READY  0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_FEAT_OPENTHREAD
+#  define EH_CP_OT_HOSTED_RX_BUF_SIZE  CONFIG_ESP_HOSTED_OT_HOSTED_RX_BUF_SIZE
+#  define EH_CP_OT_NETIF_QUEUE_SIZE    CONFIG_ESP_HOSTED_OT_NETIF_QUEUE_SIZE
+#  define EH_CP_OT_TASK_QUEUE_SIZE     CONFIG_ESP_HOSTED_OT_TASK_QUEUE_SIZE
 #endif
 
 /* Feature readiness gates */

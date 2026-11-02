@@ -176,11 +176,12 @@ Header: `eh_host_power_save.h` · compat `esp_hosted_power_save.h`
 `eh_host_power_save_start()`/`_stop()`, `_timer_start()`/`_timer_stop()`,
 `_enabled()`, `_power_saving()`, `_woke_from_power_save()` — aliased `esp_hosted_power_save_*`.
 
-## OpenThread (RCP control)
+## Hosted OpenThread (spinel over `ESP_AUX_IF`)
 Header: `eh_host_openthread.h` · compat `esp_hosted_openthread.h`
 
 `eh_host_openthread_rcp_init/deinit/start/stop()`, `_rcp_query()`,
-`eh_host_port_openthread_get_radio_config()` — aliased `esp_hosted_openthread_*`.
+`EH_HOST_PORT_OPENTHREAD_RADIO_CONFIG()` — aliased `esp_hosted_openthread_*` / `ESP_HOSTED_OPENTHREAD_RADIO_CONFIG()`.
+Standard OpenThread on a dedicated UART does not use this API ([OpenThread](features/openthread.md)).
 
 ## Heartbeat
 Header: `eh_host_heartbeat.h` · compat `esp_hosted_misc.h`

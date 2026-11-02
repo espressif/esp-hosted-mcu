@@ -47,6 +47,7 @@ What each test proves: [SCENARIOS.md](SCENARIOS.md).
 | `python3 tools/eh.py test emu -k <expr>` | only the tests that match `<expr>` |
 | `python3 tools/eh.py test emu --regression --jobs 3` | the regression, 3 tests in parallel |
 | `python3 tools/eh.py test hw -k <expr>` | the same tests on real boards |
+| `cmake -S tests/unit/eh_frame -B build_unit && cmake --build build_unit && ctest --test-dir build_unit` | the `eh_frame` wire-format unit test, on the build machine |
 
 - `-k` filters the chosen set. `eh.py` adds `--sanity` only when you name
   nothing.

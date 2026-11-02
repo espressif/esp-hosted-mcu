@@ -38,6 +38,7 @@ class BenchSpec:
     cp_inject: dict = None           # {dest_rel: abs_src} staged into the CP's
                                      # scratch build copy — lets tests/fw/ own a
                                      # harness instead of an example carrying it
+    host_inject: dict = None         # same, staged into the host's build copy
     hostfwd: tuple = ()              # extra CP guest ports to forward for network-split
                                      # routing tests (e.g. 61500 echo, 61600 http);
                                      # each maps to a distinct host loopback port,

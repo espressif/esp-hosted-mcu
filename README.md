@@ -164,10 +164,13 @@ Flash `cp/` to the ESP coprocessor, then build and run one host role (`mcu_host`
 - [DPP](examples/wifi/dpp/README.md) — Device Provisioning Protocol.
 - [iTWT](examples/wifi/itwt/README.md) — individual Target Wake Time power save.
 
-### Bluetooth (MCU host) & OpenThread
+### Bluetooth (MCU host), OpenThread & Zigbee
 - [Bluetooth Examples](examples/bluetooth/README.md) — BLE and Classic BT controller HCI (NimBLE / BlueDroid). _On Linux, use BlueZ directly — no example needed._
-- [OpenThread CLI](examples/openthread/cli/README.md) — Thread command-line interface.
-- [OpenThread Border Router](examples/openthread/border_router/README.md) — Thread border router.
+- [OpenThread Examples](examples/openthread/README.md) — which setup to use, by where the 802.15.4 RCP runs.
+  - [OpenThread CLI](examples/openthread/rcp_on_hosted_cp/cli/README.md) — Thread command-line interface; the co-processor is the RCP.
+  - [OpenThread Border Router](examples/openthread/rcp_on_hosted_cp/border_router/README.md) — Thread border router; the co-processor is the RCP.
+  - [Thread Border Router, separate RCP](examples/openthread/rcp_separate_chip/border_router/README.md) — three chips: host, Wi-Fi/BLE co-processor, H2 RCP.
+- [Zigbee Thermostat](examples/zigbee/thermostat/README.md) — Zigbee on the host; the co-processor is the 802.15.4 RCP.
 
 ### Network split
 - [Station](examples/network_split/station/README.md) — offload standard networking.

@@ -1,5 +1,5 @@
 # POC super CP: union of every emu-tested CP example's feature set
-# (mcu_transport_config + ext_coex/api_exerciser + openthread/cli + peer_data).
+# (mcu_transport_config + ext_coex/api_exerciser + openthread/rcp_on_hosted_cp/cli + peer_data).
 CONFIG_ESP_HOSTED=y
 CONFIG_ESP_HOSTED_CP=y
 CONFIG_ESP_HOSTED_CP_FOR_MCU=y

@@ -1,0 +1,33 @@
+menu "Example Configuration"
+
+    menu "Dedicated spinel UART"
+        depends on OPENTHREAD_RADIO_SPINEL_UART
+
+        config EXAMPLE_HOST_UART_PORT
+            int "Host UART port to the RCP"
+            range 0 2
+            default 1
+
+        config EXAMPLE_HOST_UART_TX_PIN
+            int "Host TX pin -> RCP RX"
+            range -1 63
+            default -1
+            help
+                -1 means not set: the build then fails with a message.
+
+        config EXAMPLE_HOST_UART_RX_PIN
+            int "Host RX pin <- RCP TX"
+            range -1 63
+            default -1
+            help
+                -1 means not set: the build then fails with a message.
+
+        config EXAMPLE_HOST_UART_BAUDRATE
+            int "Spinel UART baud rate"
+            default 460800
+            help
+                Must be the same as EXAMPLE_RCP_UART_BAUDRATE on the co-processor.
+
+    endmenu
+
+endmenu

@@ -1,0 +1,35 @@
+menu "Example Configuration"
+
+    menu "Dedicated spinel UART"
+        depends on OPENTHREAD_RCP_UART
+
+        config EXAMPLE_RCP_UART_PORT
+            int "RCP UART port to the host"
+            range 0 2
+            default 1
+            help
+                Must not be the ESP-Hosted UART transport port.
+
+        config EXAMPLE_RCP_UART_TX_PIN
+            int "RCP TX pin -> host RX"
+            range -1 63
+            default -1
+            help
+                -1 means not set: the build then fails with a message.
+
+        config EXAMPLE_RCP_UART_RX_PIN
+            int "RCP RX pin <- host TX"
+            range -1 63
+            default -1
+            help
+                -1 means not set: the build then fails with a message.
+
+        config EXAMPLE_RCP_UART_BAUDRATE
+            int "Spinel UART baud rate"
+            default 460800
+            help
+                Must be the same as EXAMPLE_HOST_UART_BAUDRATE on the host.
+
+    endmenu
+
+endmenu

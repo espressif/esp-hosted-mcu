@@ -98,7 +98,7 @@ Defined by `struct esp_payload_header` in `common/eh_common/include/eh_common_he
 | 6–7 | 2 | `checksum` | byte-sum over header+payload (see §5) |
 | 8–9 | 2 | `seq_num` | sequence / fragment number |
 | 10 | 1 | `throttle_cmd:2` + `rx_credit:6` | inline flow control (V1 only, see §6); `rx_credit` is UART only |
-| 11 | 1 | `hci_pkt_type` / `priv_pkt_type` (union) | packet subtype for HCI / private events |
+| 11 | 1 | `hci_pkt_type` / `priv_pkt_type` (union) | packet subtype for HCI / private events; `aux_type` for `ESP_AUX_IF` |
 
 ### 3.2 V2 header — 20 bytes
 
@@ -139,7 +139,16 @@ Defined by `eh_header_v2_t` in `common/eh_common/include/eh_common_header_v2.h` 
 | 4 | `ESP_HCI_IF` | Bluetooth HCI | HCI handler / BlueZ |
 | 5 | `ESP_PRIV_IF` | init / capabilities / private events | event handler |
 | 6 | `ESP_TEST_IF` | raw-throughput test traffic | test sink |
-| 7 | `ESP_ETH_IF` | ethernet-style frames | netdev |
+| 7 | `ESP_AUX_IF` | auxiliary streams; the `pkt_type` byte holds the `aux_type` | aux channel per `aux_type` (MCU host) |
+| 8 | (`ESP_MAX_IF`) | idle (dummy) frame, never data | dropped |
+
+`ESP_AUX_IF` carries several streams under one `if_type`. The `pkt_type` byte (V1 byte 11) holds an `eh_aux_type_t`:
+
+| `aux_type` | Name | Carries |
+| :--------: | :--- | :--- |
+| 0 | `ESP_AUX_OT` | OpenThread spinel (HDLC bytes) |
+
+The co-processor registers an `aux_type` with `eh_cp_register_aux_rx_cb()`. The MCU host registers it with `eh_host_transport_add_aux_channel()` and sends with `eh_host_transport_aux_tx()`. A frame for an `aux_type` that has no handler is logged and dropped. A peer without `ESP_AUX_IF` support drops the whole frame. The co-processor advertises `ESP_EXT_CAP_AUX_IF` (`1 << 17`).
 
 Host-side demux (the Linux kmod, `host/linux/eh_host_linux_kmod/driver/src/main.c`): `SERIAL`→`/dev/esps0` with fragment reassembly by `seq_num` + `MORE_FRAGMENT`; `STA`/`AP`→`netif_rx`; `HCI`→`esp_hci_rx()`; `PRIV`→events workqueue; `TEST`→raw-TP sink.
 
@@ -225,7 +234,7 @@ Key tags (`common/eh_tlv/include/eh_tlv_tags.h`):
 Advertised in the `CAPABILITY` / `CAP_EXT` / `FEAT_CAPS` TLVs (`common/eh_common/include/eh_common_caps.h`):
 
 - **Tier 1 `cap` (u8):** `WLAN_SDIO(1<<0)`, `BT_UART(1<<1)`, `BT_SDIO(1<<2)`, `BLE_ONLY(1<<3)`, `BR_EDR_ONLY(1<<4)`, `WLAN_SPI(1<<5)`, `BT_SPI(1<<6)`, `CHECKSUM_ENABLED(1<<7)`.
-- **Tier 2 `ext_cap` (u32):** SPI-HD data-line counts, `WIFI_ENT(1<<3)`, `WLAN(1<<4)`, `OT(1<<6)`, `WIFI_DPP(1<<7)`, `WLAN_UART(1<<8)`, `HOST_PS(1<<10)`, `NW_SPLIT(1<<11)`, `CUSTOM_RPC(1<<12)`.
+- **Tier 2 `ext_cap` (u32):** SPI-HD data-line counts, `WIFI_ENT(1<<3)`, `WLAN(1<<4)`, `OT(1<<6)`, `WIFI_DPP(1<<7)`, `WLAN_UART(1<<8)`, `HOST_PS(1<<10)`, `NW_SPLIT(1<<11)`, `CUSTOM_RPC(1<<12)`, `AUX_IF(1<<17)`, `AUX_OT(1<<18)`.
 - **Tier 3 `feat_caps[8]`:** WIFI=0, BT=1, OTA=2, PS=3, NW_SPLIT=4, CUSTOM_RPC=5.
 - **Chip IDs:** ESP32=`0x00`, S2=`0x02`, C3=`0x05`, S3=`0x09`, C2=`0x0C`, C6=`0x0D`, H2=`0x10`, C61=`0x14`, C5=`0x17`, H4=`0x1C`, unrecognized=`0xFF`.
 
@@ -267,4 +276,4 @@ Most features are just RPC commands riding the control plane — Wi-Fi control, 
 
 - **Network Split** — host + co-processor share one IP; a routing filter decides, per packet, which stack handles it.
 - **Host Power Save** — a start/wake handshake and a wake-up GPIO let the host sleep while the co-processor stays reachable.
-- **OpenThread / Zigbee** — the co-processor runs an 802.15.4 RCP; the host runs the stack over a dedicated UART.
+- **OpenThread / Zigbee** — the co-processor runs an 802.15.4 RCP; the host runs the stack. Hosted OpenThread carries spinel over the ESP-Hosted transport (`ESP_AUX_IF`); standard OpenThread and Zigbee use a dedicated UART that ESP-Hosted does not touch.

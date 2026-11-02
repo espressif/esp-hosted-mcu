@@ -217,7 +217,8 @@ class EmuTarget(BenchProvider):
         # Stage the freshly-built CP app image into the host build (e.g. the host's
         # LittleFS OTA source dir) — app-only .bin, not merged, so the host OTAs
         # exactly the CP app it was built against.
-        host_inject = None
+        host_inject = dict(spec.host_inject or {})
+        ota_inject = None
         if spec.cp_app_to_host:
             ota_fw = cp_fw
             if spec.cp_ota_ovl:
@@ -227,11 +228,13 @@ class EmuTarget(BenchProvider):
                 # cp_overlay must not leak in (choice lines would conflict)
                 ota_fw = build_fw.build(cp_ex, cp_role, spec.cp_target,
                                         cp_bus_ovl + list(spec.cp_ota_ovl))
-            host_inject = {spec.cp_app_to_host: ota_fw["elf"][:-4] + ".bin"}
-        # the super host takes the file in its LittleFS partition at boot, not in the build
-        host_fs = host_inject if scenario else None
+            ota_inject = {spec.cp_app_to_host: ota_fw["elf"][:-4] + ".bin"}
+        # the super host takes the OTA image in its LittleFS partition at boot, not in the build
+        host_fs = ota_inject if scenario else None
+        if ota_inject and not scenario:
+            host_inject.update(ota_inject)
         host_fw = build_fw.build(host_ex, host_role, spec.host_target,
-                                 host_ovl, inject=None if scenario else host_inject)
+                                 host_ovl, inject=host_inject or None)
         if os.environ.get("EH_PLAN"):
             import pytest
             pytest.skip("plan: images recorded")
@@ -311,8 +314,8 @@ class EmuTarget(BenchProvider):
         # controller (the host's peripheral HCI reaches it over the transport).
         _ble_port = os.environ.get("EH_BLE_HCI_PORT")
         ble_arg = ["--ble-hci", f"tcp:localhost:{_ble_port}"] if _ble_port else []
-        # OpenThread/Zigbee: the RCP↔host spinel link is a DEDICATED UART, separate
-        # from the SDIO/SPI control transport — bridge it as a 2nd --hosted-uart
+        # Standard OpenThread / Zigbee: the RCP↔host spinel link is a DEDICATED UART,
+        # separate from the ESP-Hosted SDIO/SPI transport — bridge it as a 2nd --hosted-uart
         # (UART1) over its own socket. The RCP's 802.15.4 radio rides --thread-sim
         # to a peer (the test sets EH_THREAD_SIM_CP="bind:PA,peer:127.0.0.1:PB" and
         # spawns that peer). Both env-driven, mirroring EH_BLE_HCI_PORT.

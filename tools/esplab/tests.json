@@ -1531,8 +1531,8 @@
           "support": "unsupported:802.15.4 radio PHY not modelled in the emulator",
           "setup": "p4_c6_sdio",
           "build": {
-            "cp_dir": "examples/openthread/cli/cp",
-            "host_dir": "examples/openthread/cli/esp_host"
+            "cp_dir": "examples/openthread/rcp_on_hosted_cp/cli/cp",
+            "host_dir": "examples/openthread/rcp_on_hosted_cp/cli/esp_host"
           },
           "cases": [
             {
@@ -1554,8 +1554,8 @@
           "support": "unsupported:802.15.4 radio + external AP backhaul not modelled",
           "setup": "p4_c6_sdio",
           "build": {
-            "cp_dir": "examples/openthread/border_router/cp",
-            "host_dir": "examples/openthread/border_router/esp_host"
+            "cp_dir": "examples/openthread/rcp_on_hosted_cp/border_router/cp",
+            "host_dir": "examples/openthread/rcp_on_hosted_cp/border_router/esp_host"
           },
           "cases": [
             {

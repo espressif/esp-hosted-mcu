@@ -42,5 +42,6 @@ CONFIG_OPENTHREAD_LOG_LEVEL_DYNAMIC=n
 # capability set matched with the host, which sets RX_ON_WHEN_IDLE=n
 CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y
 
-# Scenario feature gate
-CONFIG_ESP_HOSTED_CP_FEAT_OPENTHREAD=y
+# Standard RCP on a dedicated spinel UART (EXAMPLE_RCP_UART_*), started by
+# the app. The Zigbee host speaks spinel only on a UART.
+CONFIG_OPENTHREAD_RCP_UART=y

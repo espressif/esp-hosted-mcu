@@ -1,5 +1,6 @@
-// Copyright 2025 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0 */
+/* SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
+ * SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0
+ */
 
 #ifndef __ESP_HOSTED_COMMON_INTERFACE__H
 #define __ESP_HOSTED_COMMON_INTERFACE__H
@@ -24,10 +25,21 @@ typedef enum {
 	ESP_HCI_IF,
 	ESP_PRIV_IF,
 	ESP_TEST_IF,
-	ESP_ETH_IF,
+	ESP_AUX_IF,     /* pkt_type byte carries eh_aux_type_t */
 	ESP_IF_TYPE_MAX,
 	ESP_MAX_IF = ESP_IF_TYPE_MAX
 } eh_if_type_t;
+
+/* ESP_MAX_IF is the dummy frame value; old peers need 8. */
+#ifndef __cplusplus
+_Static_assert(ESP_AUX_IF == 7 && ESP_MAX_IF == 8, "wire-stable if_type values");
+#endif
+
+/* ESP_AUX_IF sub-type. Append only. */
+typedef enum {
+	ESP_AUX_OT = 0,    /* OpenThread spinel */
+	ESP_AUX_TYPE_MAX
+} eh_aux_type_t;
 
 /* Legacy Linux-FG wire numbering — kept alongside the new enum. */
 typedef enum {

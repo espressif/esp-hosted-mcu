@@ -640,6 +640,7 @@ static int32_t h_uart_write(interface_handle_t *handle, interface_buffer_handle_
 		h.flags         = buf_handle->flags;
 		h.seq_num       = buf_handle->seq_num;
 		h.throttle_cmd  = buf_handle->throttle_cmd;
+		h.pkt_type      = buf_handle->pkt_type;
 		h.rx_credit     = uart_rx_credit();
 		credit_sent     = h.rx_credit;
 		UPDATE_HEADER_TX_PKT_NO_IBUF(&h);

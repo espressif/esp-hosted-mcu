@@ -44,6 +44,9 @@
 #define ESP_EXT_CAP_NW_SPLIT_DHCP_CP              1u
 #define ESP_EXT_CAP_NW_SPLIT_DHCP_HOST            2u
 #define ESP_EXT_CAP_NW_SPLIT_DHCP_BOTH            3u
+/* ESP_AUX_IF frames (if_type 7) and OpenThread spinel over them. */
+#define ESP_EXT_CAP_AUX_IF                        (1u << 17)
+#define ESP_EXT_CAP_AUX_OT                        (1u << 18)
 
 /* ── Tier 3: feat_caps[8] indices ──────────────────────────────────────── */
 /* Do not reuse indices; retired slots stay RSVD. */
@@ -71,6 +74,6 @@
 #define EH_PRIV_FIRMWARE_CHIP_ESP32H4       0x1Cu
 
 /* Bump when any bit above changes. */
-#define EH_CAPS_VERSION                   3u
+#define EH_CAPS_VERSION                   4u
 
 #endif /* EH_COMMON_CAPS_H */

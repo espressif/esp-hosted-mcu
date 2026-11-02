@@ -64,6 +64,22 @@ kconfig_symbols_check:
   script:
     - python3 tools/check_kconfig_symbols.py --strict
 
+# Off-target wire-format test of common/eh_frame (host gcc, no IDF build).
+unit_eh_frame:
+  stage: pre
+  image: espressif/idf:${IDF_VER}
+  tags: [build]
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^release/'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - cmake -S tests/unit/eh_frame -B build_unit
+    - cmake --build build_unit
+    - ctest --test-dir build_unit --output-on-failure
+
 pre_commit:
   stage: pre
   image: espressif/idf:${IDF_VER}
@@ -339,7 +355,7 @@ build_host_v55_h2:            # [PRE] h2 host + NimBLE stack
         -p examples/wifi/sta/mcu_host \
            examples/bluetooth/nimble_uart/bleprph_host_only_uart/mcu_host
 
-build_host_latest_p4:         # [POST] iperf + nimble-coex + openthread (IDF latest)
+build_host_latest_p4:         # [POST] iperf + nimble-coex + openthread + three-chip (IDF latest)
   extends: .build
   rules: *rules_post
   variables: { IDF_IMAGE: "latest" }
@@ -350,7 +366,24 @@ build_host_latest_p4:         # [POST] iperf + nimble-coex + openthread (IDF lat
       eh_build --target esp32p4 \
         -p examples/wifi/iperf/mcu_host \
            examples/bluetooth/esp_hosted_nimble/bleprph_wifi_coex/mcu_host \
-           examples/openthread/cli/esp_host
+           examples/openthread/rcp_on_hosted_cp/cli/esp_host \
+           examples/openthread/rcp_separate_chip/border_router/esp_host
+
+# OpenThread spinel over the ESP-Hosted transport (ESP_AUX_IF) needs the IDF
+# custom transport, which only IDF latest has; older images build the UART path.
+build_ot_aux_latest:          # [POST] OT RCP + border router over ESP_AUX_IF (IDF latest)
+  extends: .build
+  rules: *rules_post
+  variables: { IDF_IMAGE: "latest" }
+  script:
+    - if ! bash tools/ci/decide_build.sh cp && ! bash tools/ci/decide_build.sh host; then echo ">>> cp and host not affected by this change — skipping"; exit 0; fi
+    - eh_setup
+    - |
+      eh_build --target esp32c6 \
+        -p examples/openthread/rcp_on_hosted_cp/cli/cp \
+           examples/openthread/rcp_on_hosted_cp/border_router/cp
+    - eh_build --target esp32p4 -p examples/openthread/rcp_on_hosted_cp/border_router/esp_host
+    - eh_build --target esp32h2 -p examples/openthread/rcp_separate_chip/border_router/cp_rcp
 
 build_host_v60_p4:            # [POST] nw_split + ota + sdmmc (IDF 6.0)
   extends: .build

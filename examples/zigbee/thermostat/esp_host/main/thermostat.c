@@ -18,8 +18,11 @@
 #include "thermostat.h"
 
 #include "esp_hosted.h"
-#include "esp_hosted_openthread.h"
-#include "esp_hosted_openthread_app.h"
+
+#if CONFIG_ZB_RADIO_SPINEL_UART
+_Static_assert(CONFIG_EXAMPLE_HOST_UART_TX_PIN >= 0 && CONFIG_EXAMPLE_HOST_UART_RX_PIN >= 0,
+               "Dedicated spinel UART: set EXAMPLE_HOST_UART_TX_PIN and EXAMPLE_HOST_UART_RX_PIN");
+#endif
 
 static const char *TAG = "THERMOSTAT";
 
@@ -57,7 +60,7 @@ static esp_err_t deferred_driver_init(void)
     ESP_RETURN_ON_FALSE(!is_inited, ESP_OK, TAG, "Deferred driver already initialized");
 
     switch_driver_config_t config = {
-        .gpio_num = CONFIG_GPIO_BOOT_ON_DEVKIT,
+        .gpio_num = CONFIG_EXAMPLE_GPIO_BOOT_ON_DEVKIT,
         .event_cb = button_event_handler,
     };
     switch_driver_handle_t handle = switch_driver_init(&config);
@@ -531,39 +534,23 @@ static void esp_zigbee_stack_main_task(void *pvParameters)
 {
 	app_init_esp_hosted();
 
-	esp_hosted_openthread_app_init();
-
     esp_zigbee_config_t config = ESP_ZIGBEE_DEFAULT_CONFIG();
 
-	// get radio config from Hosted
-	esp_hosted_openthread_radio_config_t hosted_radio_config = { 0 };
-	if (0 != esp_hosted_openthread_get_radio_config(&hosted_radio_config)) {
-		ESP_LOGE(TAG, "Failed to get OpenThread radio config from Hosted");
-		vTaskDelete(NULL);
-		return;
-	}
-
 #if CONFIG_ZB_RADIO_SPINEL_UART
-	if (hosted_radio_config.type != HOSTED_OPENTHREAD_TRANSPORT_UART) {
-		ESP_LOGE(TAG, "Invalid Hosted Radio Config: expected UART radio config");
-		vTaskDelete(NULL);
-		return;
-	}
 	config.platform_config.radio_config.radio_mode = ESP_ZIGBEE_RADIO_MODE_UART_RCP;
-	esp_hosted_openthread_uart_config_t *src = &hosted_radio_config.radio_uart_config;
-	esp_zigbee_uart_config_t *dst = &config.platform_config.radio_config.radio_uart_config;
-	dst->port = src->port;
-	dst->uart_config.baud_rate  = src->baud_rate;
-	dst->uart_config.data_bits  = src->data_bits;
-	dst->uart_config.parity     = src->parity;
-	dst->uart_config.stop_bits  = src->stop_bits;
-	dst->uart_config.flow_ctrl  = src->flow_ctrl;
-	dst->uart_config.rx_flow_ctrl_thresh = src->rx_flow_ctrl_thresh;
-	dst->uart_config.source_clk = src->source_clk;
-	dst->rx_pin = src->rx_pin;
-	dst->tx_pin = src->tx_pin;
+	esp_zigbee_uart_config_t *uart = &config.platform_config.radio_config.radio_uart_config;
+	uart->port = CONFIG_EXAMPLE_HOST_UART_PORT;
+	uart->uart_config.baud_rate  = CONFIG_EXAMPLE_HOST_UART_BAUDRATE;
+	uart->uart_config.data_bits  = UART_DATA_8_BITS;
+	uart->uart_config.parity     = UART_PARITY_DISABLE;
+	uart->uart_config.stop_bits  = UART_STOP_BITS_1;
+	uart->uart_config.flow_ctrl  = UART_HW_FLOWCTRL_DISABLE;
+	uart->uart_config.rx_flow_ctrl_thresh = 0;
+	uart->uart_config.source_clk = UART_SCLK_DEFAULT;
+	uart->rx_pin = CONFIG_EXAMPLE_HOST_UART_RX_PIN;
+	uart->tx_pin = CONFIG_EXAMPLE_HOST_UART_TX_PIN;
 #else
-#error "Unsupported Hosted Radio Config"
+#error "Unsupported radio config: set CONFIG_ZB_RADIO_SPINEL_UART"
 #endif
 
     ESP_ERROR_CHECK(esp_zigbee_init(&config));

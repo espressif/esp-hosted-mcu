@@ -20,10 +20,6 @@ if(CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO)
     list(APPEND EH_HOST_PORT_IDF_SRCS "src/eh_host_port_sdio.c")
 endif()
 
-if(CONFIG_ESP_HOSTED_HOST_FEAT_OPENTHREAD_READY)
-    list(APPEND EH_HOST_PORT_IDF_SRCS "src/eh_host_port_openthread.c")
-endif()
-
 add_library(eh_host_port_idf STATIC ${EH_HOST_PORT_IDF_SRCS})
 
 target_include_directories(eh_host_port_idf
