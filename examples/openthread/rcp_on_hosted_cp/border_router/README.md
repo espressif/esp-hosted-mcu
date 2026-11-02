@@ -1,4 +1,4 @@
-# openthread / border_router (`examples/openthread/border_router/`)
+# Thread Border Router — RCP on the ESP-Hosted co-processor (`openthread/rcp_on_hosted_cp/border_router`)
 
 <!-- common-start -->
 OpenThread Border Router on the host, driving a **single** ESP-Hosted
@@ -72,7 +72,7 @@ openthread/border_router/
 <table width="100%">
   <tr>
     <td width="100%" align="center" bgcolor="#f2ffe6">
-      <h3><a href="#mcu-host-setup"><img src="../../../docs/images/mcu.jpeg" height="18" alt="MCU"> MCU Host Setup</a></h3>
+      <h3><a href="#mcu-host-setup"><img src="../../../../docs/images/mcu.jpeg" height="18" alt="MCU"> MCU Host Setup</a></h3>
       <p><a href="#mcu-cp">1. Coprocessor</a><br><a href="#mcu-host">2. MCU Host</a></p>
     </td>
   </tr>
@@ -81,9 +81,9 @@ openthread/border_router/
 ---
 
 > [!IMPORTANT]
-> **New here? Get a base example working first.** Follow **[Getting Started: MCU](../../../docs/getting-started-mcu.md)** to wire the boards, install tools, choose a transport, and confirm the host↔co-processor handshake. The steps below only add what is specific to this example.
+> **New here? Get a base example working first.** Follow **[Getting Started: MCU](../../../../docs/getting-started-mcu.md)** to wire the boards, install tools, choose a transport, and confirm the host↔co-processor handshake. The steps below only add what is specific to this example.
 
-<h2 id="mcu-host-setup"><img src="../../../docs/images/mcu.jpeg" height="22" alt="MCU"> MCU Host Setup</h2>
+<h2 id="mcu-host-setup"><img src="../../../../docs/images/mcu.jpeg" height="22" alt="MCU"> MCU Host Setup</h2>
 
 <h3 id="mcu-cp">1. Coprocessor</h3>
 
@@ -99,7 +99,7 @@ cd /path/to/esp_hosted
 The co-processor is the OpenThread **RCP** *and* provides the Wi-Fi backbone for the border router (single-radio SW coexistence). Select the ESP-Hosted transport (RPC control):
 
 ```bash
-cd examples/openthread/border_router/cp
+cd examples/openthread/rcp_on_hosted_cp/border_router/cp
 eh.py set-target esp32c6
 eh.py menuconfig
 ```
@@ -166,7 +166,7 @@ cd /path/to/esp_hosted
 Select the transport (must match the co-processor), then configure the OpenThread RCP link:
 
 ```bash
-cd examples/openthread/border_router/esp_host
+cd examples/openthread/rcp_on_hosted_cp/border_router/esp_host
 eh.py set-target esp32p4
 eh.py menuconfig
 ```

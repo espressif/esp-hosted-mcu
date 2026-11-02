@@ -52,7 +52,7 @@ The ESP-Hosted bus carries the RCP **control** plane (RPC); the 802.15.4 spinel 
 
 ```text
 zigbee/thermostat/
-├── cp/                  ESP coprocessor firmware (802.15.4 RCP — byte-identical to openthread/cli/cp)
+├── cp/                  ESP coprocessor firmware (802.15.4 RCP — byte-identical to openthread/rcp_on_hosted_cp/cli/cp)
 └── esp_host/            ESP-IDF host app (esp-zigbee-lib thermostat)
 ```
 
@@ -86,7 +86,7 @@ cd /path/to/esp_hosted
 ```
 
 <!-- coprocessor-start -->
-The co-processor runs as the 802.15.4 **RCP** (Wi-Fi off) — identical to `openthread/cli/cp`. Select the ESP-Hosted transport (used for RPC control):
+The co-processor runs as the 802.15.4 **RCP** (Wi-Fi off) — identical to `openthread/rcp_on_hosted_cp/cli/cp`. Select the ESP-Hosted transport (used for RPC control):
 
 ```bash
 cd examples/zigbee/thermostat/cp
@@ -216,5 +216,5 @@ You need a **second board** running a Zigbee end-device — e.g. the
   ```
 
 Notes:
-- The RCP is **stack-agnostic** — `cp/` is byte-identical to `openthread/cli/cp` (an `OPENTHREAD_RADIO=y` RCP). Only the host differs (esp-zigbee-lib vs openthread).
+- The RCP is **stack-agnostic** — `cp/` is byte-identical to `openthread/rcp_on_hosted_cp/cli/cp` (an `OPENTHREAD_RADIO=y` RCP). Only the host differs (esp-zigbee-lib vs openthread).
 - Custom partition table with a `zb_storage` partition (Zigbee NVRAM); `BT_ENABLED=n`.

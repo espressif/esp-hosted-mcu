@@ -355,7 +355,7 @@ build_host_v55_h2:            # [PRE] h2 host + NimBLE stack
         -p examples/wifi/sta/mcu_host \
            examples/bluetooth/nimble_uart/bleprph_host_only_uart/mcu_host
 
-build_host_latest_p4:         # [POST] iperf + nimble-coex + openthread (IDF latest)
+build_host_latest_p4:         # [POST] iperf + nimble-coex + openthread + three-chip (IDF latest)
   extends: .build
   rules: *rules_post
   variables: { IDF_IMAGE: "latest" }
@@ -366,7 +366,8 @@ build_host_latest_p4:         # [POST] iperf + nimble-coex + openthread (IDF lat
       eh_build --target esp32p4 \
         -p examples/wifi/iperf/mcu_host \
            examples/bluetooth/esp_hosted_nimble/bleprph_wifi_coex/mcu_host \
-           examples/openthread/cli/esp_host
+           examples/openthread/rcp_on_hosted_cp/cli/esp_host \
+           examples/openthread/rcp_separate_chip/border_router/esp_host
 
 build_host_v60_p4:            # [POST] nw_split + ota + sdmmc (IDF 6.0)
   extends: .build

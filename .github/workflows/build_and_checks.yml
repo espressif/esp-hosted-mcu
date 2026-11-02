@@ -84,7 +84,7 @@ jobs:
           - { idf_ver: "release-v5.5", path: "examples/network_split/iperf/cp",               target: "esp32c6",  transport: "" }
           - { idf_ver: "release-v5.5", path: "examples/bluetooth/esp_hosted_nimble/bleprph_gatt/cp",                     target: "esp32c6",  transport: "" }
           - { idf_ver: "latest",       path: "examples/bluetooth/nimble_uart/bleprph_host_only_uart/cp",        target: "esp32",    transport: "" }
-          - { idf_ver: "latest",       path: "examples/openthread/cli/cp",                    target: "esp32h2",  transport: "" }
+          - { idf_ver: "latest",       path: "examples/openthread/rcp_on_hosted_cp/cli/cp",                    target: "esp32h2",  transport: "" }
           - { idf_ver: "release-v5.5", path: "examples/ota/coprocessor_ota/cp",               target: "esp32",    transport: "" }
           - { idf_ver: "v5.5.1",       path: "examples/ext_coex/cp",                          target: "esp32c6",  transport: "" }
           - { idf_ver: "release-v5.5", path: "examples/gpio_expander/cp",                     target: "esp32c3",  transport: "" }
@@ -103,7 +103,7 @@ jobs:
           - { idf_ver: "release-v5.5", path: "examples/bluetooth/nimble_uart/bleprph_host_only_uart/mcu_host",  target: "esp32h2", transport: "" }  # HOST on H2
           - { idf_ver: "release-v5.5", path: "examples/bluetooth/esp_hosted_bluedroid/ble_gatt_server/mcu_host",        target: "esp32p4", transport: "" }  # bluedroid stack coverage
           - { idf_ver: "release-v5.5", path: "examples/gpio_expander/mcu_host",               target: "esp32p4", transport: "" }
-          - { idf_ver: "latest",       path: "examples/openthread/cli/esp_host",              target: "esp32p4", transport: "" }
+          - { idf_ver: "latest",       path: "examples/openthread/rcp_on_hosted_cp/cli/esp_host",              target: "esp32p4", transport: "" }
           - { idf_ver: "release-v6.0", path: "examples/ota/coprocessor_ota/mcu_host",         target: "esp32p4", transport: "" }
           - { idf_ver: "v5.5.1",       path: "examples/system/mcu_transport_config/mcu_host", target: "esp32p4", transport: "" }
           - { idf_ver: "release-v6.0", path: "examples/mcu_hosted_sdio_sdmmc_combined/mcu_host", target: "esp32p4", transport: "" }

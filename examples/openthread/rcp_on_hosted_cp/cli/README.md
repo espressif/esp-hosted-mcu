@@ -1,4 +1,4 @@
-# openthread / cli (`examples/openthread/cli/`)
+# OpenThread CLI — RCP on the ESP-Hosted co-processor (`openthread/rcp_on_hosted_cp/cli`)
 
 <!-- common-start -->
 Runs a full OpenThread CLI (`ot ...`) on the host. The co-processor is the 802.15.4 **Radio Co-Processor (RCP)**: the host drives the RCP lifecycle over ESP-Hosted (RPC) and exchanges 802.15.4 (spinel) traffic over a **dedicated UART**. Adapted from `esp-idf/examples/openthread/ot_cli`.
@@ -56,7 +56,7 @@ openthread/cli/
 <table width="100%">
   <tr>
     <td width="100%" align="center" bgcolor="#f2ffe6">
-      <h3><a href="#mcu-host-setup"><img src="../../../docs/images/mcu.jpeg" height="18" alt="MCU"> MCU Host Setup</a></h3>
+      <h3><a href="#mcu-host-setup"><img src="../../../../docs/images/mcu.jpeg" height="18" alt="MCU"> MCU Host Setup</a></h3>
       <p><a href="#mcu-cp">1. Coprocessor</a><br><a href="#mcu-host">2. MCU Host</a></p>
     </td>
   </tr>
@@ -65,9 +65,9 @@ openthread/cli/
 ---
 
 > [!IMPORTANT]
-> **New here? Get a base example working first.** Follow **[Getting Started: MCU](../../../docs/getting-started-mcu.md)** to wire the boards, install tools, choose a transport, and confirm the host↔co-processor handshake. The steps below only add what is specific to this example.
+> **New here? Get a base example working first.** Follow **[Getting Started: MCU](../../../../docs/getting-started-mcu.md)** to wire the boards, install tools, choose a transport, and confirm the host↔co-processor handshake. The steps below only add what is specific to this example.
 
-<h2 id="mcu-host-setup"><img src="../../../docs/images/mcu.jpeg" height="22" alt="MCU"> MCU Host Setup</h2>
+<h2 id="mcu-host-setup"><img src="../../../../docs/images/mcu.jpeg" height="22" alt="MCU"> MCU Host Setup</h2>
 
 <h3 id="mcu-cp">1. Coprocessor</h3>
 
@@ -83,7 +83,7 @@ cd /path/to/esp_hosted
 The co-processor runs as the OpenThread **RCP** (Wi-Fi off). Select the ESP-Hosted transport (used for RPC control):
 
 ```bash
-cd examples/openthread/cli/cp
+cd examples/openthread/rcp_on_hosted_cp/cli/cp
 eh.py set-target esp32c6
 eh.py menuconfig
 ```
@@ -155,7 +155,7 @@ cd /path/to/esp_hosted
 Select the transport (must match the co-processor) and configure the OpenThread RCP UART link:
 
 ```bash
-cd examples/openthread/cli/esp_host
+cd examples/openthread/rcp_on_hosted_cp/cli/esp_host
 eh.py set-target esp32p4
 eh.py menuconfig
 ```

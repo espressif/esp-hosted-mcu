@@ -56,6 +56,8 @@ Radio parameters (UART port, baud, pins) come from `eh_host_port_openthread_get_
 > [!NOTE]
 > The RCP must be a chip with an 802.15.4 radio (ESP32-C6, ESP32-H2, or ESP32-C5). It is a distinct device/firmware from the SPI/SDIO co-processor that carries Wi-Fi. A Thread Border Router / Zigbee Gateway needs both radios (Wi-Fi + 802.15.4) — commonly a two-co-processor setup (e.g. C6 for Wi-Fi + H2 as RCP). See [supported co-processors](../getting-started-mcu.md#supported-esp-co-processors).
 
+Example with the RCP on its own chip: [`rcp_separate_chip/border_router`](../../examples/openthread/rcp_separate_chip/border_router/README.md) — host + Wi-Fi/BLE co-processor + H2 or H21 running the ESP-IDF `ot_rcp` firmware, spinel on a dedicated UART.
+
 ---
 
 ## Enable / disable
@@ -98,8 +100,11 @@ The RCP firmware itself needs the ESP-IDF OpenThread radio config (`CONFIG_OPENT
 
 ## Start here
 
-- [OpenThread CLI](../../examples/openthread/cli/README.md) — bring up a Thread node from the interactive CLI.
-- [Thread Border Router](../../examples/openthread/border_router/README.md) — Wi-Fi + 802.15.4 gateway.
+- [All OpenThread examples, by setup](../../examples/openthread/README.md).
+- [OpenThread CLI](../../examples/openthread/rcp_on_hosted_cp/cli/README.md) — bring up a Thread node from the interactive CLI.
+- [Thread Border Router](../../examples/openthread/rcp_on_hosted_cp/border_router/README.md) — Wi-Fi + 802.15.4 gateway.
+- [Thread Border Router, separate RCP](../../examples/openthread/rcp_separate_chip/border_router/README.md) — three chips: host, Wi-Fi/BLE co-processor, H2 RCP.
+- [Zigbee Thermostat](../../examples/zigbee/thermostat/README.md) — Zigbee host stack on the same RCP.
 
 ---
 

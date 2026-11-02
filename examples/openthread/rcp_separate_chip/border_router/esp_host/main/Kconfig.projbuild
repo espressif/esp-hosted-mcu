@@ -1,0 +1,34 @@
+menu "OpenThread Border Router Example"
+
+    config EXAMPLE_HOST_UART_PORT
+        int "Host UART port to the RCP"
+        range 0 2
+        default 1
+
+    config EXAMPLE_HOST_UART_TX_PIN
+        int "Host TX pin -> RCP RX"
+        range 0 63
+        default 4
+
+    config EXAMPLE_HOST_UART_RX_PIN
+        int "Host RX pin <- RCP TX"
+        range 0 63
+        default 6
+
+    config EXAMPLE_HOST_UART_BAUDRATE
+        int "Spinel UART baud rate"
+        default 460800
+        help
+            Must be the same as the baud rate of the RCP firmware (cp_rcp/).
+
+    config EXAMPLE_RCP_RESET_PIN
+        int "Host GPIO to the RCP reset input (-1: no hardware reset)"
+        range -1 63
+        default -1
+        help
+            Host GPIO connected to the reset input of the RCP. When OpenThread
+            reports an RCP failure, the host pulls this GPIO low for 10 ms.
+            Set -1 if no reset wire is connected: the host logs a warning
+            at boot and runs without hardware reset.
+
+endmenu

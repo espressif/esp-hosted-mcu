@@ -240,7 +240,7 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport):
                                 fail=FATAL_PATTERNS, timeout=60)
             assert lr.ok, f"peer never became Leader:\n{plog.read_text()[-1500:]}"
 
-        b = bench("openthread/cli", "esp_host", transport, timeout="150s",
+        b = bench("openthread/rcp_on_hosted_cp/cli", "esp_host", transport, timeout="150s",
                   overlay=_EMU_HOST_OVL, pre_launch=_start_peer)
         peer = started[0]
         # Host attaches to the peer's partition as a Child — the end-to-end signal.

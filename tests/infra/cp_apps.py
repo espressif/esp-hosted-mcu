@@ -37,7 +37,7 @@ _APP_OF = {
     "rf_cert": "cp_full",
     "test/init_race": "cp_full",
     # same sdkconfig and main as the OpenThread RCP: only project() differs
-    "zigbee/thermostat": "example:openthread/cli",
+    "zigbee/thermostat": "example:openthread/rcp_on_hosted_cp/cli",
 }
 
 
