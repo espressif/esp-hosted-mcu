@@ -645,7 +645,7 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 	}
 #if TEST_RAW_TP
 	else if (buf_handle->if_type == ESP_TEST_IF) {
-		eh_transport_utils_update_raw_tp_rx_count(payload_len);
+		eh_transport_utils_update_raw_tp_rx_count(payload, payload_len);
 	}
 #endif
 

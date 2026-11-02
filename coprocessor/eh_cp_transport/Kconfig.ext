@@ -22,6 +22,8 @@ menu "CP transport"
 	config EH_TRANSPORT_CP_UART
 		bool "UART"
 		depends on SOC_UART_SUPPORTED && ESP_HOSTED_CP_FOR_MCU
+		# A flash-resident ISR stalls during flash ops and the 128-byte RX FIFO overflows.
+		select UART_ISR_IN_IRAM if !RINGBUF_PLACE_ISR_FUNCTIONS_INTO_FLASH
 	endchoice
 
 # Memory pool configuration

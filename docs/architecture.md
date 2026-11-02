@@ -97,7 +97,7 @@ Defined by `struct esp_payload_header` in `common/eh_common/include/eh_common_he
 | 4–5 | 2 | `offset` | header size = start of payload (= 12) |
 | 6–7 | 2 | `checksum` | byte-sum over header+payload (see §5) |
 | 8–9 | 2 | `seq_num` | sequence / fragment number |
-| 10 | 1 | `throttle_cmd:2` + `reserved2:6` | inline flow control (V1 only, see §6) |
+| 10 | 1 | `throttle_cmd:2` + `rx_credit:6` | inline flow control (V1 only, see §6); `rx_credit` is UART only |
 | 11 | 1 | `hci_pkt_type` / `priv_pkt_type` (union) | packet subtype for HCI / private events |
 
 ### 3.2 V2 header — 20 bytes
@@ -117,7 +117,8 @@ Defined by `eh_header_v2_t` in `common/eh_common/include/eh_common_header_v2.h` 
 | 10–11 | 2 | `len` | payload length |
 | 12–13 | 2 | `checksum` | byte-sum, field zeroed during compute |
 | 14 | 1 | `tlv_offset` (union) | 0 = no inline TLV |
-| 15–18 | 4 | `reserved_3..6` | |
+| 15 | 1 | `rx_credit` | UART only, CP to host (see §6) |
+| 16–18 | 3 | `reserved_4..6` | |
 | 19 | 1 | `hci_pkt_type` / `priv_pkt_type` (union) | |
 
 > [!NOTE]
@@ -192,7 +193,7 @@ There are two independent mechanisms: **bus arbitration** (whose turn is it to t
 | SPI full-duplex | `HANDSHAKE` GPIO (slave ready) + `DATA_READY` GPIO (slave has data); idle direction sends a **dummy frame** (`if_type=ESP_MAX_IF`, `len=0`) | V1 `throttle_cmd` field (`NC`/`ON`/`OFF`) |
 | SPI half-duplex | `DATA_READY` GPIO + slave registers + `CMD9` | credit deltas in `TX_BUF_LEN`/`RX_BUF_LEN`; throttle bits in the register's upper byte |
 | SDIO | host-interrupt driven | `START_THROTTLE` (int bit 7) / `STOP_THROTTLE` (int bit 6) driven by RX queue occupancy vs high/low thresholds |
-| UART | none (byte stream) | V1 `throttle_cmd` field |
+| UART | none (byte stream) | byte credit: `rx_credit` in every CP frame, see [UART](design/uart.md#flow-control) |
 
 Throttle thresholds are configured by the host during the handshake via the `THROTTLE_HIGH` (`0x47`) and `THROTTLE_LOW` (`0x48`) TLVs. Full per-transport protocol detail lives on each transport page (SDIO, SPI Full-Duplex, SPI Half-Duplex, UART).
 

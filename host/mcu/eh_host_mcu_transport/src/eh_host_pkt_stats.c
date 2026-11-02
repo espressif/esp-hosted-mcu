@@ -6,6 +6,7 @@
 
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "eh_host_mcu_transport_priv.h"
 
 #define TAG "eh_pkt_stats"
 
@@ -16,6 +17,17 @@ static esp_timer_handle_t s_stats_timer;
 static void pkt_stats_timer_func(void *arg)
 {
 	(void)arg;
+#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART
+	{
+		struct eh_host_bus_uart_stats st;
+		eh_host_bus_uart_get_stats(&st);
+		ESP_LOGI(TAG, "UART RX: fifo_ovf[%lu] resync_bytes[%lu] TX credit: unit[%lu] wait[%lu] ms[%lu] busy[%lu] reset[%lu] bad[%lu]",
+		         (unsigned long)st.fifo_ovf, (unsigned long)st.resync_bytes,
+		         (unsigned long)st.credit_unit, (unsigned long)st.credit_wait,
+		         (unsigned long)st.credit_wait_ms, (unsigned long)st.credit_busy,
+		         (unsigned long)st.credit_reset, (unsigned long)st.credit_bad);
+	}
+#endif
 	ESP_LOGI(TAG, "STA TX: in[%lu] trans[%lu] out[%lu] drop[%lu] credit_stall[%lu] "
 	         "RX: in[%lu] out[%lu]",
 	         (unsigned long)pkt_stats.sta_tx_in_pass,

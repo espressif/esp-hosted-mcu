@@ -18,7 +18,7 @@ struct esp_payload_header {
 	uint16_t         checksum;
 	uint16_t         seq_num;
 	uint8_t          throttle_cmd:2;
-	uint8_t          reserved2:6;
+	uint8_t          rx_credit:6;     /* UART, CP to host: see eh_frame.h */
 #ifdef ESP_PKT_NUM_DEBUG
 	uint16_t         pkt_num;
 #endif
@@ -38,9 +38,15 @@ struct esp_payload_header {
 #define FLAG_POWER_SAVE_STARTED                   (1 << 2)
 #define FLAG_POWER_SAVE_STOPPED                   (1 << 3)
 
+/* Field widths: throttle_cmd is 2 bits, rx_credit 6 bits (modulo 64). */
+#define THROTTLE_CMD_MASK                         0x03u
+#define RX_CREDIT_MASK                            0x3Fu
+
 #define EH_ESP_PAYLOAD_HEADER_OFFSET              sizeof(struct esp_payload_header)
 
 #define EH_FRAME_V1_MIN_OFFSET_BYTES                 (sizeof(struct esp_payload_header))
-#define EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES    (sizeof(struct esp_payload_header) + 7)
+/* Padding a sender may add between the header and the payload. */
+#define EH_FRAME_MAX_PAD_BYTES                       7
+#define EH_FRAME_V1_MAX_OFFSET_WITH_PADDING_BYTES    (sizeof(struct esp_payload_header) + EH_FRAME_MAX_PAD_BYTES)
 
 #endif /* __ESP_HOSTED_COMMON_HEADER__H */

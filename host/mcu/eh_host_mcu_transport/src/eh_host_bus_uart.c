@@ -22,6 +22,7 @@
 #include "eh_host_mcu_hci_internal.h"
 #include "eh_common_header.h"
 #include "eh_common_header_v2.h"
+#include "eh_host_pkt_stats.h"
 
 #ifdef ESP_PLATFORM
 
@@ -36,10 +37,17 @@
 #define EH_UART_TASK_PRIO       22
 
 #define EH_UART_MAX_BUF         ESP_TRANSPORT_HOST_MAX_BUF_SIZE
-#define EH_UART_RX_BUF_SIZE     (EH_UART_MAX_BUF * 2)
-#define EH_UART_TX_BUF_SIZE     0   /* 0 -> driver ring; caller blocks */
+/* ~7.7 ms of line time at 8 Mbaud, so a short RX task stall does not
+ * overflow the driver ring. */
+#define EH_UART_RX_BUF_SIZE     (EH_UART_MAX_BUF * 4)
+#define EH_UART_TX_BUF_SIZE     (EH_UART_MAX_BUF * 2)  /* next frame queues while one drains */
 #define EH_UART_EVT_QUEUE_LEN   20
+#define EH_UART_RX_FULL_THRESH  64
 #define EH_UART_EVT_STOP        UART_EVENT_MAX
+#define EH_UART_PS_TX_DONE_MS   100
+/* No room for a frame and no credit for this long: bytes were lost on the
+ * line, and the CP cannot count bytes it never read. */
+#define EH_UART_CREDIT_LOST_MS  200
 
 static const char *TAG = "eh_bus_uart";
 
@@ -65,9 +73,119 @@ static volatile uint8_t     s_running;
 static QueueHandle_t        s_uart_q;
 static eh_host_port_sem_t  *s_rx_open;
 static volatile uint8_t     s_driver_installed;
+/* Byte credit (EH_PRIV_UART_CREDIT). Every CP frame carries the units the
+ * CP has read from its RX ring; TX keeps the bytes the CP has not read within
+ * the window, so the CP RX ring cannot overflow. Unit 0: the CP has no credit. */
+static volatile uint16_t    s_cr_unit, s_cr_window;
+static volatile uint32_t    s_cr_sent;      /* bytes written */
+static volatile uint32_t    s_cr_read;      /* units the CP has read */
+static volatile uint8_t     s_cr_last;      /* last credit received */
+static volatile TickType_t  s_cr_tick;      /* last change of s_cr_read */
+static volatile TickType_t  s_cr_stuck;     /* room < one frame since; 0 = room */
+/* The RX task never waits for credit: it receives the credit. */
+static TaskHandle_t         s_rx_tid;
+static volatile uint32_t    s_rx_fifo_ovf, s_rx_resync_bytes;
+static volatile uint32_t    s_cr_wait_n, s_cr_wait_ms, s_cr_busy, s_cr_reset, s_cr_bad;
 #endif
 
 #ifdef ESP_PLATFORM
+
+static int32_t eh_uart_credit_room(void)
+{
+    return (int32_t)s_cr_window - (int32_t)(s_cr_sent - s_cr_read * s_cr_unit);
+}
+
+static bool eh_uart_credit_lost(TickType_t now)
+{
+    TickType_t from = s_cr_stuck;
+
+    if (!from)
+        return false;
+    if ((int32_t)(s_cr_tick - from) > 0)
+        from = s_cr_tick;
+    return (int32_t)(now - from) >= (int32_t)pdMS_TO_TICKS(EH_UART_CREDIT_LOST_MS);
+}
+
+/* Caller holds s_bus_lock. No credit for EH_UART_CREDIT_LOST_MS: assume the
+ * CP lost bytes and start with nothing in flight. */
+static void eh_uart_credit_reset(void)
+{
+    s_cr_sent = s_cr_read * s_cr_unit;
+    s_cr_stuck = 0;
+    s_cr_reset++;
+}
+
+static void eh_uart_credit_check_room(void)
+{
+    if (eh_uart_credit_room() >= EH_UART_MAX_BUF)
+        s_cr_stuck = 0;
+    else if (!s_cr_stuck)
+        s_cr_stuck = xTaskGetTickCount() | 1;
+}
+
+/* Under s_bus_lock: true and len counted if len fits the window. */
+static bool eh_uart_credit_take(size_t len)
+{
+    bool fits;
+
+    if (!s_cr_unit)
+        return true;
+    fits = eh_uart_credit_room() >= (int32_t)len;
+    if (!fits && eh_uart_credit_lost(xTaskGetTickCount())) {
+        eh_uart_credit_reset();
+        fits = true;
+    }
+    if (fits)
+        s_cr_sent += len;
+    eh_uart_credit_check_room();
+    return fits;
+}
+
+/* RX task: v = rx_credit of a valid frame. */
+static void eh_uart_credit_rx(uint8_t v)
+{
+    uint8_t d = (uint8_t)((v - s_cr_read) & RX_CREDIT_MASK);
+
+    s_cr_last = v;
+
+    /* The CP cannot have read more than was sent: ignore such a value. The
+     * credit is a running count, so the next valid frame catches up. */
+    if (s_cr_unit && (int32_t)d * s_cr_unit >
+        (int32_t)(s_cr_sent - s_cr_read * s_cr_unit) + s_cr_unit) {
+        s_cr_bad++;
+        d = 0;
+    }
+    if (d) {
+        s_cr_read += d;
+        s_cr_tick = xTaskGetTickCount();
+    }
+    if (!s_cr_unit)
+        return;
+    if (eh_uart_credit_lost(xTaskGetTickCount())) {
+        eh_host_port_mutex_lock(s_bus_lock);
+        if (eh_uart_credit_lost(xTaskGetTickCount()))
+            eh_uart_credit_reset();
+        eh_host_port_mutex_unlock(s_bus_lock);
+    }
+    eh_uart_credit_check_room();
+    if (!s_cr_stuck && eh_host_wifi_tx_is_throttled())
+        eh_host_wifi_tx_set_throttle(false);
+}
+
+/* From the CP init event. Starts with nothing in flight, from the last credit
+ * received: a restarted CP counts from 0 again. */
+void eh_host_bus_uart_set_credit(uint16_t unit, uint16_t window)
+{
+    eh_host_port_mutex_lock(s_bus_lock);
+    s_cr_read = s_cr_last;
+    s_cr_sent = s_cr_read * unit;
+    s_cr_stuck = 0;
+    s_cr_window = window;
+    s_cr_unit = unit;
+    eh_host_port_mutex_unlock(s_bus_lock);
+    eh_host_wifi_tx_set_throttle(false);
+    ESP_LOGI(TAG, "credit: unit %u window %u", (unsigned int)unit, (unsigned int)window);
+}
 
 /* Stream reassembly: byte 0 == 0xE9 -> V2, else V1. Returns bytes consumed,
  * 0 = need more, -1 = framing corruption (caller drops byte 0 to resync). */
@@ -96,15 +214,23 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
         payload_len = (uint16_t)acc[10] | ((uint16_t)acc[11] << 8);
     }
 
+    /* Same bounds as the CP: a resync must not trust an offset that skips
+     * past the next frame. */
     uint32_t total = (uint32_t)offset_val + (uint32_t)payload_len;
-    if (total == 0 || total > EH_UART_MAX_BUF) {
+    if (offset_val < hdr_sz || offset_val > hdr_sz + EH_FRAME_MAX_PAD_BYTES || total > EH_UART_MAX_BUF) {
         return -1;
     }
     if (acc_len < total) return 0;
 
-    interface_buffer_handle_t h = {0};
-    eh_frame_result_t r = eh_frame_decode(acc, (uint16_t)total, &h);
+    interface_buffer_handle_t h = { .rx_credit = EH_FRAME_NO_CREDIT };
+    eh_frame_result_t r = eh_frame_decode_quiet(acc, (uint16_t)total, &h);
+    if ((r == EH_FRAME_OK || r == EH_FRAME_DUMMY) && h.rx_credit != EH_FRAME_NO_CREDIT)
+        eh_uart_credit_rx(h.rx_credit);
     if (r == EH_FRAME_OK && h.payload && h.payload_len) {
+#if ESP_PKT_STATS
+        if (h.if_type == ESP_STA_IF)
+            pkt_stats.sta_rx_in++;
+#endif
         if (h.if_type == ESP_HCI_IF) {
             eh_host_mcu_hci_rx_deliver(h.payload, h.payload_len);
         } else {
@@ -125,7 +251,8 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
         size_t room = cap - *acc_len;
         if (room == 0) {
             /* Accumulator full but no complete frame — framing lost. */
-            ESP_LOGW(TAG, "accumulator full; resyncing");
+            ESP_LOGD(TAG, "accumulator full; resyncing");
+            s_rx_resync_bytes++;
             memmove(acc, acc + 1, *acc_len - 1);
             *acc_len -= 1;
             room = 1;
@@ -136,21 +263,23 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
         *acc_len += (size_t)n;
         avail -= (size_t)n;
 
-        for (;;) {
-            int consumed = eh_uart_try_decode_one(acc, *acc_len);
+        /* Decode at a read offset and move the leftover down once. A memmove
+         * per skipped byte is quadratic: during a resync the task then falls
+         * behind the line, the ring overflows, and the resync never ends. */
+        size_t start = 0;
+        while (start < *acc_len) {
+            int consumed = eh_uart_try_decode_one(acc + start, *acc_len - start);
             if (consumed == 0) break;
             if (consumed < 0) {
-                memmove(acc, acc + 1, *acc_len - 1);
-                *acc_len -= 1;
-                if (*acc_len == 0) break;
-                continue;
-            }
-            if ((size_t)consumed >= *acc_len) {
-                *acc_len = 0;
+                s_rx_resync_bytes++;
+                start++;
             } else {
-                memmove(acc, acc + consumed, *acc_len - (size_t)consumed);
-                *acc_len -= (size_t)consumed;
+                start += (size_t)consumed;
             }
+        }
+        if (start) {
+            *acc_len -= start;
+            memmove(acc, acc + start, *acc_len);
         }
     }
 }
@@ -171,6 +300,7 @@ static void eh_uart_rx_task(void *arg)
     size_t acc_len = 0;
 
     ESP_LOGI(TAG, "UART RX task started (acc_cap=%u)", (unsigned int)cap);
+    s_rx_tid = xTaskGetCurrentTaskHandle();
 
     /* Don't read before connect has reset or resumed the CP. */
     eh_host_port_sem_wait_ms(s_rx_open, EH_HOST_PORT_WAIT_FOREVER);
@@ -180,10 +310,11 @@ static void eh_uart_rx_task(void *arg)
         if (xQueueReceive(s_uart_q, &ev, portMAX_DELAY) != pdTRUE) continue;
         if (ev.type == EH_UART_EVT_STOP) break;
         if (ev.type == UART_FIFO_OVF) {
-            /* Bytes were lost: drop the partial frame and resync. */
-            ESP_LOGW(TAG, "RX FIFO overflow; resyncing");
-            uart_flush_input((uart_port_t)s_cfg.port);
-            acc_len = 0;
+            /* Bytes were lost in the FIFO. The bytes in the ring before them
+             * are good, so keep them; the resync skips the damaged frame.
+             * No console output here: a line stalls this task. */
+            ESP_LOGD(TAG, "RX FIFO overflow");
+            s_rx_fifo_ovf++;
             continue;
         }
         if (ev.type == UART_DATA || ev.type == UART_BUFFER_FULL) {
@@ -193,6 +324,18 @@ static void eh_uart_rx_task(void *arg)
 
     free(acc);
     ESP_LOGI(TAG, "UART RX task exiting");
+}
+
+void eh_host_bus_uart_get_stats(struct eh_host_bus_uart_stats *st)
+{
+    st->fifo_ovf = s_rx_fifo_ovf;
+    st->resync_bytes = s_rx_resync_bytes;
+    st->credit_unit = s_cr_unit;
+    st->credit_wait = s_cr_wait_n;
+    st->credit_wait_ms = s_cr_wait_ms;
+    st->credit_busy = s_cr_busy;
+    st->credit_reset = s_cr_reset;
+    st->credit_bad = s_cr_bad;
 }
 
 #endif /* ESP_PLATFORM */
@@ -248,6 +391,12 @@ int eh_host_bus_init(void)
         goto fail;
     }
     s_driver_installed = 1;
+    /* Default threshold (~120 of 128) leaves ~18 us of ISR latency at 4.5 Mbaud. */
+    ret = uart_set_rx_full_threshold((uart_port_t)s_cfg.port, EH_UART_RX_FULL_THRESH);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "uart_set_rx_full_threshold failed: %d", (int)ret);
+        goto fail_drv;
+    }
     uint32_t baud = 0;
     uart_get_baudrate((uart_port_t)s_cfg.port, &baud);
     ESP_LOGI(TAG, "bus applied: baud=%lu", (unsigned long)baud);
@@ -256,6 +405,8 @@ int eh_host_bus_init(void)
     if (!s_rx_open) {
         goto fail_drv;
     }
+    s_cr_unit = 0;
+    eh_host_wifi_tx_set_throttle(false);
     s_running = 1;
     {
         eh_host_port_task_create_cfg_t tcfg = {
@@ -400,11 +551,47 @@ int eh_host_bus_tx(interface_buffer_handle_t *bh)
     if (len > EH_UART_MAX_BUF || !s_driver_installed || !s_bus_lock) {
         goto out;
     }
-    eh_host_port_mutex_lock(s_bus_lock);
+    /* No credit: wait, so the frame is not lost in the CP RX ring. Network
+     * data and frames from the RX task get busy instead: lwIP sends them with
+     * its core lock held, and the RX task needs that lock to keep reading,
+     * also the credit. Data stays throttled until the credit has room. */
+    bool data = !header_only && (bh->if_type == ESP_STA_IF || bh->if_type == ESP_AP_IF);
+    bool no_wait = data || xTaskGetCurrentTaskHandle() == s_rx_tid;
+    bool waited = false;
+    for (;;) {
+        eh_host_port_mutex_lock(s_bus_lock);
+        if (eh_uart_credit_take(len))
+            break;
+        eh_host_port_mutex_unlock(s_bus_lock);
+        if (no_wait || !s_running) {
+            s_cr_busy++;
+            if (data)
+                eh_host_wifi_tx_set_throttle(true);
+            goto out;
+        }
+        if (!waited)
+            s_cr_wait_n++;
+        waited = true;
+        vTaskDelay(1);
+        s_cr_wait_ms += portTICK_PERIOD_MS;
+    }
+    if (data && s_cr_stuck)
+        eh_host_wifi_tx_set_throttle(true);
     int written = uart_write_bytes((uart_port_t)s_cfg.port,
                                    (const char *)buf, len);
-    eh_host_port_mutex_unlock(s_bus_lock);
     rc = (written == (int)len) ? 0 : -1;
+#if ESP_PKT_STATS
+    /* Under the bus lock: several tasks transmit, and ++ is not atomic. */
+    if (!header_only && bh->if_type == ESP_STA_IF) {
+        pkt_stats.sta_tx_in_pass++;
+        pkt_stats.sta_tx_trans_in++;
+        if (rc)
+            pkt_stats.sta_tx_out_drop++;
+        else
+            pkt_stats.sta_tx_out++;
+    }
+#endif
+    eh_host_port_mutex_unlock(s_bus_lock);
 out:
     if (bh->free_buf_handle) bh->free_buf_handle(bh->priv_buffer_handle);
     return rc;
@@ -435,7 +622,12 @@ static int eh_uart_send_ps_flag(uint8_t flag)
     interface_buffer_handle_t bh = {0};
     bh.payload_len = 0;
     bh.flags = flag;
-    return eh_host_bus_tx(&bh) < 0 ? -1 : 0;
+    if (eh_host_bus_tx(&bh) < 0)
+        return -1;
+    /* The TX ring may still hold the frame: send it before the host sleeps. */
+    if (s_driver_installed)
+        uart_wait_tx_done((uart_port_t)s_cfg.port, pdMS_TO_TICKS(EH_UART_PS_TX_DONE_MS));
+    return 0;
 }
 
 int eh_host_bus_inform_slave_ps_enter(void)
