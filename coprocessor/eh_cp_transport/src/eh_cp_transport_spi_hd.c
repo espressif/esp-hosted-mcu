@@ -384,9 +384,12 @@ static void esp_spi_hd_get_bus_cfg(spi_bus_config_t * bus_cfg)
 	bus_cfg->data7_io_num = -1;
 	bus_cfg->sclk_io_num = GPIO_SCLK;
 	bus_cfg->max_transfer_sz = SPI_HD_BUFFER_SIZE;
-#if (NUM_DATA_BITS == 4)
+/* The slave reads the line count from each command; DUAL/QUAD only check pins.
+ * On chips with octal SPI, some IDF versions also move the pins to the octal
+ * function for these flags, which disconnects SPI2 from them. */
+#if (NUM_DATA_BITS == 4) && !SOC_SPI_SUPPORT_OCT
 	bus_cfg->flags = SPICOMMON_BUSFLAG_QUAD;
-#elif (NUM_DATA_BITS == 2)
+#elif (NUM_DATA_BITS == 2) && !SOC_SPI_SUPPORT_OCT
 	bus_cfg->flags = SPICOMMON_BUSFLAG_DUAL;
 #else
 	bus_cfg->flags = 0;
