@@ -1,0 +1,2 @@
+# BR/EDR + BLE over hosted HCI (VHCI)
+CONFIG_BTDM_CTRL_MODE_BTDM=y

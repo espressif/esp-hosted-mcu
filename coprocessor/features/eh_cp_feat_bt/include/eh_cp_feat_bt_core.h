@@ -25,6 +25,7 @@
 
 // include only if BT component enabled and soc supports BT
 #include "esp_bt.h"
+#include "soc/soc_caps.h"
 
 #if !EH_CP_IDF_V5_API
   #include "driver/periph_ctrl.h"
@@ -67,6 +68,21 @@
     #define EH_CP_BT_UART   EH_CP_BT_UART_PORT_C3_S3
   #endif
 
+#elif CONFIG_BT_DUAL_MODE_ARCH
+  /* porting_btdm controller (ESP32-S31): mode comes from BTDM_CTRL_MODE_* */
+
+  #if defined(CONFIG_BTDM_CTRL_MODE_BLE_ONLY)
+    #define EH_CP_BT_MODE_BLE    1
+  #elif defined(CONFIG_BTDM_CTRL_MODE_BR_EDR_ONLY)
+    #define EH_CP_BT_MODE_BT     2
+  #elif defined(CONFIG_BTDM_CTRL_MODE_BTDM)
+    #define EH_CP_BT_MODE_DUAL   3
+  #endif
+
+  #if defined(CONFIG_BT_CTRL_HCI_INTERFACE_USE_RAM)
+    #define EH_CP_BT_HCI    4
+  #endif
+
 #else
   /* only BLE for chipsets other than ESP32 */
 
@@ -78,6 +94,11 @@
     #define EH_CP_BT_UART   CONFIG_BT_LE_HCI_UART_PORT
   #endif
 
+#endif
+
+/* IDF VHCI driver has no send-available callback: send without the semaphore. */
+#if SOC_ESP_NIMBLE_CONTROLLER || CONFIG_BT_DUAL_MODE_ARCH
+  #define EH_CP_BT_VHCI_SEND_UNGATED 1
 #endif
 
 #ifdef EH_CP_BT_UART

@@ -93,13 +93,16 @@ NO_WIFI_TARGETS: set[str] = set()
 EXAMPLE_EXCLUDE: dict[str, set[str]] = {
     "network_split":   {"esp32c2", "esp32c3"},
     # BLE controller absent on esp32s2 → all Bluetooth examples excluded.
-    # esp32s31: its BT controller Kconfig is not wired into the CP BT feature yet.
-    "bluetooth/":      {"esp32s2", "esp32s31"},
+    "bluetooth/":      {"esp32s2"},
+    # esp32s31: HCI over a dedicated UART is not wired into the CP BT feature yet.
+    "bluetooth/bluedroid_uart": {"esp32s31"},
+    "bluetooth/nimble_uart":    {"esp32s31"},
     # Classic BT (BR/EDR) is ESP32-only → exclude every other CP chip.
+    # esp32s31: has BR/EDR, but its CP defaults are BLE only for now.
     "classic_bt_discovery": {"esp32c2", "esp32c3", "esp32c5", "esp32c6",
-                             "esp32c61", "esp32s2", "esp32s3"},
+                             "esp32c61", "esp32s2", "esp32s3", "esp32s31"},
     "bt_hid_mouse":         {"esp32c2", "esp32c3", "esp32c5", "esp32c6",
-                             "esp32c61", "esp32s2", "esp32s3"},
+                             "esp32c61", "esp32s2", "esp32s3", "esp32s31"},
     # esp32s31: no host-wakeup GPIO default for host deep sleep.
     "power_save":      {"esp32c2", "esp32s31"},
     "system/mcu_transport_config": {"esp32s31"},
