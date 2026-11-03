@@ -368,8 +368,14 @@ Use the Wi-Fi and TCP/IP settings of [1.3](#13-esp32-c61-as-co-processor). ESP32
 | SPI-HD, 2 lines | 34 | 35 | 26 | 32 | 22 | 26 |
 | SPI-HD, 4 lines | 44 | 45 | 31 | 41 | 25 | 31 |
 | UART, 4 Mbaud | 3.2 | 3.1 | 3.0 | 3.1 | 2.9 | 2.9 |
+| UART, 5 Mbaud | 3.9 | 3.9 | – | – | – | – |
+| UART, 8 Mbaud | 6.3 | 6.3 | – | – | – | – |
+| UART, 10 Mbaud | 7.9 | 7.8 | 7.6 | 7.0¹ | 7.1 | 7.0¹ |
+| UART, 16 Mbaud | 12.6 | 12.4 | – | – | – | – |
 
-The SPI-FD TCP values were measured with `CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=n`.
+- The SPI-FD TCP values were measured with `CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=n`.
+- UART: no raw frames were lost. Above 5 Mbaud is outside the SoC specification; it was tested on this board only. For the raw runs at 5 Mbaud and higher, `CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n` on the host: the raw TP TX task starves IDLE1, and the task watchdog print stalls UART TX.
+- ¹ UDP offered load was 7 Mbps, so this is not the UDP limit.
 
 ---
 
