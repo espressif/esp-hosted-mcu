@@ -1,0 +1,2 @@
+# HCI over a dedicated UART (H4); set the UART pins for your board
+CONFIG_BT_CTRL_HCI_INTERFACE_USE_UART=y

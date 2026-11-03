@@ -20,10 +20,17 @@
 #define UART_NO       (1)
 #define UART_BUF_SZ   (1024)
 
-#define UART_TX_PIN   (5)
-#define UART_RX_PIN   (18)
-#define UART_RTS_PIN  (19)
-#define UART_CTS_PIN  (23)
+#define UART_TX_PIN   (CONFIG_EXAMPLE_HCI_UART_TX_PIN)
+#define UART_RX_PIN   (CONFIG_EXAMPLE_HCI_UART_RX_PIN)
+#if CONFIG_EXAMPLE_HCI_UART_FLOW_CTRL_EN
+#define UART_RTS_PIN  (CONFIG_EXAMPLE_HCI_UART_RTS_PIN)
+#define UART_CTS_PIN  (CONFIG_EXAMPLE_HCI_UART_CTS_PIN)
+#define UART_FLOW_CTRL UART_HW_FLOWCTRL_CTS_RTS
+#else
+#define UART_RTS_PIN  (UART_PIN_NO_CHANGE)
+#define UART_CTS_PIN  (UART_PIN_NO_CHANGE)
+#define UART_FLOW_CTRL UART_HW_FLOWCTRL_DISABLE
+#endif
 
 enum {
     UART_RX_TYPE = 0,
@@ -138,7 +145,7 @@ void hci_uart_open(void)
         .data_bits  = UART_DATA_8_BITS,
         .parity     = UART_PARITY_DISABLE,
         .stop_bits  = UART_STOP_BITS_1,
-        .flow_ctrl  = UART_HW_FLOWCTRL_CTS_RTS,
+        .flow_ctrl  = UART_FLOW_CTRL,
         .source_clk = UART_SCLK_DEFAULT,
         .rx_flow_ctrl_thresh = UART_HW_FIFO_LEN(UART_NO) - 1,
     };

@@ -81,6 +81,8 @@
 
   #if defined(CONFIG_BT_CTRL_HCI_INTERFACE_USE_RAM)
     #define EH_CP_BT_HCI    4
+  #elif defined(CONFIG_BT_CTRL_HCI_INTERFACE_USE_UART)
+    #define EH_CP_BT_UART   CONFIG_BT_CTRL_HCI_UART_PORT
   #endif
 
 #else
@@ -163,6 +165,19 @@
     #else
     #define GPIO_OUTPUT_PIN_SEL  (1ULL<<BT_TX_PIN)
     #define GPIO_INPUT_PIN_SEL   (1ULL<<BT_RX_PIN)
+    #endif
+
+  #elif CONFIG_BT_DUAL_MODE_ARCH
+
+    #define BT_TX_PIN         CONFIG_BT_CTRL_HCI_UART_TX_PIN
+    #define BT_RX_PIN         CONFIG_BT_CTRL_HCI_UART_RX_PIN
+
+    #if defined(CONFIG_BT_CTRL_HCI_UART_FLOWCTRL)
+    #define BT_RTS_PIN        CONFIG_BT_CTRL_HCI_UART_RTS_PIN
+    #define BT_CTS_PIN        CONFIG_BT_CTRL_HCI_UART_CTS_PIN
+    #else
+    #define BT_RTS_PIN        -1
+    #define BT_CTS_PIN        -1
     #endif
 
   #else
