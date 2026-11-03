@@ -117,6 +117,32 @@ Write the bench in `tests/lab.local.json`. Git ignores this file. Do not commit 
 - Some tests use emulator-only helpers (inbound traffic, the fixed emulator
   lease). On a bench, these parts need a bench variant.
 
+### Wi-Fi AP profiles
+
+Save each AP once. The file is `~/.config/esp_hosted/wifi_aps.json`, and all
+checkouts use it:
+
+```sh
+python3 -m infra.wifi_aps add --name office-2g --location office \
+    --ssid <ssid> --password <password> --band 2g --subnet 192.168.50.0/24
+python3 -m infra.wifi_aps list        # passwords masked
+python3 -m infra.wifi_aps which       # the AP this machine selects now
+```
+
+A run selects the AP in this order:
+
+1. `EH_TP_SSID` and `EH_TP_PASS`, if you set them.
+2. `EH_WIFI=<words>`. Each word must match a profile field (name, location,
+   SSID, band, subnet, tags). Example: `EH_WIFI="home 5g"`.
+3. The location. This is the profile whose `subnet` contains an address of
+   this machine. That address is also the iperf peer (`EH_TP_PEER`), unless
+   the profile sets `peer`.
+4. `wifi_ap` in `tests/lab.local.json`, then in `tests/env.json`.
+
+A 2.4 GHz-only coprocessor never selects a `5g` profile. The run fails and
+lists the candidates if `EH_WIFI` matches zero or several profiles, or if the
+location matches several.
+
 ## 7. Add a test
 
 1. Select the feature folder in `suites/` (or `emu-mcu/` if the test needs the emulator).
