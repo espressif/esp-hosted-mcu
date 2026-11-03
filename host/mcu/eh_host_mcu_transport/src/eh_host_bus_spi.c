@@ -99,11 +99,21 @@ static eh_host_port_task_t      *s_rx_task;
 static uint8_t                  *s_rx_buf;   /* RX DMA buf: alloc'd in init before the task, freed in deinit */
 static eh_host_port_sem_t       *s_trans_ready_sem;  /* posted from ISR on HS/DR */
 static eh_host_port_mutex_t     *s_bus_lock;
-static eh_host_port_queue_t     *s_tx_q;  /* queued DMA frame bufs; worker owns the bus */
+/* Queued DMA frame bufs per priority; the worker takes PRIO_Q_SERIAL first, so
+ * a data flood cannot starve RPC. */
+static eh_host_port_queue_t     *s_tx_q[MAX_PRIORITY_QUEUES];
 static uint8_t             *s_tx_dummy;    /* preallocated zero TX for RX-only xfers */
 static volatile uint8_t     s_running;
 static volatile uint8_t     s_isr_installed;
 static volatile uint8_t     s_dr_pending;  /* DR edge latched in ISR, consumed by worker */
+
+static uint8_t eh_spi_tx_prio(uint8_t if_type)
+{
+    /* PRIV is control too: host caps, which also start and stop raw TP. */
+    if (if_type == ESP_SERIAL_IF || if_type == ESP_PRIV_IF) return PRIO_Q_SERIAL;
+    if (if_type == ESP_HCI_IF)                              return PRIO_Q_BT;
+    return PRIO_Q_OTHERS;
+}
 #endif
 
 #ifdef ESP_PLATFORM
@@ -154,9 +164,9 @@ static int eh_spi_xfer_once(uint8_t *tx_buf, uint8_t *rx_buf)
 /* TX never clocks the bus directly (upstream spi_drv.c model): copy the framed
  * bytes into a padded DMA buffer, enqueue, and wake the worker. The worker
  * combines the queued buffer with its HS-gated full-duplex transaction. */
-static int eh_spi_enqueue_tx(const uint8_t *frame, size_t len)
+static int eh_spi_enqueue_tx(const uint8_t *frame, size_t len, uint8_t prio)
 {
-    if (!s_tx_q) {
+    if (!s_tx_q[prio]) {
         return -1;
     }
     uint8_t *tx_buf = (uint8_t *)eh_spi_dma_alloc_zero(EH_SPI_MAX_BUF);
@@ -168,7 +178,7 @@ static int eh_spi_enqueue_tx(const uint8_t *frame, size_t len)
      * stops asserting HS the worker stops draining and producers block here —
      * intentional; recovering a dead CP is a higher-layer (heartbeat/reset)
      * concern, not a per-frame drop. */
-    if (eh_host_port_queue_send(s_tx_q, &tx_buf, EH_HOST_PORT_WAIT_FOREVER)
+    if (eh_host_port_queue_send(s_tx_q[prio], &tx_buf, EH_HOST_PORT_WAIT_FOREVER)
             != EH_HOST_PORT_OK) {
         eh_host_port_dma_free(tx_buf);
         return -1;
@@ -218,7 +228,10 @@ static void eh_spi_rx_task(void *arg)
         s_dr_pending = 0;
 
         uint8_t *tx_buf = NULL;
-        if (eh_host_port_queue_receive(s_tx_q, &tx_buf, 0) != EH_HOST_PORT_OK) {
+        for (int q = 0; q < MAX_PRIORITY_QUEUES; q++) {
+            if (eh_host_port_queue_receive(s_tx_q[q], &tx_buf, 0) == EH_HOST_PORT_OK) {
+                break;
+            }
             tx_buf = NULL;
         }
 
@@ -371,6 +384,23 @@ static void eh_spi_transport_failed(void)
 
 #endif /* ESP_PLATFORM */
 
+#ifdef ESP_PLATFORM
+static void eh_spi_tx_queues_destroy(void)
+{
+    for (int q = 0; q < MAX_PRIORITY_QUEUES; q++) {
+        if (!s_tx_q[q]) {
+            continue;
+        }
+        uint8_t *tx_buf = NULL;
+        while (eh_host_port_queue_receive(s_tx_q[q], &tx_buf, 0) == EH_HOST_PORT_OK) {
+            eh_host_port_dma_free(tx_buf);
+        }
+        eh_host_port_queue_destroy(s_tx_q[q]);
+        s_tx_q[q] = NULL;
+    }
+}
+#endif
+
 int eh_host_bus_init(void)
 {
     eh_frame_cfg_t cfg = EH_FRAME_CFG_HOST_MCU_SPI_DEFAULT;
@@ -408,8 +438,10 @@ int eh_host_bus_init(void)
     s_bus_lock = eh_host_port_mutex_create();
     if (!s_bus_lock)                      goto fail_sem;
 
-    s_tx_q = eh_host_port_queue_create(s_cfg.tx_queue_size, sizeof(uint8_t *));
-    if (!s_tx_q)                          goto fail_lock;
+    for (int q = 0; q < MAX_PRIORITY_QUEUES; q++) {
+        s_tx_q[q] = eh_host_port_queue_create(s_cfg.tx_queue_size, sizeof(uint8_t *));
+        if (!s_tx_q[q])                   goto fail_q;
+    }
 
     /* Preallocated zeroed dummy TX reused for every RX-only transaction. */
     s_tx_dummy = (uint8_t *)eh_spi_dma_alloc_zero(EH_SPI_MAX_BUF);
@@ -436,8 +468,8 @@ fail_isr:        eh_spi_gpio_isr_uninstall();
 fail_peripheral: spi_bus_remove_device(s_spi_dev); spi_bus_free(EH_SPI_HOST_ID);
 fail_rx_buf:     eh_host_port_dma_free(s_rx_buf);              s_rx_buf = NULL;
 fail_tx_dummy:   eh_host_port_dma_free(s_tx_dummy);            s_tx_dummy = NULL;
-fail_q:          eh_host_port_queue_destroy(s_tx_q);           s_tx_q = NULL;
-fail_lock:       eh_host_port_mutex_destroy(s_bus_lock);       s_bus_lock = NULL;
+fail_q:          eh_spi_tx_queues_destroy();
+                 eh_host_port_mutex_destroy(s_bus_lock);       s_bus_lock = NULL;
 fail_sem:        eh_host_port_sem_destroy(s_trans_ready_sem);  s_trans_ready_sem = NULL;
     return -1;
 #else
@@ -497,14 +529,7 @@ int eh_host_bus_deinit(void)
         s_spi_dev = NULL;
         spi_bus_free(EH_SPI_HOST_ID);
     }
-    if (s_tx_q) {
-        uint8_t *tx_buf = NULL;
-        while (eh_host_port_queue_receive(s_tx_q, &tx_buf, 0) == EH_HOST_PORT_OK) {
-            eh_host_port_dma_free(tx_buf);
-        }
-        eh_host_port_queue_destroy(s_tx_q);
-        s_tx_q = NULL;
-    }
+    eh_spi_tx_queues_destroy();
     if (s_tx_dummy) {
         eh_host_port_dma_free(s_tx_dummy);
         s_tx_dummy = NULL;
@@ -554,7 +579,7 @@ int eh_host_bus_tx(interface_buffer_handle_t *bh)
         return -1;
     }
     /* Caller hands pre-framed buf; enqueue for the HS-gated worker. */
-    int rc = eh_spi_enqueue_tx(buf, len);
+    int rc = eh_spi_enqueue_tx(buf, len, eh_spi_tx_prio(bh->if_type));
     if (bh->free_buf_handle) bh->free_buf_handle(bh->priv_buffer_handle);
     return rc;
 #else
@@ -572,7 +597,7 @@ static int eh_spi_send_ps_flag(uint8_t flag, const char *what)
     struct esp_payload_header h;
     interface_buffer_handle_t bh = { .if_type = ESP_SERIAL_IF, .flags = flag };
     eh_frame_encode((uint8_t *)&h, &bh, 0);
-    int rc = eh_spi_enqueue_tx((const uint8_t *)&h, sizeof(h));
+    int rc = eh_spi_enqueue_tx((const uint8_t *)&h, sizeof(h), PRIO_Q_SERIAL);
     if (rc) {
         ESP_LOGE(TAG, "%s: rc=%d", what, rc);
     } else {
