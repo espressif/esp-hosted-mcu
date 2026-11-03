@@ -36,6 +36,12 @@ _REPO = lab._REPO
 _WORK = lab.WORK      # sandbox-bindable root; cache/ = reused build artifacts
 _CACHE = lab.CACHE
 _EH = _REPO / "tools" / "eh.py"
+# IDF lists these under PREVIEW_TARGETS; set-target refuses them without --preview.
+_PREVIEW_TARGETS = {"esp32s31"}
+
+
+def _set_target(target: str) -> str:
+    return ("--preview " if target in _PREVIEW_TARGETS else "") + f"set-target {target}"
 
 _log = logging.getLogger("eh")  # streamed live by pytest log_cli
 
@@ -485,7 +491,7 @@ def _build(example_rel: str, role: str, target: str, overlay=None, inject=None) 
                         hash_file.unlink(missing_ok=True)
                         if mode == "fresh":
                             shutil.rmtree(workdir / "build", ignore_errors=True)
-                            cmd = f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" set-target {target} && {make}'
+                            cmd = f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" {_set_target(target)} && {make}'
                         else:
                             cmd = f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" reconfigure && {make}'
                     _log.info("[build] %s — %s, jobs=%d (budget %d, %d live emu pairs, %d build slots)…",
@@ -538,7 +544,7 @@ def _build(example_rel: str, role: str, target: str, overlay=None, inject=None) 
         shutil.rmtree(workdir / "build", ignore_errors=True)
         (workdir / "sdkconfig").unlink(missing_ok=True)
         hash_file.unlink(missing_ok=True)
-        rc = _run(f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" set-target {target}', build_log)
+        rc = _run(f'idf.py -D SDKCONFIG_DEFAULTS="{defaults}" {_set_target(target)}', build_log)
         if rc != 0:
             return compile_("fresh")
         k = key_of(workdir)

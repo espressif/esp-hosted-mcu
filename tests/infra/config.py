@@ -193,6 +193,8 @@ class EhTestConfig:
 
     def get_slave_target(self):
         b = self.board.lower()
+        if 's31' in b:
+            return 'esp32s31'
         if 'c61' in b:
             return 'esp32c61'
         if 'c6' in b:

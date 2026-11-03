@@ -16,7 +16,7 @@ import sys
 
 
 _KNOWN_TARGETS = ('esp32c61', 'esp32c6', 'esp32c5', 'esp32c3', 'esp32c2',
-                  'esp32s3', 'esp32s2', 'esp32h2', 'esp32p4', 'esp32')
+                  'esp32s31', 'esp32s3', 'esp32s2', 'esp32h2', 'esp32p4', 'esp32')
 
 
 def chip_to_idf_target(chip_str):
