@@ -97,14 +97,23 @@ void eh_host_mcu_transport_priv_dispatch_rx(const uint8_t *buf, size_t len)
     }
 }
 
+void eh_host_mcu_transport_wifi_rx(uint8_t if_type, uint8_t flags, uint8_t *copy, uint16_t len)
+{
+    if ((flags & FLAG_WAKEUP_PKT) && len < 1500) {
+        ESP_LOGW("eh_dispatch", "Host wakeup triggered, if_type: %u, len: %u",
+                    (unsigned int)if_type, (unsigned int)len);
+    }
+    eh_host_channel_t *chan = eh_host_transport_get_channel(if_type);
+    if (!chan || !chan->rx) {
+        free(copy);
+        return;
+    }
+    (void)chan->rx(chan->api_chan, copy, copy, len);
+}
+
 void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
 {
     if (!h || !h->payload || !h->payload_len) return;
-
-    if ((h->flags & FLAG_WAKEUP_PKT) && h->payload_len < 1500) {
-        ESP_LOGW("eh_dispatch", "Host wakeup triggered, if_type: %u, len: %u",
-                    (unsigned int)h->if_type, (unsigned int)h->payload_len);
-    }
 
     /* Wi-Fi first: most of the traffic. */
     if (h->if_type == ESP_STA_IF || h->if_type == ESP_AP_IF) {
@@ -114,10 +123,15 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
             uint8_t *copy = (uint8_t *)malloc(h->payload_len);
             if (copy) {
                 memcpy(copy, h->payload, h->payload_len);
-                (void)chan->rx(chan->api_chan, copy, copy, h->payload_len);
+                eh_host_mcu_transport_wifi_rx(h->if_type, h->flags, copy, h->payload_len);
             }
             return;
         }
+    }
+
+    if ((h->flags & FLAG_WAKEUP_PKT) && h->payload_len < 1500) {
+        ESP_LOGW("eh_dispatch", "Host wakeup triggered, if_type: %u, len: %u",
+                    (unsigned int)h->if_type, (unsigned int)h->payload_len);
     }
 
     if (h->if_type == ESP_PRIV_IF && h->payload_len >= 2) {

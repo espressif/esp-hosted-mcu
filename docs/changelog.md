@@ -11,6 +11,7 @@
 - host/sdio: streaming RX staging buffers are sized from the co-processor TX capacity when INIT arrives. The read task allocates them once, after every staging slot has been drained, so a buffer still in use is not freed. `ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1` keeps a single buffer and the read waits until it has been copied out
 - host/sdio: optional DMA mempool for packet buffers (`ESP_HOSTED_HOST_SDIO_USE_MEMPOOL`, off by default) when a 1536-byte DMA allocation fails on a fragmented heap
 - cp: add ESP32-S31 as co-processor on SPI full-duplex, SPI half-duplex and UART. ESP32-S31 has no SDIO slave
+- host/spi: TCP TX no longer stalls with `CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=y`. A new task, `eh_spi_wifi_rx`, delivers Wi-Fi RX frames. When its queue is full, the frame is dropped and `wifi rx queue full` is logged
 - host/spi: RPC and host caps frames are sent before data, so a data flood no longer blocks `raw_tp stop` or an RPC request
 - cp/sdio: enabled SDIO packet mode operation
 - host/task: removed division by sizeof(StackType_t). In IDF, the stack size should be specified as bytes

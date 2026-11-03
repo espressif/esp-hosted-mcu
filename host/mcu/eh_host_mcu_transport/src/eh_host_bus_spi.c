@@ -102,10 +102,22 @@ static eh_host_port_mutex_t     *s_bus_lock;
 /* Queued DMA frame bufs per priority; the worker takes PRIO_Q_SERIAL first, so
  * a data flood cannot starve RPC. */
 static eh_host_port_queue_t     *s_tx_q[MAX_PRIORITY_QUEUES];
+/* Wi-Fi RX copies, delivered by s_wifi_rx_task: the worker must not block in the
+ * network stack, which may hold its core lock while waiting for s_tx_q room. */
+static eh_host_port_queue_t     *s_wifi_rx_q;
+static eh_host_port_task_t      *s_wifi_rx_task;
+static uint32_t                  s_wifi_rx_drops;
 static uint8_t             *s_tx_dummy;    /* preallocated zero TX for RX-only xfers */
 static volatile uint8_t     s_running;
 static volatile uint8_t     s_isr_installed;
 static volatile uint8_t     s_dr_pending;  /* DR edge latched in ISR, consumed by worker */
+
+typedef struct {
+    uint8_t  *copy;   /* NULL stops s_wifi_rx_task */
+    uint16_t  len;
+    uint8_t   if_type;
+    uint8_t   flags;
+} eh_spi_wifi_rx_t;
 
 static uint8_t eh_spi_tx_prio(uint8_t if_type)
 {
@@ -262,6 +274,24 @@ static void eh_spi_rx_task(void *arg)
             }
             continue;
         }
+        if (h.payload && h.payload_len &&
+            (h.if_type == ESP_STA_IF || h.if_type == ESP_AP_IF)) {
+            eh_spi_wifi_rx_t w = { .copy = malloc(h.payload_len), .len = h.payload_len,
+                                   .if_type = h.if_type, .flags = h.flags };
+            if (w.copy) {
+                memcpy(w.copy, h.payload, h.payload_len);
+                /* Never wait: a full queue means the stack is stuck, and waiting
+                 * here would also stop TX. Drop like a full lwIP mbox does. */
+                if (eh_host_port_queue_send(s_wifi_rx_q, &w, 0) != EH_HOST_PORT_OK) {
+                    free(w.copy);
+                    if ((s_wifi_rx_drops++ & 0xff) == 0) {
+                        ESP_LOGW(TAG, "wifi rx queue full: %lu frames dropped",
+                                 (unsigned long)s_wifi_rx_drops);
+                    }
+                }
+            }
+            continue;
+        }
         if (h.payload && h.payload_len) {
             if (h.if_type == ESP_HCI_IF) {
                 eh_host_mcu_hci_rx_deliver(h.payload, h.payload_len);
@@ -272,6 +302,21 @@ static void eh_spi_rx_task(void *arg)
     }
 
     ESP_LOGI(TAG, "SPI RX task exiting");
+}
+
+static void eh_spi_wifi_rx_task(void *arg)
+{
+    (void)arg;
+    eh_spi_wifi_rx_t w;
+    for (;;) {
+        if (eh_host_port_queue_receive(s_wifi_rx_q, &w, EH_HOST_PORT_WAIT_FOREVER) != EH_HOST_PORT_OK) {
+            continue;
+        }
+        if (!w.copy) {
+            break;
+        }
+        eh_host_mcu_transport_wifi_rx(w.if_type, w.flags, w.copy, w.len);
+    }
 }
 #endif
 
@@ -385,6 +430,19 @@ static void eh_spi_transport_failed(void)
 #endif /* ESP_PLATFORM */
 
 #ifdef ESP_PLATFORM
+/* Called after the worker has stopped: nothing produces into s_wifi_rx_q any more. */
+static void eh_spi_wifi_rx_stop(void)
+{
+    if (!s_wifi_rx_task) {
+        return;
+    }
+    eh_spi_wifi_rx_t stop = { .copy = NULL };
+    eh_host_port_queue_send(s_wifi_rx_q, &stop, EH_HOST_PORT_WAIT_FOREVER);
+    eh_host_port_task_join(s_wifi_rx_task);
+    eh_host_port_task_destroy(s_wifi_rx_task);
+    s_wifi_rx_task = NULL;
+}
+
 static void eh_spi_tx_queues_destroy(void)
 {
     for (int q = 0; q < MAX_PRIORITY_QUEUES; q++) {
@@ -397,6 +455,14 @@ static void eh_spi_tx_queues_destroy(void)
         }
         eh_host_port_queue_destroy(s_tx_q[q]);
         s_tx_q[q] = NULL;
+    }
+    if (s_wifi_rx_q) {
+        eh_spi_wifi_rx_t w;
+        while (eh_host_port_queue_receive(s_wifi_rx_q, &w, 0) == EH_HOST_PORT_OK) {
+            free(w.copy);
+        }
+        eh_host_port_queue_destroy(s_wifi_rx_q);
+        s_wifi_rx_q = NULL;
     }
 }
 #endif
@@ -416,6 +482,9 @@ int eh_host_bus_init(void)
         return -1;
     }
     s_cfg = *bus_cfg;
+    if (!s_cfg.rx_queue_size) {
+        s_cfg.rx_queue_size = EH_HOST_PORT_SPI_RX_Q;
+    }
     if (!s_cfg.tx_queue_size) {
         s_cfg.tx_queue_size = EH_HOST_PORT_SPI_TX_Q;
         ESP_LOGW(TAG, "spi tx queue size 0: using %u", (unsigned)s_cfg.tx_queue_size);
@@ -428,6 +497,11 @@ int eh_host_bus_init(void)
         .fn = eh_spi_rx_task, .arg = NULL,
         .stack_bytes = EH_SPI_TASK_STACK, .priority = EH_SPI_TASK_PRIO,
         .name = "eh_spi_rx",
+    };
+    eh_host_port_task_create_cfg_t wcfg = {
+        .fn = eh_spi_wifi_rx_task, .arg = NULL,
+        .stack_bytes = EH_SPI_TASK_STACK, .priority = EH_SPI_TASK_PRIO,
+        .name = "eh_spi_wifi_rx",
     };
 
     /* Acquire in order; any failure jumps to the matching rung of the
@@ -442,6 +516,8 @@ int eh_host_bus_init(void)
         s_tx_q[q] = eh_host_port_queue_create(s_cfg.tx_queue_size, sizeof(uint8_t *));
         if (!s_tx_q[q])                   goto fail_q;
     }
+    s_wifi_rx_q = eh_host_port_queue_create(s_cfg.rx_queue_size, sizeof(eh_spi_wifi_rx_t));
+    if (!s_wifi_rx_q)                     goto fail_q;
 
     /* Preallocated zeroed dummy TX reused for every RX-only transaction. */
     s_tx_dummy = (uint8_t *)eh_spi_dma_alloc_zero(EH_SPI_MAX_BUF);
@@ -456,14 +532,18 @@ int eh_host_bus_init(void)
     if (eh_spi_peripheral_init() != 0)  { eh_spi_transport_failed(); goto fail_rx_buf; }
     if (eh_spi_gpio_isr_install() != 0) { eh_spi_transport_failed(); goto fail_peripheral; }
 
+    if (eh_host_port_task_create(&wcfg, &s_wifi_rx_task) != EH_HOST_PORT_OK) {
+        goto fail_isr;
+    }
     s_running = 1;
     if (eh_host_port_task_create(&tcfg, &s_rx_task) != EH_HOST_PORT_OK) {
         s_running = 0;
-        goto fail_isr;
+        goto fail_wifi_rx;
     }
     return 0;
 
     /* ── reverse-order teardown ──────────────────────────────────────────── */
+fail_wifi_rx:    eh_spi_wifi_rx_stop();
 fail_isr:        eh_spi_gpio_isr_uninstall();
 fail_peripheral: spi_bus_remove_device(s_spi_dev); spi_bus_free(EH_SPI_HOST_ID);
 fail_rx_buf:     eh_host_port_dma_free(s_rx_buf);              s_rx_buf = NULL;
@@ -517,6 +597,7 @@ int eh_host_bus_deinit(void)
         eh_host_port_task_destroy(s_rx_task);
         s_rx_task = NULL;
     }
+    eh_spi_wifi_rx_stop();
     if (s_rx_buf) {
         eh_host_port_dma_free(s_rx_buf);
         s_rx_buf = NULL;

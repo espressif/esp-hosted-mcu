@@ -43,6 +43,8 @@ IPERF_SECS = 10
 # UART faults. Credit keeps the CP RX ring from overflowing, so any one is a
 # defect. The RX tasks do not log; these lines come from other tasks.
 UART_ERR = re.compile(r'uart transmit error|incoming data too big')
+# The host bus dropped Wi-Fi RX because its delivery queue was full (SPI-FD).
+WIFI_RX_DROP = re.compile(r'wifi rx queue full: \d+ frames dropped')
 # CP: uart_evt_task and flow_ctrl_task, last line wins.
 CP_EVT = re.compile(r'uart evt: fifo_ovf=(\d+) buf_full=(\d+)')
 CP_DROP = re.compile(r'dropped frames: no rx buffer=(\d+) queue full=(\d+), resync bytes=(\d+)')
@@ -211,6 +213,8 @@ def test_tcp_throughput(bench, transport, request):
     problems = [f'{t}' for v, t, _ in wifi_diag.check(d) if v == wifi_diag.FAIL]
     if transport == 'uart':
         problems += _uart_checks(cp_log, host_txt, baud, tx, rx)
+    for line in WIFI_RX_DROP.findall(host_txt)[-1:]:
+        print(f'[tp] host {line}')
     if not tx and 'tx' in dirs:
         problems.append('no TX total captured')
     if board_ip and not rx and 'rx' in dirs:
