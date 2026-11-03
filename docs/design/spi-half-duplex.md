@@ -221,6 +221,8 @@ The standard SPI `CPOL` (clock polarity) and `CPHA` (clock phase) must be config
 
 Prefer the chip's dedicated `IO_MUX` SPI pins to minimise propagation delay; routing SPI signals through other GPIOs uses the GPIO matrix, which can cap the maximum usable clock frequency. `SPI_CS`, `Data_Ready`, and `Reset` can be assigned to any GPIO on both ends. The `Reset` line connects to the co-processor's `EN`/`RST` pin (or a GPIO) and is configured on the co-processor under *Example Configuration → Bus Config → SPI Half-duplex Configuration → GPIOs → Slave GPIO pin to reset itself*.
 
+On a co-processor with octal SPI (`SOC_SPI_SUPPORT_OCT`, for example ESP32-S31), the co-processor sets up the 2-line and 4-line bus without `SPICOMMON_BUSFLAG_DUAL` or `_QUAD`. With these flags, some ESP-IDF versions move the pins to the octal function and disconnect SPI2 from them. The slave reads the line count from each command, so the flags are not needed.
+
 ---
 
 ## Code reference

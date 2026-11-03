@@ -237,7 +237,7 @@ Advertised in the `CAPABILITY` / `CAP_EXT` / `FEAT_CAPS` TLVs (`common/eh_common
 - **Tier 1 `cap` (u8):** `WLAN_SDIO(1<<0)`, `BT_UART(1<<1)`, `BT_SDIO(1<<2)`, `BLE_ONLY(1<<3)`, `BR_EDR_ONLY(1<<4)`, `WLAN_SPI(1<<5)`, `BT_SPI(1<<6)`, `CHECKSUM_ENABLED(1<<7)`.
 - **Tier 2 `ext_cap` (u32):** SPI-HD data-line counts, `WIFI_ENT(1<<3)`, `WLAN(1<<4)`, `OT(1<<6)`, `WIFI_DPP(1<<7)`, `WLAN_UART(1<<8)`, `HOST_PS(1<<10)`, `NW_SPLIT(1<<11)`, `CUSTOM_RPC(1<<12)`, `AUX_IF(1<<17)`, `AUX_OT(1<<18)`.
 - **Tier 3 `feat_caps[8]`:** WIFI=0, BT=1, OTA=2, PS=3, NW_SPLIT=4, CUSTOM_RPC=5.
-- **Chip IDs:** ESP32=`0x00`, S2=`0x02`, C3=`0x05`, S3=`0x09`, C2=`0x0C`, C6=`0x0D`, H2=`0x10`, C61=`0x14`, C5=`0x17`, H4=`0x1C`, unrecognized=`0xFF`.
+- **Chip IDs:** ESP32=`0x00`, S2=`0x02`, C3=`0x05`, S3=`0x09`, C2=`0x0C`, C6=`0x0D`, H2=`0x10`, C61=`0x14`, C5=`0x17`, H4=`0x1C`, S31=`0x20`, unrecognized=`0xFF`.
 
 ### 7.3 The sequence
 
