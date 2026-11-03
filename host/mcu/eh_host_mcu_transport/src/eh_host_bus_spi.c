@@ -315,7 +315,7 @@ static void eh_spi_wifi_rx_task(void *arg)
         if (!w.copy) {
             break;
         }
-        eh_host_mcu_transport_wifi_rx(w.if_type, w.flags, w.copy, w.len);
+        eh_host_mcu_transport_channel_rx(w.if_type, w.flags, w.copy, w.len);
     }
 }
 #endif

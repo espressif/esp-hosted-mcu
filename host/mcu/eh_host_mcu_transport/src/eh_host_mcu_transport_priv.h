@@ -57,8 +57,8 @@ void eh_host_mcu_transport_priv_dispatch_rx(
 /* If-type-aware dispatch: PRIV_IF init-event to parser, rest to priv_dispatch_rx. */
 #include "eh_frame.h"
 void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h);
-/* Hands a Wi-Fi frame copy to its channel, which frees it. */
-void eh_host_mcu_transport_wifi_rx(uint8_t if_type, uint8_t flags, uint8_t *copy, uint16_t len);
+/* Hands a frame copy to the channel of its if_type, which frees it. */
+void eh_host_mcu_transport_channel_rx(uint8_t if_type, uint8_t flags, uint8_t *copy, uint16_t len);
 
 /* Copies to the aux_type's channel, else drops. */
 void eh_host_transport_aux_rx(uint8_t aux_type, const uint8_t *payload, uint16_t len);

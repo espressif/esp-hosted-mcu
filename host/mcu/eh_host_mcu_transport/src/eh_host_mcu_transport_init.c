@@ -97,7 +97,7 @@ void eh_host_mcu_transport_priv_dispatch_rx(const uint8_t *buf, size_t len)
     }
 }
 
-void eh_host_mcu_transport_wifi_rx(uint8_t if_type, uint8_t flags, uint8_t *copy, uint16_t len)
+void eh_host_mcu_transport_channel_rx(uint8_t if_type, uint8_t flags, uint8_t *copy, uint16_t len)
 {
     if ((flags & FLAG_WAKEUP_PKT) && len < 1500) {
         ESP_LOGW("eh_dispatch", "Host wakeup triggered, if_type: %u, len: %u",
@@ -123,7 +123,7 @@ void eh_host_mcu_transport_dispatch_frame(const interface_buffer_handle_t *h)
             uint8_t *copy = (uint8_t *)malloc(h->payload_len);
             if (copy) {
                 memcpy(copy, h->payload, h->payload_len);
-                eh_host_mcu_transport_wifi_rx(h->if_type, h->flags, copy, h->payload_len);
+                eh_host_mcu_transport_channel_rx(h->if_type, h->flags, copy, h->payload_len);
             }
             return;
         }
