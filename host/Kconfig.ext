@@ -126,6 +126,7 @@ menu "Configure host"
 		# Current MP boards for P4 hosts; examples inherit them.
 		default ESP_HOSTED_P4_DEV_BOARD_FUNC_BOARD if IDF_TARGET_ESP32P4 && ESP_HOSTED_HOST_TYPE_MCU && ESP_HOSTED_CP_TARGET_ESP32C6
 		default ESP_HOSTED_P4X_C5_DEV_BOARD_FUNC_BOARD if IDF_TARGET_ESP32P4 && ESP_HOSTED_HOST_TYPE_MCU && ESP_HOSTED_CP_TARGET_ESP32C5
+		default ESP_HOSTED_S31_DEV_BOARD if ESP_HOSTED_HOST_TYPE_MCU && ESP_HOSTED_CP_TARGET_ESP32S31
 		default ESP_HOSTED_P4_DEV_BOARD_NONE
 
 		config ESP_ESP32C5_SPI_RASPI_MATING_BOARD  # ignore: multiple-definition
@@ -166,7 +167,21 @@ menu "Configure host"
 		config ESP_HOSTED_C2_C5_MODULE_SUB_BOARD  # ignore: multiple-definition
 			bool "ESP32-P4 EV Sub-Board for C2 & C5"
 			depends on ESP_HOSTED_HOST_TYPE_MCU && (ESP_HOSTED_CP_TARGET_ESP32C2 || ESP_HOSTED_CP_TARGET_ESP32C5)
+
+		config ESP_HOSTED_S31_DEV_BOARD  # ignore: multiple-definition
+			bool "ESP32-S31 module or DevKit (S31 SPI on IO_MUX pins 20-25)"
+			depends on ESP_HOSTED_HOST_TYPE_MCU && ESP_HOSTED_CP_TARGET_ESP32S31
+
+		config ESP_HOSTED_S31_KORVO_BOARD  # ignore: multiple-definition
+			bool "ESP32-S31-Korvo-1, jumpered to ESP32-P4-Function-EV-Board"
+			depends on ESP_HOSTED_HOST_TYPE_MCU && IDF_TARGET_ESP32P4 && ESP_HOSTED_CP_TARGET_ESP32S31
 	endchoice
+
+	# Both S31 boards wire to the P4-Function-EV J1 header; the dev board overrides
+	# SPI CLK, host-to-CP data, data-ready and reset (6/2/5/3) above these defaults.
+	config ESP_HOSTED_S31_ON_P4_EV_HEADER
+		bool
+		default y if IDF_TARGET_ESP32P4 && (ESP_HOSTED_S31_DEV_BOARD || ESP_HOSTED_S31_KORVO_BOARD)
 
 	menu "Host core"
 		orsource "eh_host_core/Kconfig.ext"

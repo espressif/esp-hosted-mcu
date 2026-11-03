@@ -110,6 +110,7 @@ Both firmware images must select the **exact same transport** and matching pins.
 | ESP32-C61 | `✓` | `✓` | `✓` | `✓` |
 | ESP32-S2 |  | `✓` | `✓` | `✓` |
 | ESP32-S3 |  | `✓` | `✓` | `✓` |
+| ESP32-S31 |  | `✓` | `✓` | `✓` |
 
 > [!NOTE]
 > - **SDIO** co-processors are limited to **ESP32, ESP32-C5, ESP32-C6, and ESP32-C61** (all use fixed SDIO GPIOs). A classic **ESP32** co-processor may need a one-time, irreversible **eFuse burn** for the `DAT2`/bootstrapping-pin voltage — see [Specific considerations](#11-hardware-considerations-and-connections). An incorrect burn can brick the chip.
