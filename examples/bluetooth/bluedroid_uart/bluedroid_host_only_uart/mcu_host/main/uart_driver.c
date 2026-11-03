@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
@@ -48,6 +49,8 @@ enum {
 TaskHandle_t s_rx_task_hdl;
 esp_bluedroid_hci_driver_callbacks_t s_callback = { 0 };
 
+static uint32_t s_dropped;
+
 static void IRAM_ATTR hci_uart_rx_task(void *arg)
 {
     uint8_t buf[1026];
@@ -63,7 +66,6 @@ static void IRAM_ATTR hci_uart_rx_task(void *arg)
 
         switch (rx_st) {
         case UART_RX_TYPE: {
-            assert(buf[0] >= DATA_TYPE_ACL && buf[0] <= DATA_TYPE_EVENT);
             if (buf[0] == DATA_TYPE_ACL) {
                 len_to_read = 4;
             } else if (buf[0] == DATA_TYPE_SCO) {
@@ -71,7 +73,13 @@ static void IRAM_ATTR hci_uart_rx_task(void *arg)
             } else if (buf[0] == DATA_TYPE_EVENT) {
                 len_to_read = 2;
             } else {
-                assert(0);
+                /* Not an H4 type the host takes (e.g. a line glitch while the
+                 * controller boots): drop it and wait for the next type byte. */
+                if (++s_dropped <= 8 || (s_dropped % 256) == 0) {
+                    ESP_LOGW(TAG, "dropped non-H4 byte 0x%02x (%" PRIu32 " total)", buf[0], s_dropped);
+                }
+                len_total_read = 0;
+                break;
             }
             rx_st = UART_RX_LEN;
         }

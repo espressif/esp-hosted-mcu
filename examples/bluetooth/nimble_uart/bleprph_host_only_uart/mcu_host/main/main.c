@@ -495,7 +495,6 @@ app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    hci_uart_open();
     ret = nimble_port_init();
     if (ret != ESP_OK) {
         ESP_LOGE(tag, "Failed to init nimble %d ", ret);
