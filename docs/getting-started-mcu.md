@@ -119,7 +119,14 @@ Both firmware images must select the **exact same transport** and matching pins.
 
 ### ESP32-S31 test board on the ESP32-P4-Function-EV-Board
 
-ESP32-S31 is an ESP-IDF preview target and is 2.4 GHz only. Set the target with `idf.py --preview set-target esp32s31`. Bluetooth is not supported on ESP32-S31 yet.
+ESP32-S31 is an ESP-IDF preview target and is 2.4 GHz only. Set the target with `idf.py --preview set-target esp32s31`.
+
+These examples do not support ESP32-S31 yet:
+
+- Bluetooth: the co-processor Bluetooth feature does not use the ESP32-S31 controller yet.
+- Host power save (`power_save/`, `system/mcu_transport_config`): no host-wakeup GPIO is set for the board.
+- `rf_cert`: ESP-IDF v6.1 has no RF test library for ESP32-S31.
+- OpenThread and Zigbee with a dedicated spinel UART: no default UART pins.
 
 Set `CONFIG_ESP_HOSTED_S31_DEV_BOARD=y` on the co-processor and on the host. The same wires carry every transport:
 

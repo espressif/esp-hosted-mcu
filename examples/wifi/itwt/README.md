@@ -9,9 +9,9 @@
 
 iTWT is a Wi-Fi 6 (802.11ax) feature — it requires a Wi-Fi 6 coprocessor.
 
-| Coprocessor | ESP32-C5 | ESP32-C6 | ESP32-C61 |
-| :---------: | :------: | :------: | :-------: |
-| Support     | Yes      | Yes      | Yes       |
+| Coprocessor | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-S31 |
+| :---------: | :------: | :------: | :-------: | :-------: |
+| Support     | Yes      | Yes      | Yes       | Yes       |
 
 ### Supported Host Devices
 
