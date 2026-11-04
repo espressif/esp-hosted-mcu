@@ -413,17 +413,42 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
 
 	config ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS
 		int "Host SDIO RX staging slots"
-		range 2 8
+		range 1 8
 		default 2
 		help
 			DMA staging buffers between the SDIO read task and the
-			de-aggregation task. One slot is always the in-progress read
-			buffer, so the effective queue depth is (slots - 1): the
-			default 2 gives depth 1 (one aggregate staged while the next
-			is read) — identical to the original double-buffer. Raising it
-			(e.g. 4, to match a co-processor advertising 4 receive credits)
-			lets the host absorb RX bursts without stalling the slave, at
-			the cost of slots x max-aggregate DMA RAM. Tune on hardware.
+			de-aggregation task. 1 uses a single buffer: the read task
+			waits until that buffer has been copied out before the next
+			read. That lowers peak RX rate and uses half the staging RAM
+			of the default.
+
+			With 2 or more, one slot is always the in-progress read, so
+			the queue depth is (slots - 1). The default 2 gives depth 1
+			(one aggregate staged while the next is read), the same as
+			the original double-buffer. Raising it (e.g. 4, to match a
+			co-processor advertising 4 receive credits) lets the host
+			absorb RX bursts without stalling the slave, at the cost of
+			slots x max-aggregate DMA RAM. Tune on hardware.
+
+	config ESP_HOSTED_HOST_SDIO_USE_MEMPOOL
+		bool "Use a mempool for SDIO packet buffers"
+		default n
+		help
+			Preallocate a fixed DMA mempool for host SDIO packet buffers.
+			TX packets and each de-aggregated RX frame are taken from this
+			pool. Its length is the host SDIO RX queue size plus 11 blocks
+			(3 Bluetooth, 3 serial, and 5 network), and each block is one
+			maximum SDIO frame (1536 bytes).
+
+			With the option left off, each of those packets is allocated
+			and freed on the DMA heap. Turn it on when that heap is
+			fragmented and a single frame allocation fails while the total
+			free DMA memory would still cover the frame. The pool is
+			reserved when the transport starts, so startup fails if one
+			contiguous DMA region of that size is not available.
+
+			The pool is separate from the RX staging slots. Staging still
+			holds one whole SDIO aggregate before it is split into frames.
 
 	endmenu
 

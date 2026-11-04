@@ -111,11 +111,10 @@ static const uint16_t to_host_q_depth[MAX_PRIORITY_QUEUES] = {
 #define SDIO_HDR_SIZE             (sizeof(struct esp_payload_header))
 
 #if TX_MODE == TX_MODE_STREAM
-#define SDIO_STREAM_QUEUE_SIZE    14    /* HW send-queue depth for STREAM (per-packet) */
+#define SDIO_STREAM_QUEUE_SIZE    14    /* ceiling on STREAM in-flight frames */
 #define SDIO_DRIVER_TX_QUEUE_SIZE SDIO_STREAM_QUEUE_SIZE
 #define SDIO_TX_BUFFER_SIZE       1536  /* one MTU frame + header (fits 1460 raw-TP too) */
 #define SDIO_TX_MEMPOOL_MARGIN    4     /* pool slack over in-flight depth */
-#define SDIO_TX_MEMPOOL_BLOCKS    (SDIO_STREAM_QUEUE_SIZE + SDIO_TX_MEMPOOL_MARGIN)
 #else
 #define SDIO_DRIVER_TX_QUEUE_SIZE 8     /* IDF sdio_slave driver send-queue depth */
 #endif
@@ -174,6 +173,7 @@ static uint8_t *tx_pkt_buf;              /* one persistent DMA frame buffer */
 #elif TX_MODE == TX_MODE_STREAM
 static SemaphoreHandle_t tx_stream_sem;  /* bounds in-flight send_queue buffers */
 static struct hosted_mempool *buf_mp_tx_g; /* pre-allocated DMA TX blocks (no per-pkt malloc) */
+static uint32_t stream_tx_depth;         /* in-flight cap: min(ceiling, rx buf / frame) */
 static uint32_t stream_tx_acc;           /* bytes since last yield (idle-starvation guard) */
 #define STREAM_YIELD_BYTES (512u * 1024u) /* yield to idle every ~512KB -> feed 5s task WDT */
 #endif
@@ -439,9 +439,23 @@ static void send_task(void *arg)
 }
 
 #elif TX_MODE == TX_MODE_STREAM
+/* A host read drains every frame still in the HW queue. The init event sizes
+ * that read from the RX buffer, so in-flight bytes stay within sdio_rx_buf_size.
+ * SDIO_STREAM_QUEUE_SIZE is only the ceiling. */
+static uint32_t sdio_stream_inflight_depth(void)
+{
+	uint32_t n = sdio_rx_buf_size / SDIO_TX_BUFFER_SIZE;
+
+	if (n < 1)
+		n = 1;
+	if (n > SDIO_STREAM_QUEUE_SIZE)
+		n = SDIO_STREAM_QUEUE_SIZE;
+	return n;
+}
+
 /* STREAM: no software aggregation. Each frame is copied into its own DMA buffer
  * and handed to the IDF HW send-queue (sdio_slave_send_queue); the counting
- * semaphore tx_stream_sem bounds in-flight buffers to SDIO_STREAM_QUEUE_SIZE.
+ * semaphore tx_stream_sem bounds in-flight buffers to stream_tx_depth.
  * Completed buffers are reclaimed (freed + sem returned) as they finish. Drained
  * per-priority (SERIAL -> BT -> OTHERS), matching the SW_AGGR path. */
 static void reclaim_finished(void)
@@ -457,7 +471,7 @@ static void reclaim_finished(void)
 /* True when TX buffers are still owned by the HW queue. */
 static inline bool stream_tx_in_flight(void)
 {
-	return uxSemaphoreGetCount(tx_stream_sem) < SDIO_STREAM_QUEUE_SIZE;
+	return uxSemaphoreGetCount(tx_stream_sem) < stream_tx_depth;
 }
 
 static void process_tx_stream(QueueHandle_t q, uint16_t queued)
@@ -479,7 +493,7 @@ static void process_tx_stream(QueueHandle_t q, uint16_t queued)
 		frame_len = SDIO_HDR_SIZE + buf.payload_len;
 		aligned   = (uint16_t)SDIO_FRAME_STRIDE(frame_len);
 
-		/* Acquire an in-flight slot. If all SDIO_STREAM_QUEUE_SIZE are busy, block
+		/* Acquire an in-flight slot. If all stream_tx_depth are busy, block
 		 * by reclaiming a finished buffer here - never a bare blocking take: the
 		 * only thing that returns a token is reclaim, so a blind take deadlocks
 		 * once the queue fills (light traffic never fills it, sustained load does). */
@@ -709,6 +723,22 @@ static int sdio_read(interface_handle_t *if_handle, interface_buffer_handle_t *b
 
 /* ===================== startup handshake ===================== */
 
+#if EH_TLV_V2
+/* EH_PRIV_TX_Q_SIZE is one byte. Outside software aggregation the MCU host
+ * sizes an RX staging slot as MAX_TRANSPORT_BUF_SIZE times this count. Report
+ * how many of those frames the real RX buffer holds, in every SDIO mode. */
+static uint8_t sdio_advertised_tx_q(void)
+{
+	uint32_t q = (sdio_rx_buf_size + MAX_TRANSPORT_BUF_SIZE - 1u) / MAX_TRANSPORT_BUF_SIZE;
+
+	if (q < 1)
+		q = 1;
+	if (q > 255)
+		q = 255;
+	return (uint8_t)q;
+}
+#endif
+
 void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 			    const uint32_t feat_caps[8])
 {
@@ -781,7 +811,7 @@ void generate_startup_event(uint8_t cap, uint32_t ext_cap, uint8_t raw_tp_cap,
 
 		rc = eh_tlv_pack_v2(&tlv, CONFIG_IDF_FIRMWARE_CHIP_ID, cap, raw_tp_cap,
 				    ext_cap, fw_version, EH_CP_SDIO_RX_QUEUE_SIZE,
-				    EH_CP_SDIO_TX_QUEUE_SIZE, EH_CP_RPC_WIRE_VERSION);
+				    sdio_advertised_tx_q(), EH_CP_RPC_WIRE_VERSION);
 		if (rc) {
 			ESP_LOGE(TAG, "TLV v2 overflow");
 			heap_caps_free(buf_handle.payload);
@@ -972,14 +1002,16 @@ static interface_handle_t *sdio_init(void)
 		tx_pkt_buf = heap_caps_malloc(sdio_rx_buf_size, MALLOC_CAP_DMA);
 	assert(tx_pkt_buf);
 #elif TX_MODE == TX_MODE_STREAM
+	stream_tx_depth = sdio_stream_inflight_depth();
 	if (!tx_stream_sem) {
-		tx_stream_sem = xSemaphoreCreateCounting(SDIO_STREAM_QUEUE_SIZE, SDIO_STREAM_QUEUE_SIZE);
+		tx_stream_sem = xSemaphoreCreateCounting(stream_tx_depth, stream_tx_depth);
 	}
 	assert(tx_stream_sem);
 	/* Pre-allocated DMA TX pool (needs CONFIG_ESP_CACHE_MALLOC=y to actually pool;
 	 * otherwise hosted_mempool falls back to per-call malloc and STREAM WDT-hangs
 	 * under load). Sized > in-flight depth so alloc never fails once the sem is held. */
-	buf_mp_tx_g = hosted_mempool_create(NULL, 0, SDIO_TX_MEMPOOL_BLOCKS, SDIO_TX_BUFFER_SIZE);
+	buf_mp_tx_g = hosted_mempool_create(NULL, 0,
+			stream_tx_depth + SDIO_TX_MEMPOOL_MARGIN, SDIO_TX_BUFFER_SIZE);
 	assert(buf_mp_tx_g);
 #endif
 	if (!send_task_handle)
@@ -1137,7 +1169,7 @@ static void sdio_deinit(interface_handle_t *handle)
 	if (s_sdio_tx_mtx) { vSemaphoreDelete(s_sdio_tx_mtx); s_sdio_tx_mtx = NULL; }
 	/* Preserve the semaphore and restore all buffer tokens. */
 	if (tx_stream_sem) {
-		while (uxSemaphoreGetCount(tx_stream_sem) < SDIO_STREAM_QUEUE_SIZE)
+		while (uxSemaphoreGetCount(tx_stream_sem) < stream_tx_depth)
 			xSemaphoreGive(tx_stream_sem);
 	}
 #endif

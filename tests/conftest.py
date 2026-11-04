@@ -23,6 +23,7 @@ isolated — green ↻ if it recovers, a genuine both-times fail is a real ✗):
     ota_littlefs (slowest)             S      R      R      R
     wifi_connected                     R     sc      R      S     spi_fd load-flake (retry recovers)
     spi_hd_transport (HD-specific)     .      .      S      .
+    sdio_buffers (prealloc, mempool)   S      .      .      .     two sanity cells, both sdio-only
     api_exerciser (control_plane dup)  .      S      .      .     other wires @retired
     power_save (wake path)             S      .      .      R
     example_boots (every example ×4)   R      R      R      R

@@ -14,7 +14,7 @@ Deep-dive design docs for engineers who want the internals — protocol sequence
 | [Wi-Fi Design](wifi.md) | Native vs hosted call paths; host TX/RX and co-processor execution. |
 | [Wi-Fi State Machines](wifi-fsm.md) | Every Wi-Fi FSM on host and co-processor, their events, and how a kept link is adopted. |
 | [Bluetooth Design](bluetooth.md) | Controller, HCI transport (Hosted-HCI vs UART-HCI), NimBLE / BlueDroid hosts. |
-| [SDIO Design](sdio.md) | The SDIO wire protocol: 512-byte blocks, packet-length register, stream mode, throttle. |
+| [SDIO Design](sdio.md) | The SDIO wire protocol: 512-byte blocks, packet-length register, stream mode, throttle, and the optional MCU packet mempool. |
 | [SPI Full-Duplex Design](spi-full-duplex.md) | The SPI-FD protocol: Handshake / Data-Ready GPIOs, fixed 1600-byte transactions, dummy frames. |
 | [SPI Half-Duplex Design](spi-half-duplex.md) | The MCU-only SPI-HD protocol: IO modes, commands, registers, timing. |
 | [UART Design](uart.md) | The UART protocol: length-prefixed framing, Wi-Fi + Bluetooth multiplexing, flow control. |

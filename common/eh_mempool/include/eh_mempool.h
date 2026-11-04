@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2022 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __EH_TRANSPORT_MEMPOOL_H__
 #define __EH_TRANSPORT_MEMPOOL_H__
@@ -8,7 +11,13 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#ifdef CONFIG_ESP_CACHE_MALLOC
+/* Real block pool. CONFIG_ESP_CACHE_MALLOC is the co-processor switch;
+ * the host SDIO switch opts into the same implementation. */
+#if defined(CONFIG_ESP_CACHE_MALLOC) || defined(CONFIG_ESP_HOSTED_HOST_SDIO_USE_MEMPOOL)
+#define EH_MEMPOOL_PREALLOC 1
+#endif
+
+#ifdef EH_MEMPOOL_PREALLOC
 #include "eh_mempool_ll.h"
 struct hosted_mempool {
 	struct eh_mp_mempool *pool;

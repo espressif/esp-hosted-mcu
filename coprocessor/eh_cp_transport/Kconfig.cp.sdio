@@ -175,7 +175,10 @@ menu "SDIO Configuration"
 		default 10 if IDF_TARGET_ESP32C61
 		default 20
 		help
-			Very small TX queue will lower ESP --> SDIO -- Host data rate
+			Unused by the SDIO datapath. The init event advertises the
+			co-processor RX buffer, in units of a 1536-byte frame, and that
+			size is what the host uses for ESP-to-host staging. Kept so
+			existing sdkconfigs still parse.
 
 	config EH_TRANSPORT_CP_SDIO_RX_Q_SIZE
 		int "SDIO RX queue size"

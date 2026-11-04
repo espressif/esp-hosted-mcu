@@ -33,6 +33,8 @@ sequenceDiagram
 
 **Stream mode** (default) lets a single SDIO read carry **multiple frames concatenated**; the host walks them apart by each frame's header `len`. It is advertised to the host in the init handshake via the `SDIO_MODE` TLV (`0x18`), set from `CONFIG_EH_TRANSPORT_CP_SDIO_STREAMING_MODE`. Packet mode sends one frame per transfer (less host RAM, lower throughput).
 
+On the MCU host, streaming RX staging slots are sized once at INIT from the co-processor's RX buffer: the advertised aggregate in software aggregation, or that buffer rounded up to a max frame in stream mode. See [RX staging slots](#rx-staging-slots) to keep only one of those buffers.
+
 ### Host → co-processor (TX)
 
 Writes are **credit-based**: the co-processor publishes a rolling free-buffer counter (upper bits of the buffer register, masked with `ESP_TX_BUFFER_MASK = 0xFFF`). The host reads it, subtracts its own running `sdio_tx_buf_count` (mod `ESP_TX_BUFFER_MAX = 0x1000`) to learn how many buffers are free, and writes only if there is room — otherwise it retries and, failing that, exerts backpressure.
@@ -57,6 +59,34 @@ sequenceDiagram
 **RX backpressure** is signalled by two SDIO host-interrupt bits — start-throttle (bit 7) and stop-throttle (bit 6) — driven by the co-processor's RX queue occupancy against the `THROTTLE_HIGH`/`THROTTLE_LOW` thresholds negotiated at handshake. **TX backpressure** falls out of the credit scheme above (no free buffers → the host holds off). See [Architecture & Protocol](../architecture.md#6-priority-queues--flow-control) for the shared framing, queues, and handshake.
 
 Code: `coprocessor/eh_cp_transport/src/eh_cp_transport_sdio.c` (co-processor), `host/linux/eh_host_linux_kmod/` (Linux), `host/mcu/eh_host_mcu_transport/` (MCU host).
+
+---
+
+## RX staging slots
+
+Each streaming SDIO read on the MCU host lands in a DMA staging slot, then frames are copied out of it. The count is **Host SDIO RX staging slots** (`CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS`, under **SDIO Configuration**). The range is 1–8. The default is 2: one aggregate stays staged while the next read fills the other slot.
+
+Set the count to 1 when two aggregates do not fit in DMA RAM. Each slot is the size logged at boot (`preallocated N SDIO RX staging slot(s), … bytes each`), which is the co-processor's advertised E2H aggregate in software aggregation mode, or that RX buffer rounded up to a max frame in stream mode. One slot uses half the staging RAM of the default. The read task waits until that buffer has been copied out before the next SDIO read, so the peak RX rate is lower and a busy slot is not dropped.
+
+```ini
+CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1
+```
+
+The boot log for this setting is `preallocated 1 SDIO RX staging slot(s)`.
+
+---
+
+## MCU host packet buffers
+
+On the MCU host, every frame that is about to be written, and every frame copied out of an SDIO read, uses one DMA buffer of the maximum SDIO frame size (1536 bytes). RX staging slots stay on their own: they hold the whole read (one aggregate in stream mode) until those frames are split out. In packet mode the read itself is one of these frame buffers.
+
+By default each frame is allocated and freed on the DMA heap. Leave it that way while a 1536-byte DMA allocation still succeeds. That is the smaller footprint: nothing is reserved up front.
+
+**Use a mempool for SDIO packet buffers** (`CONFIG_ESP_HOSTED_HOST_SDIO_USE_MEMPOOL`, off by default, under **SDIO Configuration**) reserves the frame buffers when the transport starts. The pool length is the host SDIO RX queue size plus 11 blocks — 3 Bluetooth, 3 serial, and 5 network — and each block is 1536 bytes. With the default RX queue of 20 that is 31 blocks (47616 bytes), taken as one contiguous DMA allocation. Transport start fails if that region is not free.
+
+Turn the pool on when the DMA heap is fragmented: allocating one frame fails even though the free DMA bytes, added together, would still cover 1536 bytes. That shows up after a long run of mixed allocation sizes, or on a host whose internal DMA RAM is small and shared with other peripherals. A checkout from the fixed pool does not search the heap for a hole of that size.
+
+The pool has a fixed length. When every block is in use, that TX or RX frame is dropped. The driver logs `mempool OOM start` on the first miss and `mempool OOM end` when a later allocation succeeds. The same warnings are logged when the option is off and the DMA heap cannot supply one frame; that log, with the option still off, is the signal to consider enabling it — provided a contiguous region of the full pool size is free at startup.
 
 ---
 
