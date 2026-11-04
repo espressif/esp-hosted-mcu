@@ -141,6 +141,12 @@
 #  define EH_HOST_CP_TARGET_ESP32S31        0
 #endif
 
+#ifdef CONFIG_ESP_HOSTED_CP_HAS_BT_CLASSIC
+#  define EH_HOST_CP_HAS_BT_CLASSIC         1
+#else
+#  define EH_HOST_CP_HAS_BT_CLASSIC         0
+#endif
+
 /* Feature auto-init master gate */
 
 #ifdef CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT

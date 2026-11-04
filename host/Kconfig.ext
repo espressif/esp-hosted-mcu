@@ -115,6 +115,13 @@ menu "Configure host"
 		default "esp32h4" if ESP_HOSTED_CP_TARGET_ESP32H4
 		default "invalid"
 
+	# Classic BT (BR/EDR) needs SOC_BT_CLASSIC_SUPPORTED on the CP. IDF cannot
+	# check it on the host: BT_CLASSIC_ENABLED is open when BT_CONTROLLER_DISABLED.
+	config ESP_HOSTED_CP_HAS_BT_CLASSIC
+		bool
+		default y if ESP_HOSTED_CP_TARGET_ESP32 || ESP_HOSTED_CP_TARGET_ESP32S31
+		default n
+
 	# H2 / H4 have no Wi-Fi; gate wifi knobs on this symbol.
 	config ESP_HOSTED_PRIV_ENABLE_WIFI_OPTIONS
 		bool

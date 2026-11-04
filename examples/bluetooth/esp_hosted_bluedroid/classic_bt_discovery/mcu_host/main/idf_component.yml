@@ -2,7 +2,7 @@ dependencies:
   espressif/esp_hosted:
     version: "*"
     override_path: "../../../../../.."
-  # Owns the SLAVE_IDF_TARGET choice this example pins (CP=ESP32 for Classic BT).
+  # Owns the SLAVE_IDF_TARGET choice that selects the CP target.
   espressif/esp_wifi_remote:
     version: ">=1.3.1"
   idf:

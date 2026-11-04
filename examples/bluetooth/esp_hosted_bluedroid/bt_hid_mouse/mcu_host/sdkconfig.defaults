@@ -5,9 +5,9 @@ CONFIG_ESP_HOSTED=y
 # below); the app calls esp_hosted_bt_host_stack_setup().
 CONFIG_ESP_HOSTED_HOST_FEAT_BT=y
 
-# CP target: ESP32 — Classic BT (BR/EDR) only exists on the original ESP32.
-CONFIG_SLAVE_IDF_TARGET_ESP32=y
-CONFIG_ESP_HOSTED_CP_TARGET_ESP32=y
+# CP target: not set here. Classic BT needs an ESP32 or ESP32-S31 CP. Select it
+# in Wi-Fi Remote -> choose slave target. On an ESP32-P4 host the default is C6,
+# which has no Classic BT, so the build stops with an error.
 
 # Transport: MCU default
 
