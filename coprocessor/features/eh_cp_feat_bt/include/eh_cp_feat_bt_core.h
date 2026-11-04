@@ -52,10 +52,8 @@
 
   #if defined(CONFIG_BTDM_CONTROLLER_HCI_MODE_VHCI)
     #define EH_CP_BT_HCI    4
-  #elif CONFIG_BT_HCI_UART_NO
-    #define EH_CP_BT_UART   CONFIG_BT_HCI_UART_NO
-  #elif CONFIG_BTDM_CTRL_HCI_UART_NO
-    #define EH_CP_BT_UART   CONFIG_BTDM_CTRL_HCI_UART_NO
+  #elif EH_CP_BT_UART_PORT_ESP32
+    #define EH_CP_BT_UART   EH_CP_BT_UART_PORT_ESP32
   #endif
 
 #elif EH_CP_BT_OVER_C3_S3
@@ -82,7 +80,7 @@
   #if defined(CONFIG_BT_CTRL_HCI_INTERFACE_USE_RAM)
     #define EH_CP_BT_HCI    4
   #elif defined(CONFIG_BT_CTRL_HCI_INTERFACE_USE_UART)
-    #define EH_CP_BT_UART   CONFIG_BT_CTRL_HCI_UART_PORT
+    #define EH_CP_BT_UART   EH_CP_BT_UART_PORT_DM_ARCH
   #endif
 
 #else
@@ -93,13 +91,13 @@
   #if defined(CONFIG_BT_LE_HCI_INTERFACE_USE_RAM)
     #define EH_CP_BT_HCI    4
   #elif defined(CONFIG_BT_LE_HCI_INTERFACE_USE_UART)
-    #define EH_CP_BT_UART   CONFIG_BT_LE_HCI_UART_PORT
+    #define EH_CP_BT_UART   EH_CP_BT_UART_PORT_LE
   #endif
 
 #endif
 
 /* IDF VHCI driver has no send-available callback: send without the semaphore. */
-#if SOC_ESP_NIMBLE_CONTROLLER || CONFIG_BT_DUAL_MODE_ARCH
+#if SOC_ESP_NIMBLE_CONTROLLER
   #define EH_CP_BT_VHCI_SEND_UNGATED 1
 #endif
 
@@ -159,7 +157,7 @@
 
     #define UART_RX_THRS       (120)
 
-    #if defined(EH_CP_BT_UART_FLOWCTRL_ENABLED)
+    #if EH_CP_BT_UART_FLOWCTRL_ENABLED
     #define GPIO_OUTPUT_PIN_SEL  ((1ULL<<BT_TX_PIN) | (1ULL<<BT_RTS_PIN))
     #define GPIO_INPUT_PIN_SEL   ((1ULL<<BT_RX_PIN) | (1ULL<<BT_CTS_PIN))
     #else
@@ -169,12 +167,12 @@
 
   #elif CONFIG_BT_DUAL_MODE_ARCH
 
-    #define BT_TX_PIN         CONFIG_BT_CTRL_HCI_UART_TX_PIN
-    #define BT_RX_PIN         CONFIG_BT_CTRL_HCI_UART_RX_PIN
+    #define BT_TX_PIN         EH_CP_BT_UART_TX_PIN_DM_ARCH
+    #define BT_RX_PIN         EH_CP_BT_UART_RX_PIN_DM_ARCH
 
     #if defined(CONFIG_BT_CTRL_HCI_UART_FLOWCTRL)
-    #define BT_RTS_PIN        CONFIG_BT_CTRL_HCI_UART_RTS_PIN
-    #define BT_CTS_PIN        CONFIG_BT_CTRL_HCI_UART_CTS_PIN
+    #define BT_RTS_PIN        EH_CP_BT_UART_RTS_PIN_DM_ARCH
+    #define BT_CTS_PIN        EH_CP_BT_UART_CTS_PIN_DM_ARCH
     #else
     #define BT_RTS_PIN        -1
     #define BT_CTS_PIN        -1
@@ -182,12 +180,12 @@
 
   #else
 
-    #define BT_TX_PIN         CONFIG_BT_LE_HCI_UART_TX_PIN
-    #define BT_RX_PIN         CONFIG_BT_LE_HCI_UART_RX_PIN
+    #define BT_TX_PIN         EH_CP_BT_UART_TX_PIN_LE
+    #define BT_RX_PIN         EH_CP_BT_UART_RX_PIN_LE
 
     #if defined(CONFIG_BT_LE_HCI_UART_FLOWCTRL)
-    #define BT_RTS_PIN        CONFIG_BT_LE_HCI_UART_RTS_PIN
-    #define BT_CTS_PIN        CONFIG_BT_LE_HCI_UART_CTS_PIN
+    #define BT_RTS_PIN        EH_CP_BT_UART_RTS_PIN_LE
+    #define BT_CTS_PIN        EH_CP_BT_UART_CTS_PIN_LE
     #else
     #define BT_RTS_PIN        -1
     #define BT_CTS_PIN        -1

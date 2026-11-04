@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* BT-private: CONFIG_ESP_HOSTED_BT_* → EH_CP_BT_*. */
+/* BT-private: CONFIG_ESP_HOSTED_BT_* and IDF controller UART values → EH_CP_BT_*.
+ * IDF selectors (target, controller arch, mode) stay in eh_cp_feat_bt_core.h. */
 
 #ifndef EH_CP_FEAT_BT_CFG_H
 #define EH_CP_FEAT_BT_CFG_H
@@ -46,6 +47,50 @@
 #endif
 #ifdef CONFIG_ESP_HOSTED_BT_UART_CTS_PIN_ESP32_C3_S3
 #  define EH_CP_BT_UART_CTS_PIN_C3_S3           CONFIG_ESP_HOSTED_BT_UART_CTS_PIN_ESP32_C3_S3
+#endif
+
+/* UART — IDF controller, ESP32 */
+#if defined(CONFIG_BT_HCI_UART_NO)
+#  define EH_CP_BT_UART_PORT_ESP32              CONFIG_BT_HCI_UART_NO
+#elif defined(CONFIG_BTDM_CTRL_HCI_UART_NO)
+#  define EH_CP_BT_UART_PORT_ESP32              CONFIG_BTDM_CTRL_HCI_UART_NO
+#endif
+#ifdef CONFIG_BTDM_CTRL_HCI_UART_BAUDRATE
+#  define EH_CP_BT_UART_BAUDRATE_ESP32          CONFIG_BTDM_CTRL_HCI_UART_BAUDRATE
+#endif
+
+/* UART — IDF controller, dual-mode arch (ESP32-S31) */
+#ifdef CONFIG_BT_CTRL_HCI_UART_PORT
+#  define EH_CP_BT_UART_PORT_DM_ARCH            CONFIG_BT_CTRL_HCI_UART_PORT
+#endif
+#ifdef CONFIG_BT_CTRL_HCI_UART_TX_PIN
+#  define EH_CP_BT_UART_TX_PIN_DM_ARCH          CONFIG_BT_CTRL_HCI_UART_TX_PIN
+#endif
+#ifdef CONFIG_BT_CTRL_HCI_UART_RX_PIN
+#  define EH_CP_BT_UART_RX_PIN_DM_ARCH          CONFIG_BT_CTRL_HCI_UART_RX_PIN
+#endif
+#ifdef CONFIG_BT_CTRL_HCI_UART_RTS_PIN
+#  define EH_CP_BT_UART_RTS_PIN_DM_ARCH         CONFIG_BT_CTRL_HCI_UART_RTS_PIN
+#endif
+#ifdef CONFIG_BT_CTRL_HCI_UART_CTS_PIN
+#  define EH_CP_BT_UART_CTS_PIN_DM_ARCH         CONFIG_BT_CTRL_HCI_UART_CTS_PIN
+#endif
+
+/* UART — IDF controller, BLE-only chips */
+#ifdef CONFIG_BT_LE_HCI_UART_PORT
+#  define EH_CP_BT_UART_PORT_LE                 CONFIG_BT_LE_HCI_UART_PORT
+#endif
+#ifdef CONFIG_BT_LE_HCI_UART_TX_PIN
+#  define EH_CP_BT_UART_TX_PIN_LE               CONFIG_BT_LE_HCI_UART_TX_PIN
+#endif
+#ifdef CONFIG_BT_LE_HCI_UART_RX_PIN
+#  define EH_CP_BT_UART_RX_PIN_LE               CONFIG_BT_LE_HCI_UART_RX_PIN
+#endif
+#ifdef CONFIG_BT_LE_HCI_UART_RTS_PIN
+#  define EH_CP_BT_UART_RTS_PIN_LE              CONFIG_BT_LE_HCI_UART_RTS_PIN
+#endif
+#ifdef CONFIG_BT_LE_HCI_UART_CTS_PIN
+#  define EH_CP_BT_UART_CTS_PIN_LE              CONFIG_BT_LE_HCI_UART_CTS_PIN
 #endif
 
 /* UART flow control choice */
