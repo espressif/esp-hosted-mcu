@@ -28,6 +28,7 @@ import pytest
 from infra import build_fw, flasher, lab
 from infra.emu_dut import settle_check
 from infra.serial_dut import SerialDut
+from tools.build_examples import CompatMatrix
 
 from .base import Bench, BenchProvider, BenchSpec
 
@@ -307,6 +308,9 @@ class SerialTarget(BenchProvider):
         # Resolve the actual chips from the bench (declared or probed), not spec
         # defaults — the substrate adapts to whatever silicon is connected.
         host_target, cp_target, host_rev = _resolve_targets(bench, spec)
+        skip = CompatMatrix.should_skip_example(spec.example, cp_target)
+        if skip:
+            pytest.skip(skip)
         rev_ovl = _rev_overlay(host_target, host_rev, bench.host_port)
         # Per-transport bus overlay (sdio = neutral default → none). SPI/SPI-HD
         # select the bus; the board symbol in *_board_ovl auto-selects that board's
