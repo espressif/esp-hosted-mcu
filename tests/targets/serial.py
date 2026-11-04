@@ -325,7 +325,18 @@ class SerialTarget(BenchProvider):
 
         cp_fw = build_fw.build(spec.example, spec.cp_role, cp_target, cp_ovl,
                                inject=spec.cp_inject)
-        host_fw = build_fw.build(spec.example, spec.host_role, host_target, host_ovl)
+        # Same staging as emu: the host OTAs exactly the app-only CP .bin it was
+        # built against; cp_ota_ovl builds a different OTA config from transport
+        # + board overlays only (the boot image's choice lines would conflict).
+        host_inject = dict(spec.host_inject or {})
+        if spec.cp_app_to_host:
+            ota_fw = cp_fw
+            if spec.cp_ota_ovl:
+                ota_fw = build_fw.build(spec.example, spec.cp_role, cp_target,
+                                        cp_x + bench.cp_board_ovl + list(spec.cp_ota_ovl))
+            host_inject[spec.cp_app_to_host] = ota_fw["elf"][:-4] + ".bin"
+        host_fw = build_fw.build(spec.example, spec.host_role, host_target, host_ovl,
+                                 inject=host_inject or None)
         build_fw.stash_logs(lab_tmp, cp=cp_fw, host=host_fw)
         cp_build_dir = os.path.join(cp_fw["dir"], "build")
         host_build_dir = os.path.join(host_fw["dir"], "build")
