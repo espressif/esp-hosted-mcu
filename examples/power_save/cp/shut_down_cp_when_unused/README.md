@@ -13,9 +13,11 @@ with heap-tracing wired in so you can confirm there is no leak across cycles.
 
 ### Supported Coprocessors
 
-| Coprocessor | Any Espressif chip with Wi-Fi (default ESP32-C6) |
-| :---------- | :----------------------------------------------- |
-| Support     | Yes                                              |
+| Coprocessor | Any Espressif chip with Wi-Fi (default ESP32-C6), except ESP32-S31 |
+| :---------- | :----------------------------------------------------------------- |
+| Support     | Yes ¹                                                              |
+
+¹ ESP32-S31: not validated yet.
 
 ### Supported Host Devices
 

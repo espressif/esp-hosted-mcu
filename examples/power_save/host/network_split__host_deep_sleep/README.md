@@ -15,9 +15,11 @@ managed components) is ESP-IDF-only.
 
 ### Supported Coprocessors
 
-| Coprocessor | ESP32 | ESP32-C Series | ESP32-S Series |
-| :----------: | :---: | :------------: | :------------: |
-| Support     | Yes   | Yes            | Yes            |
+| Coprocessor | ESP32 | ESP32-C Series | ESP32-S2/S3 | ESP32-S31 |
+| :----------: | :---: | :------------: | :---------: | :-------: |
+| Support     | Yes   | Yes            | Yes         | No ¹      |
+
+¹ ESP32-S31: not supported yet. No host-wakeup GPIO is set for the [ESP32-S31 test board](https://github.com/espressif/esp-hosted/blob/master/docs/getting-started-mcu.md#esp32-s31-test-board-on-the-esp32-p4-function-ev-board).
 
 ### Supported Host Devices
 

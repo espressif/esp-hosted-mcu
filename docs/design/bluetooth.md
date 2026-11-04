@@ -5,7 +5,7 @@
 ESP-Hosted carries Bluetooth HCI packets between a **Bluetooth host stack on the host MCU** and a **Bluetooth controller on the co-processor**. The host runs the app and the host stack; the co-processor runs the controller and radio. Hosted is stack-agnostic — the reference examples use both `esp-nimble` and `esp-bluedroid`, and you can port your own stack with modest effort.
 
 > [!IMPORTANT]
-> Classic Bluetooth needs an **ESP32** co-processor. As of today ESP32 supports Classic-BT + BLE; the other ESP chipsets are BLE-only. If your co-processor is an ESP32, note it only supports Bluetooth v4.2, so the host stack must also be v4.2.
+> Classic Bluetooth needs an **ESP32** or **ESP32-S31** co-processor. These two chips support Classic BT and BLE. The other ESP chips are BLE-only. If your co-processor is an ESP32, note it only supports Bluetooth v4.2, so the host stack must also be v4.2.
 
 ---
 

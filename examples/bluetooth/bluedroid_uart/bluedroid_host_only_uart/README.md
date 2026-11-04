@@ -33,7 +33,7 @@ the classic profile this demo discovers.
 
 | HCI link           | Dedicated UART (H4) |
 | :----------------- | :-----------------: |
-| Host ↔ controller  | Yes — RTS/CTS flow control **mandatory** |
+| Host ↔ controller  | Yes — RTS/CTS flow control recommended; both ends must match |
 
 Bluetooth HCI here runs over its own UART, independent of the ESP-Hosted bus a
 host may separately use for Wi-Fi.
@@ -53,21 +53,24 @@ bluetooth/bluedroid_uart/bluedroid_host_only_uart/
 > to wire the boards, install tools, and confirm the host↔co-processor link. The
 > steps below only add what is specific to this example. The BT HCI UART is a
 > **separate** link from any hosted (SDIO/SPI) bus and must be wired directly,
-> host UART ↔ co-processor UART, with RTS/CTS connected.
+> host UART ↔ co-processor UART. Connect RTS/CTS if flow control is on.
 
 ## Co-processor (BT controller, UART-H4 mode)
 
 <!-- coprocessor-start -->
 The co-processor runs the BT controller with HCI exposed on a physical UART (H4),
-not on the ESP-Hosted bus. Because this example discovers **classic BR/EDR**
-devices, build the co-processor on an **ESP32** (the only Espressif controller
-with the classic profile) and keep BR/EDR enabled in the controller:
+not on the ESP-Hosted bus. This example discovers **classic BR/EDR** devices.
+Build the co-processor on an **ESP32** or **ESP32-S31**. These are the only
+Espressif controllers with the classic profile. Keep BR/EDR enabled in the
+controller:
 
 ```bash
 cd examples/bluetooth/bluedroid_uart/bluedroid_host_only_uart/cp
-eh.py set-target esp32
+eh.py set-target esp32              # or: eh.py --preview set-target esp32s31
 eh.py menuconfig
 ```
+
+ESP32 co-processor:
 
 ```text
 Component config
@@ -80,8 +83,26 @@ Component config
                └── (X) UART                    <── HCI over a dedicated UART (H4)
                     ├── HCI UART Tx pin        ← wire to host UART Rx
                     ├── HCI UART Rx pin        ← wire to host UART Tx
-                    └── [*] HCI UART flow control (RTS/CTS)
+                    └── [*] HCI UART flow control (RTS/CTS)   <── default on
 ```
+
+ESP32-S31 co-processor:
+
+```text
+Component config
+└── Bluetooth
+     └── Bluetooth controller HCI
+          ├── HCI mode
+          │    └── (X) UART(H4)                <── set by sdkconfig.defaults.esp32s31
+          ├── HCI uart Tx gpio / Rx gpio       ← set the pins for your board
+          └── [ ] HCI uart Hardware Flow ctrl  <── default off (CONFIG_BT_CTRL_HCI_UART_FLOWCTRL)
+```
+
+> [!IMPORTANT]
+> The host turns flow control on by default. The ESP32-S31 controller turns it
+> off by default. Make the two ends match. Either set
+> `CONFIG_BT_CTRL_HCI_UART_FLOWCTRL=y` on the co-processor and set its RTS and
+> CTS pins, or clear **UART hardware flow control (RTS/CTS)** on the host.
 
 The CP dependency config is pre-set in `sdkconfig.defaults` (do not remove):
 
@@ -113,11 +134,16 @@ eh.py set-target esp32p4
 eh.py menuconfig
 ```
 
-This example adds one option under **Example Configuration**:
+This example adds these options under **Example Configuration**:
 
 ```text
 Example Configuration
-└── (921600) UART Baudrate for HCI          ← range 115200–921600; must match the controller
+├── (921600) UART Baudrate for HCI          ← range 115200–921600; must match the controller
+├── (5) UART Tx Pin
+├── (18) UART Rx Pin
+├── [*] UART hardware flow control (RTS/CTS) ← must match the controller
+├── (19) UART Rts Pin                        ← only when flow control is on
+└── (23) UART Cts Pin                        ← only when flow control is on
 ```
 
 The host dependency config is pre-set in `sdkconfig.defaults` (do not remove):
@@ -149,8 +175,9 @@ eh.py -p <host_usb_serial_port> flash monitor
 
 ### Wiring
 
-- Host UART **TX → controller UART RX**, host UART **RX → controller UART TX**,
-  and **RTS/CTS cross-wired** — hardware flow control is mandatory for HCI UART.
+- Host UART **TX → controller UART RX**, host UART **RX → controller UART TX**.
+- If flow control is on, cross-wire **RTS → CTS** and **CTS → RTS**. Flow control
+  is recommended at 921600 baud. Set it the same on both ends.
 - Common ground between the two boards.
 - The HCI baudrate (host `Example Configuration`) must match the controller's
   HCI UART baudrate.
@@ -160,6 +187,7 @@ eh.py -p <host_usb_serial_port> flash monitor
 - On boot the host opens the HCI UART, attaches it to Bluedroid, then starts a
   classic **inquiry**; discovered devices (address, class, RSSI, name) are logged,
   followed by SDP **service discovery** on a found device.
-- If nothing is discovered, confirm the UART wiring (including RTS/CTS), matching
-  baudrates, and that the co-processor was built on an ESP32 with BR/EDR enabled.
+- If nothing is discovered, examine the UART wiring (including RTS/CTS), the
+  baudrates, and the flow control setting on both ends. Make sure that the
+  co-processor is an ESP32 or ESP32-S31 with BR/EDR enabled.
 <!-- esp_host-stop -->
