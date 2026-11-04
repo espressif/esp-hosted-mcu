@@ -227,6 +227,13 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
 
     interface_buffer_handle_t h = { .rx_credit = EH_FRAME_NO_CREDIT };
     eh_frame_result_t r = eh_frame_decode_quiet(acc, (uint16_t)total, &h);
+    /* Until the CP INIT event is processed the checksum may be off, so junk can
+     * pass the bounds check: take only PRIV and SERIAL frames (the CP sends
+     * credit and RPC frames before INIT), skip a byte on any other. */
+    if (!eh_host_mcu_transport_state_is_tx_ready() &&
+        ((r != EH_FRAME_OK && r != EH_FRAME_DUMMY) ||
+         (h.if_type != ESP_PRIV_IF && h.if_type != ESP_SERIAL_IF)))
+        return -1;
     if ((r == EH_FRAME_OK || r == EH_FRAME_DUMMY) && h.rx_credit != EH_FRAME_NO_CREDIT)
         eh_uart_credit_rx(h.rx_credit);
     if (r == EH_FRAME_OK && h.payload && h.payload_len) {
