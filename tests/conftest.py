@@ -85,8 +85,19 @@ def _hb_write(state, nodeid=""):
         pass
 
 
+_WIFI = {"ap": None, "err": None}
+
+
 def pytest_configure(config):
     _HB["wid"] = getattr(config, "workerinput", {}).get("workerid", "master")
+    # Real benches pick their AP from the Wi-Fi profiles (infra/wifi_aps.py);
+    # EH_TP_* stay overridable, and suites that read them need no change.
+    if os.environ.get("EH_SUBSTRATE", "emu") in ("hw", "rpi"):
+        from infra import wifi_aps
+        try:
+            _WIFI["ap"] = wifi_aps.apply_env()
+        except wifi_aps.WifiApError as e:
+            _WIFI["err"] = str(e)
     rd = os.environ.get("EH_RUN_DIR")
     if rd:
         try:
@@ -250,21 +261,14 @@ def wifi_ap(substrate):
     """AP credentials for STA-connect tests — substrate-appropriate. On the emu the
     AP is the emulator's fixed modeled SoftAP (EMU_SOFTAP), NOT the physical AP: the
     emu can only associate to what its wifi model advertises. On real benches
-    (hw/rpi) it's lab.local.json 'wifi_ap' (machine-local) else tests/env.json.
-    None if no AP is configured."""
+    (hw/rpi) it's the Wi-Fi profile infra/wifi_aps.py resolves (EH_TP_SSID,
+    EH_WIFI=<query>, or location), else the legacy 'wifi_ap'. None if no AP."""
     if substrate == "emu":
         from targets.emu import EMU_SOFTAP
         return EMU_SOFTAP
-    import json
-    from infra import lab
-    for f in ("lab.local.json", "env.json"):
-        try:
-            ap = json.loads((lab._REPO / "tests" / f).read_text()).get("wifi_ap")
-        except (OSError, ValueError):
-            ap = None
-        if ap and ap.get("ssid"):
-            return ap
-    return None
+    if _WIFI["err"]:
+        pytest.fail(_WIFI["err"])
+    return _WIFI["ap"]
 
 
 @pytest.fixture
@@ -292,7 +296,7 @@ def sta_ap(substrate, wifi_ap):
     """The AP a STA should associate to. 'wifi_ap_5g' wins over 'wifi_ap' where
     declared, for a coprocessor that cannot reach the 2.4 GHz AP. The emu
     always uses its own modeled SoftAP."""
-    if substrate == "emu":
+    if substrate == "emu" or (wifi_ap and not wifi_ap.get("_source", "").startswith("legacy")):
         return wifi_ap
     import json
     from infra import lab
