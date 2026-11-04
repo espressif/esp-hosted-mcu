@@ -1,0 +1,17 @@
+# Partition Table
+#----------------
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_eh_cp_ota_4m.csv"
+
+# Transport config
+# Default is to use USB OTG Device as transport
+#-----------------
+CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE=y
+
+# TinyUSB config
+#---------------
+# CDC-ACM Configuration
+CONFIG_TINYUSB_CDC_ENABLED=y
+CONFIG_TINYUSB_CDC_RX_BUFSIZE=2048
+CONFIG_TINYUSB_CDC_TX_BUFSIZE=2048
+CONFIG_TINYUSB_CDC_EP_BUFSIZE=2048

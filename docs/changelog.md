@@ -10,6 +10,7 @@
 - cp/sdio: the init event advertises the RX buffer, as a count of 1536-byte frames, in packet and software-aggregation mode. It no longer sends `EH_TRANSPORT_CP_SDIO_TX_Q_SIZE`. The Kconfig option is unused and kept so existing sdkconfigs still parse
 - host/sdio: streaming RX staging buffers are sized from the co-processor TX capacity when INIT arrives. The read task allocates them once, after every staging slot has been drained, so a buffer still in use is not freed. `ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1` keeps a single buffer and the read waits until it has been copied out
 - host/sdio: optional DMA mempool for packet buffers (`ESP_HOSTED_HOST_SDIO_USE_MEMPOOL`, off by default) when a 1536-byte DMA allocation fails on a fragmented heap
+- cp: add ESP32-S31 as co-processor on SPI full-duplex, SPI half-duplex and UART. ESP32-S31 has no SDIO slave
 - cp/sdio: enabled SDIO packet mode operation
 - host/task: removed division by sizeof(StackType_t). In IDF, the stack size should be specified as bytes
 - host: with `CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=y`, starting a detached Hosted task no longer corrupts the heap ([#254](https://github.com/espressif/esp-hosted-mcu/issues/254))

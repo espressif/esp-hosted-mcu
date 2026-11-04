@@ -9,9 +9,11 @@ menu "UART Configuration"
 		range 0 2 if IDF_TARGET_ESP32C61
 		range 0 1 if IDF_TARGET_ESP32S2
 		range 0 2 if IDF_TARGET_ESP32S3
+		range 0 3 if IDF_TARGET_ESP32S31
 
 	config EH_TRANSPORT_CP_UART_PIN_TX
 		int "TX GPIO number"
+		default 13 if ESP_HOSTED_S31_KORVO_BOARD
 		default 7 if ESP_HOSTED_P4X_C5_DEV_BOARD_FUNC_BOARD || ESP_HOSTED_P4_C5_CORE_BOARD
 		default 13 if IDF_TARGET_ESP32
 		default 5 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3
@@ -21,10 +23,12 @@ menu "UART Configuration"
 		default 23 if IDF_TARGET_ESP32C61
 		default 12 if IDF_TARGET_ESP32H2
 		default 17 if IDF_TARGET_ESP32H4
+		default 22 if IDF_TARGET_ESP32S31
 		default 5 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 
 	config EH_TRANSPORT_CP_UART_PIN_RX
 		int "RX GPIO number"
+		default 11 if ESP_HOSTED_S31_KORVO_BOARD
 		default 8 if ESP_HOSTED_P4X_C5_DEV_BOARD_FUNC_BOARD || ESP_HOSTED_P4_C5_CORE_BOARD
 		default 12 if IDF_TARGET_ESP32
 		default 4 if IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C3
@@ -34,6 +38,7 @@ menu "UART Configuration"
 		default 22 if IDF_TARGET_ESP32C61
 		default 22 if IDF_TARGET_ESP32H2
 		default 18 if IDF_TARGET_ESP32H4
+		default 21 if IDF_TARGET_ESP32S31
 		default 4 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
 
 	config EH_TRANSPORT_CP_UART_BAUDRATE
@@ -102,6 +107,7 @@ menu "UART Configuration"
 
 	config EH_TRANSPORT_CP_UART_GPIO_RESET
 		int "Slave GPIO pin to reset itself"
+		default 8 if ESP_HOSTED_S31_KORVO_BOARD
 		default -1
 		help
 			-1 (default) means the host resets the co-processor with its EN pin.

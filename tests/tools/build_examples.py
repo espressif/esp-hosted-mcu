@@ -44,9 +44,12 @@ from typing import Optional
 # (CP today; a future host driver resolves it against ALL_HOST_TARGETS).
 ALL_CP_TARGETS = [
     "esp32", "esp32c2", "esp32c3", "esp32c5", "esp32c6", "esp32c61",
-    "esp32s2", "esp32s3",
+    "esp32s2", "esp32s3", "esp32s31",
 ]
 ALL_HOST_TARGETS = ["esp32p4", "esp32h2"]
+
+# IDF lists these under PREVIEW_TARGETS; set-target refuses them without --preview.
+PREVIEW_TARGETS: set[str] = {"esp32s31"}
 
 
 class Transport(Enum):
@@ -59,7 +62,7 @@ class Transport(Enum):
 TRANSPORT_TARGETS: dict[Transport, set[str]] = {
     Transport.SDIO:   {"esp32", "esp32c5", "esp32c6", "esp32c61"},
     Transport.SPI_FD: set(ALL_CP_TARGETS),
-    Transport.SPI_HD: {"esp32s2", "esp32s3"},
+    Transport.SPI_HD: {"esp32s2", "esp32s3", "esp32s31"},
     Transport.UART:   set(ALL_CP_TARGETS),
 }
 
@@ -68,6 +71,7 @@ DEFAULT_TRANSPORT: dict[str, Transport] = {
     "esp32c3": Transport.SPI_FD, "esp32c5": Transport.SDIO,
     "esp32c6": Transport.SDIO, "esp32c61": Transport.SDIO,
     "esp32s2": Transport.SPI_FD, "esp32s3": Transport.SPI_FD,
+    "esp32s31": Transport.SPI_FD,
 }
 
 TRANSPORT_KCONFIG: dict[Transport, str] = {
@@ -89,13 +93,21 @@ NO_WIFI_TARGETS: set[str] = set()
 EXAMPLE_EXCLUDE: dict[str, set[str]] = {
     "network_split":   {"esp32c2", "esp32c3"},
     # BLE controller absent on esp32s2 → all Bluetooth examples excluded.
-    "bluetooth/":      {"esp32s2"},
+    # esp32s31: its BT controller Kconfig is not wired into the CP BT feature yet.
+    "bluetooth/":      {"esp32s2", "esp32s31"},
     # Classic BT (BR/EDR) is ESP32-only → exclude every other CP chip.
     "classic_bt_discovery": {"esp32c2", "esp32c3", "esp32c5", "esp32c6",
                              "esp32c61", "esp32s2", "esp32s3"},
     "bt_hid_mouse":         {"esp32c2", "esp32c3", "esp32c5", "esp32c6",
                              "esp32c61", "esp32s2", "esp32s3"},
-    "power_save":      {"esp32c2"},
+    # esp32s31: no host-wakeup GPIO default for host deep sleep.
+    "power_save":      {"esp32c2", "esp32s31"},
+    "system/mcu_transport_config": {"esp32s31"},
+    # esp32s31: IDF v6.1 has no librftest for it.
+    "rf_cert":         {"esp32s31"},
+    # esp32s31: no default pins for the dedicated spinel UART.
+    "openthread/rcp_on_hosted_cp": {"esp32s31"},
+    "zigbee/":         {"esp32s31"},
     "wifi/enterprise": {"esp32c2"},
     "wifi/dpp":        {"esp32c2"},
     "wifi/itwt":       {"esp32", "esp32c2", "esp32c3", "esp32s2", "esp32s3"},
@@ -193,7 +205,8 @@ class BashRunner(ShellRunner):
         parts = [f'source "{self.idf_path}/export.sh" > /dev/null 2>&1']
         if fullclean:
             parts.append(f"{idf} fullclean 2>&1 || true")
-            parts.append(f"IDF_TARGET={target} {idf} set-target {target} 2>&1")
+            pv = "--preview " if target in PREVIEW_TARGETS else ""
+            parts.append(f"IDF_TARGET={target} {idf} {pv}set-target {target} 2>&1")
         parts.append(f"IDF_TARGET={target} {idf} build 2>&1")
         return self.run(" && ".join(parts), cwd=project_dir, timeout=timeout)
 
@@ -218,7 +231,8 @@ class FishRunner(ShellRunner):
         parts = [f'source "{self.idf_path}/export.fish" > /dev/null 2>&1']
         if fullclean:
             parts.append(f"{idf} fullclean 2>&1; or true")
-            parts.append(f"set -x IDF_TARGET {target}; and {idf} set-target {target} 2>&1")
+            pv = "--preview " if target in PREVIEW_TARGETS else ""
+            parts.append(f"set -x IDF_TARGET {target}; and {idf} {pv}set-target {target} 2>&1")
         parts.append(f"set -x IDF_TARGET {target}; and {idf} build 2>&1")
         return self.run("; ".join(parts), cwd=project_dir, timeout=timeout)
 

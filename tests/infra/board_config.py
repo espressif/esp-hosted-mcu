@@ -42,7 +42,7 @@ def _normalize_chip(chip_str):
     chip = (chip_str or '').upper().replace('-', '')
     # Strip package suffix: ESP32C6FH4 → ESP32C6
     for known in ['ESP32C61', 'ESP32C6', 'ESP32C5', 'ESP32C3', 'ESP32C2',
-                   'ESP32S3', 'ESP32S2', 'ESP32H2', 'ESP32H4', 'ESP32P4', 'ESP32']:
+                   'ESP32S31', 'ESP32S3', 'ESP32S2', 'ESP32H2', 'ESP32H4', 'ESP32P4', 'ESP32']:
         if chip.startswith(known):
             return known
     return chip

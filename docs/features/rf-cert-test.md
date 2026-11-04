@@ -118,6 +118,9 @@ Calling one the chip cannot run returns `ESP_ERR_NOT_SUPPORTED`.
 | ESP32, ESP32-C2, ESP32-C3, ESP32-S3 | yes | yes | no |
 | ESP32-S2 | yes | no | no |
 | ESP32-H2, ESP32-H4, ESP32-H21 | no | yes | no |
+| ESP32-S31 | no | no | no |
+
+ESP-IDF v6.1 has no RF test library for ESP32-S31, so the example does not build for it.
 
 ESP32-P4 is absent on purpose: it has no radio, so it is a host here, never a
 co-processor.

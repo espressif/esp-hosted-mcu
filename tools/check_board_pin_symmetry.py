@@ -84,6 +84,8 @@ BOARD_CP_TARGET = {
     'ESP32P4_EYE_C6_BOARD':                 'ESP32C6',
     'ESP32P4_TAB5_C6_BOARD':                'ESP32C6',
     'ESP_HOSTED_P4_C61_CORE_BOARD':         'ESP32C61',
+    'ESP_HOSTED_S31_DEV_BOARD':             'ESP32S31',
+    'ESP_HOSTED_S31_KORVO_BOARD':           'ESP32S31',
 }
 
 # Correct by construction; each needs a reason verified in the Kconfig itself.

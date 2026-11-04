@@ -66,6 +66,7 @@ menu "Configure coprocessor"
 
 	choice ESP_HOSTED_DEV_BOARD
 		prompt "Select PCB Board (Optional)"
+		default ESP_HOSTED_S31_DEV_BOARD if ESP_HOSTED_CP_FOR_MCU && IDF_TARGET_ESP32S31
 		default ESP_HOSTED_P4_DEV_BOARD_NONE
 
 		config ESP_ESP32C5_SPI_RASPI_MATING_BOARD
@@ -106,6 +107,17 @@ menu "Configure coprocessor"
 		config ESP_HOSTED_C2_C5_MODULE_SUB_BOARD
 			bool "ESP32-P4 EV Sub-Board for C2 & C5"
 			depends on ESP_HOSTED_CP_FOR_MCU && (IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32C5)
+
+		config ESP_HOSTED_S31_DEV_BOARD
+			bool "ESP32-S31 module or DevKit (SPI on IO_MUX pins 20-25)"
+			depends on ESP_HOSTED_CP_FOR_MCU && IDF_TARGET_ESP32S31
+
+		config ESP_HOSTED_S31_KORVO_BOARD
+			bool "ESP32-S31-Korvo-1, jumpered to ESP32-P4-Function-EV-Board"
+			depends on ESP_HOSTED_CP_FOR_MCU && IDF_TARGET_ESP32S31
+			help
+				EN is not on the Korvo-1 header, so the host resets the S31
+				through GPIO 8 (a software restart).
 	endchoice
 
 	orsource "eh_cp_core/Kconfig.ext"

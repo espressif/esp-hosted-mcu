@@ -215,6 +215,8 @@ idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32p4.usb"
 idf.py build
 ```
 
+In `examples/wifi/iperf/cp`, the ESP32-S31 defaults do not select USB. For USB, append `sdkconfig.defaults.esp32s31.usb_cdc` to the CP defaults.
+
 USB RNDIS is [Not yet enabled.] For RNDIS, append `sdkconfig.defaults.esp32p4.usb_rndis` to the host defaults
 and append `sdkconfig.defaults.esp32s31.usb_rndis` to the CP defaults. These
 options must be enabled as a pair: CP RNDIS moves STA/AP off CDC, so a

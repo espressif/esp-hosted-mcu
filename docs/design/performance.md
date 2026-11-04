@@ -346,6 +346,39 @@ SPI-FD transport, 40 MHz, 2.4 GHz network, over the air:
 
 ---
 
+### 1.7 ESP32-S31 as co-processor
+
+```ini
+### sdkconfig for ESP32-P4 + S31 as co-processor
+
+# Let P4 know, S31 is attached as slave
+CONFIG_SLAVE_IDF_TARGET_ESP32S31=y
+CONFIG_ESP_HOSTED_CP_TARGET_ESP32S31=y
+
+# S31 test board wired to the P4-Function-EV-Board J1 header (set on both sides)
+CONFIG_ESP_HOSTED_S31_DEV_BOARD=y
+```
+
+Use the Wi-Fi and TCP/IP settings of [1.3](#13-esp32-c61-as-co-processor). ESP32-P4 rev v1.0 host, SPI at 40 MHz, 2.4 GHz network, over the air:
+
+| Transport | Raw P4 to S31 | Raw S31 to P4 | TCP P4 to Test PC | UDP P4 to Test PC | TCP Test PC to P4 | UDP Test PC to P4 |
+|---|--:|--:|--:|--:|--:|--:|
+| SPI-FD | 29 | 27 | 23 | 29 | 20 | 20 |
+| SPI-HD, 1 line | 24 | 24 | 20 | 23 | 16 | 19 |
+| SPI-HD, 2 lines | 34 | 35 | 26 | 32 | 22 | 26 |
+| SPI-HD, 4 lines | 44 | 45 | 31 | 41 | 25 | 31 |
+| UART, 4 Mbaud | 3.2 | 3.1 | 3.0 | 3.1 | 2.9 | 2.9 |
+| UART, 5 Mbaud | 3.9 | 3.9 | 3.8 | 3.9 | 3.6 | 3.6 |
+| UART, 8 Mbaud | 6.3 | 6.3 | 5.9 | 6.2 | 5.6 | 5.7 |
+| UART, 10 Mbaud | 7.9 | 7.8 | 7.6 | 7.7 | 7.1 | 7.1 |
+| UART, 16 Mbaud | 12.6 | 12.4 | 12.1 | 12.3 | 10.7 | 11.1 |
+
+- The SPI-FD TCP values were measured with `CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=n`.
+- UART: no raw frames were lost. Above 5 Mbaud is outside the SoC specification; it was tested on this board only. For the raw runs at 5 Mbaud and higher, `CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n` on the host: the raw TP TX task starves IDLE1, and the task watchdog print stalls UART TX.
+- UART UDP offered load was about 0.8 × baud.
+
+---
+
 ## 2. Transport optimization
 
 Throughput ranks **SDIO > SPI-HD > SPI-FD > UART**. Tune the transport you chose.

@@ -17,7 +17,7 @@ Use this guide when your host is an **MCU running firmware** (ESP-IDF, Zephyr, o
 | :---: | :---: | :---: |
 | ESP-Host | ESP32-P4 | ESP32-P4-Function-EV-Board (can use any P4 from your PCB) | 
 | Non-ESP Host | Any MCU (STM32 etc - usable on after [porting](porting.md#mcu-host-porting)) | - |
-| Co-processor | ESP32-C6/C5/C2/C3/C61/S2/S3/H2/H4/ESP32) | ESP32-C6 (Any ESP if you wish to use) |
+| Co-processor | ESP32-C6/C5/C2/C3/C61/S2/S3/S31/H2/H4/ESP32) | ESP32-C6 (Any ESP if you wish to use) |
 | Demo example | [Wi-Fi Station](../examples/wifi/sta/README.md) | connects to an AP and prints the IP |
 
 ---
@@ -110,11 +110,39 @@ Both firmware images must select the **exact same transport** and matching pins.
 | ESP32-C61 | `✓` | `✓` | `✓` | `✓` |
 | ESP32-S2 |  | `✓` | `✓` | `✓` |
 | ESP32-S3 |  | `✓` | `✓` | `✓` |
+| ESP32-S31 |  | `✓` | `✓` | `✓` |
 
 > [!NOTE]
 > - **SDIO** co-processors are limited to **ESP32, ESP32-C5, ESP32-C6, and ESP32-C61** (all use fixed SDIO GPIOs). A classic **ESP32** co-processor may need a one-time, irreversible **eFuse burn** for the `DAT2`/bootstrapping-pin voltage — see [Specific considerations](#11-hardware-considerations-and-connections). An incorrect burn can brick the chip.
-> - **SPI Half-Duplex** is **not supported on the classic ESP32** — use SPI Full-Duplex there instead. The co-processor doc lists SPI-HD support on ESP32-C2/C3/C5/C6/C61/S2/S3.
+> - **SPI Half-Duplex** is **not supported on the classic ESP32** — use SPI Full-Duplex there instead. The co-processor doc lists SPI-HD support on ESP32-C2/C3/C5/C6/C61/S2/S3/S31.
 > - **SPI Full-Duplex** and **UART** are supported on every listed chip (UART requires a spare UART controller besides the debug UART0).
+
+### ESP32-S31 test board on the ESP32-P4-Function-EV-Board
+
+ESP32-S31 is an ESP-IDF preview target and is 2.4 GHz only. Set the target with `idf.py --preview set-target esp32s31`.
+
+These examples do not support ESP32-S31 yet:
+
+- Bluetooth: the co-processor Bluetooth feature does not use the ESP32-S31 controller yet.
+- Host power save (`power_save/`, `system/mcu_transport_config`): no host-wakeup GPIO is set for the board.
+- `rf_cert`: ESP-IDF v6.1 has no RF test library for ESP32-S31.
+- OpenThread and Zigbee with a dedicated spinel UART: no default UART pins.
+
+Set `CONFIG_ESP_HOSTED_S31_DEV_BOARD=y` on the co-processor and on the host. The same wires carry every transport:
+
+| S31 silk (GPIO) | P4 GPIO (J1 header) | SPI Full-Duplex | SPI Half-Duplex | UART |
+| :--- | :--- | :--- | :--- | :--- |
+| D0 (20) | 6 | CLK | CLK | |
+| D1 (21) | 2 | MOSI | D0 | co-processor RX |
+| D2 (22) | 22 | MISO | D1 | co-processor TX |
+| D3 (23) | 4 | CS | CS | |
+| CLK (24) | 21 | Handshake | D3 | |
+| CMD (25) | 20 | | D2 | |
+| 19 | 5 | Data Ready | Data Ready | |
+| EN | 3 | Reset | Reset | Reset |
+| GND | GND | GND | GND | GND |
+
+S31 GPIO 20 to 25 are the S31 SPI2 `IO_MUX` pins, so SPI runs up to 40 MHz. Connect several ground wires between the boards.
 
 Pick a set-up and jump straight to its steps:
 
