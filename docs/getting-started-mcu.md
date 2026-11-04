@@ -123,7 +123,6 @@ ESP32-S31 is an ESP-IDF preview target and is 2.4 GHz only. Set the target with 
 
 These examples do not support ESP32-S31 yet:
 
-- Bluetooth: the co-processor Bluetooth feature does not use the ESP32-S31 controller yet.
 - Host power save (`power_save/`, `system/mcu_transport_config`): no host-wakeup GPIO is set for the board.
 - `rf_cert`: ESP-IDF v6.1 has no RF test library for ESP32-S31.
 - OpenThread and Zigbee with a dedicated spinel UART: no default UART pins.

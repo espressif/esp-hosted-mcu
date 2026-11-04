@@ -17,9 +17,12 @@ ESP-Hosted **co-processor**, reached over the hosted transport
 
 ### Supported Coprocessors (BT controller)
 
-| Coprocessor | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-S3 | ESP32-S2 |
-| :---------- | :---: | :------: | :------: | :------: | :------: | :-------: | :------: | :------: | :------: |
-| BLE support | Yes   | Yes      | Yes      | Yes      | Yes      | Yes       | Yes      | Yes      | No (no BLE) |
+| Coprocessor | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-S3 | ESP32-S31 | ESP32-S2 |
+| :---------- | :---: | :------: | :------: | :------: | :------: | :-------: | :------: | :------: | :-------: | :------: |
+| BLE support | Yes   | Yes      | Yes      | Yes      | Yes      | Yes       | Yes      | Yes      | Yes | No (no BLE) |
+
+> [!NOTE]
+> LE Secure Connections pairing needs ESP-IDF with commit `e907e90f081` on the host (v6.1.1 or later). With the ESP-IDF v6.1 tag, pairing fails with `dhkey checks do no match`. This applies to every co-processor.
 
 ### Supported Host Devices
 
