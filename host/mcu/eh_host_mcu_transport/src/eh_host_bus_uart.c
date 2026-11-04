@@ -45,6 +45,9 @@
 #define EH_UART_RX_FULL_THRESH  64
 #define EH_UART_EVT_STOP        UART_EVENT_MAX
 #define EH_UART_PS_TX_DONE_MS   100
+/* No RX event for this long, plus the time to fill the FIFO threshold, with
+ * a partial frame in the accumulator: the line is idle (see eh_uart_rx_task). */
+#define EH_UART_RX_IDLE_MS      20
 /* No room for a frame and no credit for this long: bytes were lost on the
  * line, and the CP cannot count bytes it never read. */
 #define EH_UART_CREDIT_LOST_MS  200
@@ -224,6 +227,13 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
 
     interface_buffer_handle_t h = { .rx_credit = EH_FRAME_NO_CREDIT };
     eh_frame_result_t r = eh_frame_decode_quiet(acc, (uint16_t)total, &h);
+    /* Until the CP INIT event is processed the checksum may be off, so junk can
+     * pass the bounds check: take only PRIV and SERIAL frames (the CP sends
+     * credit and RPC frames before INIT), skip a byte on any other. */
+    if (!eh_host_mcu_transport_state_is_tx_ready() &&
+        ((r != EH_FRAME_OK && r != EH_FRAME_DUMMY) ||
+         (h.if_type != ESP_PRIV_IF && h.if_type != ESP_SERIAL_IF)))
+        return -1;
     if ((r == EH_FRAME_OK || r == EH_FRAME_DUMMY) && h.rx_credit != EH_FRAME_NO_CREDIT)
         eh_uart_credit_rx(h.rx_credit);
     if (r == EH_FRAME_OK && h.payload && h.payload_len) {
@@ -240,6 +250,28 @@ static int eh_uart_try_decode_one(uint8_t *acc, size_t acc_len)
         return -1;
     }
     return (int)total;
+}
+
+/* Dispatch each complete frame in acc from offset start, and keep the partial
+ * frame at the end. Decode at a read offset and move the leftover down once.
+ * A memmove per skipped byte is quadratic: during a resync the task then falls
+ * behind the line, the ring overflows, and the resync never ends. */
+static void eh_uart_rx_scan(uint8_t *acc, size_t *acc_len, size_t start)
+{
+    while (start < *acc_len) {
+        int consumed = eh_uart_try_decode_one(acc + start, *acc_len - start);
+        if (consumed == 0) break;
+        if (consumed < 0) {
+            s_rx_resync_bytes++;
+            start++;
+        } else {
+            start += (size_t)consumed;
+        }
+    }
+    if (start) {
+        *acc_len -= start;
+        memmove(acc, acc + start, *acc_len);
+    }
 }
 
 /* Read everything buffered in the driver and dispatch each complete frame. */
@@ -263,24 +295,7 @@ static void eh_uart_rx_drain(uint8_t *acc, size_t cap, size_t *acc_len)
         *acc_len += (size_t)n;
         avail -= (size_t)n;
 
-        /* Decode at a read offset and move the leftover down once. A memmove
-         * per skipped byte is quadratic: during a resync the task then falls
-         * behind the line, the ring overflows, and the resync never ends. */
-        size_t start = 0;
-        while (start < *acc_len) {
-            int consumed = eh_uart_try_decode_one(acc + start, *acc_len - start);
-            if (consumed == 0) break;
-            if (consumed < 0) {
-                s_rx_resync_bytes++;
-                start++;
-            } else {
-                start += (size_t)consumed;
-            }
-        }
-        if (start) {
-            *acc_len -= start;
-            memmove(acc, acc + start, *acc_len);
-        }
+        eh_uart_rx_scan(acc, acc_len, 0);
     }
 }
 
@@ -304,10 +319,26 @@ static void eh_uart_rx_task(void *arg)
 
     /* Don't read before connect has reset or resumed the CP. */
     eh_host_port_sem_wait_ms(s_rx_open, EH_HOST_PORT_WAIT_FOREVER);
+    const TickType_t idle = pdMS_TO_TICKS(EH_UART_RX_IDLE_MS +
+            EH_UART_RX_FULL_THRESH * 10 * 1000 / s_cfg.baud_rate) + 1;
 
     while (s_running) {
         uart_event_t ev;
-        if (xQueueReceive(s_uart_q, &ev, portMAX_DELAY) != pdTRUE) continue;
+        if (xQueueReceive(s_uart_q, &ev, acc_len ? idle : portMAX_DELAY) != pdTRUE) {
+            size_t avail = 0;
+            uart_get_buffered_data_len((uart_port_t)s_cfg.port, &avail);
+            if (avail) {
+                eh_uart_rx_drain(acc, cap, &acc_len);
+                continue;
+            }
+            /* The CP sends a frame without gaps, so a partial frame on an
+             * idle line is a header that junk faked. Skip byte by byte. */
+            while (acc_len) {
+                s_rx_resync_bytes++;
+                eh_uart_rx_scan(acc, &acc_len, 1);
+            }
+            continue;
+        }
         if (ev.type == EH_UART_EVT_STOP) break;
         if (ev.type == UART_FIFO_OVF) {
             /* Bytes were lost in the FIFO. The bytes in the ring before them

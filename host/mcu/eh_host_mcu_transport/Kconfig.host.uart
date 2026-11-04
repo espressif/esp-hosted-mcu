@@ -111,20 +111,21 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_UART
 	config ESP_HOSTED_HOST_UART_BAUD
 		int "UART baud rate"
 		default 921600
-		range 9600 8000000
+		range 9600 16000000
 		help
 		  Must match CONFIG_EH_TRANSPORT_CP_UART_BAUDRATE on the co-processor.
 		  A mismatch corrupts the framing.
 
-		  The SoC maximum is 5000000. Rates up to 8000000 were tested on the
-		  ESP32-P4 + ESP32-C5 core board. Validate them on your board.
+		  The SoC maximum is 5000000. Rates up to 16000000 were tested on
+		  ESP32-P4 + ESP32-C5 and ESP32-P4 + ESP32-S31 boards. Validate them
+		  on your board.
 
-		  On ESP32-P4 and ESP32-C5 the UART clock is 80 MHz. Above 5000000,
-		  use 8000000, which divides 80000000 exactly. Other rates have
-		  bit-time jitter.
+		  On ESP32-P4, ESP32-C5 and ESP32-S31 the UART clock is 80 MHz. Above
+		  5000000, use 8000000 or 16000000, which divide 80000000 exactly.
+		  Other rates have bit-time jitter.
 
 		  Higher rates lose frames. The RX interrupt must empty the FIFO
-		  in time: 80 us at 8000000, 64 us at 10000000. Code that disables
+		  in time: 80 us at 8000000, 40 us at 16000000. Code that disables
 		  interrupts for longer causes the loss of a frame.
 
 	config ESP_HOSTED_HOST_UART_NUM_DATA_BITS
