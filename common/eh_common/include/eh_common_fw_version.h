@@ -44,8 +44,8 @@
 
 #define PROJECT_NAME              "EH"
 #define PROJECT_VERSION_MAJOR_1   3
-#define PROJECT_VERSION_MINOR_1   0
-#define PROJECT_VERSION_PATCH_1   10
+#define PROJECT_VERSION_MINOR_1   1
+#define PROJECT_VERSION_PATCH_1   0
 
 /* Compat aliases: old code uses MAJOR_2/MINOR/REVISION_PATCH.
    Keep until all consumers are migrated to the new names. */

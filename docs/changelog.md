@@ -1,5 +1,9 @@
 # Unreleased
 
+# Releases
+
+# $${\color{green} \text{3.1.0}}$$
+
 - cp/sdio: stream mode keeps 14 frames in flight on every target and advertises that depth, so the host staging slot is 14 × 1536 B. The in-flight depth no longer depends on the DMA descriptor size (ESP32 had dropped to 2 frames)
 - USB OTG transport (Experimental)
   - host/cp: new USB OTG bus. The MCU is the USB host and the co-processor is the USB device. CDC-ACM carries the length-prefixed frames (RPC and data)
@@ -31,7 +35,6 @@
 - `ESP_ETH_IF` is renamed to `ESP_AUX_IF`. `ESP_ETH_IF` was never sent. Code that uses the name `ESP_ETH_IF` must change it
 - host: a frame with an `if_type` that has no handler is now dropped. Before, the host parsed it as an RPC message
 - co-processor: a frame from the host with an `if_type` that has no handler is now logged
-# Releases
 
 # $${\color{green} \text{3.0.10}}$$
 
