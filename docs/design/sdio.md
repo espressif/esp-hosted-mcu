@@ -33,7 +33,7 @@ sequenceDiagram
 
 **Stream mode** (default) lets a single SDIO read carry **multiple frames concatenated**; the host walks them apart by each frame's header `len`. It is advertised to the host in the init handshake via the `SDIO_MODE` TLV (`0x18`), set from `CONFIG_EH_TRANSPORT_CP_SDIO_STREAMING_MODE`. Packet mode sends one frame per transfer (less host RAM, lower throughput).
 
-On the MCU host, streaming RX staging slots are sized once at INIT from the co-processor's RX buffer: the advertised aggregate in software aggregation, or that buffer rounded up to a max frame in stream mode. See [RX staging slots](#rx-staging-slots) to keep only one of those buffers.
+On the MCU host, streaming RX staging slots are sized once at INIT: the advertised aggregate in software aggregation, or one max frame times the co-processor STREAM send-queue depth (14) in stream mode. See [RX staging slots](#rx-staging-slots) to keep only one of those buffers.
 
 ### Host → co-processor (TX)
 
@@ -66,7 +66,7 @@ Code: `coprocessor/eh_cp_transport/src/eh_cp_transport_sdio.c` (co-processor), `
 
 Each streaming SDIO read on the MCU host lands in a DMA staging slot, then frames are copied out of it. The count is **Host SDIO RX staging slots** (`CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS`, under **SDIO Configuration**). The range is 1–8. The default is 2: one aggregate stays staged while the next read fills the other slot.
 
-Set the count to 1 when two aggregates do not fit in DMA RAM. Each slot is the size logged at boot (`preallocated N SDIO RX staging slot(s), … bytes each`), which is the co-processor's advertised E2H aggregate in software aggregation mode, or that RX buffer rounded up to a max frame in stream mode. One slot uses half the staging RAM of the default. The read task waits until that buffer has been copied out before the next SDIO read, so the peak RX rate is lower and a busy slot is not dropped.
+Set the count to 1 when two aggregates do not fit in DMA RAM. Each slot is the size logged at boot (`preallocated N SDIO RX staging slot(s), … bytes each`), which is the co-processor's advertised E2H aggregate in software aggregation mode, or 14 × 1536 B (the co-processor STREAM send-queue depth) in stream mode. One slot uses half the staging RAM of the default. The read task waits until that buffer has been copied out before the next SDIO read, so the peak RX rate is lower and a busy slot is not dropped.
 
 ```ini
 CONFIG_ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1
