@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <stdbool.h>
 #include "eh_cp_feat_bt.h"
 #include "eh_cp_core.h"          /* EH_CP_FEAT_REGISTER */
 #include "eh_common_caps.h"
@@ -24,40 +25,49 @@ static esp_err_t bt_hci_rx_cb(void *buf, uint16_t len, void *eb)
 }
 #endif
 
-static esp_err_t eh_cp_feat_bt_common_init(void)
+/* The only place the feature starts and stops the controller. */
+static esp_err_t eh_cp_feat_bt_common_init(bool start_ctrl)
 {
 #if EH_CP_FEAT_BT_READY
+	esp_err_t ret = ESP_OK;
+
 	eh_cp_add_feat_cap_bits(eh_cp_bt_get_capabilities(),
 	                           eh_cp_bt_get_ext_capabilities());
 	eh_cp_add_feat_cap_bits_idx(EH_FEAT_IDX_BT, 0x1u /* BT_BASIC */);
 #if EH_CP_BT_HCI
 	EH_CHECK_OK_WARN(eh_cp_set_traffic_rx_cb(ESP_HCI_IF, bt_hci_rx_cb));
 #endif
-#if EH_CP_AUTO_START_BT
-	EH_CHECK_OK_WARN(eh_cp_bt_init());
-	EH_CHECK_OK_WARN(eh_cp_bt_enable());
-#endif
+	if (start_ctrl) {
+		ret = eh_cp_bt_init();
+		if (ret == ESP_OK)
+			ret = eh_cp_bt_enable();
+		if (ret != ESP_OK)
+			return ret;
+	}
 	ESP_LOGI(TAG, "BT feature extension init ok");
 	return ESP_OK;
 #else
+	(void)start_ctrl;
 	ESP_LOGW(TAG, "BT feature extension init skipped (BT not enabled)");
 	return ESP_OK;
 #endif
 }
 
-static esp_err_t eh_cp_feat_bt_common_deinit(void)
+/* Keeps controller memory: init follows deinit, and mem_release can't be undone. */
+static esp_err_t eh_cp_feat_bt_common_deinit(bool stop_ctrl)
 {
 #if EH_CP_FEAT_BT_READY
 	eh_cp_clear_feat_cap_bits_idx(EH_FEAT_IDX_BT, 0x1u /* BT_BASIC */);
 	eh_cp_clear_feat_cap_bits(eh_cp_bt_get_capabilities(),
 	                             eh_cp_bt_get_ext_capabilities());
-#if EH_CP_AUTO_STOP_BT
-	EH_CHECK_OK_WARN(eh_cp_bt_disable());
-	EH_CHECK_OK_WARN(eh_cp_bt_deinit(true));
-#endif
+	if (stop_ctrl) {
+		EH_CHECK_OK_WARN(eh_cp_bt_disable());
+		EH_CHECK_OK_WARN(eh_cp_bt_deinit(false));
+	}
 	ESP_LOGI(TAG, "BT feature extension deinit ok");
 	return ESP_OK;
 #else
+	(void)stop_ctrl;
 	ESP_LOGW(TAG, "BT feature extension deinit skipped (BT not enabled)");
 	return ESP_OK;
 #endif
@@ -65,23 +75,23 @@ static esp_err_t eh_cp_feat_bt_common_deinit(void)
 
 esp_err_t eh_cp_feat_bt_init(void)
 {
-	return eh_cp_feat_bt_common_init();
+	return eh_cp_feat_bt_common_init(EH_CP_AUTO_START_BT);
 }
 
 esp_err_t eh_cp_feat_bt_deinit(void)
 {
-	return eh_cp_feat_bt_common_deinit();
+	return eh_cp_feat_bt_common_deinit(EH_CP_AUTO_STOP_BT);
 }
 
 #if EH_CP_FEAT_BT_HCI_VHCI_READY
 static esp_err_t eh_cp_feat_bt_hosted_hci_init(void)
 {
-	return eh_cp_feat_bt_common_init();
+	return eh_cp_feat_bt_common_init(EH_CP_AUTO_START_BT);
 }
 
 static esp_err_t eh_cp_feat_bt_hosted_hci_deinit(void)
 {
-	return eh_cp_feat_bt_common_deinit();
+	return eh_cp_feat_bt_common_deinit(EH_CP_AUTO_STOP_BT);
 }
 #endif
 
@@ -89,20 +99,12 @@ static esp_err_t eh_cp_feat_bt_hosted_hci_deinit(void)
 /* A standard-HCI host never sends the hosted BT init RPC, so the CP starts the controller. */
 static esp_err_t eh_cp_feat_bt_standard_hci_init(void)
 {
-	esp_err_t ret = eh_cp_feat_bt_common_init();
-
-	if (ret == ESP_OK)
-		ret = eh_cp_bt_init();
-	if (ret == ESP_OK)
-		ret = eh_cp_bt_enable();
-	return ret;
+	return eh_cp_feat_bt_common_init(true);
 }
 
 static esp_err_t eh_cp_feat_bt_standard_hci_deinit(void)
 {
-	EH_CHECK_OK_WARN(eh_cp_bt_disable());
-	EH_CHECK_OK_WARN(eh_cp_bt_deinit(false));
-	return eh_cp_feat_bt_common_deinit();
+	return eh_cp_feat_bt_common_deinit(true);
 }
 #endif
 

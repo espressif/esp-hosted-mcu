@@ -300,7 +300,9 @@ menu "CP core"
 			bool "Auto stop Bluetooth on hosted deinit"
 			default n
 			help
-				Enable this option to stop Bluetooth on hosted deinit.
+				Stop and deinit the Bluetooth controller on hosted deinit.
+				The controller memory is not released.
+				Bluetooth can start again on the next hosted init.
 
 			config ESP_HOSTED_CP_WIFI_ENABLED
 				bool "Enable Wi-Fi coprocessor"
