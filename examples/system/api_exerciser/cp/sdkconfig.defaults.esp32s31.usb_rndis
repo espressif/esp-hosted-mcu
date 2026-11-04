@@ -1,0 +1,4 @@
+# Enable this together with sdkconfig.defaults.esp32s31.
+# The MCU host must use sdkconfig.defaults.esp32p4.usb_rndis.
+CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS=y
+CONFIG_TINYUSB_NET_MODE_ECM_RNDIS=y

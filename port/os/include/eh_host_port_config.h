@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef EH_HOST_PORT_CONFIG_H_
 #define EH_HOST_PORT_CONFIG_H_
@@ -78,6 +82,26 @@
 #  endif
 #endif
 
+#ifndef EH_HOST_PORT_HAS_STREAM_BUFFER
+#  ifdef CONFIG_EH_HOST_PORT_HAS_STREAM_BUFFER
+#    define EH_HOST_PORT_HAS_STREAM_BUFFER        CONFIG_EH_HOST_PORT_HAS_STREAM_BUFFER
+#  elif defined(ESP_PLATFORM)
+#    define EH_HOST_PORT_HAS_STREAM_BUFFER        1
+#  else
+#    define EH_HOST_PORT_HAS_STREAM_BUFFER        0
+#  endif
+#endif
+
+#ifndef EH_HOST_PORT_HAS_USB
+#  ifdef CONFIG_EH_HOST_PORT_HAS_USB
+#    define EH_HOST_PORT_HAS_USB                  CONFIG_EH_HOST_PORT_HAS_USB
+#  elif EH_HOST_USB_STACK_CDC_ACM || EH_HOST_USB_RNDIS
+#    define EH_HOST_PORT_HAS_USB                  1
+#  else
+#    define EH_HOST_PORT_HAS_USB                  0
+#  endif
+#endif
+
 #ifndef EH_HOST_PORT_HAS_TIMER
 #  ifdef CONFIG_EH_HOST_PORT_HAS_TIMER
 #    define EH_HOST_PORT_HAS_TIMER                CONFIG_EH_HOST_PORT_HAS_TIMER
@@ -89,7 +113,7 @@
 #ifndef EH_HOST_PORT_HAS_TIME
 #  ifdef CONFIG_EH_HOST_PORT_HAS_TIME
 #    define EH_HOST_PORT_HAS_TIME                 CONFIG_EH_HOST_PORT_HAS_TIME
-#  else 
+#  else
 #    define EH_HOST_PORT_HAS_TIME                 1
 #  endif
 #endif

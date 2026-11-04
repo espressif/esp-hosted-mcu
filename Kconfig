@@ -33,3 +33,26 @@ if ESP_HOSTED
 	endif
 
 endif
+
+# Component Manager reads sdkconfig.json. The USB stack symbols are omitted
+# when the USB menu is inactive, and a hidden bool that is n is omitted too.
+# These ints are written for every build, including when the value is 0.
+config ESP_HOSTED_HOST_USB_CDC_ACM_MANIFEST
+	int
+	default 1 if ESP_HOSTED_HOST_USB_STACK_CDC_ACM && !ESP_HOSTED_HOST_USB_RNDIS
+	default 0
+
+config ESP_HOSTED_HOST_USB_RNDIS_MANIFEST
+	int
+	default 1 if ESP_HOSTED_HOST_USB_RNDIS
+	default 0
+
+config ESP_HOSTED_HOST_USB_CHERRYUSB_MANIFEST
+	int
+	default 1 if ESP_HOSTED_HOST_USB_STACK_CHERRYUSB
+	default 0
+
+config ESP_HOSTED_CP_TINYUSB_MANIFEST
+	int
+	default 1 if EH_TRANSPORT_CP_USB_OTG_DEVICE
+	default 0

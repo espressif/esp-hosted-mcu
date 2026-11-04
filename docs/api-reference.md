@@ -44,8 +44,10 @@ Header: `eh_host_transport_config.h` · compat `esp_hosted_transport_config.h`
 | `eh_host_transport_is_config_valid()` | `esp_hosted_is_config_valid()` | Validate the current config |
 | `eh_host_{sdio,spi,spi_hd,uart}_get_config` / `_set_config` | `esp_hosted_*_get/set_config` | Per-bus get/set |
 | `eh_host_get_default_{sdio,spi,spi_hd,uart}_config()` | `esp_hosted_get_default_*_config()` | Per-bus defaults (also `INIT_DEFAULT_HOST_SDIO_CONFIG()`) |
+| `eh_host_usb_otg_get_config` / `_set_config` | — | Experimental `usb_otg` get/set |
+| `eh_host_get_default_usb_otg_config()` | — | Experimental `usb_otg` defaults (`INIT_DEFAULT_HOST_USB_OTG_CONFIG()`) |
 
-Transport IDs: `EH_HOST_TRANSPORT_{NONE,SDIO,SPI_HD,SPI,UART}`.
+Transport IDs: `EH_HOST_TRANSPORT_{NONE,SDIO,SPI_HD,SPI,UART,USB_OTG}`. `EH_HOST_TRANSPORT_USB_OTG` is experimental.
 
 ## Core init & lifecycle
 Header: `eh_host_core.h` · compat `esp_hosted.h`

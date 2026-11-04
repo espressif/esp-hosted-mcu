@@ -68,6 +68,7 @@ typedef enum {
     EH_TRANSPORT_SDIO   = 1,
     EH_TRANSPORT_UART   = 2,
     EH_TRANSPORT_SPI_HD = 3,
+    EH_TRANSPORT_USB    = 4,
 } eh_transport_t;
 
 /* hdr_version starts V1; re-init after PRIV handshake to upgrade or enable checksum. */
@@ -112,6 +113,13 @@ typedef struct {
     .checksum_enabled = 1,                                   \
     .reserved         = {0, 0},                              \
 }
+#define EH_FRAME_CFG_CP_LINUX_802_3_USB_DEFAULT    {  \
+    .transport        = EH_TRANSPORT_USB,           \
+    .max_buf_size     = ESP_TRANSPORT_USB_MAX_BUF_SIZE,     \
+    .hdr_version      = ESP_HOSTED_HDR_VERSION_V1,          \
+    .checksum_enabled = 1,                                   \
+    .reserved         = {0, 0},                              \
+}
 
 /* ── Coprocessor side — paired with MCU host ────────────────────────────── */
 #define EH_FRAME_CFG_CP_MCU_SPI_DEFAULT         {  \
@@ -142,6 +150,13 @@ typedef struct {
     .checksum_enabled = 1,                                   \
     .reserved         = {0, 0},                              \
 }
+#define EH_FRAME_CFG_CP_MCU_USB_DEFAULT         {  \
+    .transport        = EH_TRANSPORT_USB,           \
+    .max_buf_size     = ESP_TRANSPORT_USB_MAX_BUF_SIZE,     \
+    .hdr_version      = ESP_HOSTED_HDR_VERSION_V1,          \
+    .checksum_enabled = 1,                                   \
+    .reserved         = {0, 0},                              \
+}
 
 /* ── Host side — MCU (IDF/FreeRTOS) ────────────────────────────────────── */
 #define EH_FRAME_CFG_HOST_MCU_SPI_DEFAULT       {  \
@@ -168,6 +183,13 @@ typedef struct {
 #define EH_FRAME_CFG_HOST_MCU_SPI_HD_DEFAULT    {  \
     .transport        = EH_TRANSPORT_SPI_HD,        \
     .max_buf_size     = ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE,  \
+    .hdr_version      = ESP_HOSTED_HDR_VERSION_V1,          \
+    .checksum_enabled = 1,                                   \
+    .reserved         = {0, 0},                              \
+}
+#define EH_FRAME_CFG_HOST_MCU_USB_DEFAULT       {  \
+    .transport        = EH_TRANSPORT_USB,           \
+    .max_buf_size     = ESP_TRANSPORT_USB_MAX_BUF_SIZE,     \
     .hdr_version      = ESP_HOSTED_HDR_VERSION_V1,          \
     .checksum_enabled = 1,                                   \
     .reserved         = {0, 0},                              \

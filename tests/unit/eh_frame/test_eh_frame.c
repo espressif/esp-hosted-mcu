@@ -171,6 +171,14 @@ static void test_zero_len_is_dummy(void)
         CHECK(eh_frame_decode(buf, 12, &out) == EH_FRAME_DUMMY,
               "if_type %d len 0", k_map[i].if_type);
     }
+
+    /* Checksum is on, so this header-only throttle frame is not the early dummy. */
+    h.if_type = ESP_STA_IF;
+    h.throttle_cmd = EH_FRAME_FLOW_CTRL_ON;
+    eh_frame_encode(buf, &h, 0);
+    memset(&out, 0, sizeof(out));
+    CHECK(eh_frame_decode(buf, 12, &out) == EH_FRAME_DUMMY, "throttle frame");
+    CHECK(out.throttle_cmd == EH_FRAME_FLOW_CTRL_ON, "throttle_cmd=%u", out.throttle_cmd);
 }
 
 static void test_bad_frames(void)

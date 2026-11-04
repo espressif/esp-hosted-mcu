@@ -33,6 +33,11 @@ struct eh_host_uart_config;
 struct eh_host_uart_config eh_host_get_default_uart_config(void);
 #endif
 
+#if EH_HOST_TRANSPORT_BUS_USB
+struct eh_host_usb_otg_config;
+struct eh_host_usb_otg_config eh_host_get_default_usb_otg_config(void);
+#endif
+
 void eh_host_port_transport_check_max_freq(uint8_t chip_id);
 
 #ifdef __cplusplus

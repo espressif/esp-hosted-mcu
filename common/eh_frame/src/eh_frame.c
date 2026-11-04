@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2025 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* eh_frame.c — V1/V2 wire frame encode/decode. Sole reader/writer of wire structs. */
 
@@ -89,7 +92,7 @@ esp_err_t eh_frame_init(const eh_frame_cfg_t *cfg)
 {
     if (!cfg)
         return ESP_ERR_INVALID_ARG;
-    if (cfg->transport > EH_TRANSPORT_SPI_HD)
+    if (cfg->transport > EH_TRANSPORT_USB)
         return ESP_ERR_INVALID_ARG;
     if (cfg->hdr_version != ESP_HOSTED_HDR_VERSION_V1 &&
         cfg->hdr_version != ESP_HOSTED_HDR_VERSION_V2)
@@ -246,6 +249,7 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
             h->if_type = eh_if_type_from_wire(hdr->if_type);
             h->if_num  = hdr->if_num;
             h->flags   = 0;
+            h->throttle_cmd = hdr->throttle_cmd;
         }
         return EH_FRAME_DUMMY;
     }
@@ -298,6 +302,7 @@ static eh_frame_result_t decode_v1(const uint8_t *buf,
             h->if_num    = hdr->if_num;
             h->flags     = hdr->flags;
             h->rx_credit = hdr->rx_credit;
+            h->throttle_cmd = hdr->throttle_cmd;
         }
         return EH_FRAME_DUMMY;
     }

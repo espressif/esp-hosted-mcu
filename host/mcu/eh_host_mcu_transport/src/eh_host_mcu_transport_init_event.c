@@ -3,7 +3,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-/* SPDX-License-Identifier: Apache-2.0 */
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -125,6 +124,7 @@ static const char *chip_id_name(uint8_t id)
     case EH_PRIV_FIRMWARE_CHIP_ESP32C61: return "esp32c61";
     case EH_PRIV_FIRMWARE_CHIP_ESP32C5:  return "esp32c5";
     case EH_PRIV_FIRMWARE_CHIP_ESP32H4:  return "esp32h4";
+    case EH_PRIV_FIRMWARE_CHIP_ESP32S31: return "esp32s31";
     default:                             return "unsupported";
     }
 }
@@ -142,6 +142,7 @@ static int chip_id_is_known(uint8_t id)
     case EH_PRIV_FIRMWARE_CHIP_ESP32C61:
     case EH_PRIV_FIRMWARE_CHIP_ESP32H2:
     case EH_PRIV_FIRMWARE_CHIP_ESP32H4:
+    case EH_PRIV_FIRMWARE_CHIP_ESP32S31:
         return 1;
     default:
         return 0;
@@ -439,6 +440,8 @@ static uint8_t expected_chip_id(void)
     return EH_PRIV_FIRMWARE_CHIP_ESP32C5;
 #elif EH_HOST_CP_TARGET_ESP32C6
     return EH_PRIV_FIRMWARE_CHIP_ESP32C6;
+#elif EH_HOST_CP_TARGET_ESP32S31
+    return EH_PRIV_FIRMWARE_CHIP_ESP32S31;
 #else
     return EH_PRIV_FIRMWARE_CHIP_UNRECOGNIZED;
 #endif

@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* V2 impls of eh_host_sys.h wrappers. */
 
 #include <stdbool.h>
@@ -19,6 +23,10 @@
 #include "eh_host_sys.h"
 #include "eh_host_event.h"
 #include "esp_event.h"
+
+#if defined(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+#include "eh_host_mcu_transport.h"
+#endif
 
 #if EH_HOST_FEAT_SYSTEM_READY
 
@@ -102,6 +110,11 @@ esp_err_t eh_host_sys_get_mac(wifi_interface_t mode, uint8_t mac[6])
         return ESP_FAIL;
     }
     memcpy(mac, r->u.wifi_mac.mac, 6);
+#if defined(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+    if (mode == WIFI_IF_AP) {
+        eh_host_mcu_transport_usb_rndis_set_ap_mac(mac);
+    }
+#endif
     eh_rpc_ctrl_cmd_free(r);
     return ESP_OK;
 }
@@ -122,6 +135,11 @@ esp_err_t eh_host_sys_set_mac(wifi_interface_t mode, const uint8_t mac[6])
     }
     int status = r->resp_event_status;
     eh_rpc_ctrl_cmd_free(r);
+#if defined(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+    if (status == ESP_OK && mode == WIFI_IF_AP) {
+        eh_host_mcu_transport_usb_rndis_set_ap_mac(mac);
+    }
+#endif
     return (esp_err_t)status;
 }
 

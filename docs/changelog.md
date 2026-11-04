@@ -1,5 +1,11 @@
 # Unreleased
 
+- USB OTG transport (Experimental)
+  - host/cp: new USB OTG bus. The MCU is the USB host and the co-processor is the USB device. CDC-ACM carries the length-prefixed frames (RPC and data)
+  - ESP32-S31 is a co-processor target
+  - host examples: `sdkconfig.defaults.esp32p4.usb` builds an ESP32-P4 host against an ESP32-S31 co-processor on this bus in `examples/system/api_exerciser/mcu_host` and `examples/wifi/iperf/mcu_host`
+  - host/usb: the MCU host can use ESP-IDF `usb_host_cdc_acm` (default) or CherryUSB. Default is `usb_host_cdc_acm`
+  - docs: [USB OTG Host](design/usb-otg-host.md)
 - cp/sdio: enabled SDIO packet mode operation
 - host/task: removed division by sizeof(StackType_t). In IDF, the stack size should be specified as bytes
 - host: with `CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM=y`, starting a detached Hosted task no longer corrupts the heap ([#254](https://github.com/espressif/esp-hosted-mcu/issues/254))
@@ -13,7 +19,6 @@
 - `ESP_ETH_IF` is renamed to `ESP_AUX_IF`. `ESP_ETH_IF` was never sent. Code that uses the name `ESP_ETH_IF` must change it
 - host: a frame with an `if_type` that has no handler is now dropped. Before, the host parsed it as an RPC message
 - co-processor: a frame from the host with an `if_type` that has no handler is now logged
-
 # Releases
 
 # $${\color{green} \text{3.0.10}}$$

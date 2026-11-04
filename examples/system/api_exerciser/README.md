@@ -127,3 +127,30 @@ Add a row to `mcu_host/main/eh_api_cmd.c`'s command table (one thin
 `argv → eh_host_* call → eh_out(...)` wrapper), then a pytest data file under
 `tests/emu-mcu/eh_test_feat_api/`. No emulator change is needed for the
 scalar/string API surface (SCENARIO_BACKLOG bucket **B2**).
+
+## USB OTG host (ESP32-P4)
+
+`mcu_host/sdkconfig.defaults` enables the host features this example drives
+from the console. `mcu_host/sdkconfig.defaults.esp32p4.usb` adds the ESP32-P4
+USB OTG host transport: host target `esp32p4`, coprocessor `esp32s31`, and
+`CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST`.
+
+From `mcu_host/`:
+
+```bash
+idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32p4.usb" set-target esp32p4
+idf.py build
+idf.py -p PORT flash monitor
+```
+
+`set-target` regenerates `sdkconfig` from those two files. List
+`sdkconfig.defaults` first so the USB file can override the transport.
+
+The coprocessor firmware must use USB OTG device (CDC-ACM). Keep the host
+console off the USB OTG peripheral; that controller is the ESP-Hosted bus.
+The console prompt is `eh>`.
+
+[USB RNDIS is not yet enabled.] For the USB RNDIS Wi-Fi data plane, append
+`sdkconfig.defaults.esp32p4.usb_rndis` to the host defaults and
+`cp/sdkconfig.defaults.esp32s31.usb_rndis` to the CP defaults. RNDIS options
+must be enabled on both ends.

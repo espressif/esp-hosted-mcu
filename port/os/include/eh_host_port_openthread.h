@@ -24,6 +24,13 @@
 #define H_OT_HOSTED_BUS_SPEED_HZ (EH_HOST_PORT_SPI_HD_CLK_MHZ * 1000000)
 #elif H_TRANSPORT_IN_USE == H_TRANSPORT_UART
 #define H_OT_HOSTED_BUS_SPEED_HZ EH_HOST_PORT_UART_BAUD_RATE
+#elif H_TRANSPORT_IN_USE == H_TRANSPORT_USB
+/* USB line rate in bits/s. ESP32-S31 is high-speed; S2 and S3 are full-speed. */
+#if EH_HOST_CP_TARGET_ESP32S31
+#define H_OT_HOSTED_BUS_SPEED_HZ 480000000
+#else
+#define H_OT_HOSTED_BUS_SPEED_HZ 12000000
+#endif
 #else
 #error "OpenThread over ESP-Hosted: unknown host transport"
 #endif

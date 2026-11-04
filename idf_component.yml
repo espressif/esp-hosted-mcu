@@ -8,12 +8,33 @@ license: "Apache-2.0"
 dependencies:
   idf:
     version: ">=5.5"
+  espressif/esp_tinyusb:
+    version: "*"
+    rules:
+      - if: "target in [esp32s2, esp32s3, esp32s31]"
+      - if: "$CONFIG{ESP_HOSTED_CP_TINYUSB_MANIFEST} == 1"
+  espressif/usb_host_cdc_acm:
+    version: "*"
+    rules:
+      - if: "target in [esp32p4]"
+      - if: "$CONFIG{ESP_HOSTED_HOST_USB_CDC_ACM_MANIFEST} == 1"
+  espressif/iot_usbh_rndis:
+    version: "^0.5.2"
+    rules:
+      - if: "target in [esp32p4]"
+      - if: "$CONFIG{ESP_HOSTED_HOST_USB_RNDIS_MANIFEST} == 1"
+  cherry-embedded/cherryusb:
+    version: ">=1.6.0"
+    rules:
+      - if: "target in [esp32p4]"
+      - if: "$CONFIG{ESP_HOSTED_HOST_USB_CHERRYUSB_MANIFEST} == 1"
 
 targets:
   - esp32
-  - esp32c2
   - esp32s2
   - esp32s3
+  - esp32s31
+  - esp32c2
   - esp32c3
   - esp32c5
   - esp32c6

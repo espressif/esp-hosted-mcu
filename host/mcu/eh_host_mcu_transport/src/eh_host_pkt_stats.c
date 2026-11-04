@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Periodic dump of the host-side transport packet counters (Kconfig-gated). */
 #include "eh_host_pkt_stats.h"
 
@@ -37,6 +41,16 @@ static void pkt_stats_timer_func(void *arg)
 	         (unsigned long)pkt_stats.tx_credit_stalls,
 	         (unsigned long)pkt_stats.sta_rx_in,
 	         (unsigned long)pkt_stats.sta_rx_out);
+#if EH_HOST_USB_RNDIS
+	ESP_LOGI(TAG, "RNDIS: tx_q[%lu] tx_ok[%lu] tx_reject[%lu] tx_fail[%lu] "
+	         "rx_ok[%lu] rx_drop[%lu]",
+	         (unsigned long)pkt_stats.usb_rndis_tx_queued,
+	         (unsigned long)pkt_stats.usb_rndis_tx_sent,
+	         (unsigned long)pkt_stats.usb_rndis_tx_rejected,
+	         (unsigned long)pkt_stats.usb_rndis_tx_failed,
+	         (unsigned long)pkt_stats.usb_rndis_rx_delivered,
+	         (unsigned long)pkt_stats.usb_rndis_rx_dropped);
+#endif
 }
 
 void eh_host_pkt_stats_init(void)

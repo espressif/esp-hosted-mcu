@@ -30,6 +30,15 @@ static eh_host_channel_t *aux_chan_arr[ESP_AUX_TYPE_MAX];
 volatile uint32_t wifi_tx_throttling;
 #endif
 
+static inline esp_err_t netif_tx_failed(void)
+{
+#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
+    return ESP_ERR_ESP_NETIF_TX_FAILED;
+#else
+    return ESP_ERR_ESP_NETIF_NO_MEM;
+#endif
+}
+
 static esp_err_t transport_tx(uint8_t if_type, uint8_t if_num, uint8_t pkt_type,
                               const uint8_t *payload, uint16_t payload_len,
                               uint8_t flags)
@@ -38,11 +47,7 @@ static esp_err_t transport_tx(uint8_t if_type, uint8_t if_num, uint8_t pkt_type,
 
     if (eh_host_wifi_tx_is_throttled() &&
         (if_type == ESP_STA_IF || if_type == ESP_AP_IF)) {
-#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
-        return ESP_ERR_ESP_NETIF_TX_FAILED;
-#else
-        return ESP_ERR_ESP_NETIF_NO_MEM;
-#endif
+        return netif_tx_failed();
     }
 
     size_t total = eh_frame_hdr_size() + payload_len;
@@ -66,7 +71,13 @@ static esp_err_t transport_tx(uint8_t if_type, uint8_t if_num, uint8_t pkt_type,
     };
     eh_frame_encode(buf, &bh, payload_len);
     int rc = eh_host_mcu_transport_tx(&bh);
-    return (rc >= 0) ? ESP_OK : ESP_FAIL;
+    if (rc >= 0) {
+        return ESP_OK;
+    }
+    if (if_type == ESP_STA_IF || if_type == ESP_AP_IF) {
+        return netif_tx_failed();
+    }
+    return ESP_FAIL;
 }
 
 esp_err_t eh_host_transport_tx(uint8_t if_type, uint8_t if_num,
@@ -93,11 +104,7 @@ esp_err_t eh_host_transport_tx_zerocopy(uint8_t if_type, uint8_t if_num,
 
     if (eh_host_wifi_tx_is_throttled() &&
         (if_type == ESP_STA_IF || if_type == ESP_AP_IF)) {
-#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
-        return ESP_ERR_ESP_NETIF_TX_FAILED;
-#else
-        return ESP_ERR_ESP_NETIF_NO_MEM;
-#endif
+        return netif_tx_failed();
     }
 
     /* Caller-promised headroom. */
@@ -116,7 +123,13 @@ esp_err_t eh_host_transport_tx_zerocopy(uint8_t if_type, uint8_t if_num,
     };
     eh_frame_encode(frame_start, &bh, payload_len);
     int rc = eh_host_mcu_transport_tx(&bh);
-    return (rc >= 0) ? ESP_OK : ESP_FAIL;
+    if (rc >= 0) {
+        return ESP_OK;
+    }
+    if (if_type == ESP_STA_IF || if_type == ESP_AP_IF) {
+        return netif_tx_failed();
+    }
+    return ESP_FAIL;
 }
 
 static esp_err_t sta_tx(void *h, void *buf, size_t len)

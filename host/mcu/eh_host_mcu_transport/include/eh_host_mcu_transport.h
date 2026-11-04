@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* MCU bus transport runtime: bus-agnostic init/deinit, RX cb, blocking TX.
  * Exactly one of SPI/SDIO/SPI-HD/UART compiled in per build. */
 
@@ -54,6 +58,9 @@ int eh_host_mcu_transport_inform_slave_ps_exit(void);
 /* Bus-readiness probe. 1 ready, 0 not ready, <0 error. Used by
  * transport-reconfigure and esp_hosted_tx() to gate frames. */
 int eh_host_mcu_transport_is_tx_ready(void);
+
+/* Cache the CP SoftAP MAC for USB RNDIS RX interface demultiplexing. */
+void eh_host_mcu_transport_usb_rndis_set_ap_mac(const uint8_t mac[6]);
 
 #ifdef __cplusplus
 }

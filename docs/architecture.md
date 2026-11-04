@@ -203,8 +203,9 @@ There are two independent mechanisms: **bus arbitration** (whose turn is it to t
 | SPI half-duplex | `DATA_READY` GPIO + slave registers + `CMD9` | credit deltas in `TX_BUF_LEN`/`RX_BUF_LEN`; throttle bits in the register's upper byte |
 | SDIO | host-interrupt driven | `START_THROTTLE` (int bit 7) / `STOP_THROTTLE` (int bit 6) driven by RX queue occupancy vs high/low thresholds |
 | UART | none (byte stream) | byte credit: `rx_credit` in every CP frame, see [UART](design/uart.md#flow-control) |
+| USB OTG | none (CDC-ACM byte stream); unread device FIFO NAKs OUT | coprocessor RX credits (`RX_Q_SIZE + 2`) plus V1 `throttle_cmd` (`ON`/`OFF`) from the OTHERS queue |
 
-Throttle thresholds are configured by the host during the handshake via the `THROTTLE_HIGH` (`0x47`) and `THROTTLE_LOW` (`0x48`) TLVs. Full per-transport protocol detail lives on each transport page (SDIO, SPI Full-Duplex, SPI Half-Duplex, UART).
+Throttle thresholds are configured by the host during the handshake via the `THROTTLE_HIGH` (`0x47`) and `THROTTLE_LOW` (`0x48`) TLVs. Full per-transport protocol detail lives on each transport page (SDIO, SPI Full-Duplex, SPI Half-Duplex, UART, USB OTG Host).
 
 ---
 
