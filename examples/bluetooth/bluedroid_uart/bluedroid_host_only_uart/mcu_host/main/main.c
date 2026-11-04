@@ -282,8 +282,6 @@ void app_main(void)
     }
     ESP_ERROR_CHECK( ret );
 
-    /* initialize HCI TRANSPORT first */
-    hci_uart_open();
     /* get HCI driver operations */
     esp_bluedroid_hci_driver_operations_t operations = {
         .send = hci_uart_send,
@@ -298,6 +296,8 @@ void app_main(void)
         return;
     }
 
+    /* Bluedroid sends HCI Reset on enable: open the UART (H4 sync point) just before */
+    hci_uart_open();
     if ((ret = esp_bluedroid_enable()) != ESP_OK) {
         ESP_LOGE(GAP_TAG, "%s enable bluedroid failed: %s", __func__, esp_err_to_name(ret));
         return;
