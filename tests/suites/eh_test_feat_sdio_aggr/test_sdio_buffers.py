@@ -24,6 +24,7 @@ from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
 # eh_host_bus_sdio.c: MIN_MEMPOOL_{BT,SERIAL,NET}_PACKETS and MAX_SDIO_BUFFER_SIZE.
 _MEMPOOL_EXTRA = 3 + 3 + 5
 _MAX_FRAME = 1536
+_STREAM_Q = 14  # SDIO_STREAM_QUEUE_SIZE in eh_cp_transport_sdio.c
 _BLOCK = 512
 
 EXAMPLE = 'system/get_cp_fw_version'
@@ -151,16 +152,15 @@ def test_sdio_rx_staging_one_slot(bench, lab_tmp):
 
 @pytest.mark.system
 def test_sdio_stream_staging_preallocated(bench, lab_tmp):
-    """A non-aggregating CP sizes each staging slot from its RX buffer:
-    one max frame times ceil(advertised e2h / max frame)."""
+    """A STREAM CP advertises its send-queue depth, so each staging slot is
+    one max frame times that depth, independent of the advertised e2h."""
     _rpc_up(bench, cp_overlay=['CONFIG_EH_TRANSPORT_CP_SDIO_MODE_STREAM=y'])
     log = _host_log(lab_tmp)
 
-    mode, e2h = _advertised_e2h(log)
+    mode, _e2h = _advertised_e2h(log)
     assert mode == 1, f'stream e2h mode: want 1, log says {mode}'
     assert 'CP without SDIO SW_AGGR' in log
-    units = (e2h + _MAX_FRAME - 1) // _MAX_FRAME
-    _assert_prealloc(log, slots=2, nbytes=_block_round(_MAX_FRAME * units))
+    _assert_prealloc(log, slots=2, nbytes=_block_round(_MAX_FRAME * _STREAM_Q))
 
 
 @pytest.mark.system

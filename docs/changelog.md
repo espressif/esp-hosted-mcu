@@ -1,12 +1,13 @@
 # Unreleased
 
+- cp/sdio: stream mode keeps 14 frames in flight on every target and advertises that depth, so the host staging slot is 14 × 1536 B. The in-flight depth no longer depends on the DMA descriptor size (ESP32 had dropped to 2 frames)
 - USB OTG transport (Experimental)
   - host/cp: new USB OTG bus. The MCU is the USB host and the co-processor is the USB device. CDC-ACM carries the length-prefixed frames (RPC and data)
   - ESP32-S31 is a co-processor target
   - host examples: `sdkconfig.defaults.esp32p4.usb` builds an ESP32-P4 host against an ESP32-S31 co-processor on this bus in `examples/system/api_exerciser/mcu_host` and `examples/wifi/iperf/mcu_host`
   - host/usb: the MCU host can use ESP-IDF `usb_host_cdc_acm` (default) or CherryUSB. Default is `usb_host_cdc_acm`
   - docs: [USB OTG Host](design/usb-otg-host.md)
-- cp/sdio: the init event advertises the RX buffer, as a count of 1536-byte frames, in packet, stream, and software-aggregation mode. It no longer sends `EH_TRANSPORT_CP_SDIO_TX_Q_SIZE`. Stream mode queues only as many frames as fit in that buffer, so a host staging slot sized from the advertisement can hold one read. The Kconfig option is unused and kept so existing sdkconfigs still parse
+- cp/sdio: the init event advertises the RX buffer, as a count of 1536-byte frames, in packet and software-aggregation mode. It no longer sends `EH_TRANSPORT_CP_SDIO_TX_Q_SIZE`. The Kconfig option is unused and kept so existing sdkconfigs still parse
 - host/sdio: streaming RX staging buffers are sized from the co-processor TX capacity when INIT arrives. The read task allocates them once, after every staging slot has been drained, so a buffer still in use is not freed. `ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1` keeps a single buffer and the read waits until it has been copied out
 - host/sdio: optional DMA mempool for packet buffers (`ESP_HOSTED_HOST_SDIO_USE_MEMPOOL`, off by default) when a 1536-byte DMA allocation fails on a fragmented heap
 - cp/sdio: enabled SDIO packet mode operation
