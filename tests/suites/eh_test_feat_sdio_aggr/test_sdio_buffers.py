@@ -52,10 +52,13 @@ def _block_round(n):
 
 
 def _host_log(lab_tmp):
+    """Host log from the last boot only: a hardware bench boots the host twice
+    (port open, then reset), so the per-boot lines would otherwise repeat."""
     for name in ('host_sdio.log', 'host.log'):
         path = lab_tmp / name
         if path.is_file():
-            return _ANSI.sub('', path.read_text(errors='replace'))
+            log = _ANSI.sub('', path.read_text(errors='replace'))
+            return log.rsplit('ESP-ROM:', 1)[-1]
     pytest.fail(f'no host log under {lab_tmp}')
 
 
