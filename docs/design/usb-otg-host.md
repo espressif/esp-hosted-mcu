@@ -38,13 +38,13 @@ eh_host_bus_usb.c                               MCU bus contract
 
 The stack is `ESP_HOSTED_HOST_USB_STACK_CDC_ACM` (default) or `ESP_HOSTED_HOST_USB_STACK_CHERRYUSB`. The generic bus file is always built for this bus. CDC-ACM compiles `eh_host_bus_usb_cdc_acm.c`, or `eh_host_bus_usb_cdc_rndis.c` and `eh_host_bus_usb_rndis.c` when RNDIS is selected. CherryUSB compiles only `eh_host_bus_usb_cherryusb.c`.
 
-`eh_host_port_usb_init()` / `eh_host_port_usb_deinit()` are reference-counted and exist only for the ESP-IDF stack. A later class driver on that stack can share the same host controller without installing it again. CherryUSB owns the controller itself and does not call `usb_host_install()`.
+`eh_host_port_usb_init()` / `eh_host_port_usb_deinit()` are reference-counted and exist only for the ESP-IDF stack. A later class driver on that stack can share the same host controller without installing it again. When the reference count drops to zero, `eh_host_port_usb_deinit()` waits for the event task to complete `usb_host_uninstall()` before returning, so an immediate re-init can install the USB host library again cleanly. CherryUSB owns the controller itself and does not call `usb_host_install()`.
 
 ---
 
 ## Data path
 
-**Connect.** `eh_host_bus_connect_to_slave()` resets the coprocessor when a reset GPIO is configured, then opens the CDC-ACM device. With RNDIS disabled, the ESP-IDF stack opens any device (`CDC_HOST_ANY_VID`, `CDC_HOST_ANY_PID`). With RNDIS enabled it matches `0x303A:0x4081` and opens the advertised CDC-ACM interface. See [Composite interfaces](#composite-interfaces). CherryUSB polls `usbh_serial_open("/dev/ttyACM0")` until the connection timeout. Both assert DTR (RTS stays clear) so the coprocessor starts the data path and sends INIT. CherryUSB does not set line coding. Transport state becomes `EH_HOST_MCU_TRANSPORT_RX_ACTIVE`.
+**Connect.** `eh_host_bus_connect_to_slave()` resets the coprocessor when a reset GPIO is configured, then opens the CDC-ACM device. If coprocessor reset is enabled, the host may display `HUB: Root port reset failed` during connect; this is expected as the coprocessor is being reset. With RNDIS disabled, the ESP-IDF stack opens any device (`CDC_HOST_ANY_VID`, `CDC_HOST_ANY_PID`). With RNDIS enabled it matches `0x303A:0x4081` and opens the advertised CDC-ACM interface. See [Composite interfaces](#composite-interfaces). CherryUSB polls `usbh_serial_open("/dev/ttyACM0")` until the connection timeout. Both assert DTR (RTS stays clear) so the coprocessor starts the data path and sends INIT. CherryUSB does not set line coding. Transport state becomes `EH_HOST_MCU_TRANSPORT_RX_ACTIVE`.
 
 CherryUSB's CDC-ACM attach requires the notification interrupt endpoint. TinyUSB CDC-ACM on the coprocessor provides that endpoint. If the device enumerates but the serial port never appears, that endpoint is the first thing to check.
 
@@ -190,7 +190,7 @@ Kconfig under **USB OTG Host Configuration (Experimental)**:
 | :--- | :--- | :--- |
 | `ESP_HOSTED_HOST_USB_STACK_CDC_ACM` | y | ESP-IDF USB Host Library and `usb_host_cdc_acm` |
 | `ESP_HOSTED_HOST_USB_STACK_CHERRYUSB` | n | CherryUSB DWC2 host and its CDC-ACM serial driver. Selects `CHERRYUSB`, `CHERRYUSB_HOST`, and `CHERRYUSB_HOST_CDC_ACM` |
-| `ESP_HOSTED_HOST_RESET_GPIO` | 54 on ESP32-P4, else board-specific or `-1` | Coprocessor reset; `-1` skips reset |
+| `ESP_HOSTED_HOST_RESET_GPIO` | `-1` | Coprocessor reset GPIO. `-1` skips the GPIO reset |
 | `ESP_HOSTED_HOST_USB_CONNECTION_TIMEOUT_MS` | 5000 | Wait for CDC enumeration |
 | `ESP_HOSTED_HOST_USB_TX_Q_SIZE` / `RX_Q_SIZE` | 20 | Queue depths |
 | `ESP_HOSTED_HOST_USB_OUT_BUF_SIZE` | 2048 | Bulk OUT size |
@@ -199,6 +199,9 @@ Kconfig under **USB OTG Host Configuration (Experimental)**:
 | `ESP_HOSTED_HOST_USB_RX_TASK_PRIO` | 22 | RX task priority |
 | `ESP_HOSTED_HOST_USB_RNDIS` | n | [Not yet enabled.] P4 ESP-IDF RNDIS data plane. `depends on n`, so it cannot be selected |
 | `ESP_HOSTED_HOST_USB_RNDIS_TX_Q_SIZE` | 20 | [Not yet enabled.] Bounded RNDIS upload queue |
+
+> [!NOTE]
+> When `ESP_HOSTED_HOST_RESET_GPIO` is enabled, the host log may display `HUB: Root port reset failed` during connection. This is expected because the coprocessor is being reset.
 
 Runtime defaults are `eh_host_get_default_usb_otg_config()` / `INIT_DEFAULT_HOST_USB_OTG_CONFIG()`. Transport id is `EH_HOST_TRANSPORT_USB_OTG` (`5`). Frame config is `EH_FRAME_CFG_HOST_MCU_USB_DEFAULT` (`ESP_TRANSPORT_USB_MAX_BUF_SIZE`, 1600).
 
@@ -232,7 +235,7 @@ CherryUSB is the other stack. Add `CONFIG_ESP_HOSTED_HOST_USB_STACK_CHERRYUSB=y`
 
 | Component | Targets | Fetched when |
 | :--- | :--- | :--- |
-| `espressif/esp_tinyusb` | ESP32-S2, S3, S31 | `EH_TRANSPORT_CP_USB_OTG_DEVICE` |
+| `espressif/esp_tinyusb` `>=2.2.0` | ESP32-S2, S3, S31 | `EH_TRANSPORT_CP_USB_OTG_DEVICE` |
 | `espressif/usb_host_cdc_acm` | ESP32-P4 | `ESP_HOSTED_HOST_USB_STACK_CDC_ACM` and not `ESP_HOSTED_HOST_USB_RNDIS` |
 | `espressif/iot_usbh_rndis` `^0.5.2` | ESP32-P4 | [Not yet enabled.] `ESP_HOSTED_HOST_USB_RNDIS` |
 | `cherry-embedded/cherryusb` `>=1.6.0` | ESP32-P4 | `ESP_HOSTED_HOST_USB_STACK_CHERRYUSB` |

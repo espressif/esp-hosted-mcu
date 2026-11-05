@@ -9,7 +9,7 @@ dependencies:
   idf:
     version: ">=5.5"
   espressif/esp_tinyusb:
-    version: "*"
+    version: ">=2.2.0"
     rules:
       - if: "target in [esp32s2, esp32s3, esp32s31]"
       - if: "$CONFIG{ESP_HOSTED_CP_TINYUSB_MANIFEST} == 1"

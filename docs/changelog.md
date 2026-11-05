@@ -1,5 +1,8 @@
 # Unreleased
 
+- host/usb: `eh_host_port_usb_deinit()` waits for the USB host event task to finish `usb_host_uninstall()` before returning, allowing back-to-back `esp_hosted_deinit()` / `esp_hosted_init()` cycles to succeed
+- cp/usb: set espressif/esp_tinyusb dependency version to ">=2.2.0" (first version with ESP32-S31 support)
+- host/usb: `ESP_HOSTED_HOST_RESET_GPIO` defaults to `-1` (no GPIO reset). Set a pin only when that GPIO is wired to the co-processor EN/RST line
 - ci: build USB OTG CDC-ACM iperf on a merge request only (IDF latest) — ESP32-S31 co-processor (`examples/wifi/iperf/cp`, `sdkconfig.defaults.esp32s31`) and ESP32-P4 host (`examples/wifi/iperf/mcu_host`, `sdkconfig.defaults.esp32p4.usb`)
 
 # Releases
