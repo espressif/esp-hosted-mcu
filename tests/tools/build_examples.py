@@ -9,6 +9,13 @@ Design goals:
   - Shell-agnostic: pluggable runners for bash, fish, or custom shells
   - Parallel builds with proper skip/pass/fail reporting
   - Functions < 30 lines (Clean Code standard)
+  - Never writes into examples/: each (example, target) builds in its own scratch
+    copy under tests/.work/build_examples/<run>/ (infra/scratch.py, as the test
+    harness). Every build's scratch is deleted when it ends. A log is kept only
+    for a failed build or one with warnings in ESP-Hosted sources (--no-cleanup
+    keeps all logs); report.md, rewritten after each build, lists them. Runs older than
+    EH_RETENTION_DAYS (default 7) are removed at startup; the EH_DISK_FLOOR_GB
+    floor is checked before every build (infra/lab.py).
 
 Usage:
   python3 build_examples.py --build-targets=esp32c6
@@ -20,6 +27,7 @@ Usage:
 """
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -33,6 +41,11 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Optional
+
+_TESTS = Path(__file__).resolve().parents[1]
+if str(_TESTS) not in sys.path:
+    sys.path.insert(0, str(_TESTS))
+from infra import caps, lab, scratch  # noqa: E402
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -96,9 +109,9 @@ EXAMPLE_EXCLUDE: dict[str, set[str]] = {
     "bluetooth/":      {"esp32s2"},
     # Classic BT (BR/EDR) is on ESP32 and ESP32-S31 only.
     "classic_bt_discovery": {"esp32c2", "esp32c3", "esp32c5", "esp32c6",
-                             "esp32c61", "esp32s2", "esp32s3"},
+                             "esp32c61", "esp32h2", "esp32s2", "esp32s3"},
     "bt_hid_mouse":         {"esp32c2", "esp32c3", "esp32c5", "esp32c6",
-                             "esp32c61", "esp32s2", "esp32s3"},
+                             "esp32c61", "esp32h2", "esp32s2", "esp32s3"},
     # esp32s31: no host-wakeup GPIO default for host deep sleep.
     "power_save":      {"esp32c2", "esp32s31"},
     "system/mcu_transport_config": {"esp32s31"},
@@ -171,69 +184,59 @@ class CompatMatrix:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class ShellRunner:
+    """One build in a staged scratch dir: set-target configures from the copy's
+    sdkconfig.defaults, then ninja with a bounded -j (the build_fw recipe)."""
+    export_script = ""
+    join = " && "
+
     def __init__(self, idf_path: Optional[str] = None):
         self.idf_path = idf_path or os.environ.get(
             "IDF_PATH", os.path.expanduser("~/esp-idf"))
 
-    def run(self, cmd: str, cwd: str, timeout: int = 600) -> tuple[int, str]:
+    def argv(self, cmd: str) -> list[str]:
         raise NotImplementedError
 
-    def idf_build(self, project_dir: str, target: str,
-                  fullclean: bool = True, timeout: int = 600,
-                  build_dir: Optional[str] = None) -> tuple[int, str]:
+    def env(self, target: str) -> str:
         raise NotImplementedError
+
+    def run(self, cmd: str, cwd: str, timeout: int = 600) -> tuple[int, str]:
+        try:
+            r = subprocess.run(self.argv(cmd), cwd=cwd,
+                               capture_output=True, text=True, timeout=timeout)
+            return r.returncode, r.stdout + r.stderr
+        except subprocess.TimeoutExpired:
+            return 1, f"TIMEOUT after {timeout}s"
+        except Exception as e:
+            return 1, str(e)
+
+    def idf_build(self, work_dir: str, target: str, ninja_jobs: int,
+                  timeout: int = 900) -> tuple[int, str]:
+        pv = "--preview " if target in PREVIEW_TARGETS else ""
+        parts = [f'source "{self.idf_path}/{self.export_script}" > /dev/null 2>&1',
+                 f"{self.env(target)}idf.py {pv}set-target {target} 2>&1",
+                 f"ninja -C build -j {ninja_jobs} all 2>&1"]
+        return self.run(self.join.join(parts), cwd=work_dir, timeout=timeout)
 
 
 class BashRunner(ShellRunner):
+    export_script = "export.sh"
 
-    def run(self, cmd: str, cwd: str, timeout: int = 600) -> tuple[int, str]:
-        try:
-            r = subprocess.run(["bash", "-c", cmd], cwd=cwd,
-                               capture_output=True, text=True, timeout=timeout)
-            return r.returncode, r.stdout + r.stderr
-        except subprocess.TimeoutExpired:
-            return 1, f"TIMEOUT after {timeout}s"
-        except Exception as e:
-            return 1, str(e)
+    def argv(self, cmd: str) -> list[str]:
+        return ["bash", "-c", cmd]
 
-    def idf_build(self, project_dir: str, target: str,
-                  fullclean: bool = True, timeout: int = 600,
-                  build_dir: Optional[str] = None) -> tuple[int, str]:
-        b_flag = f"-B {build_dir}" if build_dir else ""
-        idf = f"idf.py {b_flag}"
-        parts = [f'source "{self.idf_path}/export.sh" > /dev/null 2>&1']
-        if fullclean:
-            parts.append(f"{idf} fullclean 2>&1 || true")
-            pv = "--preview " if target in PREVIEW_TARGETS else ""
-            parts.append(f"IDF_TARGET={target} {idf} {pv}set-target {target} 2>&1")
-        parts.append(f"IDF_TARGET={target} {idf} build 2>&1")
-        return self.run(" && ".join(parts), cwd=project_dir, timeout=timeout)
+    def env(self, target: str) -> str:
+        return f"IDF_TARGET={target} "
 
 
 class FishRunner(ShellRunner):
+    export_script = "export.fish"
+    join = "; and "
 
-    def run(self, cmd: str, cwd: str, timeout: int = 600) -> tuple[int, str]:
-        try:
-            r = subprocess.run(["fish", "-c", cmd], cwd=cwd,
-                               capture_output=True, text=True, timeout=timeout)
-            return r.returncode, r.stdout + r.stderr
-        except subprocess.TimeoutExpired:
-            return 1, f"TIMEOUT after {timeout}s"
-        except Exception as e:
-            return 1, str(e)
+    def argv(self, cmd: str) -> list[str]:
+        return ["fish", "-c", cmd]
 
-    def idf_build(self, project_dir: str, target: str,
-                  fullclean: bool = True, timeout: int = 600,
-                  build_dir: Optional[str] = None) -> tuple[int, str]:
-        b_flag = f"-B {build_dir}" if build_dir else ""
-        idf = f"idf.py {b_flag}"
-        parts = [f'source "{self.idf_path}/export.fish" > /dev/null 2>&1']
-        if fullclean:
-            parts.append(f"{idf} fullclean 2>&1; or true")
-            pv = "--preview " if target in PREVIEW_TARGETS else ""
-            parts.append(f"set -x IDF_TARGET {target}; and {idf} {pv}set-target {target} 2>&1")
-        parts.append(f"set -x IDF_TARGET {target}; and {idf} build 2>&1")
-        return self.run("; ".join(parts), cwd=project_dir, timeout=timeout)
+    def env(self, target: str) -> str:
+        return f"set -x IDF_TARGET {target}; and "
 
 
 SHELL_RUNNERS: dict[str, type[ShellRunner]] = {
@@ -247,6 +250,7 @@ SHELL_RUNNERS: dict[str, type[ShellRunner]] = {
 
 class Status(Enum):
     OK = "OK"; FAIL = "FAIL"; SKIP = "SKIP"
+    INFRA = "INFRA"  # the build could not run (disk full); not a product failure
 
 
 @dataclass
@@ -257,6 +261,7 @@ class BuildResult:
     status: Status = Status.SKIP
     duration_s: float = 0.0
     warnings: int = 0
+    hosted_warnings: int = 0
     reason: str = ""
     log_path: str = ""
 
@@ -302,18 +307,24 @@ def _repo_root() -> str:
     return str(Path(__file__).resolve().parents[2])
 
 
-def _ensure_component_symlink(project_dir: str, repo_root: str):
-    """Create components/esp_hosted -> <repo_root> symlink if missing.
-
-    Uses a relative path so the link survives repo moves.
-    """
-    comp_dir = Path(project_dir) / "components"
-    link = comp_dir / "esp_hosted"
-    if link.is_symlink() or link.exists():
-        return
-    comp_dir.mkdir(exist_ok=True)
-    target = os.path.relpath(repo_root, comp_dir)
-    link.symlink_to(target)
+def stage(project_dir: Path, work: Path, repo_root: Path) -> Path:
+    """Copy the example into `work` and return the dir to build in. A sibling
+    common/ (shared across roles) is copied beside it so ../common resolves as
+    in-tree. The esp_hosted component is a symlink to the repo, made in the copy
+    only; absolutize_overrides then drops the override_path that would make the
+    component manager copy the whole repo into the build."""
+    has_common = (project_dir.parent / "common").is_dir()
+    wd = work / project_dir.name if has_common else work
+    scratch.copy_scratch(project_dir, wd, scratch.ignore(), dirs_exist_ok=True)
+    if has_common:
+        scratch.copy_scratch(project_dir.parent / "common", work / "common",
+                             scratch.ignore(), dirs_exist_ok=True)
+    link = wd / "components" / "esp_hosted"
+    if not os.path.lexists(link):
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(repo_root)
+    scratch.absolutize_overrides(project_dir, wd)
+    return wd
 
 
 # IDF transient files that litter example source directories.
@@ -488,44 +499,60 @@ def clean_example_transients(examples_root: Path, confirm: bool = True) -> int:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def build_single(project_dir: str, target: str, shell: str,
-                 idf_path: str, fullclean: bool, output_dir: str) -> BuildResult:
-    repo_root = _repo_root()
-    _ensure_component_symlink(project_dir, repo_root)
+_WARNING = re.compile(r"^(/[^:\n]+):\d+(?::\d+)?: warning:", re.M)
+
+
+def count_hosted_warnings(output: str, roots: list[str]) -> int:
+    """Compiler warnings in ESP-Hosted sources: the repo and the example's
+    scratch copy, not IDF, managed components or generated build files."""
+    n = 0
+    for path in _WARNING.findall(output):
+        if any(path.startswith(r) for r in roots) and \
+                not any(s in path for s in ("/managed_components/", "/build/")):
+            n += 1
+    return n
+
+
+def build_single(project_dir: str, target: str, shell: str, idf_path: str,
+                 run_dir: str, export_root: Optional[str],
+                 keep_logs: bool = False) -> BuildResult:
+    repo_root = Path(_repo_root())
     rel = os.path.relpath(project_dir, repo_root)
     transport = detect_transport(project_dir, target)
-
     skip = CompatMatrix.should_skip_example(rel, target)
     if skip:
         return BuildResult(rel, target, transport, Status.SKIP, reason=skip)
 
     short = rel.replace("examples/", "", 1).replace("/", "__")
-    log_path = os.path.join(output_dir, f"{short}__{target}.log")
+    log_path = Path(run_dir) / "logs" / f"{short}__{target}.log"
+    work = Path(run_dir) / "builds" / short / target
+    try:
+        lab.ensure_free(f"build {rel} [{target}]")
+    except lab.DiskExhausted as e:
+        return BuildResult(rel, target, transport, Status.INFRA, reason=str(e))
 
-    # Place build artifacts under output_dir mirroring example layout:
-    #   <output_dir>/builds/<example_short>/<target>/
-    build_dir = os.path.join(output_dir, "builds", short, target)
-    os.makedirs(build_dir, exist_ok=True)
-
-    return _do_build(project_dir, target, shell, idf_path, fullclean,
-                     rel, transport, log_path, build_dir)
-
-
-def _do_build(project_dir, target, shell, idf_path, fullclean,
-              rel, transport, log_path, build_dir) -> BuildResult:
-    runner = SHELL_RUNNERS.get(shell, BashRunner)(idf_path=idf_path)
     t0 = time.time()
-    code, output = runner.idf_build(project_dir, target, fullclean=fullclean,
-                                    build_dir=build_dir)
-    elapsed = time.time() - t0
-
-    Path(log_path).write_text(output)
-    warnings = output.count("warning:")
-    ok = code == 0 and "Project build complete" in output
-
-    return BuildResult(rel, target, transport,
-                       Status.OK if ok else Status.FAIL,
-                       elapsed, warnings, log_path=log_path)
+    wd = stage(Path(project_dir), work, repo_root)
+    runner = SHELL_RUNNERS.get(shell, BashRunner)(idf_path=idf_path)
+    with lab.build_slot():
+        jobs = caps.build_jobs(lab.build_capacity(), lab.live_emu_pairs())
+        code, output = runner.idf_build(str(wd), target, jobs)
+    log_path.write_text(output)
+    r = BuildResult(rel, target, transport, Status.OK if code == 0 else Status.FAIL,
+                    time.time() - t0, output.count("warning:"),
+                    count_hosted_warnings(output, [str(repo_root) + "/", str(work) + "/"]),
+                    log_path=str(log_path))
+    if r.status == Status.FAIL and lab.is_enospc(output):
+        r.status, r.reason = Status.INFRA, "no space left on device"
+    if r.status == Status.OK and export_root:
+        export_artifacts(r, wd, Path(export_root), repo_root, idf_path)
+    shutil.rmtree(work, ignore_errors=True)
+    with contextlib.suppress(OSError):
+        work.parent.rmdir()  # the example's dir, once its last target is gone
+    if r.status == Status.OK and not r.hosted_warnings and not keep_logs:
+        log_path.unlink(missing_ok=True)
+        r.log_path = ""
+    return r
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -536,7 +563,7 @@ def _print_result_line(r: BuildResult):
     dur = f"{r.duration_s:.0f}s" if r.duration_s else "-"
     warn = str(r.warnings) if r.status != Status.SKIP else "-"
     tr = r.transport or "-"
-    extra = f"  ({r.reason})" if r.status == Status.SKIP \
+    extra = f"  ({r.reason})" if r.status in (Status.SKIP, Status.INFRA) \
         else f"  -> {r.log_path}" if r.status == Status.FAIL else ""
     print(f"  {r.status.value:<8} {r.target:<12} {tr:<8} {dur:>5}  {warn:>5}  {r.example}{extra}")
 
@@ -556,8 +583,10 @@ def _print_totals(results: list[BuildResult]):
     ok = sum(1 for r in results if r.status == Status.OK)
     fail = sum(1 for r in results if r.status == Status.FAIL)
     skip = sum(1 for r in results if r.status == Status.SKIP)
+    infra = sum(1 for r in results if r.status == Status.INFRA)
     print(f"-" * 80)
-    print(f"  Total: OK={ok}  FAIL={fail}  SKIP={skip}\n")
+    print(f"  Total: OK={ok}  FAIL={fail}  SKIP={skip}"
+          + (f"  INFRA={infra}" if infra else "") + "\n")
     if fail:
         print("  Failed builds:")
         for r in results:
@@ -566,26 +595,34 @@ def _print_totals(results: list[BuildResult]):
         print()
 
 
+def write_report_md(results: list[BuildResult], output_dir: Path, total: int):
+    """Short run summary, rewritten after each build so it is current mid-run."""
+    count = lambda st: sum(1 for r in results if r.status == st)
+    lines = [f"# Example builds: {len(results)}/{total} done",
+             "",
+             f"OK {count(Status.OK)} · FAIL {count(Status.FAIL)} · "
+             f"SKIP {count(Status.SKIP)} · INFRA {count(Status.INFRA)}",
+             ""]
+    rows = [r for r in results if r.status in (Status.FAIL, Status.INFRA) or r.hosted_warnings]
+    if rows:
+        lines += ["| Status | Target | Example | Hosted warnings | Log / reason |",
+                  "|---|---|---|---|---|"]
+        for r in sorted(rows, key=lambda x: (x.status.value, x.example, x.target)):
+            where = os.path.basename(r.log_path) if r.log_path else r.reason
+            lines.append(f"| {r.status.value} | {r.target} | {r.example} | "
+                         f"{r.hosted_warnings} | {where} |")
+    tmp = output_dir / "report.md.tmp"
+    tmp.write_text("\n".join(lines) + "\n")
+    tmp.replace(output_dir / "report.md")
+
+
 def save_json_report(results: list[BuildResult], output_dir: Path):
     with open(output_dir / "report.json", "w") as f:
         json.dump([{
             "example": r.example, "target": r.target, "transport": r.transport,
             "status": r.status.value, "duration_s": round(r.duration_s, 1),
-            "warnings": r.warnings, "reason": r.reason, "log_path": r.log_path,
+            "warnings": r.warnings, "hosted_warnings": r.hosted_warnings, "reason": r.reason, "log_path": r.log_path,
         } for r in results], f, indent=2)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Log rotation
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def rotate_logs(output_dir: Path):
-    old = output_dir.with_name(output_dir.name + ".old")
-    if output_dir.exists():
-        if old.exists():
-            shutil.rmtree(old)
-        output_dir.rename(old)
-    output_dir.mkdir(parents=True, exist_ok=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -694,46 +731,24 @@ def _write_flash_command(dest: Path, target: str, short: str, parts: list):
         fc.write("\n")
 
 
-def _write_extra_info(dest: Path, repo_root: Path, idf_path: str, project_dir: str):
+def _write_extra_info(dest: Path, repo_root: Path, idf_path: str, work_dir: Path):
     extra_dir = dest / "extra_info"
     extra_dir.mkdir(exist_ok=True)
     for key, val in _collect_extra_info(repo_root, idf_path).items():
         (extra_dir / f"{key}.txt").write_text(val + "\n")
-    # Copy generated sdkconfig for cross-reference
-    # Check build_dir (already resolved by caller) and in-source fallback
-    for candidate in [dest.parent.parent / "config" / "sdkconfig.h",
-                      Path(project_dir) / "build" / "config" / "sdkconfig.h",
-                      Path(project_dir) / "sdkconfig"]:
-        if candidate.exists():
-            shutil.copy2(candidate, extra_dir / "sdkconfig")
-            break
+    if (work_dir / "sdkconfig").is_file():
+        shutil.copy2(work_dir / "sdkconfig", extra_dir / "sdkconfig")
 
 
-def export_artifacts(result: BuildResult, project_dir: str, target: str,
-                     export_root: Path, repo_root: Path, idf_path: str,
-                     output_dir: Optional[Path] = None) -> int:
+def export_artifacts(result: BuildResult, work_dir: Path, export_root: Path,
+                     repo_root: Path, idf_path: str) -> int:
     short = result.example.replace("examples/", "", 1)
-    short_flat = short.replace("/", "__")
-
-    # Try output_dir build layout first, fall back to in-source build/
-    if output_dir:
-        build_dir = output_dir / "builds" / short_flat / target
-    else:
-        build_dir = Path(project_dir) / "build"
-    if not build_dir.exists():
-        # Fallback to in-source for backwards compat
-        build_dir = Path(project_dir) / "build"
-    if not build_dir.exists():
-        return 0
-
-    dest = export_root / short / target
+    dest = export_root / short / result.target
     dest.mkdir(parents=True, exist_ok=True)
-
-    flash_pairs = _parse_flash_args(build_dir)
-    copied = _copy_bins(build_dir, dest, flash_pairs)
+    copied = _copy_bins(work_dir / "build", dest, _parse_flash_args(work_dir / "build"))
     _write_md5sums(dest)
-    _write_flash_command(dest, target, short, copied)
-    _write_extra_info(dest, repo_root, idf_path, project_dir)
+    _write_flash_command(dest, result.target, short, copied)
+    _write_extra_info(dest, repo_root, idf_path, work_dir)
     return len(copied)
 
 
@@ -754,14 +769,14 @@ def parse_args():
                    help="sdio,spi-fd,spi-hd,uart,all,default (e.g. --build-transports=sdio)")
     p.add_argument("--build-examples", default="all", metavar="EXAMPLES",
                    help="Comma-separated example substrings, or 'all'")
-    p.add_argument("--build-incremental", action="store_true",
-                   help="Skip idf.py fullclean")
     p.add_argument("--jobs", type=int, default=4, metavar="N",
                    help="Parallel build jobs (default: 4)")
     p.add_argument("--filter", default="", metavar="REGEX",
                    help="Regex filter on example path")
-    p.add_argument("--build-dir", default="build_logs", metavar="DIR",
-                   help="Build output directory for artifacts, logs, and report (default: build_logs/)")
+    p.add_argument("--build-dir", default=None, metavar="DIR",
+                   help="Run directory for logs, failed-build scratch and report "
+                        "(default: tests/.work/build_examples/<timestamp>, removed after "
+                        "EH_RETENTION_DAYS)")
     p.add_argument("--export-fw-bins-dir", default=None, metavar="DIR",
                    help="Export firmware binaries + metadata per example/target")
     p.add_argument("--shell", default="bash", metavar="SHELL",
@@ -769,10 +784,10 @@ def parse_args():
                    help="Shell for idf.py: bash, fish (default: bash)")
     p.add_argument("--idf-path", default=None, metavar="PATH",
                    help="ESP-IDF path (default: ~/esp-idf or $IDF_PATH)")
-    p.add_argument("--no-rotate", action="store_true",
-                   help="Don't rotate build_logs -> build_logs.old")
     p.add_argument("--list-compat", action="store_true",
                    help="Print compatibility matrix and exit")
+    p.add_argument("--no-cleanup", action="store_true",
+                   help="Keep the logs of passing builds too (build dirs are still deleted)")
     p.add_argument("--dry-run", action="store_true",
                    help="Show what would be built without building")
     p.add_argument("--clean", action="store_true",
@@ -805,14 +820,18 @@ def cmd_list_compat():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def setup_output(args, repo_root: Path) -> Path:
-    output_dir = Path(args.build_dir)
-    if not output_dir.is_absolute():
-        output_dir = repo_root / output_dir
-    if not args.no_rotate and not args.dry_run:
-        rotate_logs(output_dir)
+    """Sweep expired runs, check the disk floor, then create this run's dir."""
+    lab.sweep_expired()
+    lab.ensure_free("build_examples start")
+    if args.build_dir:
+        run_dir = Path(args.build_dir)
+        if not run_dir.is_absolute():
+            run_dir = repo_root / run_dir
     else:
-        output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir
+        run_dir = lab.BUILD_EXAMPLES / time.strftime("%Y%m%d-%H%M%S")
+    (run_dir / "logs").mkdir(parents=True, exist_ok=True)
+    lab.touch_last_used(run_dir)
+    return run_dir
 
 
 def collect_projects(args, examples_root: Path, repo_root: Path) -> list[Path]:
@@ -837,6 +856,8 @@ def make_jobs(projects: list[Path], targets: list[str]) -> list[tuple[str, str]]
 def print_live(result: BuildResult):
     if result.status == Status.SKIP:
         print(f"[SKIP] {result.example} [{result.target}] ({result.reason})")
+    elif result.status == Status.INFRA:
+        print(f"[INFRA] {result.example} [{result.target}] ({result.reason})")
     elif result.status == Status.OK:
         print(f"[OK]   {result.example} [{result.target}] "
               f"({result.duration_s:.0f}s, {result.warnings} warnings)")
@@ -845,13 +866,16 @@ def print_live(result: BuildResult):
               f"({result.duration_s:.0f}s, see {result.log_path})")
 
 
-def execute_builds(jobs, args, output_dir, idf_path, repo_root) -> list[BuildResult]:
+def execute_builds(jobs, args, output_dir, idf_path, repo_root,
+                   export_root) -> list[BuildResult]:
+    """Run builds in parallel. An INFRA result (disk full) cancels the builds not
+    yet started: they would fail the same way and bury the cause."""
     results = []
-    fullclean = not args.build_incremental
-    with ProcessPoolExecutor(max_workers=args.jobs) as pool:
+    workers = max(1, min(args.jobs, caps.build_capacity()))
+    with ProcessPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(build_single, p, t, args.shell,
-                        idf_path, fullclean, str(output_dir)): (p, t)
+            pool.submit(build_single, p, t, args.shell, idf_path, str(output_dir),
+                        export_root, args.no_cleanup): (p, t)
             for p, t in jobs
         }
         for future in as_completed(futures):
@@ -863,26 +887,11 @@ def execute_builds(jobs, args, output_dir, idf_path, repo_root) -> list[BuildRes
                 result = BuildResult(rel, t, "", Status.FAIL, reason=str(e))
             results.append(result)
             print_live(result)
+            write_report_md(results, Path(output_dir), len(jobs))
+            if result.status == Status.INFRA:
+                pool.shutdown(wait=True, cancel_futures=True)
+                break
     return results
-
-
-def do_export(results, jobs, args, repo_root, idf_path, output_dir):
-    export_root = Path(args.export_fw_bins_dir)
-    if not export_root.is_absolute():
-        export_root = repo_root / export_root
-    export_root.mkdir(parents=True, exist_ok=True)
-
-    exported = 0
-    for r in results:
-        if r.status != Status.OK:
-            continue
-        n = export_artifacts(r, str(repo_root / r.example), r.target,
-                             export_root, repo_root, idf_path,
-                             output_dir=output_dir)
-        if n:
-            exported += 1
-    if exported:
-        print(f"\n  Exported {exported} build(s) to {export_root}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -905,7 +914,11 @@ def main():
         print(f"\nTotal cleaned: {n} items.")
         return
 
-    output_dir = setup_output(args, repo_root)
+    try:
+        output_dir = setup_output(args, repo_root)
+    except lab.DiskExhausted as e:
+        print(f"INFRA: {e}", file=sys.stderr)
+        sys.exit(2)
     idf_path = args.idf_path or os.environ.get("IDF_PATH", os.path.expanduser("~/esp-idf"))
     targets = CompatMatrix.resolve_targets(args.build_targets)
 
@@ -918,7 +931,7 @@ def main():
     print(f"==> {len(projects)} example(s) x {len(targets)} target(s) = {len(jobs)} build(s)")
     print(f"==> Targets: {', '.join(targets)}")
     print(f"==> Transports: {args.build_transports}")
-    print(f"==> Shell: {args.shell}, Jobs: {args.jobs}, Fullclean: {not args.build_incremental}")
+    print(f"==> Shell: {args.shell}, Jobs: {args.jobs} (cap {caps.build_capacity()})")
     print(f"==> Output: {output_dir}\n")
 
     if args.dry_run:
@@ -928,15 +941,18 @@ def main():
             print(f"  {'[SKIP: ' + skip + ']' if skip else '[BUILD]'} {rel} [{t}]")
         return
 
-    results = execute_builds(jobs, args, output_dir, idf_path, repo_root)
-
+    export_root = None
     if args.export_fw_bins_dir:
-        do_export(results, jobs, args, repo_root, idf_path, output_dir)
+        export_root = Path(args.export_fw_bins_dir)
+        if not export_root.is_absolute():
+            export_root = repo_root / export_root
+        export_root = str(export_root)
+    results = execute_builds(jobs, args, output_dir, idf_path, repo_root, export_root)
 
     print_report(results, str(output_dir))
     save_json_report(results, output_dir)
 
-    sys.exit(1 if any(r.status == Status.FAIL for r in results) else 0)
+    sys.exit(1 if any(r.status in (Status.FAIL, Status.INFRA) for r in results) else 0)
 
 
 if __name__ == "__main__":
