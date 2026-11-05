@@ -1,4 +1,17 @@
 menu "Example Configuration"
+    choice EXAMPLE_SPINEL_LINK
+        prompt "Spinel link to the RCP"
+        default EXAMPLE_SPINEL_LINK_HOSTED
+        help
+            ESP-Hosted transport: spinel goes as ESP_AUX_IF frames on the ESP-Hosted bus.
+            It needs the ESP-IDF OpenThread custom transport, ESP-IDF commit 8c87790e47
+            (master and release/v6.2; not in v6.1 or older). Without it the build stops.
+            Dedicated UART: standard OpenThread on two extra wires, any ESP-IDF.
+        config EXAMPLE_SPINEL_LINK_HOSTED
+            bool "ESP-Hosted transport (ESP_AUX_IF)"
+        config EXAMPLE_SPINEL_LINK_UART
+            bool "Dedicated UART"
+    endchoice
 
     menu "Dedicated spinel UART"
         depends on OPENTHREAD_RADIO_SPINEL_UART
