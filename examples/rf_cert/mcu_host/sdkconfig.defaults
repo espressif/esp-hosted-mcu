@@ -16,3 +16,4 @@ CONFIG_ESP_HOSTED_HOST_FEAT_GPIO_EXP=y
 # runs before this app creates the REPL. Turn that off so the app can
 # register them itself, after esp_console is up.
 CONFIG_ESP_HOSTED_HOST_FEAT_CLI_AUTO_INIT=n
+CONFIG_FREERTOS_HZ=1000
