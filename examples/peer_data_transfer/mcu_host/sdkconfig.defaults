@@ -7,3 +7,4 @@ CONFIG_ESP_HOSTED=y
 CONFIG_ESP_HOSTED_HOST_FEAT_PEER_DATA=y
 
 # ── Transport: SDIO ─────────────────────────────────────────────────
+CONFIG_FREERTOS_HZ=1000

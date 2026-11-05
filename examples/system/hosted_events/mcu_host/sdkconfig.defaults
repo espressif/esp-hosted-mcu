@@ -11,3 +11,4 @@ CONFIG_ESP_HOSTED_HOST_FEAT_HEARTBEAT=y
 
 # App handles transport failures via hosted-events; disable auto-restart.
 CONFIG_ESP_HOSTED_HOST_TRANSPORT_RESTART_ON_FAILURE=n
+CONFIG_FREERTOS_HZ=1000
