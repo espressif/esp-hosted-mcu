@@ -147,13 +147,6 @@ static int radio_up(eh_fsm_t *m, const void *d)
     return EH_STA_ST_STARTED;
 }
 
-/* IDF posts STA_START before esp_wifi_start returns: the CP's report of it is the
- * tail. Without a station the start waits for a mode change to add one. */
-static int start_req(eh_fsm_t *m, const void *d)
-{
-    return s_sta.sta_mode ? radio_up(m, d) : EH_STA_ST_STARTED_NO_STA;
-}
-
 /* The app's station starts (its start, or a mode change adding it): a link the CP
  * already holds is the app's at once, as on a wake. */
 static int sta_begins(eh_fsm_t *m, const void *d)

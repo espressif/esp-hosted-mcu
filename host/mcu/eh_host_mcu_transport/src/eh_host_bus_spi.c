@@ -33,6 +33,11 @@
 #include "esp_timer.h"
 #include "esp_memory_utils.h"
 #include "eh_host_port_dma.h"
+#include "eh_host_port_idf_ver.h"
+
+#if EH_HOST_PORT_DMA_PREFER_SPIRAM && !EH_HOST_GOT_SPI_TRANS_DMA_USE_PSRAM
+#error "EH_HOST_PORT_DMA_PREFER_SPIRAM with the SPI host needs IDF v5.5.3 or later"
+#endif
 
 static inline void *eh_spi_dma_alloc_zero(size_t n)
 {
@@ -162,8 +167,10 @@ static int eh_spi_xfer_once(uint8_t *tx_buf, uint8_t *rx_buf)
         .rx_buffer = rx_buf,
         .flags     = SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL,
     };
+#if EH_HOST_GOT_SPI_TRANS_DMA_USE_PSRAM
     if (esp_ptr_dma_ext_capable(tx_buf) || esp_ptr_dma_ext_capable(rx_buf))
         t.flags |= SPI_TRANS_DMA_USE_PSRAM;
+#endif
 
     esp_err_t ret = spi_device_transmit(s_spi_dev, &t);
     if (ret != ESP_OK) {

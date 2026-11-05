@@ -11,7 +11,7 @@ static int compose_req_set_context(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
     ALLOC_PAYLOAD(RpcReqSetContext, req_set_context,
                   rpc__req__set_context__init);
     p->type      = c->u.ctx.type;
-    p->data.data = (uint8_t *)c->u.ctx.data;
+    p->data.data = (uint8_t *)(uintptr_t)c->u.ctx.data;
     p->data.len  = c->u.ctx.len;
     return 0;
 }

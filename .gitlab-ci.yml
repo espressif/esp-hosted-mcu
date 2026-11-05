@@ -234,6 +234,7 @@ runner_caps_diag:
         fi
         mkdir -p "$eh_name"
         cd esp_hosted
+        export EH_SRC_DIR="$PWD"
         ${IDF_PATH}/install.sh --enable-ci
         . ${IDF_PATH}/export.sh
         export ESP_HOSTED_CI_PEDANTIC=1
@@ -249,13 +250,15 @@ runner_caps_diag:
         rc=${PIPESTATUS[0]}
         if [ "$rc" -ne 0 ]; then echo ">>> BUILD FAILED (rc=$rc)"; return "$rc"; fi
         # A warning is OURS iff the file on the 'warning:' line lives inside THIS
-        # checkout ($CI_PROJECT_DIR == .../esp_hosted) and not in a vendored/
+        # checkout ($EH_SRC_DIR, set by eh_setup) and not in a vendored/
         # submodule subtree. GCC's 'In file included from ...' breadcrumbs never
         # carry 'warning:', so grepping 'warning:' keys off the diagnostic file
         # (where the fix must go), not the caller. IDF lives at /opt/esp/idf,
-        # outside the checkout, so its header warnings are never ours.
-        ours="$(grep -E 'warning:' /tmp/eh_build.log \
-                  | grep -F "$CI_PROJECT_DIR/" \
+        # outside the checkout, so its header warnings are never ours. Only
+        # compiler diagnostics (file:line:col): kconfgen also prints 'warning:'
+        # with our Kconfig paths, for optional components a target lacks.
+        ours="$(grep -E '\.(c|h|cc|cpp|S):[0-9]+:[0-9]+: warning:' /tmp/eh_build.log \
+                  | grep -F "${EH_SRC_DIR:?eh_setup not run}/" \
                   | grep -vF "/.deps/" \
                   | grep -vF "/managed_components/" \
                   | grep -vF "/third_party/" \
@@ -343,10 +346,12 @@ build_host_v55_p4:            # [PRE] host libs + Bluedroid stack + gpio on p4
            examples/bluetooth/esp_hosted_bluedroid/ble_gatt_server/mcu_host \
            examples/gpio_expander/mcu_host
 
-build_host_v55_h2:            # [PRE] h2 host + NimBLE stack
+# A fixed old patch, not release-v5.5: that branch floats to the newest 5.5.x
+# and hides a driver API that older 5.5 patches lack.
+build_host_v551_h2:           # [PRE] h2 host (SPI) + NimBLE stack
   extends: .build
   rules: *rules_pre
-  variables: { IDF_IMAGE: "release-v5.5" }
+  variables: { IDF_IMAGE: "v5.5.1" }
   script:
     - if ! bash tools/ci/decide_build.sh host; then echo ">>> host not affected by this change — skipping"; exit 0; fi
     - eh_setup

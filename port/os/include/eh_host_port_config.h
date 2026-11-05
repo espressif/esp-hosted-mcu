@@ -135,6 +135,12 @@
 #  endif
 #endif
 
+#ifdef CONFIG_EH_HOST_PORT_DMA_PREFER_SPIRAM
+#  define EH_HOST_PORT_DMA_PREFER_SPIRAM          1
+#else
+#  define EH_HOST_PORT_DMA_PREFER_SPIRAM          0
+#endif
+
 #ifndef EH_HOST_PORT_HAS_LOG
 #  ifdef CONFIG_EH_HOST_PORT_HAS_LOG
 #    define EH_HOST_PORT_HAS_LOG                  CONFIG_EH_HOST_PORT_HAS_LOG

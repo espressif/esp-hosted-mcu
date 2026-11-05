@@ -30,9 +30,9 @@ WORKFLOW = ROOT / ".github" / "workflows" / "upload_component.yml"
 # build job -> which side it must gate on
 CP_JOBS = ["build_cp_super", "build_cp_super_ext", "build_cp_specials",
            "build_cp_usb_otg"]
-HOST_JOBS = ["build_host_v55_p4", "build_host_v55_h2", "build_host_usb_otg",
+HOST_JOBS = ["build_host_v55_p4", "build_host_v551_h2", "build_host_usb_otg",
              "build_host_latest_p4", "build_host_v60_p4", "build_host_v551_p4"]
-PRE_JOBS = ["build_cp_super", "build_host_v55_p4", "build_host_v55_h2",
+PRE_JOBS = ["build_cp_super", "build_host_v55_p4", "build_host_v551_h2",
             "build_cp_usb_otg", "build_host_usb_otg"]
 # MR pipeline only. Not .rules_pre (that also matches release/*).
 MR_ONLY_JOBS = ["build_cp_usb_otg", "build_host_usb_otg"]

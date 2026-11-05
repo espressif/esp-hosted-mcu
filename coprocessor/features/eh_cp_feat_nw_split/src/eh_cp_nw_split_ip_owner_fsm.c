@@ -81,6 +81,12 @@ static bool cp_static(void)
            esp_netif_get_ip_info(s_netif, &ip) == ESP_OK && ip.ip.addr != 0;
 }
 
+/* Handlers write the result into the caller's request. */
+static req_t *req_of(const void *d)
+{
+    return (req_t *)(uintptr_t)d;
+}
+
 static bool may_go_host(eh_fsm_t *m, req_t *r)
 {
     if (s_host_allowed && !cp_static()) {
@@ -101,7 +107,7 @@ static int grant(eh_fsm_t *m, const void *d)
 
 static int cp_down_want_host(eh_fsm_t *m, const void *d)
 {
-    if (!may_go_host(m, (req_t *)d)) {
+    if (!may_go_host(m, req_of(d))) {
         return EH_FSM_STAY;
     }
     client_off();
@@ -110,7 +116,7 @@ static int cp_down_want_host(eh_fsm_t *m, const void *d)
 
 static int cp_up_want_host(eh_fsm_t *m, const void *d)
 {
-    return may_go_host(m, (req_t *)d) ? ST_CP_UP_TO_HOST : EH_FSM_STAY;
+    return may_go_host(m, req_of(d)) ? ST_CP_UP_TO_HOST : EH_FSM_STAY;
 }
 
 static int host_down_want_cp(eh_fsm_t *m, const void *d)
@@ -146,7 +152,7 @@ static int down_to_cp(eh_fsm_t *m, const void *d)
 
 static int refuse_lease(eh_fsm_t *m, const void *d)
 {
-    req_t *r = (req_t *)d;
+    req_t *r = req_of(d);
 
     ESP_LOGW(TAG, "%s: host lease " IPSTR " refused, the CP owns the IP",
              eh_fsm_state_name(m, m->state), IP2STR(&r->ip->ip));
@@ -156,7 +162,7 @@ static int refuse_lease(eh_fsm_t *m, const void *d)
 
 static int take_lease(eh_fsm_t *m, const void *d)
 {
-    req_t *r = (req_t *)d;
+    req_t *r = req_of(d);
 
     (void)m;
     r->rc = esp_netif_set_ip_info(s_netif, r->ip);
@@ -166,7 +172,7 @@ static int take_lease(eh_fsm_t *m, const void *d)
     }
     if (r->dns && r->dns->ip.u_addr.ip4.addr != 0) {
         r->rc = esp_netif_set_dns_info(s_netif, (esp_netif_dns_type_t)r->dns_type,
-                                       (esp_netif_dns_info_t *)r->dns);
+                                       (esp_netif_dns_info_t *)(uintptr_t)r->dns);
     }
     ESP_LOGI(TAG, "host lease on the CP netif: " IPSTR, IP2STR(&r->ip->ip));
     return EH_FSM_STAY;
@@ -213,7 +219,7 @@ static int stop(eh_fsm_t *m, const void *d)
 static int invalid_state(eh_fsm_t *m, const void *d)
 {
     (void)m;
-    ((req_t *)d)->rc = ESP_ERR_INVALID_STATE;
+    req_of(d)->rc = ESP_ERR_INVALID_STATE;
     return EH_FSM_STAY;
 }
 

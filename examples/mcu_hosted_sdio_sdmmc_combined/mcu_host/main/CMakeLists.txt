@@ -4,7 +4,7 @@ set(srcs "sd_card_example_main.c"
 
 idf_component_register(SRCS ${srcs}
                        INCLUDE_DIRS "."
-                       REQUIRES fatfs esp_wifi
+                       REQUIRES fatfs esp_wifi esp_driver_gpio
                        WHOLE_ARCHIVE)
 
 if(NOT CONFIG_SOC_SDMMC_HOST_SUPPORTED)
