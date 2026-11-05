@@ -86,13 +86,21 @@ _EMU_HOST_OVL = (
     "CONFIG_OPENTHREAD_NETWORK_AUTO_START=y",
 )
 
+# Spinel over ESP_AUX_IF needs the OpenThread custom transport, ESP-IDF commit
+# 8c87790e47 (master, release/v6.2). Without it the example build stops with #error.
+_NEEDS_OT_CUSTOM = pytest.mark.requires_idf(
+    "openthread", "OPENTHREAD_RADIO_SPINEL_CUSTOM",
+    reason="hosted spinel link needs the ESP-IDF OpenThread custom transport (8c87790e47)")
+
 # The example defaults carry spinel over the ESP-Hosted transport (ESP_AUX_IF).
 # The "uart" link is standard OpenThread on a dedicated spinel UART on both
 # sides: the CP app starts the RCP at boot and the hosted OT feature is off.
-_UART_HOST_OVL = ("CONFIG_OPENTHREAD_RADIO_SPINEL_UART=y",
+_UART_HOST_OVL = ("CONFIG_EXAMPLE_SPINEL_LINK_UART=y",
+                  "CONFIG_OPENTHREAD_RADIO_SPINEL_UART=y",
                   "CONFIG_EXAMPLE_HOST_UART_TX_PIN=11",
                   "CONFIG_EXAMPLE_HOST_UART_RX_PIN=10")
-_UART_CP_OVL = ("CONFIG_OPENTHREAD_RCP_UART=y",
+_UART_CP_OVL = ("CONFIG_EXAMPLE_SPINEL_LINK_UART=y",
+                "CONFIG_OPENTHREAD_RCP_UART=y",
                 "CONFIG_EXAMPLE_RCP_UART_TX_PIN=21",
                 "CONFIG_EXAMPLE_RCP_UART_RX_PIN=20")
 
@@ -218,9 +226,9 @@ cd build && python -m esptool --chip esp32c6 merge_bin -o merged_flash.bin @flas
 # verified: host fails to attach). NOT spi_fd either (the emu clock-flaky wire).
 @pytest.mark.xdist_group("emu_heavy")  # serialize with the other heavy/spi_fd cells
 @pytest.mark.parametrize("transport,link", [
-    pytest.param("sdio", "hosted", marks=pytest.mark.sanity, id="sdio-hosted"),
+    pytest.param("sdio", "hosted", marks=[pytest.mark.sanity, _NEEDS_OT_CUSTOM], id="sdio-hosted"),
     pytest.param("sdio", "uart", id="sdio-uart"),
-    pytest.param("spi_hd", "hosted", id="spi_hd-hosted"),
+    pytest.param("spi_hd", "hosted", marks=_NEEDS_OT_CUSTOM, id="spi_hd-hosted"),
     pytest.param("spi_hd", "uart", marks=pytest.mark.sanity, id="spi_hd-uart"),
 ])
 def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport, link):
@@ -325,8 +333,8 @@ def test_ot_cli_2node_association(bench, lab_tmp, worker_id, transport, link):
 # ("uart"; ESP-Hosted keeps running on the bus). The emu is skipped: its RCP radio needs the --thread-sim peer,
 # which the 2-node test above covers.
 @pytest.mark.parametrize("transport,link", [
-    pytest.param("sdio", "hosted", marks=pytest.mark.sanity),
-    ("spi_hd", "hosted"),
+    pytest.param("sdio", "hosted", marks=[pytest.mark.sanity, _NEEDS_OT_CUSTOM]),
+    pytest.param("spi_hd", "hosted", marks=_NEEDS_OT_CUSTOM),
     ("spi_hd_2", "uart")])
 def test_ot_cli_hw_single_node_attach(bench, substrate, transport, link):
     if substrate != "hw":
@@ -337,7 +345,8 @@ def test_ot_cli_hw_single_node_attach(bench, substrate, transport, link):
         ovl = board_spinel_uart_overlays(transport)
         if not ovl:
             pytest.skip(f"bench board has no spinel UART beside {transport} (tests/boards/<board>.json ot_spinel_uart)")
-        host_ovl, cp_ovl = ovl
+        host_ovl = ("CONFIG_EXAMPLE_SPINEL_LINK_UART=y",) + ovl[0]
+        cp_ovl = ("CONFIG_EXAMPLE_SPINEL_LINK_UART=y",) + ovl[1]
     b = bench("openthread/rcp_on_hosted_cp/cli", "esp_host", transport, timeout="150s",
               overlay=("CONFIG_OPENTHREAD_NETWORK_AUTO_START=y",) + host_ovl,
               cp_overlay=cp_ovl)

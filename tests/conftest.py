@@ -144,6 +144,9 @@ def pytest_collection_modifyitems(config, items):
       pass/fail stats. For a case fully covered elsewhere, kept as a record.
     - @pytest.mark.maintenance(reason="...") — SKIPPED: shown as skipped
       'maintenance: <reason>'. Temporarily parked while its support is fixed.
+    - @pytest.mark.requires_idf("<component>", "<KCONFIG_SYMBOL>", reason="...") —
+      SKIPPED as 'prerequisite: <reason>' when the resolved ESP-IDF does not
+      declare that Kconfig symbol (the build would drop it silently).
     - @pytest.mark.sanity — one representative (test, transport) per scenario,
       spread so the set exercises every transport once. --sanity runs only these;
       no set flag runs every test. -k (pytest's own) narrows whichever set results.
@@ -177,6 +180,12 @@ def pytest_collection_modifyitems(config, items):
         if m:
             reason = m.kwargs.get("reason") or (m.args[0] if m.args else "") or "parked"
             item.add_marker(pytest.mark.skip(reason=f"maintenance: {reason}"))
+        for req in item.iter_markers("requires_idf"):
+            from infra import build_fw
+            comp, sym = req.args
+            if not build_fw.idf_kconfig_has(comp, sym):
+                why = req.kwargs.get("reason") or f"needs ESP-IDF {comp} Kconfig {sym}"
+                item.add_marker(pytest.mark.skip(reason=f"prerequisite: {why}"))
         # spi_fd's systematic break (the emu CP CS-pin: emu defaulted CS to GPIO 10
         # while FUNC_BOARD uses 18, so the CP never armed a transaction) is FIXED, so
         # spi_fd now GATES like every other wire — NO allow_fail. What remains is

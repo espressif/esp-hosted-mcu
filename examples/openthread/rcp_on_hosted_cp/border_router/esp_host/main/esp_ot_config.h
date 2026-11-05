@@ -22,6 +22,10 @@
     {                                                      \
         .radio_mode = RADIO_MODE_NATIVE,                   \
     }
+#elif CONFIG_EXAMPLE_SPINEL_LINK_HOSTED && !CONFIG_OPENTHREAD_RADIO_SPINEL_CUSTOM
+#error "Spinel over ESP-Hosted needs the ESP-IDF OpenThread custom transport (ESP-IDF commit 8c87790e47: master, release/v6.2). Use such an ESP-IDF, or select EXAMPLE_SPINEL_LINK_UART."
+#elif CONFIG_EXAMPLE_SPINEL_LINK_UART && !CONFIG_OPENTHREAD_RADIO_SPINEL_UART
+#error "EXAMPLE_SPINEL_LINK_UART: set CONFIG_OPENTHREAD_RADIO_SPINEL_UART"
 #elif CONFIG_OPENTHREAD_RADIO_SPINEL_UART
 /* Standard OpenThread over a dedicated UART: ESP-Hosted does not carry spinel. */
 _Static_assert(CONFIG_EXAMPLE_HOST_UART_TX_PIN >= 0 && CONFIG_EXAMPLE_HOST_UART_RX_PIN >= 0,

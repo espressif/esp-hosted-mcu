@@ -23,11 +23,19 @@ flowchart LR
     RCP <-.->|"802.15.4 RF"| P["Thread peer"]
 ```
 
-Needs an ESP-IDF with the OpenThread custom transport (ESP-IDF master).
+ESP-IDF requirement: the OpenThread custom transport, ESP-IDF commit [`8c87790e47`](https://github.com/espressif/esp-idf/commit/8c87790e47b6aeccb6ec94cd77534cb0564442c8) ("feat(openthread) Add custom transport to OpenThread"). As of 2026-11-05:
+
+| ESP-IDF | Custom transport |
+| --- | --- |
+| master | Yes |
+| release/v6.2 (no release tag yet) | Yes |
+| v6.1.x, v6.0.x, v5.x | No |
+
+The example selects the ESP-Hosted link by default (`EXAMPLE_SPINEL_LINK_HOSTED`). On an ESP-IDF without the custom transport, its build stops with `#error`: use an ESP-IDF from the table, or select `EXAMPLE_SPINEL_LINK_UART`.
 
 ### Option: spinel on a dedicated UART (standard OpenThread)
 
-Like ESP-IDF `ot_rcp` + `ot_cli`: ESP-Hosted does not carry spinel. Two extra wires (TX, RX). Use it when your ESP-IDF has no custom transport; ESP-IDF then selects UART on its own.
+Like ESP-IDF `ot_rcp` + `ot_cli`: ESP-Hosted does not carry spinel. Two extra wires (TX, RX). Use it when your ESP-IDF has no custom transport: select `EXAMPLE_SPINEL_LINK_UART` in menuconfig (Example Configuration).
 
 ```mermaid
 flowchart LR

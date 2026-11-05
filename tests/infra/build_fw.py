@@ -79,6 +79,21 @@ def _idf_path_opt():
 
 
 @functools.lru_cache(maxsize=None)
+def idf_kconfig_has(component: str, symbol: str) -> bool:
+    """True when the resolved ESP-IDF declares `config <symbol>` in any Kconfig
+    file of `component`. A symbol the IDF lacks is silently dropped from an
+    sdkconfig overlay, so this is the only reliable check before a build."""
+    idf = _idf_path_opt()
+    if not idf:
+        return False
+    pat = re.compile(rf"^\s*(menu)?config\s+{re.escape(symbol)}\s*$", re.M)
+    for kc in (Path(idf) / "components" / component).glob("Kconfig*"):
+        if pat.search(kc.read_text(errors="replace")):
+            return True
+    return False
+
+
+@functools.lru_cache(maxsize=None)
 def idf_identity() -> str:
     """IDF commit + applied tools/idf_patches + path; no tree scan, so it is stable on a
     cold disk. A change wipes every build dir (lab.check_idf_identity)."""

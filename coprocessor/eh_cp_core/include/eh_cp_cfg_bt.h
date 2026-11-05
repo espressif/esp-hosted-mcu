@@ -4,13 +4,98 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* BT-private: CONFIG_ESP_HOSTED_BT_* and IDF controller UART values → EH_CP_BT_*.
- * IDF selectors (target, controller arch, mode) stay in eh_cp_feat_bt_core.h. */
+/* Bluetooth: IDF controller selectors and UART values. Part of eh_cp_master_config.h: include that header, not this one. */
 
-#ifndef EH_CP_FEAT_BT_CFG_H
-#define EH_CP_FEAT_BT_CFG_H
+#ifndef EH_CP_CFG_BT_H
+#define EH_CP_CFG_BT_H
 
-#include "eh_cp_master_config.h"
+#ifndef EH_CP_MASTER_CONFIG_H
+#error "include eh_cp_master_config.h, not eh_cp_cfg_bt.h"
+#endif
+
+/* Bluetooth: IDF controller selectors and UART values → EH_CP_BT_*. */
+#if defined(CONFIG_BT_ENABLED)
+#  define EH_CP_BT_ENABLED                      1
+#else
+#  define EH_CP_BT_ENABLED                      0
+#endif
+#if EH_CP_BT_ENABLED && !defined(CONFIG_SOC_BT_SUPPORTED)
+#  error "Bluetooth is enabled but this chip has no Bluetooth (CONFIG_SOC_BT_SUPPORTED is unset). Disable Bluetooth for this target."
+#endif
+#if defined(CONFIG_BT_DUAL_MODE_ARCH)
+#  define EH_CP_BT_DUAL_MODE_ARCH               1
+#else
+#  define EH_CP_BT_DUAL_MODE_ARCH               0
+#endif
+
+/* Controller mode — ESP32 (BTDM_CONTROLLER_*) and dual-mode arch (BTDM_CTRL_*) */
+#if defined(CONFIG_BTDM_CONTROLLER_MODE_BLE_ONLY) || defined(CONFIG_BTDM_CTRL_MODE_BLE_ONLY)
+#  define EH_CP_BT_CTRL_MODE_BLE_ONLY           1
+#else
+#  define EH_CP_BT_CTRL_MODE_BLE_ONLY           0
+#endif
+#if defined(CONFIG_BTDM_CONTROLLER_MODE_BR_EDR_ONLY) || defined(CONFIG_BTDM_CTRL_MODE_BR_EDR_ONLY)
+#  define EH_CP_BT_CTRL_MODE_BR_EDR_ONLY        1
+#else
+#  define EH_CP_BT_CTRL_MODE_BR_EDR_ONLY        0
+#endif
+#if defined(CONFIG_BTDM_CONTROLLER_MODE_BTDM) || defined(CONFIG_BTDM_CTRL_MODE_BTDM)
+#  define EH_CP_BT_CTRL_MODE_BTDM               1
+#else
+#  define EH_CP_BT_CTRL_MODE_BTDM               0
+#endif
+
+/* HCI interface and UART flow control, per controller */
+#if defined(CONFIG_BTDM_CONTROLLER_HCI_MODE_VHCI)
+#  define EH_CP_BT_HCI_VHCI_ESP32               1
+#else
+#  define EH_CP_BT_HCI_VHCI_ESP32               0
+#endif
+#if defined(CONFIG_BTDM_CTRL_HCI_UART_FLOW_CTRL_EN)
+#  define EH_CP_BT_UART_FLOWCTRL_ESP32          1
+#else
+#  define EH_CP_BT_UART_FLOWCTRL_ESP32          0
+#endif
+#if defined(CONFIG_BT_CTRL_HCI_MODE_VHCI)
+#  define EH_CP_BT_HCI_VHCI_C3_S3               1
+#else
+#  define EH_CP_BT_HCI_VHCI_C3_S3               0
+#endif
+#if defined(CONFIG_BT_CTRL_HCI_MODE_UART_H4)
+#  define EH_CP_BT_HCI_UART_C3_S3               1
+#else
+#  define EH_CP_BT_HCI_UART_C3_S3               0
+#endif
+#if defined(CONFIG_BT_CTRL_HCI_INTERFACE_USE_RAM)
+#  define EH_CP_BT_HCI_VHCI_DM_ARCH             1
+#else
+#  define EH_CP_BT_HCI_VHCI_DM_ARCH             0
+#endif
+#if defined(CONFIG_BT_CTRL_HCI_INTERFACE_USE_UART)
+#  define EH_CP_BT_HCI_UART_DM_ARCH             1
+#else
+#  define EH_CP_BT_HCI_UART_DM_ARCH             0
+#endif
+#if defined(CONFIG_BT_CTRL_HCI_UART_FLOWCTRL)
+#  define EH_CP_BT_UART_FLOWCTRL_DM_ARCH        1
+#else
+#  define EH_CP_BT_UART_FLOWCTRL_DM_ARCH        0
+#endif
+#if defined(CONFIG_BT_LE_HCI_INTERFACE_USE_RAM)
+#  define EH_CP_BT_HCI_VHCI_LE                  1
+#else
+#  define EH_CP_BT_HCI_VHCI_LE                  0
+#endif
+#if defined(CONFIG_BT_LE_HCI_INTERFACE_USE_UART)
+#  define EH_CP_BT_HCI_UART_LE                  1
+#else
+#  define EH_CP_BT_HCI_UART_LE                  0
+#endif
+#if defined(CONFIG_BT_LE_HCI_UART_FLOWCTRL)
+#  define EH_CP_BT_UART_FLOWCTRL_LE             1
+#else
+#  define EH_CP_BT_UART_FLOWCTRL_LE             0
+#endif
 
 /* UART — ESP32 */
 #ifdef CONFIG_ESP_HOSTED_BT_UART_TX_PIN_ESP32
@@ -100,4 +185,4 @@
 #  define EH_CP_BT_UART_FLOWCTRL_ENABLED        0
 #endif
 
-#endif /* EH_CP_FEAT_BT_CFG_H */
+#endif /* EH_CP_CFG_BT_H */

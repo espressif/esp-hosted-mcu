@@ -18,6 +18,12 @@
 
 static const char *TAG = "ot_br_cp";
 
+#if CONFIG_EXAMPLE_SPINEL_LINK_HOSTED && !CONFIG_OPENTHREAD_RCP_CUSTOM
+#error "Spinel over ESP-Hosted needs the ESP-IDF OpenThread custom transport (ESP-IDF commit 8c87790e47: master, release/v6.2). Use such an ESP-IDF, or select EXAMPLE_SPINEL_LINK_UART."
+#elif CONFIG_EXAMPLE_SPINEL_LINK_UART && !CONFIG_OPENTHREAD_RCP_UART
+#error "EXAMPLE_SPINEL_LINK_UART: set CONFIG_OPENTHREAD_RCP_UART"
+#endif
+
 #if CONFIG_OPENTHREAD_RCP_UART
 /* Standard OpenThread RCP on a dedicated UART, as ESP-IDF
  * examples/openthread/ot_rcp. ESP-Hosted does not carry spinel here. */

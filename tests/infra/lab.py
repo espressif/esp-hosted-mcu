@@ -36,6 +36,7 @@ CACHE = WORK / "cache"
 SHARED = WORK / ".shared"  # image key -> owning build dir; outside cache/ so eviction keeps it
 SOCK_DIR = WORK / "sock"
 RUNS = WORK / "runs"
+BUILD_EXAMPLES = WORK / "build_examples"  # tests/tools/build_examples.py runs
 
 # 7d: scratch is purged on PASS at teardown (eh_logcap, R8), so the age-sweep is only a
 # backstop for FAIL scratch + strays. EH_RETENTION_DAYS overrides.
@@ -550,7 +551,7 @@ def _last_used(d) -> float:
 
 
 def sweep_expired(days=None) -> int:
-    """Prune runs/ and cache/ entries last used more than `days` ago (default
+    """Prune runs/, cache/ and build_examples/ entries last used more than `days` ago (default
     retention_days()). One stat per top-level entry, so it's cheap to run at every
     startup. Never removes the current run ($EH_RUN_DIR). Returns the count removed."""
     days = retention_days() if days is None else days
@@ -560,7 +561,7 @@ def sweep_expired(days=None) -> int:
     keep = os.environ.get("EH_RUN_DIR")
     keep = str(Path(keep)) if keep else None
     removed = 0
-    for base in (RUNS, CACHE):
+    for base in (RUNS, CACHE, BUILD_EXAMPLES):
         if not base.is_dir():
             continue
         for d in base.iterdir():
@@ -591,7 +592,7 @@ def sweep_expired(days=None) -> int:
                 pass
     # Top-level strays under WORK that belong to no blessed subdir — the same age rule.
     _blessed = {"cache", "runs", "sock", ".locks", ".emu_slots", "spawned", "adhoc",
-                "ccache", SHARED.name}
+                "ccache", BUILD_EXAMPLES.name, SHARED.name}
     if WORK.is_dir():
         for d in WORK.iterdir():
             if d.name in _blessed or _is_live(d):
@@ -910,7 +911,12 @@ def ensure_free(stage="run", floor_gb=None) -> float:
     free = free_gb()
     if free >= floor:
         return free
-    # 2) oldest runs, keeping the newest few for debugging (never the current one).
+    # 2) oldest example-build runs (the newest is the one in progress), then
+    #    oldest test runs, keeping the newest few for debugging (never the current one).
+    _evict_lru(BUILD_EXAMPLES, keep_newest=1, stop_when=lambda: free_gb() >= floor)
+    free = free_gb()
+    if free >= floor:
+        return free
     _evict_lru(RUNS, keep_newest=2, stop_when=lambda: free_gb() >= floor)
     free = free_gb()
     if free >= floor:
