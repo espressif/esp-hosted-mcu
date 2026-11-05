@@ -72,7 +72,7 @@ esp_err_t __wrap_esp_wifi_connect(void);
 
 static void publish(int32_t id, const void *data, size_t size)
 {
-	if (esp_event_post(EH_CP_FEAT_WIFI_EVENT, id, (void *)data, size,
+	if (esp_event_post(EH_CP_FEAT_WIFI_EVENT, id, data, size,
 			EH_CP_TIMEOUT_IN_MSEC(EH_CP_EVT_DFLT_TIMEOUT)) != ESP_OK) {
 		ESP_LOGE(TAG, "station event %d lost", (int)id);
 	}

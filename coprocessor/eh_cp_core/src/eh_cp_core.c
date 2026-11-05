@@ -60,13 +60,8 @@ static const char TAG[] = "ehcp_core";
 
 #define ETH_DATA_LEN                     1500
 /* Host->WiFi TX retry-on-transient-pool-full: hold the frame briefly so bursty
- * TCP paces via SDIO credit instead of dropping into an RTO. Tunable via Kconfig
- * (throughput vs latency); default 16 keeps the fallback for non-Kconfig builds. */
-#ifdef CONFIG_ESP_HOSTED_CP_WIFI_TX_RETRY_LIMIT
-#define MAX_WIFI_STA_TX_RETRY            CONFIG_ESP_HOSTED_CP_WIFI_TX_RETRY_LIMIT
-#else
+ * TCP paces via SDIO credit instead of dropping into an RTO. */
 #define MAX_WIFI_STA_TX_RETRY            16
-#endif
 #define WIFI_TX_RETRY_DELAY_MS           1
 
 /* Serial RX reassembly buffer: heap-grown via realloc per fragment. */
@@ -536,6 +531,7 @@ static void process_priv_command(uint8_t *payload, uint16_t payload_len)
 #endif
 }
 
+#if EH_CP_FEAT_WIFI_READY
 /* Hold the frame over transient WiFi pool exhaustion so a burst paces on the
  * bus instead of dropping into a TCP RTO. Any other error is terminal. */
 static int wifi_tx_with_retry(wifi_interface_t wifi_if, uint8_t *payload,
@@ -553,6 +549,7 @@ static int wifi_tx_with_retry(wifi_interface_t wifi_if, uint8_t *payload,
 
 	return ret;
 }
+#endif
 
 static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
