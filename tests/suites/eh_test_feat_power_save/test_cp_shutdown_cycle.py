@@ -49,10 +49,15 @@ FAIL = FATAL_PATTERNS + ['CORRUPT HEAP', 'Firmware abort', 'abort()']
         reason="emu CPU-starved under --jobs 16 exceeds firmware 5s RPC timeout; passes isolated")),
 ])
 @pytest.mark.second_chance
-def test_cp_shutdown_cold_boot_cycles(bench, transport):
+def test_cp_shutdown_cold_boot_cycles(bench, wifi_ap, transport):
+    if not wifi_ap:
+        pytest.skip("no AP creds — add to lab.local.json to enable")
     # Poisoning on so a stray UAF/IMR/IMW during teardown/re-init aborts (CORRUPT HEAP).
+    ovl = ["CONFIG_HEAP_POISONING_COMPREHENSIVE=y",
+           f'CONFIG_ESP_WIFI_SSID="{wifi_ap["ssid"]}"',
+           f'CONFIG_ESP_WIFI_PASSWORD="{wifi_ap["password"]}"']
     b = bench("power_save/cp/shut_down_cp_when_unused", "mcu_host", transport,
-              timeout="300s", overlay=["CONFIG_HEAP_POISONING_COMPREHENSIVE=y"])
+              timeout="300s", overlay=ovl)
     host, cp = b["host"], b["cp"]
 
     # Initial cold boot + first association.

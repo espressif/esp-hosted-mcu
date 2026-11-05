@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2015-2025 Espressif Systems (Shanghai) PTE LTD
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "eh_cp_master_config.h"
 #if EH_CP_FEAT_BT_READY
@@ -17,7 +20,7 @@ void eh_cp_feat_bt_init_uart(esp_bt_controller_config_t *cfg)
 	ESP_LOGI(TAG, "UART%d Pins: TX %d, RX %d, RTS %d, CTS %d Baudrate:%d",
 			EH_CP_BT_UART,
 			BT_TX_PIN, BT_RX_PIN, BT_RTS_PIN, BT_CTS_PIN,
-			CONFIG_BTDM_CTRL_HCI_UART_BAUDRATE);
+			EH_CP_BT_UART_BAUDRATE_ESP32);
 
 #if EH_CP_BT_UART == 1
 	periph_module_enable(PERIPH_UART1_MODULE);

@@ -28,6 +28,7 @@ import pytest
 from infra import build_fw, flasher, lab
 from infra.emu_dut import settle_check
 from infra.serial_dut import SerialDut
+from tools.build_examples import CompatMatrix
 
 from .base import Bench, BenchProvider, BenchSpec
 
@@ -307,6 +308,9 @@ class SerialTarget(BenchProvider):
         # Resolve the actual chips from the bench (declared or probed), not spec
         # defaults — the substrate adapts to whatever silicon is connected.
         host_target, cp_target, host_rev = _resolve_targets(bench, spec)
+        skip = CompatMatrix.should_skip_example(spec.example, cp_target)
+        if skip:
+            pytest.skip(skip)
         rev_ovl = _rev_overlay(host_target, host_rev, bench.host_port)
         # Per-transport bus overlay (sdio = neutral default → none). SPI/SPI-HD
         # select the bus; the board symbol in *_board_ovl auto-selects that board's
@@ -321,7 +325,18 @@ class SerialTarget(BenchProvider):
 
         cp_fw = build_fw.build(spec.example, spec.cp_role, cp_target, cp_ovl,
                                inject=spec.cp_inject)
-        host_fw = build_fw.build(spec.example, spec.host_role, host_target, host_ovl)
+        # Same staging as emu: the host OTAs exactly the app-only CP .bin it was
+        # built against; cp_ota_ovl builds a different OTA config from transport
+        # + board overlays only (the boot image's choice lines would conflict).
+        host_inject = dict(spec.host_inject or {})
+        if spec.cp_app_to_host:
+            ota_fw = cp_fw
+            if spec.cp_ota_ovl:
+                ota_fw = build_fw.build(spec.example, spec.cp_role, cp_target,
+                                        cp_x + bench.cp_board_ovl + list(spec.cp_ota_ovl))
+            host_inject[spec.cp_app_to_host] = ota_fw["elf"][:-4] + ".bin"
+        host_fw = build_fw.build(spec.example, spec.host_role, host_target, host_ovl,
+                                 inject=host_inject or None)
         build_fw.stash_logs(lab_tmp, cp=cp_fw, host=host_fw)
         cp_build_dir = os.path.join(cp_fw["dir"], "build")
         host_build_dir = os.path.join(host_fw["dir"], "build")

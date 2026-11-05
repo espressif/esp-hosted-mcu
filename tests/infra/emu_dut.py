@@ -57,7 +57,59 @@ class _Pexpect:
         return self._dut._unconsumed().encode('utf-8', errors='replace')
 
 
-class EmuDut:
+class ExpectMixin:
+    """expect / expect_exact over `_unconsumed()` + a forward-only `_cursor`.
+    Shared by EmuDut and SerialDut so both substrates match identically.
+
+    Subclass hooks: `_exited()` ends the wait early; `_exit_error(t0, success)`
+    returns the exception to raise instead of TimeoutError (or None)."""
+
+    def _exited(self):
+        return False
+
+    def _exit_error(self, t0, success):
+        return None
+
+    def _expect(self, success, not_matching, timeout, exact):
+        fails = [not_matching] if isinstance(not_matching, str) else list(not_matching or [])
+        wants = [success] if isinstance(success, str) else list(success)
+        t0 = time.time()
+        end = t0 + timeout
+        while time.time() < end:
+            done = self._exited()           # scan once more what it left behind
+            text = self._unconsumed()
+            hit = None                      # (start, end, result) of the first want found
+            for w in wants:
+                idx = text.find(w) if exact else None
+                m = None if exact else re.search(w, text)
+                if (exact and idx >= 0) or m:
+                    hit = (idx, idx + len(w), w) if exact else (m.start(), m.end(), m)
+                    break
+            # As pytest-embedded: only a fail pattern BEFORE the match fails it.
+            before = text[:hit[0]] if hit else text
+            for fp in fails:
+                if (fp in before) if exact else re.search(fp, before):
+                    raise RuntimeError(f'not_matching pattern hit: {fp!r}')
+            if hit:
+                with self._lock:
+                    self._cursor += hit[1]
+                return hit[2]               # like pytest-embedded: the match for a regex
+            if done:
+                break
+            time.sleep(0.05)
+        err = self._exit_error(t0, success)
+        if err:
+            raise err
+        raise TimeoutError(f'[{self.name}] timeout ({timeout}s) waiting for {success!r}')
+
+    def expect(self, success, not_matching=None, timeout=15):
+        return self._expect(success, not_matching, timeout, exact=False)
+
+    def expect_exact(self, success, not_matching=None, timeout=15):
+        return self._expect(success, not_matching, timeout, exact=True)
+
+
+class EmuDut(ExpectMixin):
     """One subprocess behind the pytest-embedded Dut surface (expect / expect_exact
     / pexpect_proc.before / write). A background thread tees stdout untouched to
     `logpath` and into an in-memory buffer; expect() advances a consume cursor so
@@ -101,50 +153,19 @@ class EmuDut:
         self.proc.stdin.write(s if s.endswith('\n') else s + '\n')
         self.proc.stdin.flush()
 
-    def _expect(self, success, not_matching, timeout, exact):
-        fails = [not_matching] if isinstance(not_matching, str) else list(not_matching or [])
-        wants = [success] if isinstance(success, str) else list(success)
-        t0 = time.time()
-        end = t0 + timeout
-        while time.time() < end:
-            # After the emu exits, scan once more what its last output left behind.
-            done = self.proc.poll() is not None and not self._pump_t.is_alive()
-            text = self._unconsumed()
-            hit = None                          # (start, end, result) of the first want found
-            for w in wants:
-                idx = text.find(w) if exact else None
-                m = None if exact else re.search(w, text)
-                if (exact and idx >= 0) or m:
-                    hit = (idx, idx + len(w), w) if exact else (m.start(), m.end(), m)
-                    break
-            # As pytest-embedded: only a fail pattern BEFORE the match fails it.
-            before = text[:hit[0]] if hit else text
-            for fp in fails:
-                if (fp in before) if exact else re.search(fp, before):
-                    raise RuntimeError(f'not_matching pattern hit: {fp!r}')
-            if hit:
-                with self._lock:
-                    self._cursor += hit[1]
-                return hit[2]                   # like pytest-embedded: the match for a regex
-            if done:
-                break
-            time.sleep(0.05)
-        # Distinguish a DEAD process from a genuine slow-timeout: if the loop exited
-        # because the emu exited (crash / OOM-kill / its own --timeout self-destruct),
-        # surface the exit code + real elapsed (root-cause culture) instead of
-        # mislabeling a 2s crash as a "{timeout}s timeout".
+    def _exited(self):
+        """True once the emu exited and its last output is buffered."""
+        return self.proc.poll() is not None and not self._pump_t.is_alive()
+
+    def _exit_error(self, t0, success):
+        # A dead emu (crash / OOM-kill / its own --timeout) is not a slow
+        # timeout: report its exit code and the real elapsed time.
         rc = self.proc.poll()
-        if rc is not None:
-            raise RuntimeError(
-                f'[{self.name}] process exited (code {rc}) after {time.time() - t0:.1f}s '
-                f'while waiting for {success!r} (not a timeout — the emu is gone)')
-        raise TimeoutError(f'[{self.name}] timeout ({timeout}s) waiting for {success!r}')
-
-    def expect(self, success, not_matching=None, timeout=15):
-        return self._expect(success, not_matching, timeout, exact=False)
-
-    def expect_exact(self, success, not_matching=None, timeout=15):
-        return self._expect(success, not_matching, timeout, exact=True)
+        if rc is None:
+            return None
+        return RuntimeError(
+            f'[{self.name}] process exited (code {rc}) after {time.time() - t0:.1f}s '
+            f'while waiting for {success!r} (not a timeout — the emu is gone)')
 
     def fatal(self):
         """First unambiguous crash signature in the full log, or None. Used for

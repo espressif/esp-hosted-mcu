@@ -14,9 +14,11 @@ interface.
 
 ### Supported Coprocessors
 
-| Coprocessor | ESP32 | ESP32-C Series | ESP32-S Series |
-| :----------: | :---: | :------------: | :------------: |
-| Support     | Yes   | Yes            | Yes            |
+| Coprocessor | ESP32 | ESP32-C Series | ESP32-S2/S3 | ESP32-S31 |
+| :----------: | :---: | :------------: | :---------: | :-------: |
+| Support     | Yes   | Yes            | Yes         | No ¹      |
+
+¹ ESP32-S31: not supported. This example needs SDIO, and ESP32-S31 has no SDIO slave.
 
 ### Supported Host Devices
 

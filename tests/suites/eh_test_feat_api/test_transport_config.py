@@ -67,9 +67,13 @@ def _bring_up(host, bus, key, value, dkey, unit, label):
 
 @pytest.mark.system
 @pytest.mark.parametrize('transport', list(BUS))
-def test_manual_bringup_flow(bench, transport):
+def test_manual_bringup_flow(bench, wifi_ap, transport):
+    if not wifi_ap:
+        pytest.skip('no Wi-Fi AP credentials for this bench')
     bus, key, (v0, v1), dkey, unit = BUS[transport]
-    b = bench('system/mcu_transport_config', 'mcu_host', transport, timeout='300s')
+    ovl = [f'CONFIG_EXAMPLE_WIFI_SSID="{wifi_ap["ssid"]}"',
+           f'CONFIG_EXAMPLE_WIFI_PASSWORD="{wifi_ap["password"]}"']
+    b = bench('system/mcu_transport_config', 'mcu_host', transport, timeout='300s', overlay=ovl)
     host = b['host']
     one_init = FAIL + [' fw=0x']   # a second INIT inside one bring-up fails the stage
 

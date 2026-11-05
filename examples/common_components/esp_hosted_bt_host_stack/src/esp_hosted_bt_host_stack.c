@@ -121,6 +121,7 @@ esp_err_t esp_hosted_bt_host_stack_teardown(void)
     esp_err_t r = eh_host_bt_controller_disable();
     if (r != ESP_OK && r != ESP_ERR_INVALID_STATE)
         ESP_LOGW(TAG, "controller disable failed: 0x%x", r);
+    /* true also frees the controller memory; Bluetooth then can't restart until reboot */
     r = eh_host_bt_controller_deinit(false);
     if (r != ESP_OK && r != ESP_ERR_INVALID_STATE)
         ESP_LOGW(TAG, "controller deinit failed: 0x%x", r);

@@ -18,7 +18,7 @@ Bluetooth/BLE works on **both** hosts — the integration differs:
 - **MCU host** — the host firmware runs a BT host stack (NimBLE or BlueDroid) and ESP-Hosted carries HCI to the controller. That path is covered in the rest of this page.
 
 > [!NOTE]
-> Classic Bluetooth requires an **ESP32** as the co-processor. All other ESP chips provide **BLE only**. On an MCU host with an ESP32 co-processor, the host stack must also be Bluetooth v4.2.
+> Classic Bluetooth requires an **ESP32** or **ESP32-S31** co-processor. All other ESP chips provide **BLE only**. On an MCU host with an ESP32 co-processor, the host stack must also be Bluetooth v4.2.
 
 ---
 

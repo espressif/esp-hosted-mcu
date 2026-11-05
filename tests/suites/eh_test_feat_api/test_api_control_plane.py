@@ -87,6 +87,11 @@ def _reaches_cp(host, t, cmd):
     assert r.ok, f'[{t}] {cmd}: no result other than ESP_FAIL: {r.matched}'
 
 
+def _wifi_restore(host):
+    host.write('wifi_restore')
+    eh_test_expect(host, r'EH rc=-?\d+ cmd=wifi_restore', fail=FAIL, timeout=60)
+
+
 def _get_is(host, t, get_cmd, field, val):
     """Assert a getter returns rc=0 with field=val."""
     base = get_cmd.split()[0]
@@ -118,9 +123,12 @@ def _roundtrip(host, t, get_cmd, field, set_fmt, v1, v2):
 ])
 @pytest.mark.second_chance
 @pytest.mark.xdist_group("emu_heavy")  # serialize: spi_fd RPC stalls if the emu is CPU-starved under parallel load
-def test_control_plane(bench, transport, bench_gpio):
+def test_control_plane(bench, transport, bench_gpio, request):
     host, caps = _ready(bench, transport)
     t = transport
+    # The band-mode and protocol setters below persist in CP Wi-Fi NVS and survive
+    # reflash: without a restore the board stays 11b/g for every later Wi-Fi test.
+    request.addfinalizer(lambda: _wifi_restore(host))
 
     # ── system ──────────────────────────────────────────────────────────
     _ok(host, t, 'sys_fw_version', 'ver=' + re.escape(_component_version()))

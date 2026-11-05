@@ -29,6 +29,7 @@ import pytest
 from infra import build_fw, flasher, lab
 from infra.emu_dut import EmuDut
 from infra.serial_dut import SerialDut
+from tools.build_examples import CompatMatrix
 
 from .base import CAP_NET, Bench, BenchProvider, BenchSpec
 
@@ -83,6 +84,9 @@ class RpiTarget(BenchProvider):
         rpi = _rpi_config()
         ssh, repo = rpi["ssh"], rpi["repo"]
         cp_target = rpi["cp_target"]
+        skip = CompatMatrix.should_skip_example(spec.example, cp_target)
+        if skip:
+            pytest.skip(skip)
         bus = spec.transport if spec.transport in self.transports else rpi["kmod_bus"]
         # The transport id is "spi_fd" (clear vs spi_hd); the kmod / lab wiring
         # block / CP Kconfig all speak the bus name "spi".

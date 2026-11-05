@@ -24,6 +24,13 @@
 #include "esp_hosted.h"
 #include "esp_hosted_bt_host_stack.h"
 
+#if !defined(CONFIG_ESP_HOSTED_CP_HAS_BT_CLASSIC)
+#error "bt_hid_mouse needs an ESP32 or ESP32-S31 co-processor (Classic BT). " \
+       "Select it in menuconfig: Component config -> Wi-Fi Remote -> choose slave target " \
+       "(or, without Wi-Fi Remote: Component config -> ESP-Hosted -> Configure host -> " \
+       "Paired coprocessor)."
+#endif
+
 #define REPORT_PROTOCOL_MOUSE_REPORT_SIZE      (4)
 #define REPORT_BUFFER_SIZE                     REPORT_PROTOCOL_MOUSE_REPORT_SIZE
 

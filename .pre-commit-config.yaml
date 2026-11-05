@@ -27,6 +27,14 @@ repos:
       files: ^(tools/wifi_coverage/|host/wifi_remote_glue/|common/serializers/eh_proto_v2/src/proto/rpc_v2\.proto$|common/eh_common/include/eh_rpc_bitmasks\.h$|coprocessor/features/eh_cp_feat_rpc_ext_v2/include/eh_cp_feat_rpc_ext_v2_bitmasks\.h$)
       pass_filenames: false
 
+    # Takes filenames: older files still read raw CONFIG_ESP_HOSTED_*, so only
+    # the files in the commit are checked.
+    - id: config-redirect
+      name: EH Kconfig via redirector headers
+      entry: tools/check_config_redirect.py
+      language: python
+      files: ^(coprocessor|host)/.*\.(c|h|cpp|hpp)$
+
     # The three gates below also run in the premerge_check CI job. They scan the
     # whole tree themselves, so they take no filenames; the `files:` pattern only
     # decides when it is worth running them.

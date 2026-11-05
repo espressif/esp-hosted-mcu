@@ -18,13 +18,13 @@ import time
 
 import serial
 
-from infra.emu_dut import _Pexpect
+from infra.emu_dut import ExpectMixin, _Pexpect
 from infra.signatures import SETTLE_FATAL as _FATAL
 
 _log = logging.getLogger("eh")  # streamed live by pytest log_cli
 
 
-class SerialDut:
+class SerialDut(ExpectMixin):
     def __init__(self, name, port, baud, logpath):
         self.name = name
         self._buf = ''
@@ -80,32 +80,6 @@ class SerialDut:
         self._set_lines(dtr=False, rts=True)   # EN low → hold in reset
         time.sleep(0.1)
         self._set_lines(dtr=False, rts=False)  # EN high → boot
-
-    def _expect(self, success, not_matching, timeout, exact):
-        fails = [not_matching] if isinstance(not_matching, str) else list(not_matching or [])
-        wants = [success] if isinstance(success, str) else list(success)
-        end = time.time() + timeout
-        while time.time() < end:
-            text = self._unconsumed()
-            for fp in fails:
-                if (fp in text) if exact else re.search(fp, text):
-                    raise RuntimeError(f'not_matching pattern hit: {fp!r}')
-            for w in wants:
-                idx = text.find(w) if exact else None
-                m = None if exact else re.search(w, text)
-                if (exact and idx >= 0) or m:
-                    hit_end = (idx + len(w)) if exact else m.end()
-                    with self._lock:
-                        self._cursor += hit_end
-                    return w
-            time.sleep(0.05)
-        raise TimeoutError(f'[{self.name}] timeout ({timeout}s) waiting for {success!r}')
-
-    def expect(self, success, not_matching=None, timeout=15):
-        return self._expect(success, not_matching, timeout, exact=False)
-
-    def expect_exact(self, success, not_matching=None, timeout=15):
-        return self._expect(success, not_matching, timeout, exact=True)
 
     def fatal(self):
         """First late-crash signature in the full log, or None (post-success

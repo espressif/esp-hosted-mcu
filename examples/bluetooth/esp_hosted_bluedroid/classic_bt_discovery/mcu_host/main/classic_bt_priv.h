@@ -6,16 +6,19 @@
 
 #include "sdkconfig.h"
 
-#if !defined(CONFIG_SLAVE_IDF_TARGET_ESP32) && !defined(CONFIG_SLAVE_IDF_TARGET_ESP32S31)
+#if !defined(CONFIG_ESP_HOSTED_CP_HAS_BT_CLASSIC)
 #  error \
 "\n\n" \
 "================================================================\n" \
-"  classic_bt_discovery requires an ESP32 or ESP32-S31 coprocessor.\n" \
-"  Classic BT (BR/EDR) is not supported on C2/C3/C5/C6/H2/H4/P4.\n" \
+"  classic_bt_discovery needs an ESP32 or ESP32-S31 co-processor.\n" \
+"  Other co-processors have no Classic BT (BR/EDR).\n" \
 "\n" \
-"  Fix: pin the CP target in sdkconfig.defaults:\n" \
-"      CONFIG_SLAVE_IDF_TARGET_ESP32=y\n" \
-"  (CONFIG_ESP_HOSTED_CP_TARGET_ESP32 follows by cascade.)\n" \
+"  Fix: idf.py menuconfig, select ESP32 or ESP32-S31 in:\n" \
+"      Component config -> Wi-Fi Remote -> choose slave target\n" \
+"  If Wi-Fi Remote is disabled, use:\n" \
+"      Component config -> ESP-Hosted -> Configure host ->\n" \
+"      Paired coprocessor\n" \
+"  Or in sdkconfig.defaults: CONFIG_SLAVE_IDF_TARGET_ESP32S31=y\n" \
 "================================================================\n"
 #endif
 

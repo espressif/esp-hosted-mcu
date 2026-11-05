@@ -79,7 +79,8 @@ def _cc(example, transport, ready=r'advertising as ', sanity=False):
 
 
 @contextlib.contextmanager
-def _bumble_bench(bench, lab_tmp, worker_id, example, transport, ready, wait_bumble=True):
+def _bumble_bench(bench, lab_tmp, worker_id, substrate, example, transport, ready,
+                  wait_bumble=True):
     """Run `example` (mcu_host) under a Bumble virtual central: Bumble scans+connects
     over the hosted transport while the host advertises. Yields (bench, bumble_output)
     once the host has reached `ready` and Bumble has finished (or timed out).
@@ -93,6 +94,8 @@ def _bumble_bench(bench, lab_tmp, worker_id, example, transport, ready, wait_bum
     # new-user / build-only environment differs from the lab box, so skipping is
     # correct here. ALL-GREEN forbids hiding a real failure, not skipping when the
     # optional bench is absent (cf. the OT peer-source and nw_split AP skips).
+    if substrate != "emu":
+        pytest.skip("Bumble is the emu CP's controller (--ble-hci); no hardware equivalent")
     if not _VENV_PY.exists() or not _BUMBLE.exists():
         pytest.skip("bumble / esp-emu tooling not available")
     port = lab.alloc_bench(worker_id)["port"]  # reserved per-worker range, not OS-ephemeral
@@ -156,7 +159,7 @@ def _bumble_bench(bench, lab_tmp, worker_id, example, transport, ready, wait_bum
     _cc("esp_hosted_bluedroid/ble_compatibility_test", "sdio",
         ready=r'advertising start successfully'),
 ])
-def test_bt_central_connect(bench, lab_tmp, worker_id, example, transport, ready):
+def test_bt_central_connect(bench, lab_tmp, worker_id, substrate, example, transport, ready):
     """Bumble (virtual central) scans, finds, and CONNECTS to the host peripheral
     over the hosted transport, then discovers its first service — the ACL data
     path proven end to end (advertise -> scan -> connect).
@@ -165,14 +168,15 @@ def test_bt_central_connect(bench, lab_tmp, worker_id, example, transport, ready
 
     Full GATT characteristic read/write still hits an ACL round-trip timeout
     (ATT_READ_BY_TYPE) over the hosted path — tracked as a follow-up."""
-    with _bumble_bench(bench, lab_tmp, worker_id, example, transport, ready) as (b, out):
+    with _bumble_bench(bench, lab_tmp, worker_id, substrate, example, transport,
+                       ready) as (b, out):
         assert "[+] Connected!" in out, f"bumble did not connect to the peripheral:\n...{out[-2000:]}"
 
 
 @pytest.mark.sanity
 @pytest.mark.second_chance  # heavy Bumble cell; same parallel-load flake class as central_connect
 @pytest.mark.xdist_group("bt_bumble")
-def test_bt_set_mac(bench, lab_tmp, worker_id):
+def test_bt_set_mac(bench, lab_tmp, worker_id, substrate):
     """Setting the BT controller MAC takes effect on the co-processor controller.
 
     controller_mac_addr reads the controller's BD_ADDR, sets a known one
@@ -191,7 +195,7 @@ def test_bt_set_mac(bench, lab_tmp, worker_id):
     On-air verification (a scanning central seeing the configured BD_ADDR) is not
     reachable on the emu: in the Bumble path Bumble *is* the radio, so a CP-set MAC
     never reaches it. Tracked as a follow-up."""
-    with _bumble_bench(bench, lab_tmp, worker_id,
+    with _bumble_bench(bench, lab_tmp, worker_id, substrate,
                        "esp_hosted_bluedroid/controller_mac_addr", "sdio",
                        ready=r'New BT controller mac address is 08:3a:8d:01:01:01',
                        wait_bumble=False) as (b, _out):

@@ -7,9 +7,11 @@ Connect to an AP as a Wi-Fi station with the radio on the **coprocessor** and th
 
 ### Supported Coprocessors
 
-| Coprocessor | ESP32 | ESP32-C Series | ESP32-S Series |
-| :----------: | :---: | :------------: | :------------: |
-| Support     | Yes   | Yes            | Yes            |
+| Coprocessor | ESP32 | ESP32-C Series | ESP32-S2/S3 | ESP32-S31 |
+| :----------: | :---: | :------------: | :---------: | :-------: |
+| Support     | Yes   | Yes            | Yes         | Yes ¹     |
+
+¹ ESP32-S31: preview target, 2.4 GHz only, no SDIO. See [ESP32-S31 test board](https://github.com/espressif/esp-hosted/blob/master/docs/getting-started-mcu.md#esp32-s31-test-board-on-the-esp32-p4-function-ev-board).
 
 ### Supported Host Devices
 

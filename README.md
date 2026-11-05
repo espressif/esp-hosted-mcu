@@ -127,7 +127,7 @@ The following guide demonstrates an **ESP32-P4** host with an **ESP32-C6** co-pr
 | :---: | :---: | :---: |
 | ESP Host | Any ESP SoC | ESP32-P4 with an ESP32-C6 as co-processor |
 | Non-ESP MCU Host | Any MCU (with porting) | - |
-| Co-processor | Any ESP SoC | ESP32-C6 (also C5, C61, C3, C2, S2, S3, ESP32) |
+| Co-processor | Any ESP SoC | ESP32-C6 (also C5, C61, C3, C2, S2, S3, S31, ESP32) |
 | Buses | SDIO `\|` SPI Full-Duplex `\|` SPI Half-Duplex (1/2/4 bit) `\|` UART | All |
 
 - **Get started:** Follow the [MCU Host](docs/getting-started-mcu.md) guide to set up the Wi-Fi station example.

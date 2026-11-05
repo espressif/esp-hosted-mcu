@@ -1,5 +1,9 @@
 # Unreleased
 
+# Releases
+
+# $${\color{green} \text{3.1.0}}$$
+
 - cp/sdio: stream mode keeps 14 frames in flight on every target and advertises that depth, so the host staging slot is 14 × 1536 B. The in-flight depth no longer depends on the DMA descriptor size (ESP32 had dropped to 2 frames)
 - USB OTG transport (Experimental)
   - host/cp: new USB OTG bus. The MCU is the USB host and the co-processor is the USB device. CDC-ACM carries the length-prefixed frames (RPC and data)
@@ -13,6 +17,7 @@
 - cp: add ESP32-S31 as co-processor on SPI full-duplex, SPI half-duplex and UART. ESP32-S31 has no SDIO slave
 - cp/bt: ESP32-S31 Bluetooth: BLE and Classic BT (BR/EDR) over hosted HCI, and HCI over a dedicated UART (H4). With a Bluedroid host on a dedicated UART, ESP32-S31 needs ESP-IDF with commit `64018e19824` (v6.2 or later)
 - cp/bt: with HCI over a dedicated UART, the co-processor starts the Bluetooth controller itself. Before, the controller started only after a host RPC, which a standard HCI host does not send
+- cp/bt: `ESP_HOSTED_CP_AUTO_STOP_BT_ON_HOSTED_DEINIT` stops and deinits the Bluetooth controller, but no longer releases the controller memory. Bluetooth can start again on the next hosted init. To release the memory, call `eh_cp_bt_deinit(true)` on the co-processor, or `eh_host_bt_controller_deinit(true)` on the host (RPC v2). After a release, Bluetooth cannot start until reboot
 - examples/bt: the UART HCI hosts drop bytes that are not an H4 packet type and continue. Before, a stray byte at boot stopped the host with an assert
 - examples/bt: the NimBLE UART HCI host opens the UART after NimBLE is initialized, and NimBLE handles an HCI Hardware Error event. Before, an early event stopped the host
 - host/spi: TCP TX no longer stalls with `CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=y`. A new task, `eh_spi_wifi_rx`, delivers Wi-Fi RX frames. When its queue is full, the frame is dropped and `wifi rx queue full` is logged
@@ -30,7 +35,6 @@
 - `ESP_ETH_IF` is renamed to `ESP_AUX_IF`. `ESP_ETH_IF` was never sent. Code that uses the name `ESP_ETH_IF` must change it
 - host: a frame with an `if_type` that has no handler is now dropped. Before, the host parsed it as an RPC message
 - co-processor: a frame from the host with an `if_type` that has no handler is now logged
-# Releases
 
 # $${\color{green} \text{3.0.10}}$$
 
