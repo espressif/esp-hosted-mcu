@@ -32,8 +32,8 @@ reaches `build`.
 2. **Change scope (PRE only).** On an MR, only the side a change can affect is
    built (CP vs host), unless shared code is touched (then both).
 
-`release/*` branches match **both** PRE and POST rules → they always build the
-**full** matrix (publish-critical, and not part of the dedup).
+`release/*` branches match **both** PRE and POST rules → they build the full
+matrix except the USB OTG iperf pair, which is merge-request only.
 
 ### Fork 1 + trigger routing
 
@@ -43,14 +43,14 @@ flowchart TD
 
     Q -->|merge_request_event| MR[["MR pipeline — PRE, change-scoped"]]
     Q -->|"branch = main"| BR[["Branch pipeline — POST, full"]]
-    Q -->|"branch =~ /^release/"| RE[["Release branch — PRE + POST = full"]]
+    Q -->|"branch =~ /^release/"| RE[["Release branch — PRE + POST, no USB OTG"]]
 
     MR --> MRp["pre: premerge_check · pre_commit · pipeline_rules_test"]
     MR --> MRb["build: only the affected side (Fork 2)"]
 
     BR --> BRb["build: cp_super_ext · cp_specials · host_latest/v60/v551"]
 
-    RE --> REa["every pre + every build cell"]
+    RE --> REa["every pre + every POST cell; no USB OTG"]
 ```
 
 ### Fork 2 — change scope (`tools/ci/decide_build.sh`)
@@ -83,7 +83,8 @@ flowchart TD
   diff base, it returns BUILD (never under-builds).
 - **POST is unconditional** — anything skipped on an MR is still built on the
   target branch **before** mirror/registry, so a skip can never reach GitHub
-  unbuilt.
+  unbuilt. The USB OTG iperf pair is the exception: those two jobs exist only
+  on a merge request, so a skip there is not rebuilt on `main` or `release/*`.
 
 ## The rules (verbatim)
 
@@ -124,6 +125,8 @@ nothing.
 | `build_cp_super` | build | `.rules_pre` | PRE | 5 | self-skip: `cp` |
 | `build_host_v55_p4` | build | `.rules_pre` | PRE | 1 | self-skip: `host` |
 | `build_host_v55_h2` | build | `.rules_pre` | PRE | 1 | self-skip: `host` |
+| `build_cp_usb_otg` | build | inline: `merge_request_event` only | MR | 1 | self-skip: `cp` |
+| `build_host_usb_otg` | build | inline: `merge_request_event` only | MR | 1 | self-skip: `host` |
 | `build_cp_super_ext` | build | `.rules_post` | POST | 3 | self-skip: `cp` |
 | `build_cp_specials` | build | `.rules_post` | POST | 3 | self-skip: `cp` |
 | `build_host_latest_p4` | build | `.rules_post` | POST | 1 | self-skip: `host` |
@@ -133,7 +136,9 @@ nothing.
 ("self-skip: X" = the job is created by its rule, then exits early via
 `decide_build.sh X` when side X isn't affected — before the IDF install.)
 
-Build cells: **7 PRE + 9 POST = 16**, no cell built twice.
+Build cells: **7 PRE + 2 MR-only + 9 POST = 18**, no cell built twice. The two
+MR-only cells are the USB OTG iperf pair. Together with PRE they are the
+merge-request gate (9 cells). `main` and `release/*` do not create those two jobs.
 
 ### What PRE (the MR gate) covers
 
@@ -148,6 +153,7 @@ can touch:
   `cp_super` override trims IRAM — Wi-Fi hot paths + FreeRTOS funcs to flash — so
   the all-features build co-fits the BTDM controller)
 - **host libraries + both BT stacks** — Bluedroid (`host_v55_p4`), NimBLE (`host_v55_h2`), on p4 and h2
+- **USB OTG CDC-ACM iperf, merge request only** — `build_cp_usb_otg` builds `examples/wifi/iperf/cp` on ESP32-S31 (`sdkconfig.defaults.esp32s31`, preview target) and `build_host_usb_otg` builds `examples/wifi/iperf/mcu_host` on ESP32-P4 (`sdkconfig.defaults.esp32p4.usb`). Those files are CDC-ACM. The rule is `merge_request_event` only, not `.rules_pre`, so `main` and `release/*` do not build this pair.
 
 ### What POST adds (breadth before publish)
 

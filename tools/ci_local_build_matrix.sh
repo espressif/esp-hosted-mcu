@@ -15,11 +15,13 @@
 # Usage:
 #   tools/ci_local_build_matrix.sh                              # full spread (console + log)
 #   tools/ci_local_build_matrix.sh --config-only               # kconfig pass only (no compile)
-#   tools/ci_local_build_matrix.sh [flags] <idf_ver> <example_path> <target> [override]
+#   tools/ci_local_build_matrix.sh [flags] <idf_ver> <example_path> <target> [override] [defaults] [preview]
 #     flags: --config-only|-c   kconfig/configure pass only (no compile), for the pruner
 #            --console          write output to console only
 #            --log              write output to the log file only
 #            --both             write output to console AND log file (default)
+#     defaults: semicolon-separated sdkconfig files (USB OTG CDC-ACM). preview: 1 enables
+#               idf-build-apps --enable-preview-targets (ESP32-S31).
 #     e.g. tools/ci_local_build_matrix.sh release-v5.5 examples/wifi/sta/cp esp32c6
 #          tools/ci_local_build_matrix.sh v5.5.1 examples/wifi/apsta/cp esp32c3 CONFIG_EH_TRANSPORT_CP_SPI=y
 #   Session output is logged to /tmp/eh_ci_build_matrix.log (overwritten each run;
@@ -42,7 +44,9 @@ EH_MAX_CPUS="${EH_MAX_CPUS:-$(( NPROC * 3 / 4 ))}"
 [ "${EH_MAX_CPUS}" -lt 1 ] && EH_MAX_CPUS=1
 PER_CPUS="${EH_MAX_CPUS}"
 
-# idf_ver|path|target|override  (override empty => example default transport, SDIO)
+# idf_ver|path|target|override|defaults|preview
+# override empty => example default transport (SDIO). defaults is a
+# semicolon-separated sdkconfig list. preview=1 => --enable-preview-targets.
 CELLS=(
   # --- co-processor builds (chipset + transport spread) ---
   "release-v5.5|examples/wifi/sta/cp|esp32c6|"
@@ -64,8 +68,10 @@ CELLS=(
   "release-v6.0|examples/peer_data_transfer/cp|esp32c6|"
   "release-v5.5|examples/system/api_exerciser/cp|esp32c6|"
   "v5.5.1|examples/power_save/cp/shut_down_cp_when_unused/cp|esp32c6|"
+  "latest|examples/wifi/iperf/cp|esp32s31||sdkconfig.defaults;sdkconfig.defaults.esp32s31|1"  # USB OTG CDC-ACM
   # --- host builds (p4 + h2) ---
   "latest|examples/wifi/iperf/mcu_host|esp32p4|"
+  "latest|examples/wifi/iperf/mcu_host|esp32p4||sdkconfig.defaults;sdkconfig.defaults.esp32p4.usb|"  # USB OTG CDC-ACM
   "release-v5.5|examples/wifi/sta/mcu_host|esp32h2|"
   "release-v6.0|examples/network_split/iperf/mcu_host|esp32p4|"
   "release-v5.5|examples/wifi/enterprise/mcu_host|esp32p4|"
@@ -81,11 +87,13 @@ CELLS=(
   "release-v6.0|examples/mcu_hosted_sdio_sdmmc_combined/mcu_host|esp32p4|"
 )
 
-# Build recipe run INSIDE the idf container. $1=example path $2=target $3=override(may be empty)
+# Build recipe run INSIDE the idf container.
+# $1=example $2=target $3=override $4=config_only $5=defaults $6=preview
 inner() {
   cat <<'INNER'
 set -euo pipefail
 EXAMPLE="$1"; TARGET="$2"; OVERRIDE="${3:-}"; CONFIG_ONLY="${4:-0}"
+DEFAULTS="${5:-}"; PREVIEW="${6:-}"
 # The espressif/idf image already ships all toolchains, so skip the slow
 # per-cell install.sh --enable-ci (it only pip-installs Python CI deps, which
 # aren't needed to build). Just activate. Warning strictness comes from IDF's
@@ -104,24 +112,28 @@ cd /esp_hosted
 # prior run (a stale lock bakes an absolute override path and breaks re-resolution).
 rm -f "${EXAMPLE}/dependencies.lock"
 rm -rf "${EXAMPLE}/managed_components"
+SDK=()
+[ -n "${DEFAULTS}" ] && SDK+=(-DSDKCONFIG_DEFAULTS="${DEFAULTS}")
 if [ "${CONFIG_ONLY}" = "1" ]; then
     # kconfig/configure pass only — no compilation. Emits the same "unknown
     # kconfig symbol" warnings as a full build, in seconds. Feed the output to
     # tools/eh_prune_stale_kconfig.py.
-    idf.py -C "${EXAMPLE}" -B "${EXAMPLE}/build" -DIDF_TARGET="${TARGET}" reconfigure
+    idf.py -C "${EXAMPLE}" -B "${EXAMPLE}/build" -DIDF_TARGET="${TARGET}" "${SDK[@]}" reconfigure
 else
     command -v idf-build-apps >/dev/null || pip install idf-build-apps
-    OVR=""
-    [ -n "${OVERRIDE}" ] && OVR="--override-sdkconfig-items=${OVERRIDE}"
-    idf-build-apps build -p "${EXAMPLE}" --target "${TARGET}" ${OVR} -vv
+    ARGS=(build -p "${EXAMPLE}" --target "${TARGET}" -vv)
+    [ -n "${OVERRIDE}" ] && ARGS+=(--override-sdkconfig-items="${OVERRIDE}")
+    [ -n "${DEFAULTS}" ] && ARGS+=(--sdkconfig-defaults "${DEFAULTS}")
+    [ "${PREVIEW}" = "1" ] && ARGS+=(--enable-preview-targets)
+    idf-build-apps "${ARGS[@]}"
 fi
 INNER
 }
 
 run_cell() {
-  local ver="$1" example="$2" target="$3" override="${4:-}"
+  local ver="$1" example="$2" target="$3" override="${4:-}" defaults="${5:-}" preview="${6:-}"
   echo "==================================================================="
-  echo ">>> idf:${ver}  ${example}  ${target}  ${override:+[$override]}"
+  echo ">>> idf:${ver}  ${example}  ${target}  ${override:+[$override]}  ${defaults:+[$defaults]}  ${preview:+[preview]}"
   echo "==================================================================="
   # Mount at /esp_hosted (NOT /repo): IDF resolves the esp_hosted component by the
   # override dir's basename during requirement expansion, so the dir must be named it.
@@ -131,7 +143,7 @@ run_cell() {
     -v "${EH_CCACHE_DIR}":/root/.cache/ccache \
     -e HOME=/root -e CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-10G}" \
     -e ESP_HOSTED_CI_PEDANTIC \
-    "espressif/idf:${ver}" bash -lc "$(inner)" _ "${example}" "${target}" "${override}" "${CONFIG_ONLY:-0}"
+    "espressif/idf:${ver}" bash -lc "$(inner)" _ "${example}" "${target}" "${override}" "${CONFIG_ONLY:-0}" "${defaults}" "${preview}"
 }
 
 # Flags parsed here so the positional single-cell args (ver example target
@@ -162,7 +174,7 @@ case "${OUTPUT_MODE}" in
 esac
 
 if [ "$#" -ge 3 ]; then
-  run_cell "$1" "$2" "$3" "${4:-}"; exit $?
+  run_cell "$1" "$2" "$3" "${4:-}" "${5:-}" "${6:-}"; exit $?
 fi
 
 # JOBS>1 builds that many cells at once. The EH_MAX_CPUS budget is split evenly
@@ -177,8 +189,8 @@ declare -a PASS=() FAIL=()
 
 if [ "${JOBS}" -le 1 ]; then
   for cell in "${CELLS[@]}"; do
-    IFS='|' read -r ver ex tg ovr <<< "${cell}"
-    if run_cell "${ver}" "${ex}" "${tg}" "${ovr}"; then PASS+=("${ex}@${tg}/${ver}"); else FAIL+=("${ex}@${tg}/${ver}"); fi
+    IFS='|' read -r ver ex tg ovr defaults preview <<< "${cell}"
+    if run_cell "${ver}" "${ex}" "${tg}" "${ovr}" "${defaults}" "${preview}"; then PASS+=("${ex}@${tg}/${ver}"); else FAIL+=("${ex}@${tg}/${ver}"); fi
   done
 else
   LOGDIR="$(mktemp -d)"
@@ -186,10 +198,10 @@ else
   declare -a PIDS=() LABELS=() LOGS=()
   idx=0
   for cell in "${CELLS[@]}"; do
-    IFS='|' read -r ver ex tg ovr <<< "${cell}"
+    IFS='|' read -r ver ex tg ovr defaults preview <<< "${cell}"
     label="${ex}@${tg}/${ver}"; log="${LOGDIR}/${idx}.log"
     echo ">>> [start] ${label}"
-    run_cell "${ver}" "${ex}" "${tg}" "${ovr}" >"${log}" 2>&1 &
+    run_cell "${ver}" "${ex}" "${tg}" "${ovr}" "${defaults}" "${preview}" >"${log}" 2>&1 &
     PIDS+=("$!"); LABELS+=("${label}"); LOGS+=("${log}"); idx=$((idx + 1))
     while [ "$(jobs -rp | wc -l)" -ge "${JOBS}" ]; do sleep 1; done
   done

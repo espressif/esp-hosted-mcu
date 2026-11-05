@@ -92,9 +92,11 @@ jobs:
           - { idf_ver: "release-v6.0", path: "examples/peer_data_transfer/cp",                target: "esp32c6",  transport: "" }
           - { idf_ver: "release-v5.5", path: "examples/system/api_exerciser/cp",              target: "esp32c6",  transport: "" }
           - { idf_ver: "v5.5.1",       path: "examples/power_save/cp/shut_down_cp_when_unused/cp", target: "esp32c6", transport: "" }
+          - { idf_ver: "latest",       path: "examples/wifi/iperf/cp",                        target: "esp32s31", transport: "", defaults: "sdkconfig.defaults;sdkconfig.defaults.esp32s31", preview: "1" }  # USB OTG CDC-ACM
           # ================================ HOST builds ================================
           # host role on BOTH p4 and h2 (h2 = no native Wi-Fi, gets it via the CP).
           - { idf_ver: "latest",       path: "examples/wifi/iperf/mcu_host",                  target: "esp32p4", transport: "" }
+          - { idf_ver: "latest",       path: "examples/wifi/iperf/mcu_host",                  target: "esp32p4", transport: "", defaults: "sdkconfig.defaults;sdkconfig.defaults.esp32p4.usb" }  # USB OTG CDC-ACM
           - { idf_ver: "release-v5.5", path: "examples/wifi/sta/mcu_host",                    target: "esp32h2", transport: "" }  # HOST on H2
           - { idf_ver: "release-v6.0", path: "examples/network_split/iperf/mcu_host",         target: "esp32p4", transport: "" }
           - { idf_ver: "release-v5.5", path: "examples/wifi/enterprise/mcu_host",             target: "esp32p4", transport: "" }
@@ -129,6 +131,8 @@ jobs:
           # be re-enabled once the tree is clean against it.
           export EXTRA_CFLAGS="-DIDF_CI_BUILD -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
           export EXTRA_CXXFLAGS="${EXTRA_CFLAGS}"
-          OVR=""
-          if [ -n "${{ matrix.transport }}" ]; then OVR="--override-sdkconfig-items=${{ matrix.transport }}"; fi
-          idf-build-apps build -p ${{ matrix.path }} --target ${{ matrix.target }} ${OVR} -vv
+          EXTRA=()
+          if [ -n "${{ matrix.transport }}" ]; then EXTRA+=(--override-sdkconfig-items "${{ matrix.transport }}"); fi
+          if [ -n "${{ matrix.defaults }}" ]; then EXTRA+=(--sdkconfig-defaults "${{ matrix.defaults }}"); fi
+          if [ "${{ matrix.preview }}" = "1" ]; then EXTRA+=(--enable-preview-targets); fi
+          idf-build-apps build -p ${{ matrix.path }} --target ${{ matrix.target }} "${EXTRA[@]}" -vv

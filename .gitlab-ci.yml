@@ -355,6 +355,28 @@ build_host_v55_h2:            # [PRE] h2 host + NimBLE stack
         -p examples/wifi/sta/mcu_host \
            examples/bluetooth/nimble_uart/bleprph_host_only_uart/mcu_host
 
+# USB OTG CDC-ACM iperf. MR only: not .rules_pre (that also matches release/*)
+# and not .rules_post (main and release/*). IDF latest has ESP32-S31.
+build_cp_usb_otg:
+  extends: .build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables: { IDF_IMAGE: "latest" }
+  script:
+    - if ! bash tools/ci/decide_build.sh cp; then echo ">>> cp not affected by this change — skipping"; exit 0; fi
+    - eh_setup
+    - eh_build --target esp32s31 --enable-preview-targets --sdkconfig-defaults "sdkconfig.defaults;sdkconfig.defaults.esp32s31" -p examples/wifi/iperf/cp
+
+build_host_usb_otg:
+  extends: .build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables: { IDF_IMAGE: "latest" }
+  script:
+    - if ! bash tools/ci/decide_build.sh host; then echo ">>> host not affected by this change — skipping"; exit 0; fi
+    - eh_setup
+    - eh_build --target esp32p4 --sdkconfig-defaults "sdkconfig.defaults;sdkconfig.defaults.esp32p4.usb" -p examples/wifi/iperf/mcu_host
+
 build_host_latest_p4:         # [POST] iperf + nimble-coex + openthread + three-chip (IDF latest)
   extends: .build
   rules: *rules_post

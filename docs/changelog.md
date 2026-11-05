@@ -1,5 +1,7 @@
 # Unreleased
 
+- ci: build USB OTG CDC-ACM iperf on a merge request only (IDF latest) — ESP32-S31 co-processor (`examples/wifi/iperf/cp`, `sdkconfig.defaults.esp32s31`) and ESP32-P4 host (`examples/wifi/iperf/mcu_host`, `sdkconfig.defaults.esp32p4.usb`)
+
 # Releases
 
 # $${\color{green} \text{3.1.0}}$$

@@ -28,10 +28,14 @@ DECIDE = ROOT / "tools" / "ci" / "decide_build.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "upload_component.yml"
 
 # build job -> which side it must gate on
-CP_JOBS = ["build_cp_super", "build_cp_super_ext", "build_cp_specials"]
-HOST_JOBS = ["build_host_v55_p4", "build_host_v55_h2",
+CP_JOBS = ["build_cp_super", "build_cp_super_ext", "build_cp_specials",
+           "build_cp_usb_otg"]
+HOST_JOBS = ["build_host_v55_p4", "build_host_v55_h2", "build_host_usb_otg",
              "build_host_latest_p4", "build_host_v60_p4", "build_host_v551_p4"]
-PRE_JOBS = ["build_cp_super", "build_host_v55_p4", "build_host_v55_h2"]
+PRE_JOBS = ["build_cp_super", "build_host_v55_p4", "build_host_v55_h2",
+            "build_cp_usb_otg", "build_host_usb_otg"]
+# MR pipeline only. Not .rules_pre (that also matches release/*).
+MR_ONLY_JOBS = ["build_cp_usb_otg", "build_host_usb_otg"]
 
 _checks = []
 
@@ -196,6 +200,11 @@ def main():
     for j in [*CP_JOBS, *HOST_JOBS]:
         if j not in PRE_JOBS:
             check(f"{j} is POST (no MR rule)", not is_mr_rule(d[j]))
+    for j in MR_ONLY_JOBS:
+        rules = d[j].get("rules") or []
+        conds = [r.get("if", "") for r in rules if isinstance(r, dict)]
+        only_mr = (conds == ['$CI_PIPELINE_SOURCE == "merge_request_event"'])
+        check(f"{j} is merge-request only", only_mr, f"rules={rules}")
 
     # --- PRE CP build covers all four transports ---
     buses = {c.get("BUS", "") for c in d["build_cp_super"]["parallel"]["matrix"]}
