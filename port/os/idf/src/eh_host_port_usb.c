@@ -22,6 +22,7 @@
 static const char *TAG = "eh_port_usb";
 
 static eh_host_port_mutex_t *s_lock = NULL;
+static eh_host_port_sem_t *s_uninstall_sem = NULL;
 static int s_ref_count = 0;
 
 static eh_host_port_err_t port_err_from_esp(esp_err_t err)
@@ -82,6 +83,9 @@ static void usb_host_event_task(void *arg)
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "usb_host_uninstall failed: %s", esp_err_to_name(err));
     }
+    if (s_uninstall_sem) {
+        eh_host_port_sem_post(s_uninstall_sem);
+    }
 }
 
 eh_host_port_err_t eh_host_port_usb_init(void)
@@ -94,10 +98,19 @@ eh_host_port_err_t eh_host_port_usb_init(void)
     }
 
     eh_host_port_mutex_lock(s_lock);
+    if (!s_uninstall_sem) {
+        s_uninstall_sem = eh_host_port_sem_create();
+        if (!s_uninstall_sem) {
+            eh_host_port_mutex_unlock(s_lock);
+            return EH_HOST_PORT_ERR_NOMEM;
+        }
+    }
     if (s_ref_count++ > 0) {
         eh_host_port_mutex_unlock(s_lock);
         return EH_HOST_PORT_OK;
     }
+
+    eh_host_port_sem_try_wait(s_uninstall_sem);
 
     const usb_host_config_t host_config = {
         .skip_phy_setup = false,
@@ -142,6 +155,9 @@ eh_host_port_err_t eh_host_port_usb_deinit(void)
     eh_host_port_mutex_lock(s_lock);
     if (s_ref_count > 0) {
         s_ref_count--;
+        if (s_ref_count == 0 && s_uninstall_sem) {
+            eh_host_port_sem_wait_ms(s_uninstall_sem, EH_HOST_PORT_WAIT_FOREVER);
+        }
     }
     eh_host_port_mutex_unlock(s_lock);
     return EH_HOST_PORT_OK;

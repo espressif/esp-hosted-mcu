@@ -366,6 +366,9 @@ int eh_host_deinit(void)
     }
 
     if (s_init_state != INIT_DONE) {
+        if (s_init_state == INIT_FAILED) {
+            s_init_state = INIT_IDLE;
+        }
         eh_host_port_mutex_unlock(s_init_lock);
         return 0;
     }
