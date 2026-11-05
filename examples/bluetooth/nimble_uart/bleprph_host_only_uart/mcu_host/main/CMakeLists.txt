@@ -4,4 +4,4 @@ set(srcs "main.c"
 
 idf_component_register(SRCS "${srcs}"
                        INCLUDE_DIRS "."
-                       REQUIRES bt esp_driver_uart nvs_flash nimble_peripheral_utils)
+                       REQUIRES bt esp_driver_uart esp_driver_gpio nvs_flash nimble_peripheral_utils)

@@ -343,10 +343,12 @@ build_host_v55_p4:            # [PRE] host libs + Bluedroid stack + gpio on p4
            examples/bluetooth/esp_hosted_bluedroid/ble_gatt_server/mcu_host \
            examples/gpio_expander/mcu_host
 
-build_host_v55_h2:            # [PRE] h2 host + NimBLE stack
+# A fixed old patch, not release-v5.5: that branch floats to the newest 5.5.x
+# and hides a driver API that older 5.5 patches lack.
+build_host_v551_h2:           # [PRE] h2 host (SPI) + NimBLE stack
   extends: .build
   rules: *rules_pre
-  variables: { IDF_IMAGE: "release-v5.5" }
+  variables: { IDF_IMAGE: "v5.5.1" }
   script:
     - if ! bash tools/ci/decide_build.sh host; then echo ">>> host not affected by this change — skipping"; exit 0; fi
     - eh_setup

@@ -39,6 +39,9 @@
 /* sdmmc_host_deinit_slot() */
 #define EH_HOST_GOT_SDMMC_DEINIT_SLOT           EH_HOST_IDF_GE(5, 4, 0)
 
+/* SPI_TRANS_DMA_USE_PSRAM (also v6.0) */
+#define EH_HOST_GOT_SPI_TRANS_DMA_USE_PSRAM     EH_HOST_IDF_GE(5, 5, 3)
+
 /* esp_sleep_get_wakeup_causes() bitmap */
 #define EH_HOST_GOT_WAKEUP_CAUSES_BITMAP        EH_HOST_IDF_GE(6, 0, 0)
 
