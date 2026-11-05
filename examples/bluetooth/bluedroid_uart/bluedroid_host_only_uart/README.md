@@ -35,6 +35,13 @@ the classic profile this demo discovers.
 | :----------------- | :-----------------: |
 | Host ↔ controller  | Yes — RTS/CTS flow control recommended; both ends must match |
 
+> [!NOTE]
+> The H4 link here uses two wires (TX, RX) and no flow control, so the host
+> cannot pause the controller. The host keeps UART RX running while flash is
+> written (`CONFIG_UART_ISR_IN_IRAM=y`). Keep it if you change the
+> configuration: without it an NVS write drops UART bytes and the host loses
+> H4 sync.
+
 Bluetooth HCI here runs over its own UART, independent of the ESP-Hosted bus a
 host may separately use for Wi-Fi.
 <!-- common-stop -->

@@ -34,6 +34,13 @@ this scenario. ESP32-S2 has no BT controller and is unsupported.
 | HCI over dedicated UART (H4) | Direct wired UART between host and controller       |
 | :--------------------------- | :-------------------------------------------------- |
 | MCU host                     | Yes — host runs its own UART driver (`main/uart_driver.c`) |
+
+> [!NOTE]
+> The H4 link here uses two wires (TX, RX) and no flow control, so the host
+> cannot pause the controller. The host keeps UART RX running while flash is
+> written (`CONFIG_UART_ISR_IN_IRAM=y`). Keep it if you change the
+> configuration: without it an NVS write drops UART bytes and the host loses
+> H4 sync.
 <!-- common-stop -->
 
 ## Directory layout
