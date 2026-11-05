@@ -3,10 +3,11 @@
 # SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 #
-# Gate: coprocessor and host sources read ESP-Hosted Kconfig values through
-# the redirector headers (EH_CP_* / EH_HOST_*), never as raw
-# CONFIG_ESP_HOSTED_*. IDF-owned symbols (CONFIG_BT_*, CONFIG_IDF_TARGET_*,
-# SOC_*, ...) are not checked.
+# Gate: coprocessor and host sources read Kconfig values only through the
+# master config headers (EH_CP_* / EH_HOST_*; on the CP, eh_cp_master_config.h
+# and the eh_cp_cfg_*.h parts it includes), never as raw CONFIG_ESP_HOSTED_*,
+# CONFIG_BT_* or CONFIG_BTDM_*. A feature-private header is not a redirector.
+# CONFIG_IDF_TARGET_* and SOC_* are not checked yet.
 #
 # Usage: check_config_redirect.py [FILE ...]
 #   With files (pre-commit), only those files are checked.
@@ -25,15 +26,15 @@ EXTS = (".c", ".h", ".cpp", ".hpp")
 # Redirector headers, and trees that use a different config system.
 ALLOW = (
     "coprocessor/eh_cp_core/include/eh_cp_master_config.h",
+    "coprocessor/eh_cp_core/include/eh_cp_cfg_*.h",
     "coprocessor/eh_cp_core/include/eh_cp_idf_compat.h",
-    "coprocessor/features/*/include/priv/*_cfg.h",
     "host/eh_host_config/include/eh_host_port_master_config.h",
     "host/linux/eh_host_linux_kmod/*",
     "*/build/*",
     "*/managed_components/*",
 )
 
-RAW = re.compile(r"\bCONFIG_ESP_HOSTED_[A-Z0-9_]+")
+RAW = re.compile(r"\bCONFIG_(?:ESP_HOSTED|BT|BTDM)_[A-Z0-9_]+")
 # Comments and string/char literals; a mention there is not a read.
 NOISE = re.compile(
     r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'',
@@ -74,9 +75,9 @@ def main(argv):
         if p.is_file() and in_scope(rel):
             bad += check(p, rel)
     if bad:
-        print("Raw CONFIG_ESP_HOSTED_* outside a redirector header. "
-              "Add an EH_CP_* / EH_HOST_* alias to the master config "
-              "(or the feature's include/priv/*_cfg.h) and use that:")
+        print("Raw CONFIG_ESP_HOSTED_* / CONFIG_BT_* / CONFIG_BTDM_* outside a master "
+              "config header. Add an EH_CP_* / EH_HOST_* alias to "
+              "eh_cp_master_config.h or eh_host_port_master_config.h and use that:")
         print("\n".join(bad))
         return 1
     return 0
