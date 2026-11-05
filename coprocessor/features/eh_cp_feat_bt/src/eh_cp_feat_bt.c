@@ -86,13 +86,22 @@ static esp_err_t eh_cp_feat_bt_hosted_hci_deinit(void)
 #endif
 
 #if EH_CP_FEAT_BT_HCI_UART_READY
+/* A standard-HCI host never sends the hosted BT init RPC, so the CP starts the controller. */
 static esp_err_t eh_cp_feat_bt_standard_hci_init(void)
 {
-	return eh_cp_feat_bt_common_init();
+	esp_err_t ret = eh_cp_feat_bt_common_init();
+
+	if (ret == ESP_OK)
+		ret = eh_cp_bt_init();
+	if (ret == ESP_OK)
+		ret = eh_cp_bt_enable();
+	return ret;
 }
 
 static esp_err_t eh_cp_feat_bt_standard_hci_deinit(void)
 {
+	EH_CHECK_OK_WARN(eh_cp_bt_disable());
+	EH_CHECK_OK_WARN(eh_cp_bt_deinit(false));
 	return eh_cp_feat_bt_common_deinit();
 }
 #endif

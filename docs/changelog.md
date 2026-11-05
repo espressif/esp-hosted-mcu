@@ -11,6 +11,10 @@
 - host/sdio: streaming RX staging buffers are sized from the co-processor TX capacity when INIT arrives. The read task allocates them once, after every staging slot has been drained, so a buffer still in use is not freed. `ESP_HOSTED_HOST_SDIO_RX_STAGING_SLOTS=1` keeps a single buffer and the read waits until it has been copied out
 - host/sdio: optional DMA mempool for packet buffers (`ESP_HOSTED_HOST_SDIO_USE_MEMPOOL`, off by default) when a 1536-byte DMA allocation fails on a fragmented heap
 - cp: add ESP32-S31 as co-processor on SPI full-duplex, SPI half-duplex and UART. ESP32-S31 has no SDIO slave
+- cp/bt: ESP32-S31 Bluetooth: BLE and Classic BT (BR/EDR) over hosted HCI, and HCI over a dedicated UART (H4). With a Bluedroid host on a dedicated UART, ESP32-S31 needs ESP-IDF with commit `64018e19824` (v6.2 or later)
+- cp/bt: with HCI over a dedicated UART, the co-processor starts the Bluetooth controller itself. Before, the controller started only after a host RPC, which a standard HCI host does not send
+- examples/bt: the UART HCI hosts drop bytes that are not an H4 packet type and continue. Before, a stray byte at boot stopped the host with an assert
+- examples/bt: the NimBLE UART HCI host opens the UART after NimBLE is initialized, and NimBLE handles an HCI Hardware Error event. Before, an early event stopped the host
 - host/spi: TCP TX no longer stalls with `CONFIG_LWIP_TCPIP_CORE_LOCKING_INPUT=y`. A new task, `eh_spi_wifi_rx`, delivers Wi-Fi RX frames. When its queue is full, the frame is dropped and `wifi rx queue full` is logged
 - host/spi: RPC and host caps frames are sent before data, so a data flood no longer blocks `raw_tp stop` or an RPC request
 - cp/sdio: enabled SDIO packet mode operation

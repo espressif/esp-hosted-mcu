@@ -91,7 +91,7 @@ void process_hci_rx_pkt(uint8_t *payload, uint16_t payload_len)
 		ESP_LOGD(TAG, "VHCI not available");
 	}
 
-#if SOC_ESP_NIMBLE_CONTROLLER
+#if EH_CP_BT_VHCI_SEND_UNGATED
 	esp_vhci_host_send_packet(payload, payload_len);
 #else
 	if (vhci_send_sem) {

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -47,6 +48,8 @@ enum {
 TaskHandle_t s_rx_task_hdl;
 static volatile bool s_shutdown_flag = false;
 
+static uint32_t s_dropped;
+
 static void IRAM_ATTR hci_uart_rx_task(void *arg)
 {
     uint8_t buf[1026];
@@ -68,13 +71,18 @@ static void IRAM_ATTR hci_uart_rx_task(void *arg)
 
         switch (rx_st) {
         case UART_RX_TYPE: {
-            assert(buf[0] >= DATA_TYPE_ACL && buf[0] <= DATA_TYPE_EVENT);
             if (buf[0] == DATA_TYPE_ACL) {
                 len_to_read = 4;
             } else if (buf[0] == DATA_TYPE_EVENT) {
                 len_to_read = 2;
             } else {
-                assert(0);
+                /* Not an H4 type the host takes (e.g. a line glitch while the
+                 * controller boots): drop it and wait for the next type byte. */
+                if (++s_dropped <= 8 || (s_dropped % 256) == 0) {
+                    ESP_LOGW(TAG, "dropped non-H4 byte 0x%02x (%" PRIu32 " total)", buf[0], s_dropped);
+                }
+                len_total_read = 0;
+                break;
             }
             rx_st = UART_RX_LEN;
         }
@@ -108,10 +116,6 @@ static void IRAM_ATTR hci_uart_rx_task(void *arg)
                              "exceeds maximum configured HCI event buffer size (%d).",
                              totlen, MYNEWT_VAL(BLE_TRANSPORT_EVT_SIZE));
                     break;
-                }
-
-                if (data[1] == BLE_HCI_EVCODE_HW_ERROR) {
-                    assert(0);
                 }
 
                 /* Allocate LE Advertising Report Event from lo pool only */
@@ -186,7 +190,8 @@ void hci_uart_send(uint8_t *buf, uint16_t len)
 void
 ble_transport_ll_init(void)
 {
-
+    /* NimBLE calls this after its host pools exist, so early controller events are safe. */
+    hci_uart_open();
 }
 
 void

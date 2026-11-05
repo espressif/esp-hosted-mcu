@@ -14,12 +14,14 @@ counterpart of `bluetooth/nimble_uart/bleprph_host_only_uart` (NimBLE / BLE).
 
 ### Supported Coprocessors (BT controller, UART-H4 mode)
 
-Classic BR/EDR requires an ESP32 controller — the BLE-only chips cannot serve
+Classic BR/EDR requires an ESP32 or ESP32-S31 controller — the BLE-only chips cannot serve
 the classic profile this demo discovers.
 
-| Coprocessor | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S3 |
-| :---------- | :---: | :------: | :------: | :------: | :------: | :------: |
-| BR/EDR (classic) | Yes | No (BLE only) | No (BLE only) | No (BLE only) | No (BLE only) | No (BLE only) |
+| Coprocessor | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C6 | ESP32-H2 | ESP32-S3 | ESP32-S31 |
+| :---------- | :---: | :------: | :------: | :------: | :------: | :------: | :-------: |
+| BR/EDR (classic) | Yes | No (BLE only) | No (BLE only) | No (BLE only) | No (BLE only) | No (BLE only) | Yes ¹ |
+
+¹ ESP32-S31 needs ESP-IDF with commit `64018e19824` (v6.2 or later). With ESP-IDF v6.1, the ESP32-S31 controller drops host commands when Bluedroid sends them quickly.
 
 ### Supported Host Devices
 

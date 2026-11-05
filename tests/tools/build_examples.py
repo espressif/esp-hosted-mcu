@@ -93,9 +93,8 @@ NO_WIFI_TARGETS: set[str] = set()
 EXAMPLE_EXCLUDE: dict[str, set[str]] = {
     "network_split":   {"esp32c2", "esp32c3"},
     # BLE controller absent on esp32s2 → all Bluetooth examples excluded.
-    # esp32s31: its BT controller Kconfig is not wired into the CP BT feature yet.
-    "bluetooth/":      {"esp32s2", "esp32s31"},
-    # Classic BT (BR/EDR) is ESP32-only → exclude every other CP chip.
+    "bluetooth/":      {"esp32s2"},
+    # Classic BT (BR/EDR) is on ESP32 and ESP32-S31 only.
     "classic_bt_discovery": {"esp32c2", "esp32c3", "esp32c5", "esp32c6",
                              "esp32c61", "esp32s2", "esp32s3"},
     "bt_hid_mouse":         {"esp32c2", "esp32c3", "esp32c5", "esp32c6",

@@ -5,4 +5,26 @@ menu "Example Configuration"
         default 921600
         help
             UART Baudrate for HCI. Please use standard baudrate.
+
+    config EXAMPLE_HCI_UART_TX_PIN
+        int "UART Tx Pin"
+        default 5
+
+    config EXAMPLE_HCI_UART_RX_PIN
+        int "UART Rx Pin"
+        default 18
+
+    config EXAMPLE_HCI_UART_FLOW_CTRL_EN
+        bool "UART hardware flow control (RTS/CTS)"
+        default y
+
+    config EXAMPLE_HCI_UART_RTS_PIN
+        int "UART Rts Pin"
+        depends on EXAMPLE_HCI_UART_FLOW_CTRL_EN
+        default 19
+
+    config EXAMPLE_HCI_UART_CTS_PIN
+        int "UART Cts Pin"
+        depends on EXAMPLE_HCI_UART_FLOW_CTRL_EN
+        default 23
 endmenu

@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Compile-time guard: Classic BT (BR/EDR) only exists on ESP32. */
+/* Compile-time guard: Classic BT (BR/EDR) only exists on ESP32 and ESP32-S31. */
 
 #ifndef CLASSIC_BT_PRIV_H_
 #define CLASSIC_BT_PRIV_H_
 
 #include "sdkconfig.h"
 
-#if !defined(CONFIG_SLAVE_IDF_TARGET_ESP32)
+#if !defined(CONFIG_SLAVE_IDF_TARGET_ESP32) && !defined(CONFIG_SLAVE_IDF_TARGET_ESP32S31)
 #  error \
 "\n\n" \
 "================================================================\n" \
-"  classic_bt_discovery requires an ESP32 coprocessor.\n" \
+"  classic_bt_discovery requires an ESP32 or ESP32-S31 coprocessor.\n" \
 "  Classic BT (BR/EDR) is not supported on C2/C3/C5/C6/H2/H4/P4.\n" \
 "\n" \
 "  Fix: pin the CP target in sdkconfig.defaults:\n" \
