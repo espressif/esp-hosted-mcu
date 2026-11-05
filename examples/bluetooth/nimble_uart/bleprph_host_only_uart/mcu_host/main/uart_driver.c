@@ -138,6 +138,14 @@ static void IRAM_ATTR hci_uart_rx_task(void *arg)
         /* Bounded wait so the shutdown flag is polled */
         len_now_read = uart_read_bytes(UART_NO, &buf[len_total_read], len_to_read, pdMS_TO_TICKS(100));
         if (len_now_read <= 0) {
+            if (len_total_read) {
+                /* The controller sends a frame without gaps: a frame that
+                 * stalls has lost bytes. */
+                hci_uart_sync_lost(buf[0], len_total_read);
+                rx_st = UART_RX_TYPE;
+                len_to_read = 1;
+                len_total_read = 0;
+            }
             continue;
         }
 
