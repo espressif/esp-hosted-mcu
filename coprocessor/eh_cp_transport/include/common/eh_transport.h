@@ -1,5 +1,8 @@
-// Copyright 2015-2021 Espressif Systems (Shanghai) PTE LTD
-/* SPDX-License-Identifier: GPL-2.0-only OR Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef __EH_TRANSPORT__H
 #define __EH_TRANSPORT__H
@@ -17,7 +20,7 @@
 
 typedef enum {
 	ESP_PACKET_TYPE_EVENT = 0x33,
-	ESP_PACKET_TYPE_EVENT_LEGACY = 0x00,	
+	ESP_PACKET_TYPE_EVENT_LEGACY = 0x00,
 	ESP_PACKET_TYPE_COMMAND = 0x01,
 } ESP_PRIV_PACKET_TYPE;
 
@@ -75,7 +78,7 @@ typedef enum {
 #define ESP_TRANSPORT_SPI_MAX_BUF_SIZE    1600
 #define ESP_TRANSPORT_SPI_HD_MAX_BUF_SIZE 1600
 #define ESP_TRANSPORT_UART_MAX_BUF_SIZE   1600
-#define ESP_TRANSPORT_USB_MAX_BUF_SIZE     1600
+#define ESP_TRANSPORT_USB_MAX_BUF_SIZE     1536
 #define ESP_TRANSPORT_USB_OTG_MAX_BUF_SIZE ESP_TRANSPORT_USB_MAX_BUF_SIZE
 
 #define MAX_FRAGMENTABLE_PAYLOAD_SIZE     8192

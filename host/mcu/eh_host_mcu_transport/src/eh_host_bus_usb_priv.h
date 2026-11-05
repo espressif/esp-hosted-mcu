@@ -27,7 +27,8 @@ struct eh_usb_stack_ops {
 
 extern const struct eh_usb_stack_ops eh_host_usb_stack_ops;
 
-#define EH_USB_MAX_BUF        ESP_TRANSPORT_USB_MAX_BUF_SIZE
+#define EH_USB_MAX_BUF            ESP_TRANSPORT_USB_MAX_BUF_SIZE
+#define EH_USB_RX_STREAM_FRAMES   4
 #define EH_USB_TX_TIMEOUT_MS  1000
 
 void eh_host_usb_push_rx(const uint8_t *data, size_t data_len);

@@ -125,7 +125,7 @@ struct eh_host_usb_otg_config eh_host_get_default_usb_otg_config(void)
         .connection_timeout_ms = EH_HOST_PORT_USB_CONNECTION_TIMEOUT_MS,
         .vid = EH_HOST_PORT_USB_VID,
         .pid = EH_HOST_PORT_USB_PID,
-        .tx_queue_size = 0,
+        .tx_queue_size = EH_HOST_PORT_USB_TX_QUEUE_SIZE,
         .rx_queue_size = EH_HOST_PORT_USB_RX_QUEUE_SIZE,
         .out_buffer_size = EH_HOST_PORT_USB_OUT_BUF_SIZE,
         .in_buffer_size = EH_HOST_PORT_USB_IN_BUF_SIZE,

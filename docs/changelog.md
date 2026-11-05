@@ -1,6 +1,9 @@
 # Unreleased
 
 - host: with `ESP_HOSTED_AUTO_CALL_INIT_BEFORE_APP_MAIN=y`, the link starts on the first hosted call, not at boot, so transport task stacks get fast RAM on ESP32-P4 (GH#256). `eh_host_wait_auto_init_ready()` is removed: hosted calls start the link themselves
+- host/usb: power-save enter and exit wait until the header-only frame has been written to the bus
+- host/usb: added CDC queues to receive and transmit data based on serial, HCI, and data lanes
+- cp/usb: CP builds without `esp_tinyusb` no longer warn about `TINYUSB_NET_MODE`
 - host/usb: `eh_host_port_usb_deinit()` waits for the USB host event task to finish `usb_host_uninstall()` before returning, allowing back-to-back `esp_hosted_deinit()` / `esp_hosted_init()` cycles to succeed
 - cp/usb: set espressif/esp_tinyusb dependency version to ">=2.2.0" (first version with ESP32-S31 support)
 - host/usb: `ESP_HOSTED_HOST_RESET_GPIO` defaults to `-1` (no GPIO reset). Set a pin only when that GPIO is wired to the co-processor EN/RST line
