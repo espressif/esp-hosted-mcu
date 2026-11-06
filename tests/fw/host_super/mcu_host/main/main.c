@@ -4,7 +4,7 @@
  */
 
 /* Test-only super host: asks for a scenario on the console, starts ESP-Hosted the way
- * the auto-init constructor would, then runs that example's own app_main. */
+ * auto-init does on the first hosted call, then runs that example's own app_main. */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,8 +21,8 @@
 
 static const char *TAG = "eh_super";
 
-/* What the auto-init constructor runs (eh_host_core_auto_init.c), started once the
- * scenario is known so runtime options can apply before init. */
+/* What auto-init runs on the first hosted call (eh_host_auto_init_ensure), started
+ * once the scenario is known so runtime options can apply before init. */
 void eh_host_core_lifecycle_locks_init(void);
 
 static void hosted_start_task(void *arg)

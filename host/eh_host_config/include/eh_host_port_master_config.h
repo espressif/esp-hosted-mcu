@@ -155,6 +155,22 @@
 #  define EH_HOST_AUTO_FEAT_INIT            0
 #endif
 
+/* RPC: wait for the link before a request */
+
+#ifdef CONFIG_ESP_HOSTED_HOST_RPC_READY_WAIT_MS
+#  define EH_HOST_RPC_READY_WAIT_MS         CONFIG_ESP_HOSTED_HOST_RPC_READY_WAIT_MS
+#else
+#  define EH_HOST_RPC_READY_WAIT_MS         5000
+#endif
+
+/* Host auto-init: the constructor arms it, the first hosted call starts it */
+
+#ifdef CONFIG_ESP_HOSTED_AUTO_CALL_INIT_BEFORE_APP_MAIN
+#  define EH_HOST_AUTO_CALL_INIT            1
+#else
+#  define EH_HOST_AUTO_CALL_INIT            0
+#endif
+
 /* Transport bus selection */
 
 #ifdef CONFIG_ESP_HOSTED_HOST_TRANSPORT_MCU

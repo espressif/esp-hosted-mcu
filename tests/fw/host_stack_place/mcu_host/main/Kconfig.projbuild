@@ -1,0 +1,8 @@
+menu "Stack placement test"
+config EH_TEST_BSS_PAD_BYTES
+    int "Static .bss pad (bytes)"
+    default 0
+    help
+        Size of an unused static array. A larger .bss leaves less low internal
+        RAM in the heap at boot.
+endmenu

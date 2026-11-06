@@ -2,7 +2,7 @@
 CONFIG_ESP_HOSTED=y
 
 # The point of this example: the app owns every init call. Turn BOTH auto-inits
-# off — the pre-app_main constructor AND the feature auto-init walk — so
+# off — host auto-init on the first hosted call AND the feature auto-init walk — so
 # transport set_config runs before init and each feature is init'd explicitly.
 CONFIG_ESP_HOSTED_AUTO_CALL_INIT_BEFORE_APP_MAIN=n
 CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT=n

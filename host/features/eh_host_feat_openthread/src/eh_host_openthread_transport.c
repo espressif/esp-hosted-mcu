@@ -23,6 +23,8 @@
 #include "eh_host_openthread_priv.h"
 #include "eh_host_port_sync.h"
 
+int eh_host_auto_init_ensure(void);
+
 /* Below every bus's max payload. The peer's HDLC decoder rejoins chunks. */
 #define OT_AUX_CHUNK 1024
 
@@ -119,6 +121,9 @@ esp_err_t eh_host_openthread_transport_init(void)
 	if (s_rx_q)
 		return ESP_OK;
 
+	/* The CP caps come with the link: start auto-init before reading them. */
+	if (eh_host_auto_init_ensure() != 0)
+		return ESP_FAIL;
 	if (!(eh_host_mcu_transport_get_ext_capabilities() & ESP_EXT_CAP_AUX_OT)) {
 		ESP_LOGE(TAG, "co-processor does not run OpenThread over the ESP-Hosted "
 		         "transport; enable CONFIG_ESP_HOSTED_CP_FEAT_OPENTHREAD and "
