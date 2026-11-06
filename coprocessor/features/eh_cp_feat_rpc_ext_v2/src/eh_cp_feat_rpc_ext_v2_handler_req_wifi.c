@@ -1088,6 +1088,7 @@ esp_err_t req_wifi_scan_get_ap_records(Rpc *req, Rpc *resp, void *priv_data)
 	ret = esp_wifi_scan_get_ap_num(&ap_count);
 	if (ret || !ap_count) {
 		ESP_LOGE(TAG,"esp_wifi_scan_get_ap_num: ret: %d num_ap_scanned:%u", ret, number);
+		resp_payload->resp = ret;
 		goto err;
 	}
 	if (number > ap_count) {
@@ -1106,6 +1107,7 @@ esp_err_t req_wifi_scan_get_ap_records(Rpc *req, Rpc *resp, void *priv_data)
 	ret = esp_wifi_scan_get_ap_records(&number, p_a_ap_list);
 	if(ret) {
 		ESP_LOGE(TAG,"Failed to scan ap records");
+		resp_payload->resp = ret;
 		goto err;
 	}
 
