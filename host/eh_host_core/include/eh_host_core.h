@@ -42,9 +42,6 @@ int eh_host_deinit(void);
  * posts EH_HOST_EVENT_TRANSPORT_UP. */
 int eh_host_connect_to_slave(void);
 
-/* Wait for constructor-based auto-init. 0=ready, <0=timeout/disabled/failed. */
-int eh_host_wait_auto_init_ready(uint32_t timeout_ms);
-
 /* Slave-reset + handshake probe. Linux user-space: no-op (kmod owns reset).
  * 0=ok, -EIO=probe timeout, -EINVAL=reset_slave errored. */
 int eh_host_core_bringup(void);

@@ -17,11 +17,14 @@
 #include "eh_host_mcu_transport.h"
 #include "eh_host_mcu_transport_channels.h"
 #include "eh_host_mcu_transport_priv.h"
+#include "eh_host_mcu_transport_state.h"
 #include "eh_host_port_dma.h"
 #include "eh_frame.h"
 #include "esp_netif_types.h"
 
 #define TAG "eh_chan"
+
+int eh_host_auto_init_ensure(void);
 
 eh_host_channel_t *chan_arr[ESP_MAX_IF];
 static eh_host_channel_t *aux_chan_arr[ESP_AUX_TYPE_MAX];
@@ -44,6 +47,11 @@ static esp_err_t transport_tx(uint8_t if_type, uint8_t if_num, uint8_t pkt_type,
                               uint8_t flags)
 {
     if (!payload || payload_len == 0) return ESP_FAIL;
+    /* The first TX before the link is up starts auto-init. The host caps packet
+     * sent inside bring-up comes after TX_ACTIVE, so it skips this. */
+    if (!eh_host_mcu_transport_state_is_tx_ready()) {
+        (void)eh_host_auto_init_ensure();
+    }
 
     if (eh_host_wifi_tx_is_throttled() &&
         (if_type == ESP_STA_IF || if_type == ESP_AP_IF)) {

@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* RPC base lifecycle: init/deinit/start/stop. */
 
 #include "sdkconfig.h"
@@ -8,22 +12,19 @@
 
 #include "eh_host_feat_rpc.h"
 #include "eh_host_feat_rpc_priv.h"
-int eh_host_wait_auto_init_ready(uint32_t timeout_ms);
-#if CONFIG_ESP_HOSTED_HOST_TYPE_MCU
+#include "eh_host_port_master_config.h"
+int eh_host_auto_init_ensure(void);
+#if EH_HOST_TYPE_MCU
 int eh_host_mcu_transport_state_is_tx_ready(void);
 #endif
 
 static eh_rpc_ctx_t g_eh_rpc_ctx;
 
-#if defined(CONFIG_ESP_HOSTED_HOST_RPC_READY_WAIT_MS)
-#define EH_RPC_READY_WAIT_MS ((uint32_t)CONFIG_ESP_HOSTED_HOST_RPC_READY_WAIT_MS)
-#else
-#define EH_RPC_READY_WAIT_MS ((uint32_t)5000u)
-#endif
+#define EH_RPC_READY_WAIT_MS ((uint32_t)EH_HOST_RPC_READY_WAIT_MS)
 
 static bool eh_rpc_link_ready(void)
 {
-#if CONFIG_ESP_HOSTED_HOST_TYPE_MCU
+#if EH_HOST_TYPE_MCU
     return eh_rpc_is_ready() && eh_host_mcu_transport_state_is_tx_ready();
 #else
     return eh_rpc_is_ready();
@@ -32,15 +33,9 @@ static bool eh_rpc_link_ready(void)
 
 static int eh_rpc_wait_ready(uint32_t timeout_ms)
 {
-#if CONFIG_ESP_HOSTED_AUTO_CALL_INIT_BEFORE_APP_MAIN
-    /* Wait for auto-init so requests don't race transport_up(0). */
-    ESP_LOGD("eh_host_feat_rpc", "wait_ready: waiting auto-init up to %" PRIu32 " ms", timeout_ms);
-    if (eh_host_wait_auto_init_ready(timeout_ms) != 0) {
-        ESP_LOGD("eh_host_feat_rpc", "wait_ready: auto-init wait failed");
+    if (eh_host_auto_init_ensure() != 0) {
         return -1;
     }
-    ESP_LOGD("eh_host_feat_rpc", "wait_ready: auto-init completed");
-#endif
 
     if (eh_rpc_link_ready()) {
         return 0;

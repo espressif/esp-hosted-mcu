@@ -159,7 +159,7 @@ void app_main(void)
     /* 1. Set the clock before starting ESP-Hosted, then start it. */
     esp_hosted_transport_err_t rc = configure(CLOCK_A);
     if (rc == ESP_TRANSPORT_ERR_ALREADY_SET) {
-        ESP_LOGE(TAG, "link already up: set CONFIG_ESP_HOSTED_AUTO_CALL_INIT_BEFORE_APP_MAIN=n");
+        ESP_LOGE(TAG, "link already up: set the config before the first hosted call");
     }
     if (rc != ESP_TRANSPORT_OK || hosted_start() != ESP_OK) {
         ESP_LOGE(TAG, "hosted bring-up failed");

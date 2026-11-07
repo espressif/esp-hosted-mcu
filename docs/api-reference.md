@@ -56,7 +56,6 @@ Header: `eh_host_core.h` · compat `esp_hosted.h`
 | :--- | :--- | :--- |
 | `eh_host_init(cfg)` | `esp_hosted_init()` | One-call init (vserial + base RPC + auto-init features); idempotent |
 | `eh_host_connect_to_slave()` | `esp_hosted_connect_to_slave()` | Bring the transport up; posts `EH_HOST_EVENT_TRANSPORT_UP` |
-| `eh_host_wait_auto_init_ready(timeout_ms)` | — | Block until constructor auto-init has finished |
 | `eh_host_deinit()` | `esp_hosted_deinit()` | Reverse-order teardown; safe in any state |
 
 Roles: `eh_host_role_t` (`MCU`, `LINUX_USER`, `LINUX_KMOD`).
@@ -216,7 +215,7 @@ Header: `eh_host_cli.h`
 
 - **Per-feature `eh_host_feat_<x>_init/deinit()`** exist in every feature header
   but are normally driven by the core auto-init path (`eh_host_init` +
-  `eh_host_wait_auto_init_ready`). Call them directly only for manual control.
+  `eh_host_connect_to_slave`). Call them directly only for manual control.
 - **Base RPC engine** (`eh_host_feat_rpc.h`) — `eh_host_feat_rpc_request_sync()`,
   `_send()`, `_register_event()`, etc. Native-only; used by features and advanced
   apps that add their own RPC messages.

@@ -36,6 +36,7 @@ _APP_OF = {
     "power_save/host+cp/network_split__host_deep_sleep_cp_light_sleep": "cp_nwsplit",
     "rf_cert": "cp_full",
     "test/init_race": "cp_full",
+    "../tests/fw/host_stack_place": "cp_full",
 }
 
 

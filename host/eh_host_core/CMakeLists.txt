@@ -6,7 +6,6 @@ endif()
 
 add_library(eh_host_core STATIC
     "src/eh_host_core.c"
-    "src/eh_host_core_auto_init.c"
     "src/eh_host_core_event_bases.c"
     "src/eh_host_core_bringup_glue.c"
     "src/eh_host_idf_idempotent_wraps.c"

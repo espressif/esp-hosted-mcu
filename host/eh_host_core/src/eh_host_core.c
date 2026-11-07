@@ -6,6 +6,7 @@
 /* One-call init/deinit facade over vserial + base RPC + auto-init features. */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -66,6 +67,37 @@ void eh_host_core_lifecycle_locks_init(void)
     if (!s_bringup_lock) {
         s_bringup_lock = eh_host_port_mutex_create();
     }
+}
+
+/* Set by the auto-init constructor, cleared by eh_host_deinit(). */
+static volatile bool s_auto_armed;
+
+#if EH_HOST_AUTO_CALL_INIT
+/* Arms auto-init only: no task, no bus. The first hosted call that needs the
+ * link starts it, after OS startup. On ESP-IDF the startup-stack region joins
+ * the heap only in main_task, after the scheduler starts. */
+void eh_host_auto_init_ctor(void);
+__attribute__((constructor))
+void eh_host_auto_init_ctor(void)
+{
+    eh_host_core_lifecycle_locks_init();
+    s_auto_armed = true;
+}
+#endif
+
+/* Internal: called by the RPC, TX and OpenThread paths, not by apps.
+ * Auto-init on: the first caller runs eh_host_init() + eh_host_connect_to_slave()
+ * and blocks until done; later callers return at once. Auto-init off, or after
+ * eh_host_deinit(): returns 0 and does nothing. Task context only.
+ * 0=ok or nothing to do, <0=init/connect error. */
+int eh_host_auto_init_ensure(void);
+int eh_host_auto_init_ensure(void)
+{
+    if (!s_auto_armed || s_bringup_state == BRINGUP_DONE) {
+        return 0;
+    }
+    int rc = eh_host_init(NULL);
+    return rc ? rc : eh_host_connect_to_slave();
 }
 
 /* -ENOSYS when the role's vserial isn't compiled in. */
@@ -352,6 +384,7 @@ int eh_host_init_linux_default(void)
 
 int eh_host_deinit(void)
 {
+    s_auto_armed = false;
     if (!s_init_lock) {
         return 0;
     }
