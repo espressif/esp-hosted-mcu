@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <stdio.h>
 #include "eh_cp_feat_host_ps_internal.h"
 #include "eh_cp_feat_host_ps.h"
 #include "eh_caps.h"
@@ -199,7 +200,9 @@ int is_host_wakeup_needed(interface_buffer_handle_t *buf_handle)
 			  break;
 
 		default:
-			  break;   /* unknown if_type: fall through to end (no wake) */
+			  snprintf(reason, sizeof(reason), "unhandled if_type %d",
+			           (int)buf_handle->if_type);
+			  break;   /* fall through to end (no wake) */
 	}
 
 end:
@@ -211,7 +214,7 @@ end:
 	if (wakup_needed) {
 		ESP_LOGI(TAG, "Wakeup needed, reason %s", reason);
 	} else {
-		ESP_LOGI(TAG, "Wakeup not needed");
+		ESP_LOGI(TAG, "Wakeup not needed, reason %s", reason);
 	}
 	return wakup_needed;
 }
