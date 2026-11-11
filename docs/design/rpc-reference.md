@@ -141,6 +141,10 @@ Each request has a corresponding response.
 | 122 | 406 | PhyBleRx | Unreleased |
 | 123 | 407 | PhyBtTxTone | Unreleased |
 | 124 | 408 | SetContext | Unreleased |
+| 125 | 320 | WifiSetAntGpio | Unreleased |
+| 126 | 321 | WifiGetAntGpio | Unreleased |
+| 127 | 322 | WifiSetAnt | Unreleased |
+| 128 | 323 | WifiGetAnt | Unreleased |
 
 ---
 

@@ -182,6 +182,14 @@ typedef struct RpcReqWifiSetBandMode RpcReqWifiSetBandMode;
 typedef struct RpcRespWifiSetBandMode RpcRespWifiSetBandMode;
 typedef struct RpcReqWifiGetBandMode RpcReqWifiGetBandMode;
 typedef struct RpcRespWifiGetBandMode RpcRespWifiGetBandMode;
+typedef struct RpcReqWifiSetAntGpio RpcReqWifiSetAntGpio;
+typedef struct RpcRespWifiSetAntGpio RpcRespWifiSetAntGpio;
+typedef struct RpcReqWifiGetAntGpio RpcReqWifiGetAntGpio;
+typedef struct RpcRespWifiGetAntGpio RpcRespWifiGetAntGpio;
+typedef struct RpcReqWifiSetAnt RpcReqWifiSetAnt;
+typedef struct RpcRespWifiSetAnt RpcRespWifiSetAnt;
+typedef struct RpcReqWifiGetAnt RpcReqWifiGetAnt;
+typedef struct RpcRespWifiGetAnt RpcRespWifiGetAnt;
 typedef struct RpcReqWifiSetInactiveTime RpcReqWifiSetInactiveTime;
 typedef struct RpcRespWifiSetInactiveTime RpcRespWifiSetInactiveTime;
 typedef struct RpcReqWifiGetInactiveTime RpcReqWifiGetInactiveTime;
@@ -4128,6 +4136,86 @@ struct  RpcRespWifiGetBandMode
 , 0, 0 }
 
 
+struct  RpcReqWifiSetAntGpio
+{
+  ProtobufCMessage base;
+  WifiAntGpioConfig *config;
+};
+#define RPC__REQ__WIFI_SET_ANT_GPIO__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_set_ant_gpio__descriptor) \
+, NULL }
+
+
+struct  RpcRespWifiSetAntGpio
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_SET_ANT_GPIO__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_set_ant_gpio__descriptor) \
+, 0 }
+
+
+struct  RpcReqWifiGetAntGpio
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__WIFI_GET_ANT_GPIO__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_get_ant_gpio__descriptor) \
+ }
+
+
+struct  RpcRespWifiGetAntGpio
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  WifiAntGpioConfig *config;
+};
+#define RPC__RESP__WIFI_GET_ANT_GPIO__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_get_ant_gpio__descriptor) \
+, 0, NULL }
+
+
+struct  RpcReqWifiSetAnt
+{
+  ProtobufCMessage base;
+  WifiAntConfig *config;
+};
+#define RPC__REQ__WIFI_SET_ANT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_set_ant__descriptor) \
+, NULL }
+
+
+struct  RpcRespWifiSetAnt
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__WIFI_SET_ANT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_set_ant__descriptor) \
+, 0 }
+
+
+struct  RpcReqWifiGetAnt
+{
+  ProtobufCMessage base;
+};
+#define RPC__REQ__WIFI_GET_ANT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__wifi_get_ant__descriptor) \
+ }
+
+
+struct  RpcRespWifiGetAnt
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  WifiAntConfig *config;
+};
+#define RPC__RESP__WIFI_GET_ANT__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__wifi_get_ant__descriptor) \
+, 0, NULL }
+
+
 struct  RpcReqWifiSetInactiveTime
 {
   ProtobufCMessage base;
@@ -6140,6 +6228,10 @@ typedef enum {
   RPC__PAYLOAD_REQ_WIFI_AP_GET_STA_LIST = 311,
   RPC__PAYLOAD_REQ_WIFI_AP_GET_STA_AID = 312,
   RPC__PAYLOAD_REQ_WIFI_SET_STORAGE = 313,
+  RPC__PAYLOAD_REQ_WIFI_SET_ANT_GPIO = 320,
+  RPC__PAYLOAD_REQ_WIFI_GET_ANT_GPIO = 321,
+  RPC__PAYLOAD_REQ_WIFI_SET_ANT = 322,
+  RPC__PAYLOAD_REQ_WIFI_GET_ANT = 323,
   RPC__PAYLOAD_REQ_WIFI_SET_INACTIVE_TIME = 325,
   RPC__PAYLOAD_REQ_WIFI_GET_INACTIVE_TIME = 326,
   RPC__PAYLOAD_REQ_WIFI_SET_COUNTRY_CODE = 334,
@@ -6264,6 +6356,10 @@ typedef enum {
   RPC__PAYLOAD_RESP_WIFI_AP_GET_STA_LIST = 567,
   RPC__PAYLOAD_RESP_WIFI_AP_GET_STA_AID = 568,
   RPC__PAYLOAD_RESP_WIFI_SET_STORAGE = 569,
+  RPC__PAYLOAD_RESP_WIFI_SET_ANT_GPIO = 576,
+  RPC__PAYLOAD_RESP_WIFI_GET_ANT_GPIO = 577,
+  RPC__PAYLOAD_RESP_WIFI_SET_ANT = 578,
+  RPC__PAYLOAD_RESP_WIFI_GET_ANT = 579,
   RPC__PAYLOAD_RESP_WIFI_SET_INACTIVE_TIME = 581,
   RPC__PAYLOAD_RESP_WIFI_GET_INACTIVE_TIME = 582,
   RPC__PAYLOAD_RESP_WIFI_SET_COUNTRY_CODE = 590,
@@ -6484,6 +6580,8 @@ struct  Rpc
     RpcReqWifiDeinit *req_wifi_deinit;
     RpcReqWifiDisablePmfConfig *req_wifi_disable_pmf_config;
     RpcReqWifiDisconnect *req_wifi_disconnect;
+    RpcReqWifiGetAnt *req_wifi_get_ant;
+    RpcReqWifiGetAntGpio *req_wifi_get_ant_gpio;
     RpcReqWifiGetBand *req_wifi_get_band;
     RpcReqWifiGetBandMode *req_wifi_get_bandmode;
     RpcReqWifiGetBandwidth *req_wifi_get_bandwidth;
@@ -6504,6 +6602,8 @@ struct  Rpc
     RpcReqWifiScanParams *req_wifi_scan_params;
     RpcReqWifiScanStart *req_wifi_scan_start;
     RpcReqWifiScanStop *req_wifi_scan_stop;
+    RpcReqWifiSetAnt *req_wifi_set_ant;
+    RpcReqWifiSetAntGpio *req_wifi_set_ant_gpio;
     RpcReqWifiSetBand *req_wifi_set_band;
     RpcReqWifiSetBandMode *req_wifi_set_bandmode;
     RpcReqWifiSetBandwidth *req_wifi_set_bandwidth;
@@ -6611,6 +6711,8 @@ struct  Rpc
     RpcRespWifiDeinit *resp_wifi_deinit;
     RpcRespWifiDisablePmfConfig *resp_wifi_disable_pmf_config;
     RpcRespWifiDisconnect *resp_wifi_disconnect;
+    RpcRespWifiGetAnt *resp_wifi_get_ant;
+    RpcRespWifiGetAntGpio *resp_wifi_get_ant_gpio;
     RpcRespWifiGetBand *resp_wifi_get_band;
     RpcRespWifiGetBandMode *resp_wifi_get_bandmode;
     RpcRespWifiGetBandwidth *resp_wifi_get_bandwidth;
@@ -6631,6 +6733,8 @@ struct  Rpc
     RpcRespWifiScanParams *resp_wifi_scan_params;
     RpcRespWifiScanStart *resp_wifi_scan_start;
     RpcRespWifiScanStop *resp_wifi_scan_stop;
+    RpcRespWifiSetAnt *resp_wifi_set_ant;
+    RpcRespWifiSetAntGpio *resp_wifi_set_ant_gpio;
     RpcRespWifiSetBand *resp_wifi_set_band;
     RpcRespWifiSetBandMode *resp_wifi_set_bandmode;
     RpcRespWifiSetBandwidth *resp_wifi_set_bandwidth;
@@ -9839,6 +9943,158 @@ RpcRespWifiGetBandMode *
                       const uint8_t       *data);
 void   rpc__resp__wifi_get_band_mode__free_unpacked
                      (RpcRespWifiGetBandMode *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiSetAntGpio methods */
+void   rpc__req__wifi_set_ant_gpio__init
+                     (RpcReqWifiSetAntGpio         *message);
+size_t rpc__req__wifi_set_ant_gpio__get_packed_size
+                     (const RpcReqWifiSetAntGpio   *message);
+size_t rpc__req__wifi_set_ant_gpio__pack
+                     (const RpcReqWifiSetAntGpio   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_set_ant_gpio__pack_to_buffer
+                     (const RpcReqWifiSetAntGpio   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiSetAntGpio *
+       rpc__req__wifi_set_ant_gpio__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_set_ant_gpio__free_unpacked
+                     (RpcReqWifiSetAntGpio *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiSetAntGpio methods */
+void   rpc__resp__wifi_set_ant_gpio__init
+                     (RpcRespWifiSetAntGpio         *message);
+size_t rpc__resp__wifi_set_ant_gpio__get_packed_size
+                     (const RpcRespWifiSetAntGpio   *message);
+size_t rpc__resp__wifi_set_ant_gpio__pack
+                     (const RpcRespWifiSetAntGpio   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_set_ant_gpio__pack_to_buffer
+                     (const RpcRespWifiSetAntGpio   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiSetAntGpio *
+       rpc__resp__wifi_set_ant_gpio__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_set_ant_gpio__free_unpacked
+                     (RpcRespWifiSetAntGpio *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiGetAntGpio methods */
+void   rpc__req__wifi_get_ant_gpio__init
+                     (RpcReqWifiGetAntGpio         *message);
+size_t rpc__req__wifi_get_ant_gpio__get_packed_size
+                     (const RpcReqWifiGetAntGpio   *message);
+size_t rpc__req__wifi_get_ant_gpio__pack
+                     (const RpcReqWifiGetAntGpio   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_get_ant_gpio__pack_to_buffer
+                     (const RpcReqWifiGetAntGpio   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiGetAntGpio *
+       rpc__req__wifi_get_ant_gpio__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_get_ant_gpio__free_unpacked
+                     (RpcReqWifiGetAntGpio *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiGetAntGpio methods */
+void   rpc__resp__wifi_get_ant_gpio__init
+                     (RpcRespWifiGetAntGpio         *message);
+size_t rpc__resp__wifi_get_ant_gpio__get_packed_size
+                     (const RpcRespWifiGetAntGpio   *message);
+size_t rpc__resp__wifi_get_ant_gpio__pack
+                     (const RpcRespWifiGetAntGpio   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_get_ant_gpio__pack_to_buffer
+                     (const RpcRespWifiGetAntGpio   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiGetAntGpio *
+       rpc__resp__wifi_get_ant_gpio__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_get_ant_gpio__free_unpacked
+                     (RpcRespWifiGetAntGpio *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiSetAnt methods */
+void   rpc__req__wifi_set_ant__init
+                     (RpcReqWifiSetAnt         *message);
+size_t rpc__req__wifi_set_ant__get_packed_size
+                     (const RpcReqWifiSetAnt   *message);
+size_t rpc__req__wifi_set_ant__pack
+                     (const RpcReqWifiSetAnt   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_set_ant__pack_to_buffer
+                     (const RpcReqWifiSetAnt   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiSetAnt *
+       rpc__req__wifi_set_ant__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_set_ant__free_unpacked
+                     (RpcReqWifiSetAnt *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiSetAnt methods */
+void   rpc__resp__wifi_set_ant__init
+                     (RpcRespWifiSetAnt         *message);
+size_t rpc__resp__wifi_set_ant__get_packed_size
+                     (const RpcRespWifiSetAnt   *message);
+size_t rpc__resp__wifi_set_ant__pack
+                     (const RpcRespWifiSetAnt   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_set_ant__pack_to_buffer
+                     (const RpcRespWifiSetAnt   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiSetAnt *
+       rpc__resp__wifi_set_ant__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_set_ant__free_unpacked
+                     (RpcRespWifiSetAnt *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqWifiGetAnt methods */
+void   rpc__req__wifi_get_ant__init
+                     (RpcReqWifiGetAnt         *message);
+size_t rpc__req__wifi_get_ant__get_packed_size
+                     (const RpcReqWifiGetAnt   *message);
+size_t rpc__req__wifi_get_ant__pack
+                     (const RpcReqWifiGetAnt   *message,
+                      uint8_t             *out);
+size_t rpc__req__wifi_get_ant__pack_to_buffer
+                     (const RpcReqWifiGetAnt   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqWifiGetAnt *
+       rpc__req__wifi_get_ant__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__wifi_get_ant__free_unpacked
+                     (RpcReqWifiGetAnt *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespWifiGetAnt methods */
+void   rpc__resp__wifi_get_ant__init
+                     (RpcRespWifiGetAnt         *message);
+size_t rpc__resp__wifi_get_ant__get_packed_size
+                     (const RpcRespWifiGetAnt   *message);
+size_t rpc__resp__wifi_get_ant__pack
+                     (const RpcRespWifiGetAnt   *message,
+                      uint8_t             *out);
+size_t rpc__resp__wifi_get_ant__pack_to_buffer
+                     (const RpcRespWifiGetAnt   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespWifiGetAnt *
+       rpc__resp__wifi_get_ant__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__wifi_get_ant__free_unpacked
+                     (RpcRespWifiGetAnt *message,
                       ProtobufCAllocator *allocator);
 /* RpcReqWifiSetInactiveTime methods */
 void   rpc__req__wifi_set_inactive_time__init
@@ -13345,6 +13601,30 @@ typedef void (*RpcReqWifiGetBandMode_Closure)
 typedef void (*RpcRespWifiGetBandMode_Closure)
                  (const RpcRespWifiGetBandMode *message,
                   void *closure_data);
+typedef void (*RpcReqWifiSetAntGpio_Closure)
+                 (const RpcReqWifiSetAntGpio *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiSetAntGpio_Closure)
+                 (const RpcRespWifiSetAntGpio *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiGetAntGpio_Closure)
+                 (const RpcReqWifiGetAntGpio *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiGetAntGpio_Closure)
+                 (const RpcRespWifiGetAntGpio *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiSetAnt_Closure)
+                 (const RpcReqWifiSetAnt *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiSetAnt_Closure)
+                 (const RpcRespWifiSetAnt *message,
+                  void *closure_data);
+typedef void (*RpcReqWifiGetAnt_Closure)
+                 (const RpcReqWifiGetAnt *message,
+                  void *closure_data);
+typedef void (*RpcRespWifiGetAnt_Closure)
+                 (const RpcRespWifiGetAnt *message,
+                  void *closure_data);
 typedef void (*RpcReqWifiSetInactiveTime_Closure)
                  (const RpcReqWifiSetInactiveTime *message,
                   void *closure_data);
@@ -14006,6 +14286,14 @@ extern const ProtobufCMessageDescriptor rpc__req__wifi_set_band_mode__descriptor
 extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_band_mode__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__wifi_get_band_mode__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__wifi_get_band_mode__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_set_ant_gpio__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_ant_gpio__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_get_ant_gpio__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_get_ant_gpio__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_set_ant__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_ant__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__wifi_get_ant__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__wifi_get_ant__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__wifi_set_inactive_time__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__wifi_set_inactive_time__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__wifi_get_inactive_time__descriptor;

@@ -23,7 +23,7 @@ target_link_libraries(esp_hosted_compat
 )
 
 # Feature deps — link only when the feature target exists.
-foreach(_feat bt system cp_ext_coex gpio_exp ota heartbeat peer_data
+foreach(_feat bt system cp_ext_coex gpio_exp phy_ant ota heartbeat peer_data
               mem_monitor nw_split power_save openthread
               wifi wifi_ext_dpp wifi_ext_ent wifi_ext_itwt)
     if(TARGET eh_host_feat_${_feat})

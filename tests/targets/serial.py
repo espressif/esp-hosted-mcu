@@ -30,7 +30,7 @@ from infra.emu_dut import settle_check
 from infra.serial_dut import SerialDut
 from tools.build_examples import CompatMatrix
 
-from .base import Bench, BenchProvider, BenchSpec
+from .base import CAP_HOST_EXT_CAPS_LOG, Bench, BenchProvider, BenchSpec
 
 _DEFAULT_FLASH_BAUD = 2000000
 _DEFAULT_MONITOR_BAUD = 115200
@@ -299,8 +299,8 @@ class SerialTarget(BenchProvider):
             self.transports = frozenset({"sdio"})  # a bench is at least SDIO-wired
         # Feature caps the board physically has (e.g. "wake" GPIO, "coex_wired").
         # Default none — the P4-C6 Core board has neither; declare in lab.local.json
-        # for a board that does.
-        self.caps = frozenset(local.get("caps", []) or [])
+        # for a board that does. The MCU host always logs the CP ext caps.
+        self.caps = frozenset(local.get("caps", []) or []) | {CAP_HOST_EXT_CAPS_LOG}
 
     def make(self, spec: BenchSpec, *, worker_id, lab_tmp) -> Bench:
         bench = bench_config()

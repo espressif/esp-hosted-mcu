@@ -426,6 +426,23 @@
 #else
 #  define EH_HOST_FEAT_GPIO_EXP_AUTO_INIT   0
 #endif
+
+/* PHY_ANT */
+#ifdef CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT
+#  define EH_HOST_FEAT_PHY_ANT              1
+#else
+#  define EH_HOST_FEAT_PHY_ANT              0
+#endif
+#ifdef CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT_READY
+#  define EH_HOST_FEAT_PHY_ANT_READY        1
+#else
+#  define EH_HOST_FEAT_PHY_ANT_READY        0
+#endif
+#ifdef CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT_AUTO_INIT
+#  define EH_HOST_FEAT_PHY_ANT_AUTO_INIT    1
+#else
+#  define EH_HOST_FEAT_PHY_ANT_AUTO_INIT    0
+#endif
 #ifdef CONFIG_ESP_HOSTED_HOST_FEAT_RF_CERT_READY
 #  define EH_HOST_FEAT_RF_CERT_READY       1
 #else

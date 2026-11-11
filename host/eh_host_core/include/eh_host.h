@@ -46,6 +46,10 @@
 #  include "eh_host_cp_gpio.h"
 #endif
 
+#if EH_HOST_FEAT_PHY_ANT
+#  include "eh_host_phy_ant.h"
+#endif
+
 #if EH_HOST_FEAT_CP_EXT_COEX
 #  include "eh_host_cp_ext_coex.h"
 #endif

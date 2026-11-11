@@ -1,6 +1,8 @@
 # Unreleased
 
 - host: `esp_hosted_tx()` copies the frame also when `buff_zerocopy=1`. SDIO and USB send it after the call returns, so the old zero-copy path read the buffer after it was freed
+- host/cp: PHY antenna selection over RPC (`ESP_HOSTED_HOST_FEAT_PHY_ANT`, `ESP_HOSTED_CP_FEAT_PHY_ANT`). See [PHY Antenna](features/phy-antenna.md)
+- host: a co-processor without the handler for an RPC now returns `ESP_ERR_NOT_SUPPORTED` to the host caller
 - host: with `ESP_HOSTED_AUTO_CALL_INIT_BEFORE_APP_MAIN=y`, the link starts on the first hosted call, not at boot, so transport task stacks get fast RAM on ESP32-P4 (GH#256). `eh_host_wait_auto_init_ready()` is removed: hosted calls start the link themselves
 - host/usb: power-save enter and exit wait until the header-only frame has been written to the bus
 - host/usb: added CDC queues to receive and transmit data based on serial, HCI, and data lanes

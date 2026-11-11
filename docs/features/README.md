@@ -16,6 +16,7 @@ Come here **after** a first example works (see [Getting Started](../getting-star
 | Network Split | Yes | Yes | [Network Split](network-split.md) |
 | Host Power Save | — | Yes | [Power Save](power-save.md) |
 | GPIO Expander | Yes | Yes | [GPIO Expander](gpio-expander.md) |
+| PHY Antenna Selection | Yes | Yes | [PHY Antenna](phy-antenna.md) |
 | OTA & System | Yes | Yes | [OTA & System](ota-and-system.md) |
 | RF Certification Test | Yes | Yes | [RF Cert Test](rf-cert-test.md) |
 
@@ -48,6 +49,8 @@ If you are unsure where to begin:
 **Host Power Save** — Coordinate host sleep/wake with the co-processor (pairs with network split). → [Power Save](power-save.md)
 
 **GPIO Expander** — Drive and read the co-processor's GPIOs from the host over RPC. → [GPIO Expander](gpio-expander.md)
+
+**PHY Antenna Selection** — Select the co-processor antenna through an external RF switch: route the switch lines to co-processor GPIOs and pick the TX and RX antenna. → [PHY Antenna](phy-antenna.md)
 
 **RF Certification Test** — drive the co-processor's PHY cert tests from a host console: Wi-Fi and BLE transmit, receive with error counts, carrier tone. Off by default; never ship it enabled. → [RF Cert Test](rf-cert-test.md) · [example](../../examples/rf_cert/README.md)
 

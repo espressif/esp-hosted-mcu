@@ -29,7 +29,7 @@ if(CONFIG_ESP_HOSTED_HOST_FEAT_RPC_EXT_V2_READY)
 endif()
 
 foreach(feat
-        bt openthread cp_ext_coex gpio_exp peer_data nw_split heartbeat
+        bt openthread cp_ext_coex gpio_exp phy_ant peer_data nw_split heartbeat
         system wifi wifi_ext_ent wifi_ext_itwt wifi_ext_dpp mem_monitor
         power_save cli rf_cert)
     string(TOUPPER "CONFIG_ESP_HOSTED_HOST_FEAT_${feat}_READY" _eh_cfg)
@@ -46,7 +46,7 @@ endforeach()
 # --start-group / --end-group at final link.
 if(TARGET eh_host_feat_rpc_ext_v2)
     foreach(_rpc_feat
-            bt openthread cp_ext_coex gpio_exp peer_data nw_split heartbeat
+            bt openthread cp_ext_coex gpio_exp phy_ant peer_data nw_split heartbeat
             system wifi wifi_ext_ent wifi_ext_itwt wifi_ext_dpp mem_monitor
             rf_cert)
         if(TARGET eh_host_feat_${_rpc_feat})
@@ -121,7 +121,7 @@ foreach(_t IN ITEMS
         eh_host_linux_vserial eh_host_so
         eh_host_feat_rpc eh_host_feat_rpc_ext_v2
         eh_host_feat_bt eh_host_feat_openthread
-        eh_host_feat_cp_ext_coex eh_host_feat_gpio_exp
+        eh_host_feat_cp_ext_coex eh_host_feat_gpio_exp eh_host_feat_phy_ant
         eh_host_feat_peer_data
         eh_host_feat_nw_split eh_host_feat_heartbeat
         eh_host_feat_system eh_host_feat_wifi
