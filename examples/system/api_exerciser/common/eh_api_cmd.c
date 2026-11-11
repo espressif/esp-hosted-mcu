@@ -771,6 +771,43 @@ static int cmd_raw_tp(int argc, char **argv)
     eh_out_rc("raw_tp", rc);
     return 0;
 }
+
+/* esp_hosted_tx() with buff_zerocopy=1 and a free callback that zeroes the
+ * buffer. With `raw_tp start rx` running, the CP raw_tp seq log must count
+ * every frame: a frame read after its free arrives with seq 0 or garbage. */
+#include "esp_hosted.h"
+#define ZCOPY_HEADROOM 64
+#define ZCOPY_LEN      512
+static void zcopy_zero_free(void *p)
+{
+    memset(p, 0, ZCOPY_HEADROOM + ZCOPY_LEN);
+    free(p);
+}
+
+static int cmd_raw_tp_zcopy(int argc, char **argv)
+{
+    int n = argc >= 2 ? atoi(argv[1]) : 200;
+    int ok = 0;
+
+    for (int i = 0; i < n; i++) {
+        uint8_t *buf = malloc(ZCOPY_HEADROOM + ZCOPY_LEN);
+        if (!buf)
+            break;
+        uint8_t *payload = buf + ZCOPY_HEADROOM;
+        uint32_t seq = (uint32_t)i + 1;
+
+        memset(payload, 0x5A, ZCOPY_LEN);
+        payload[0] = (uint8_t)seq;
+        payload[1] = (uint8_t)(seq >> 8);
+        payload[2] = (uint8_t)(seq >> 16);
+        payload[3] = (uint8_t)(seq >> 24);
+        if (esp_hosted_tx(ESP_TEST_IF, 0, payload, ZCOPY_LEN, 1,
+                          buf, zcopy_zero_free, 0) == 0)
+            ok++;
+    }
+    printf("EH raw_tp_zcopy sent=%d ok=%d\n", n, ok);
+    return 0;
+}
 #endif
 
 static const eh_api_entry_t s_cmds[] = {
@@ -862,6 +899,7 @@ static const eh_api_entry_t s_cmds[] = {
 #endif
 #if CONFIG_ESP_HOSTED_RAW_THROUGHPUT_TRANSPORT
     { "raw_tp",                 cmd_raw_tp,                  "raw_tp start tx|rx|both | raw_tp stop" },
+    { "raw_tp_zcopy",           cmd_raw_tp_zcopy,            "raw_tp_zcopy [n]: zero-copy TX with an early free" },
 #endif
 };
 
