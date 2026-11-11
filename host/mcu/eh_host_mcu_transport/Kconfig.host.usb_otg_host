@@ -74,19 +74,17 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
 
 		config ESP_HOSTED_HOST_USB_TX_Q_SIZE
 			int "USB Host TX queue size"
-			# Present, but not selectable until a host TX queue exists.
-			depends on n
 			default 20
 			range 4 100
 			help
-				Number of TX buffers for the CDC-ACM host transport.
+				Depth of each CDC TX lane (serial, HCI, data).
 
 		config ESP_HOSTED_HOST_USB_RX_Q_SIZE
 			int "USB Host RX queue size"
-			default 6
+			default 20
 			range 4 100
 			help
-				Number of host RX buffers. Each buffer is one maximum USB frame.
+				Depth of each CDC RX lane (serial, HCI, data).
 
 		config ESP_HOSTED_HOST_USB_OUT_BUF_SIZE
 			int "USB CDC OUT buffer size (bytes)"
@@ -101,20 +99,6 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
 			range 0 8192
 			help
 				Maximum USB bulk IN transfer size. 0 uses endpoint Max Packet Size (MPS).
-
-		config ESP_HOSTED_HOST_USB_RX_TASK_STACK
-			int "USB RX task stack size"
-			default 4096
-			range 2048 16384
-			help
-				Stack size for the dedicated USB RX frame processing task.
-
-		config ESP_HOSTED_HOST_USB_RX_TASK_PRIO
-			int "USB RX task priority"
-			default 22
-			range 1 25
-			help
-				Priority of the USB RX frame processing task.
 
 		config ESP_HOSTED_HOST_USB_RNDIS_TX_Q_SIZE
 			int "USB RNDIS TX queue size"

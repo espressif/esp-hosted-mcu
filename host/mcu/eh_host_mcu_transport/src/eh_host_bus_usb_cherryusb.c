@@ -30,6 +30,9 @@ static const char *TAG = "eh_bus_usb";
 #define EH_CHERRY_RX_LEN 512
 #define EH_CHERRY_OPEN_POLL_MS 50
 
+#define RX_TASK_STACK_SIZE                EH_HOST_DEFLT_TASK_STACK_BYTES
+#define RX_TASK_PRIO                      EH_HOST_DEFLT_TASK_PRIORITY
+
 static USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t s_cherry_rx_buf[USB_ALIGN_UP(EH_CHERRY_RX_LEN, CONFIG_USB_ALIGN_SIZE)];
 static USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t s_cherry_tx_buf[USB_ALIGN_UP(EH_USB_MAX_BUF, CONFIG_USB_ALIGN_SIZE)];
 
@@ -144,6 +147,20 @@ static int cherry_stack_start(void)
     return 0;
 }
 
+static eh_host_port_task_t *eh_usb_thread_create(const char *name, int prio, size_t stack,
+                                                eh_host_port_task_fn_t fn, void *arg)
+{
+    eh_host_port_task_create_cfg_t cfg = {
+        .fn = fn, .arg = arg, .stack_bytes = stack,
+        .priority = prio, .name = name,
+    };
+    eh_host_port_task_t *t = NULL;
+    if (eh_host_port_task_create(&cfg, &t) != EH_HOST_PORT_OK) {
+        return NULL;
+    }
+    return t;
+}
+
 static int cherry_stack_open(void)
 {
     const struct eh_host_usb_otg_config *cfg = eh_host_usb_cfg();
@@ -170,21 +187,13 @@ static int cherry_stack_open(void)
     }
 
     s_cherry_rx_run = 1;
-    {
-        eh_host_port_task_create_cfg_t task_cfg = {
-            .fn = cherry_rx_pump,
-            .arg = NULL,
-            .stack_bytes = CONFIG_ESP_HOSTED_HOST_USB_RX_TASK_STACK,
-            .priority = CONFIG_ESP_HOSTED_HOST_USB_RX_TASK_PRIO,
-            .name = "eh_usb_cherry_rx",
-        };
-        if (eh_host_port_task_create(&task_cfg, &s_cherry_rx_pump) != EH_HOST_PORT_OK) {
-            ESP_LOGE(TAG, "failed to create CherryUSB RX pump");
-            s_cherry_rx_run = 0;
-            usbh_serial_close(s_cherry_serial);
-            s_cherry_serial = NULL;
-            return -1;
-        }
+    s_cherry_rx_pump = eh_usb_thread_create("eh_usb_cherry_rx", RX_TASK_PRIO, RX_TASK_STACK_SIZE, cherry_rx_pump, NULL);
+    if (!s_cherry_rx_pump) {
+        ESP_LOGE(TAG, "failed to create CherryUSB RX pump");
+        s_cherry_rx_run = 0;
+        usbh_serial_close(s_cherry_serial);
+        s_cherry_serial = NULL;
+        return -1;
     }
 
     /* Arm bulk IN before DTR so the coprocessor's INIT is not dropped. */

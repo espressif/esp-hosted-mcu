@@ -40,15 +40,8 @@ menu "USB (OTG) Device Configuration (Experimental)"
 			The MCU host driver is still CDC-ACM only. Enabling this
 			removes STA and AP data from the framed CDC stream.
 
-			This selects TinyUSB network mode ECM/RNDIS when that choice
-			has no saved value. If sdkconfig already has Network mode None,
-			set it to ECM/RNDIS.
-
-	# select/imply does not change a choice. This default is sourced before
-	# esp_tinyusb's default of None, so it wins when the option is on and
-	# the choice has no saved user selection.
-	choice TINYUSB_NET_MODE
-		default TINYUSB_NET_MODE_ECM_RNDIS if EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
-	endchoice
+			Set TinyUSB network mode to ECM/RNDIS
+			(CONFIG_TINYUSB_NET_MODE_ECM_RNDIS). A saved sdkconfig that
+			still has Network mode None will not build.
 
 endmenu

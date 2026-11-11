@@ -4,7 +4,13 @@ CONFIG_SLAVE_IDF_TARGET_ESP32S31=y
 
 # Select USB OTG Host as transport
 CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST=y
+# USB host stack. CDC-ACM uses the ESP-IDF USB Host Library and usb_host_cdc_acm
+# (VID:PID from ESP_HOSTED_HOST_USB_VID / PID; 0 matches any).
 CONFIG_ESP_HOSTED_HOST_USB_STACK_CDC_ACM=y
+# CherryUSB uses the DWC2 host and its CDC-ACM driver. It opens /dev/ttyACM0,
+# needs the CDC notification interrupt endpoint, and does not call usb_host_install().
+# To select it, comment out the CDC-ACM line above and uncomment the next line.
+# CONFIG_ESP_HOSTED_HOST_USB_STACK_CHERRYUSB=y
 # -1: no GPIO wired to the co-processor EN/RST line
 CONFIG_ESP_HOSTED_HOST_RESET_GPIO=-1
 
