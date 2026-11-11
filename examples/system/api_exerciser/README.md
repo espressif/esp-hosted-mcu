@@ -154,7 +154,9 @@ The coprocessor firmware must use USB OTG device (CDC-ACM). Keep the host
 console off the USB OTG peripheral; that controller is the ESP-Hosted bus.
 The console prompt is `eh>`.
 
-[USB RNDIS is not yet enabled.] For the USB RNDIS Wi-Fi data plane, append
+For the USB RNDIS Wi-Fi data plane, append
 `sdkconfig.defaults.esp32p4.usb_rndis` to the host defaults and
 `cp/sdkconfig.defaults.esp32s31.usb_rndis` to the CP defaults. RNDIS options
-must be enabled on both ends.
+must be enabled on both ends. TinyUSB network mode and the host
+control-transfer sizes are set in those components' own menus. See
+[RNDIS data plane](https://github.com/espressif/esp-hosted/blob/master/docs/design/usb-otg-host.md#rndis-data-plane).
