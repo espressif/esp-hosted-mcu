@@ -42,15 +42,12 @@ int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
                   void (*free_buf_func)(void *ptr),
                   uint8_t flags)
 {
-    int rc;
-    if (buff_zerocopy) {
-        rc = (int)eh_host_transport_tx_zerocopy(iface_type, iface_num,
-                                                 payload_buf, payload_len, flags);
-    } else {
-        rc = (int)eh_host_transport_tx(iface_type, iface_num,
-                                        (const uint8_t *)payload_buf,
-                                        payload_len, flags);
-    }
+    /* Always copy: SDIO and USB queue the frame and send it after this
+     * returns, but buffer_to_free is freed here. */
+    (void)buff_zerocopy;
+    int rc = (int)eh_host_transport_tx(iface_type, iface_num,
+                                       (const uint8_t *)payload_buf,
+                                       payload_len, flags);
     if (buffer_to_free && free_buf_func) free_buf_func(buffer_to_free);
     return rc;
 }

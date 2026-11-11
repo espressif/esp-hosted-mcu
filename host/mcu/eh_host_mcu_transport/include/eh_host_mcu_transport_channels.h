@@ -52,14 +52,6 @@ esp_err_t eh_host_transport_aux_tx(uint8_t aux_type,
                                     const uint8_t *payload, uint16_t len,
                                     uint8_t flags);
 
-/* Zero-copy TX. Caller's buffer must have EH_FRAME_HEADROOM bytes
- * BEFORE payload; we write the wire header in place (no memcpy) and
- * call bus_tx on (payload-headroom, len+headroom). Caller retains
- * buffer ownership; bus_tx is synchronous. */
-esp_err_t eh_host_transport_tx_zerocopy(uint8_t if_type, uint8_t if_num,
-                                         uint8_t *payload, uint16_t len,
-                                         uint8_t flags);
-
 #define EH_FRAME_HEADROOM_V1 12  /* sizeof(struct esp_payload_header) */
 
 /* HCI inbound-handler registration (impl in eh_host_mcu_hci.c). The BT

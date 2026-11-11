@@ -104,42 +104,6 @@ esp_err_t eh_host_transport_aux_tx(uint8_t aux_type,
     return transport_tx(ESP_AUX_IF, 0, aux_type, payload, len, flags);
 }
 
-esp_err_t eh_host_transport_tx_zerocopy(uint8_t if_type, uint8_t if_num,
-                                         uint8_t *payload, uint16_t payload_len,
-                                         uint8_t flags)
-{
-    if (!payload || payload_len == 0) return ESP_FAIL;
-
-    if (eh_host_wifi_tx_is_throttled() &&
-        (if_type == ESP_STA_IF || if_type == ESP_AP_IF)) {
-        return netif_tx_failed();
-    }
-
-    /* Caller-promised headroom. */
-    uint8_t *frame_start = payload - eh_frame_hdr_size();
-
-    /* Zero-copy — caller retains ownership of `frame_start`. */
-    interface_buffer_handle_t bh = {
-        .priv_buffer_handle = NULL,
-        .if_type            = if_type,
-        .if_num             = if_num,
-        .flags              = flags,
-        .payload            = payload,
-        .payload_len        = payload_len,
-        .payload_zcopy      = 1,
-        .free_buf_handle    = NULL,
-    };
-    eh_frame_encode(frame_start, &bh, payload_len);
-    int rc = eh_host_mcu_transport_tx(&bh);
-    if (rc >= 0) {
-        return ESP_OK;
-    }
-    if (if_type == ESP_STA_IF || if_type == ESP_AP_IF) {
-        return netif_tx_failed();
-    }
-    return ESP_FAIL;
-}
-
 static esp_err_t sta_tx(void *h, void *buf, size_t len)
 {
     (void)h;

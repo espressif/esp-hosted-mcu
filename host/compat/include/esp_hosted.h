@@ -40,7 +40,7 @@ int esp_hosted_connect_to_slave(void);
 int esp_hosted_get_coprocessor_fwversion(esp_hosted_coprocessor_fwver_t *ver_info);
 int esp_hosted_get_cp_info(uint32_t *cp_chip_id, char *cp_target_name, size_t cp_target_name_len);
 
-/* buff_zerocopy=0 only today. Linux user-space: only ESP_SERIAL_IF meaningful. */
+/* buff_zerocopy is ignored: the frame is always copied. Linux user-space: only ESP_SERIAL_IF meaningful. */
 int esp_hosted_tx(uint8_t iface_type, uint8_t iface_num,
                   uint8_t *payload_buf, uint16_t payload_len,
                   uint8_t buff_zerocopy,
