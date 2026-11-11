@@ -128,7 +128,7 @@ sequenceDiagram
 On the CP:
 
 - If the RX pool is empty, `uart_rx_task` waits for a free buffer. The bytes wait in the driver ring.
-- If Wi-Fi TX is full, `wifi_tx_with_retry()` retries for up to 16 ms per frame. Then Wi-Fi drops the frame. The host does not send more than the window meanwhile, so the ring does not overflow.
+- If Wi-Fi TX is full, `wifi_tx_with_retry()` retries up to `CONFIG_ESP_HOSTED_CP_WIFI_TX_RETRY_LIMIT` times, 1 ms apart (default 16). Then Wi-Fi drops the frame. The host does not send more than the window meanwhile, so the ring does not overflow.
 
 ### Timing budget
 

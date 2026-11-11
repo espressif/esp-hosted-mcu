@@ -59,10 +59,6 @@ static const char TAG[] = "ehcp_core";
 #define TO_HOST_QUEUE_SIZE               10
 
 #define ETH_DATA_LEN                     1500
-/* Host->WiFi TX retry-on-transient-pool-full: hold the frame briefly so bursty
- * TCP paces via SDIO credit instead of dropping into an RTO. */
-#define MAX_WIFI_STA_TX_RETRY            16
-#define WIFI_TX_RETRY_DELAY_MS           1
 
 /* Serial RX reassembly buffer: heap-grown via realloc per fragment. */
 static struct serial_rx_data {
@@ -244,7 +240,7 @@ static esp_err_t default_wlan_sta_rx_callback(void *buffer, uint16_t len, void *
 }
 #endif
 
-/* ESP_ERR_NOT_FOUND: nobody claimed it (STA/AP then go to the air). */
+/* ESP_ERR_NOT_FOUND: nobody claimed it. */
 static esp_err_t host_rx(eh_if_type_t if_type, void *buf, uint16_t len)
 {
 	eh_cp_traffic_cb_t cb = eh_cp_get_traffic_rx_cb(if_type);
@@ -531,26 +527,6 @@ static void process_priv_command(uint8_t *payload, uint16_t payload_len)
 #endif
 }
 
-#if EH_CP_FEAT_WIFI_READY
-/* Hold the frame over transient WiFi pool exhaustion so a burst paces on the
- * bus instead of dropping into a TCP RTO. Any other error is terminal. */
-static int wifi_tx_with_retry(wifi_interface_t wifi_if, uint8_t *payload,
-                              uint16_t payload_len)
-{
-	int ret = ESP_OK;
-	int retry = MAX_WIFI_STA_TX_RETRY;
-
-	do {
-		ret = esp_wifi_internal_tx(wifi_if, payload, payload_len);
-		if (ret != ESP_ERR_NO_MEM)
-			break;
-		vTaskDelay(pdMS_TO_TICKS(WIFI_TX_RETRY_DELAY_MS));
-	} while (--retry);
-
-	return ret;
-}
-#endif
-
 static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 {
 	uint8_t *payload = NULL;
@@ -569,28 +545,9 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 			process_priv_command(payload, payload_len);
 		else
 			process_priv_pkt(payload, payload_len);
-#if EH_CP_FEAT_WIFI_READY
-	} else if (buf_handle->if_type == ESP_STA_IF) {
-		/* Registry dispatch first; fall back to direct WiFi TX if no RX cb. */
-		esp_err_t reg_ret = host_rx(ESP_STA_IF, payload, payload_len);
-		if (reg_ret == ESP_ERR_NOT_FOUND) {
-			int ret = wifi_tx_with_retry(WIFI_IF_STA, payload, payload_len);
-  #if ESP_PKT_STATS
-			if (ret)
-				pkt_stats.hs_bus_sta_fail++;
-			else
-				pkt_stats.hs_bus_sta_out++;
-  #else
-			(void)ret;
-  #endif
-		}
-	} else if (buf_handle->if_type == ESP_AP_IF) {
-		esp_err_t reg_ret = host_rx(ESP_AP_IF, payload, payload_len);
-		if (reg_ret == ESP_ERR_NOT_FOUND) {
-			wifi_tx_with_retry(WIFI_IF_AP, payload, payload_len);
-			ESP_HEXLOGV("AP_Put", payload, payload_len, 32);
-		}
-#endif
+	} else if (buf_handle->if_type == ESP_STA_IF ||
+	           buf_handle->if_type == ESP_AP_IF) {
+		(void)host_rx(buf_handle->if_type, payload, payload_len);
 	} else if (buf_handle->if_type == ESP_SERIAL_IF) {
 #if ESP_PKT_STATS
 		pkt_stats.serial_rx++;
@@ -655,9 +612,8 @@ static void process_rx_pkt(interface_buffer_handle_t *buf_handle)
 		eh_transport_utils_update_raw_tp_rx_count(payload, payload_len);
 	}
 #endif
-	/* STA/AP/TEST of a compiled-out feature: drop without a log (data flood). */
-	else if (buf_handle->if_type != ESP_STA_IF && buf_handle->if_type != ESP_AP_IF &&
-	         buf_handle->if_type != ESP_TEST_IF) {
+	/* TEST without TEST_RAW_TP: drop without a log (data flood). */
+	else if (buf_handle->if_type != ESP_TEST_IF) {
 		ESP_LOGW(TAG, "rx-drop: no handler for if_type=%u len=%u",
 		         buf_handle->if_type, payload_len);
 	}

@@ -291,7 +291,9 @@ stateDiagram-v2
   never runs. It is stopped at STA_CONNECTED and re-armed at STA_DISCONNECTED,
   both in the same handler pass as esp_netif. A reconnect queued behind the
   disconnect then finds it armed; a stopped client makes esp_netif post the old
-  address as a static GOT_IP.
+  address as a static GOT_IP. esp_netif can send a DHCP frame before the stop,
+  so the CP also drops host DHCP client frames in CP_* rows
+  (`nw_split_drop_host_dhcp()`).
 - HOST_* rows run the host DHCP client and push the address to the CP.
 - The link comes from the app's STA_CONNECTED. So in network split **the app
   must call `esp_wifi_init` + `esp_wifi_start`**. Connect is optional: a link
