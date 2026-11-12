@@ -76,6 +76,7 @@ co-processor config is **pre-set in `sdkconfig.defaults`** (do not remove):
 CONFIG_ESP_HOSTED_CP_FEAT_WIFI=y          # Wi-Fi API surface
 CONFIG_ESP_HOSTED_CP_FEAT_GPIO_EXP=y      # GPIO expander API surface
 CONFIG_ESP_HOSTED_CP_FEAT_CP_EXT_COEX=y   # external-coexistence API surface
+CONFIG_ESP_HOSTED_CP_FEAT_PHY_ANT=y       # PHY antenna API surface
 ```
 
 Dropping one of these removes the matching commands, and the tests that
@@ -95,6 +96,7 @@ CONFIG_ESP_HOSTED_HOST_FEAT_SYSTEM=y
 CONFIG_ESP_HOSTED_HOST_FEAT_WIFI=y
 CONFIG_ESP_HOSTED_HOST_FEAT_GPIO_EXP=y
 CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX=y
+CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT=y
 ```
 
 The co-processor must enable the matching CP-side features.

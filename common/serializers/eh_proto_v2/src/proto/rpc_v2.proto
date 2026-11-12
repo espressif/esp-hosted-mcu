@@ -1537,6 +1537,38 @@ message Rpc_Resp_WifiGetBandMode {
 	uint32 bandmode = 2;
 }
 
+message Rpc_Req_WifiSetAntGpio {
+	wifi_ant_gpio_config config = 1;
+}
+
+message Rpc_Resp_WifiSetAntGpio {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiGetAntGpio {
+}
+
+message Rpc_Resp_WifiGetAntGpio {
+	int32 resp = 1;
+	wifi_ant_gpio_config config = 2;
+}
+
+message Rpc_Req_WifiSetAnt {
+	wifi_ant_config config = 1;
+}
+
+message Rpc_Resp_WifiSetAnt {
+	int32 resp = 1;
+}
+
+message Rpc_Req_WifiGetAnt {
+}
+
+message Rpc_Resp_WifiGetAnt {
+	int32 resp = 1;
+	wifi_ant_config config = 2;
+}
+
 message Rpc_Req_WifiSetInactiveTime {
 	uint32 ifx = 1;
 	uint32 sec = 2;
@@ -2434,6 +2466,10 @@ message Rpc {
 		Rpc_Req_WifiApGetStaAid             req_wifi_ap_get_sta_aid           = 312;
 		Rpc_Req_WifiSetStorage              req_wifi_set_storage              = 313;
 
+		Rpc_Req_WifiSetAntGpio              req_wifi_set_ant_gpio             = 320;
+		Rpc_Req_WifiGetAntGpio              req_wifi_get_ant_gpio             = 321;
+		Rpc_Req_WifiSetAnt                  req_wifi_set_ant                  = 322;
+		Rpc_Req_WifiGetAnt                  req_wifi_get_ant                  = 323;
 		Rpc_Req_WifiSetInactiveTime         req_wifi_set_inactive_time        = 325;
 		Rpc_Req_WifiGetInactiveTime         req_wifi_get_inactive_time        = 326;
 
@@ -2586,6 +2622,10 @@ message Rpc {
 		Rpc_Resp_WifiApGetStaAid            resp_wifi_ap_get_sta_aid           = 568;
 		Rpc_Resp_WifiSetStorage             resp_wifi_set_storage              = 569;
 
+		Rpc_Resp_WifiSetAntGpio             resp_wifi_set_ant_gpio             = 576;
+		Rpc_Resp_WifiGetAntGpio             resp_wifi_get_ant_gpio             = 577;
+		Rpc_Resp_WifiSetAnt                 resp_wifi_set_ant                  = 578;
+		Rpc_Resp_WifiGetAnt                 resp_wifi_get_ant                  = 579;
 		Rpc_Resp_WifiSetInactiveTime        resp_wifi_set_inactive_time        = 581;
 		Rpc_Resp_WifiGetInactiveTime        resp_wifi_get_inactive_time        = 582;
 

@@ -425,6 +425,14 @@ esp_err_t req_gpio_input_enable(Rpc *req, Rpc *resp, void *priv_data);
 esp_err_t req_gpio_set_pull_mode(Rpc *req, Rpc *resp, void *priv_data);
 #endif
 
+/* PHY Antenna RPC Request Handlers */
+#if EH_CP_FEAT_PHY_ANT_READY
+esp_err_t req_phy_ant_set_gpio(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_ant_get_gpio(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_ant_set(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_phy_ant_get(Rpc *req, Rpc *resp, void *priv_data);
+#endif
+
 /* RF Certification Test RPC Request Handlers */
 #if EH_CP_FEAT_RF_CERT_READY
 /* Radio-agnostic */

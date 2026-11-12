@@ -18,7 +18,7 @@ from infra import host_apps
 from infra import build_fw, lab, sandbox
 from infra.emu_dut import EmuDut, emu_bin, quiet, settle_check
 
-from .base import (CAP_GPIO_LOOPBACK, CAP_NET, CAP_WAKE, CAP_WIFI_ITWT,
+from .base import (CAP_GPIO_LOOPBACK, CAP_HOST_EXT_CAPS_LOG, CAP_NET, CAP_WAKE, CAP_WIFI_ITWT,
                    Bench, BenchProvider, BenchSpec)
 
 # CP→host wake line (framed bridge carries it as OP_WAKE). Board- AND
@@ -140,7 +140,8 @@ class EmuTarget(BenchProvider):
     transports = frozenset({"sdio", "sdio_1", "uart", "spi_fd",
                             "spi_hd", "spi_hd_1", "spi_hd_2", "spi_hd_4"})
     caps = frozenset({CAP_WAKE, CAP_GPIO_LOOPBACK, "wifi_ap",
-                      CAP_WIFI_ITWT})  # emu CP = C6 (HE)
+                      CAP_WIFI_ITWT,  # emu CP = C6 (HE)
+                      CAP_HOST_EXT_CAPS_LOG})
 
     def __init__(self):
         pass  # per-bench resources come from lab.alloc_bench (survives EmuTarget churn)

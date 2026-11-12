@@ -283,11 +283,17 @@ def wifi_ap(substrate):
 @pytest.fixture
 def bench_gpio(substrate):
     """GPIO pins the bench lets a test touch: 'pin' is free for the expander
-    round-trip, 'reserved' is one the transport owns and the CP must refuse.
+    round-trip, 'reserved' is one the transport owns and the CP must refuse,
+    'bus_pins' maps a transport to one pin it owns, 'ant_pin' is free for an
+    antenna-switch line, 'ant_pins' two free lines for multi-pin cases,
+    'flash_pin' one IDF reserved for flash.
     Per-board facts — GPIO 14 is free on a P4-C6 but is SDIO D2 on a C5. With
     no 'pin' declared the test skips rather than drive unknown hardware."""
     if substrate == "emu":
-        return {"pin": 14}
+        # emu CP is a C6 on the P4 function board: CLK is GPIO 19 on SDIO, SPI and
+        # SPI-HD. GPIO 14 is free but an IDF bug refuses it (see test_phy_ant_gpio_idf_check).
+        return {"pin": 14, "ant_pin": 1, "ant_pins": [1, 14], "flash_pin": 24,
+                "bus_pins": {"sdio": 19, "sdio_1": 19, "spi_fd": 19, "spi_hd": 19}}
     import json
     from infra import lab
     for f in ("lab.local.json", "env.json"):

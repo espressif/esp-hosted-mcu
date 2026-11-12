@@ -13,8 +13,9 @@ CONFIG_ESP_HOSTED_HOST_FEAT_RPC_EXT_V2=y
 CONFIG_ESP_HOSTED_HOST_AUTO_FEAT_INIT=y
 CONFIG_ESP_HOSTED_HOST_FEAT_SYSTEM_AUTO_INIT=y
 
-# Wi-Fi/gpio/coex on the Linux host too (control-plane RPC over vserial) — brings
-# the wifi/gpio/coex exerciser commands to linux for full mcu<->linux parity.
+# Wi-Fi/gpio/phy_ant/coex on the Linux host too (control-plane RPC over vserial) — brings
+# the wifi/gpio/phy_ant/coex exerciser commands to linux for full mcu<->linux parity.
 CONFIG_ESP_HOSTED_HOST_FEAT_WIFI=y
 CONFIG_ESP_HOSTED_HOST_FEAT_GPIO_EXP=y
+CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT=y
 CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX=y

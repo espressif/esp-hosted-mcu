@@ -1,0 +1,27 @@
+menuconfig ESP_HOSTED_HOST_FEAT_PHY_ANT
+	bool "PHY antenna selection"
+	default n
+	depends on ESP_HOSTED_HOST && ESP_HOSTED_HOST_FEAT_RPC
+	depends on ESP_HOSTED_HOST_FEAT_RPC_EXT_V2_READY
+	help
+	  Configures an external antenna switch on coprocessor GPIOs
+	  (eh_host_phy_ant_*). Antenna selection is PHY-level, so it does not
+	  need the Wi-Fi feature. The coprocessor must enable
+	  ESP_HOSTED_CP_FEAT_PHY_ANT, else every call returns
+	  ESP_ERR_NOT_SUPPORTED.
+
+if ESP_HOSTED_HOST_FEAT_PHY_ANT
+
+	config ESP_HOSTED_HOST_FEAT_PHY_ANT_AUTO_INIT
+		bool "Auto-initialize PHY antenna feature at boot"
+		default y
+		depends on ESP_HOSTED_HOST_AUTO_FEAT_INIT
+		help
+		  When enabled, eh_host_feat_phy_ant_init() runs during the
+		  linker-section auto-init walk.
+
+endif # ESP_HOSTED_HOST_FEAT_PHY_ANT
+
+config ESP_HOSTED_HOST_FEAT_PHY_ANT_READY
+	bool
+	default y if ESP_HOSTED_HOST_FEAT_PHY_ANT && ESP_HOSTED_HOST_FEAT_RPC_READY && ESP_HOSTED_HOST_FEAT_RPC_EXT_V2_READY

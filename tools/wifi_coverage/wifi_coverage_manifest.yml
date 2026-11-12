@@ -72,10 +72,10 @@ apis:
   esp_wifi_ftm_end_session: {unsupported: FTM API is not implemented in hosted}
   esp_wifi_ftm_resp_set_offset: {unsupported: FTM API is not implemented in hosted}
   esp_wifi_ftm_get_report: {unsupported: FTM API is not implemented in hosted}
-  esp_wifi_set_ant: {unsupported: antenna API is not implemented in hosted}
-  esp_wifi_get_ant: {unsupported: antenna API is not implemented in hosted}
-  esp_wifi_set_ant_gpio: {unsupported: antenna API is not implemented in hosted}
-  esp_wifi_get_ant_gpio: {unsupported: antenna API is not implemented in hosted}
+  esp_wifi_set_ant: {unsupported: no esp_wifi wrapper; use eh_host_phy_ant_* (PHY antenna feature)}
+  esp_wifi_get_ant: {unsupported: no esp_wifi wrapper; use eh_host_phy_ant_* (PHY antenna feature)}
+  esp_wifi_set_ant_gpio: {unsupported: no esp_wifi wrapper; use eh_host_phy_ant_* (PHY antenna feature)}
+  esp_wifi_get_ant_gpio: {unsupported: no esp_wifi wrapper; use eh_host_phy_ant_* (PHY antenna feature)}
   esp_wifi_set_vendor_ie: {unsupported: vendor IE API is not implemented in hosted (RPC v1 only)}
   esp_wifi_set_vendor_ie_cb: {unsupported: vendor IE API is not implemented in hosted (RPC v1 only)}
   esp_wifi_80211_tx: {unsupported: raw 802.11 TX / TX rate API is not implemented in hosted}
@@ -492,9 +492,9 @@ structs:
   wifi_roc_req_t: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
   wifi_event_action_tx_status_t: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
   wifi_event_roc_done_t: {unsupported: action frame / remain-on-channel API is not implemented in hosted}
-  wifi_ant_config_t: {unsupported: antenna API is not implemented in hosted}
-  wifi_ant_gpio_config_t: {unsupported: antenna API is not implemented in hosted}
-  wifi_ant_gpio_t: {unsupported: antenna API is not implemented in hosted}
+  wifi_ant_config_t: {unsupported: no esp_wifi wrapper; use eh_host_phy_ant_* (PHY antenna feature)}
+  wifi_ant_gpio_config_t: {unsupported: no esp_wifi wrapper; use eh_host_phy_ant_* (PHY antenna feature)}
+  wifi_ant_gpio_t: {unsupported: no esp_wifi wrapper; use eh_host_phy_ant_* (PHY antenna feature)}
   wifi_tx_rate_config_t: {unsupported: TX rate / TX info API is not implemented in hosted}
   wifi_tx_info_t: {unsupported: TX rate / TX info API is not implemented in hosted}
   esp_80211_tx_info_t: {unsupported: TX rate / TX info API is not implemented in hosted}

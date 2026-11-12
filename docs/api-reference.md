@@ -143,6 +143,13 @@ Header: `eh_host_cp_gpio.h` · compat `esp_hosted_cp_gpio.h`
 `eh_host_cp_gpio_config()`, `_set_level`/`_get_level`, `_set_direction`,
 `_input_enable`, `_set_pull_mode`, `_reset_pin` — each aliased `esp_hosted_cp_gpio_*`.
 
+## PHY antenna selection
+Header: `eh_host_phy_ant.h`
+
+`eh_host_phy_ant_set_gpio()`, `_get_gpio()`, `_set()`, `_get()` + init/deinit.
+They mirror `esp_phy_set_ant_gpio()`, `esp_phy_get_ant_gpio()`, `esp_phy_set_ant()`
+and `esp_phy_get_ant()` on the co-processor. See [PHY Antenna](features/phy-antenna.md).
+
 ## RF certification test
 Header: `eh_host_phy_cert.h` · ESP-IDF-shaped `esp_phy_remote.h`
 

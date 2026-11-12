@@ -1,0 +1,40 @@
+menuconfig ESP_HOSTED_CP_FEAT_PHY_ANT
+	bool "PHY antenna selection"
+	depends on ESP_HOSTED_CP
+	default n
+	help
+		Lets the host configure an external antenna switch on coprocessor
+		GPIOs (esp_phy_set_ant_gpio / esp_phy_set_ant) over RPC.
+		Antenna selection is PHY-level and applies to every radio.
+		GPIOs owned by the active transport are refused.
+
+if ESP_HOSTED_CP_FEAT_PHY_ANT
+
+	config ESP_HOSTED_CP_FEAT_PHY_ANT_READY
+		bool
+		default y
+
+	config ESP_HOSTED_CP_FEAT_PHY_ANT_AUTO_INIT
+		bool "Auto-initialise PHY antenna selection at boot"
+		default y if ESP_HOSTED_CP_FEAT_PHY_ANT_READY && ESP_HOSTED_CP_AUTO_FEAT_INIT
+		default n
+		depends on ESP_HOSTED_CP_AUTO_FEAT_INIT
+		help
+			When enabled, PHY antenna selection auto-initialises during
+			eh_cp_init().  Disable to manually call the init from app code.
+
+	config ESP_HOSTED_CP_FEAT_PHY_ANT_IDF_GPIO_RSV_WORKAROUND
+		bool "Work around the ESP-IDF antenna GPIO reservation check"
+		default n
+		help
+			ESP-IDF esp_phy_set_ant_gpio() passes the GPIO number to
+			esp_gpio_is_reserved(), which expects a GPIO bit mask. The check
+			then tests the wrong GPIOs: a free GPIO can be refused, and
+			re-applying the same antenna configuration can fail.
+
+			Enable this only if your ESP-IDF does not have the fix. The
+			coprocessor then releases the GPIOs that the wrong check tests,
+			for the duration of the IDF call only. A reserved GPIO is always
+			refused, with or without this option.
+
+endif # ESP_HOSTED_CP_FEAT_PHY_ANT

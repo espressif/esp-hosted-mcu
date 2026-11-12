@@ -7,6 +7,7 @@
 
 #include <string.h>
 
+#include "esp_err.h"
 #include "eh_host_port.h"
 #include "rpc_ext_v2_priv.h"
 #include "rpc_ext_v2_decode_priv.h"
@@ -26,6 +27,9 @@ static int parse_resp(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #endif
 #if EH_HOST_FEAT_GPIO_EXP_READY
     #include "eh_host_feat_gpio_exp_v2_resp_ids.inc"
+#endif
+#if EH_HOST_FEAT_PHY_ANT_READY
+    #include "eh_host_feat_phy_ant_v2_resp_ids.inc"
 #endif
 #if EH_HOST_FEAT_RF_CERT_READY
     #include "eh_host_feat_rf_cert_v2_resp_ids.inc"
@@ -58,6 +62,11 @@ static int parse_resp(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #if EH_HOST_FEAT_MEM_MONITOR_READY
     #include "eh_host_feat_mem_monitor_v2_resp_ids.inc"
 #endif
+
+    case RPC_ID__Resp_Base:
+        /* The coprocessor has no handler for the request. */
+        c->resp_event_status = ESP_ERR_NOT_SUPPORTED;
+        return 0;
 
     default:
         /* Out-of-scope: surface so base can clear pending uid. */

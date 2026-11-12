@@ -17,7 +17,7 @@
 #include "eh_frame.h"
 #include "eh_common_fw_version.h"
 #include "eh_host_port_master_config.h"
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+#if EH_HOST_TRANSPORT_BUS_SDIO
 #include "eh_host_port_dma.h"
 #include "eh_host_port_sdio.h"
 #endif
@@ -97,7 +97,7 @@ static void print_ext_capabilities(uint32_t ext)
     if (ext == 0)
         return;
     ESP_LOGI(TAG, "Extended Features supported:");
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SPI_HD
+#if EH_HOST_TRANSPORT_BUS_SPI_HD
     if (ext & EH_TRANSPORT_CP_SPI_HD_2_DATA_LINES) ESP_LOGI(TAG, "\t * SPI-HD 2 data lines");
     if (ext & EH_TRANSPORT_CP_SPI_HD_4_DATA_LINES) ESP_LOGI(TAG, "\t * SPI-HD 4 data lines");
 #endif
@@ -111,6 +111,7 @@ static void print_ext_capabilities(uint32_t ext)
     if (ext & ESP_EXT_CAP_OT)          ESP_LOGI(TAG, "\t * OpenThread");
     if (ext & ESP_EXT_CAP_AUX_IF)      ESP_LOGI(TAG, "\t * AUX interface");
     if (ext & ESP_EXT_CAP_AUX_OT)      ESP_LOGI(TAG, "\t * OpenThread over AUX");
+    if (ext & EH_EXT_CAP_PHY_ANT)      ESP_LOGI(TAG, "\t * PHY antenna selection");
 }
 
 static const char *chip_id_name(uint8_t id)
@@ -151,12 +152,12 @@ static int chip_id_is_known(uint8_t id)
     }
 }
 
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+#if EH_HOST_TRANSPORT_BUS_SDIO
 /* HARD ASSERT on slave=streaming + host=packet (slave's oversized frames are
  * undecodable). Reverse asymmetry is non-fatal — host can drain. */
 static int sdio_mode_check(uint8_t slave_streaming)
 {
-# ifdef CONFIG_ESP_HOSTED_HOST_SDIO_RX_STREAMING_MODE
+# if EH_HOST_PORT_SDIO_HOST_RX_MODE == EH_HOST_PORT_SDIO_HOST_STREAMING_MODE
     uint8_t host_streaming = 1;
 # else
     uint8_t host_streaming = 0;
@@ -246,7 +247,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
 
     const uint8_t *pos    = evt_buf;
     uint16_t       remain = len;
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+#if EH_HOST_TRANSPORT_BUS_SDIO
     int            saw_sdio_mode_tlv = 0;
     uint8_t        slave_tx_q_size = 0;
 #endif
@@ -299,7 +300,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
                          (unsigned int)s_cp_transfer_size);
             }
             break;
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART
+#if EH_HOST_TRANSPORT_BUS_UART
         case EH_PRIV_UART_CREDIT:
             if (tlen >= 4) {
                 eh_host_bus_uart_set_credit((uint16_t)(val[0] | val[1] << 8),
@@ -310,7 +311,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         case EH_PRIV_TRANS_SDIO_MODE:
             if (tlen >= 1) {
                 s_slave_sdio_streaming_mode = val[0];
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+#if EH_HOST_TRANSPORT_BUS_SDIO
                 saw_sdio_mode_tlv = 1;
 #endif
             }
@@ -339,7 +340,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
         case EH_PRIV_TX_Q_SIZE:
             if (tlen >= 1) {
                 ESP_LOGD(TAG, "slave tx queue size: %u", (unsigned int)val[0]);
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+#if EH_HOST_TRANSPORT_BUS_SDIO
                 slave_tx_q_size = val[0];
 #endif
             }
@@ -376,7 +377,7 @@ int eh_host_mcu_transport_process_init_event(const uint8_t *evt_buf, uint16_t le
     }
 
     /* Older CP firmware lacks the SDIO_MODE TLV; warn but don't abort. */
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_SDIO
+#if EH_HOST_TRANSPORT_BUS_SDIO
     if (eh_host_mcu_transport_sdio_sw_aggr_negotiated()) {
         /* Fail-fast on unallocatable advertised sizes (decision: assert, no
          * silent degrade) — probe the larger direction once. */

@@ -47,6 +47,7 @@
 /* ESP_AUX_IF frames (if_type 7) and OpenThread spinel over them. */
 #define ESP_EXT_CAP_AUX_IF                        (1u << 17)
 #define ESP_EXT_CAP_AUX_OT                        (1u << 18)
+#define EH_EXT_CAP_PHY_ANT                        (1u << 19)
 
 /* ── Tier 3: feat_caps[8] indices ──────────────────────────────────────── */
 /* Do not reuse indices; retired slots stay RSVD. */
@@ -75,6 +76,6 @@
 #define EH_PRIV_FIRMWARE_CHIP_ESP32S31      0x20u
 
 /* Bump when any bit above changes. */
-#define EH_CAPS_VERSION                   4u
+#define EH_CAPS_VERSION                   5u
 
 #endif /* EH_COMMON_CAPS_H */

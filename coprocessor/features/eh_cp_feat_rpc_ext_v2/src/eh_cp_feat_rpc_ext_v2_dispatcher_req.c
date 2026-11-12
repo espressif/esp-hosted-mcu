@@ -554,6 +554,21 @@ esp_err_t eh_cp_feat_rpc_ext_v2_rpc_req_dispatcher(Rpc *req, Rpc *resp, void *pr
             ret = req_gpio_set_pull_mode(req, resp, priv_data);
             break;
 #endif // EH_CP_FEAT_GPIO_EXP_READY
+
+#if EH_CP_FEAT_PHY_ANT_READY
+        case RPC_ID__Req_WifiSetAntGpio:
+            ret = req_phy_ant_set_gpio(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_WifiGetAntGpio:
+            ret = req_phy_ant_get_gpio(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_WifiSetAnt:
+            ret = req_phy_ant_set(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_WifiGetAnt:
+            ret = req_phy_ant_get(req, resp, priv_data);
+            break;
+#endif // EH_CP_FEAT_PHY_ANT_READY
 /* Non WiFi RPC Request Handlers - End */
         default:
             ESP_LOGE(TAG, "Unsupported command request [0x%x]", req->msg_id);

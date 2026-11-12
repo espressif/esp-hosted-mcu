@@ -368,6 +368,25 @@ typedef struct {
     int32_t  gpio_num;
 } eh_rpc_gpio_num_t;
 
+#define EH_RPC_PHY_ANT_GPIO_SLOTS 4
+
+typedef struct {
+    uint32_t gpio_select;
+    uint32_t gpio_num;
+} eh_rpc_phy_ant_gpio_slot_t;
+
+typedef struct {
+    eh_rpc_phy_ant_gpio_slot_t slot[EH_RPC_PHY_ANT_GPIO_SLOTS];
+} eh_rpc_phy_ant_gpio_t;
+
+typedef struct {
+    int32_t  rx_ant_mode;
+    int32_t  rx_ant_default;
+    int32_t  tx_ant_mode;
+    uint32_t enabled_ant0;
+    uint32_t enabled_ant1;
+} eh_rpc_phy_ant_cfg_t;
+
 /* ---- RF certification test (PHY cert test) mirrors ---- */
 typedef struct {
     uint32_t chan;          /* 1..14 */
@@ -659,6 +678,8 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_gpio_direction_t    gpio_direction;
         eh_rpc_gpio_pull_t         gpio_pull;
         eh_rpc_gpio_num_t          gpio_num;
+        eh_rpc_phy_ant_gpio_t      phy_ant_gpio;
+        eh_rpc_phy_ant_cfg_t       phy_ant_cfg;
         eh_rpc_phy_wifi_tx_t       phy_wifi_tx;
         eh_rpc_phy_wifi_rx_t       phy_wifi_rx;
         eh_rpc_phy_tone_t          phy_tone;

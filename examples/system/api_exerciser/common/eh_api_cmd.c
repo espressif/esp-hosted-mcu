@@ -6,6 +6,7 @@
 /* Generic eh_host_* console exerciser: one thin command per API, one uniform
  * result line. New coverage = a new table row + a pytest data file. */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,9 @@
 #endif
 #if defined(CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX)
 #include "eh_host_cp_ext_coex.h"
+#endif
+#if defined(CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT)
+#include "eh_host_phy_ant.h"
 #endif
 #if defined(CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_ITWT_READY)
 #include "eh_host_feat_wifi_ext_itwt.h"
@@ -686,9 +690,86 @@ static int cmd_gpio_set_pull_mode(int argc, char **argv)
     return 0;
 }
 
-/* ── external coexistence ───────────────────────────────────────────── */
-
 #endif /* FEAT_GPIO_EXP */
+
+/* ── PHY antenna selection ──────────────────────────────────────────── */
+
+#if defined(CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT)
+/* Values are passed through unclamped so the coprocessor's range checks are exercised. */
+static int parse_u8(const char *s, uint8_t *out)
+{
+    char *end = NULL;
+    unsigned long v = strtoul(s, &end, 0);
+    if (!*s || *end || v > UINT8_MAX) return -1;
+    *out = (uint8_t)v;
+    return 0;
+}
+
+static int cmd_phy_ant_set_gpio(int argc, char **argv)
+{
+    eh_host_phy_ant_gpio_config_t cfg = {0};
+    if (argc < 1 + EH_HOST_PHY_ANT_GPIO_SLOTS) { eh_out("phy_ant_set_gpio", -1, "err=USAGE"); return 0; }
+    for (int i = 0; i < EH_HOST_PHY_ANT_GPIO_SLOTS; i++) {
+        const char *a = argv[1 + i];
+        if (!strcmp(a, "-")) continue;
+        if (parse_u8(a, &cfg.gpio_cfg[i].gpio_num)) { eh_out("phy_ant_set_gpio", -1, "err=USAGE"); return 0; }
+        cfg.gpio_cfg[i].gpio_select = true;
+    }
+    eh_out_rc("phy_ant_set_gpio", eh_host_phy_ant_set_gpio(&cfg));
+    return 0;
+}
+
+static int cmd_phy_ant_get_gpio(int argc, char **argv)
+{
+    eh_host_phy_ant_gpio_config_t cfg = {0};
+    esp_err_t e = eh_host_phy_ant_get_gpio(&cfg);
+    if (e != ESP_OK) { eh_out_rc("phy_ant_get_gpio", e); return 0; }
+    char f[48] = "gpio=";
+    for (int i = 0; i < EH_HOST_PHY_ANT_GPIO_SLOTS; i++) {
+        size_t n = strlen(f);
+        if (cfg.gpio_cfg[i].gpio_select) {
+            snprintf(f + n, sizeof(f) - n, "%s%u", i ? "," : "", cfg.gpio_cfg[i].gpio_num);
+        } else {
+            snprintf(f + n, sizeof(f) - n, "%s-", i ? "," : "");
+        }
+    }
+    eh_out("phy_ant_get_gpio", (int)e, f);
+    return 0;
+}
+
+static int cmd_phy_ant_set(int argc, char **argv)
+{
+    uint8_t v[5];
+    if (argc < 6) { eh_out("phy_ant_set", -1, "err=USAGE"); return 0; }
+    for (int i = 0; i < 5; i++) {
+        if (parse_u8(argv[1 + i], &v[i])) { eh_out("phy_ant_set", -1, "err=USAGE"); return 0; }
+    }
+    eh_host_phy_ant_config_t cfg = {
+        .rx_ant_mode    = (eh_host_phy_ant_mode_t)v[0],
+        .rx_ant_default = (eh_host_phy_ant_t)v[1],
+        .tx_ant_mode    = (eh_host_phy_ant_mode_t)v[2],
+        .enabled_ant0   = v[3],
+        .enabled_ant1   = v[4],
+    };
+    eh_out_rc("phy_ant_set", eh_host_phy_ant_set(&cfg));
+    return 0;
+}
+
+static int cmd_phy_ant_get(int argc, char **argv)
+{
+    eh_host_phy_ant_config_t cfg = {0};
+    esp_err_t e = eh_host_phy_ant_get(&cfg);
+    if (e != ESP_OK) { eh_out_rc("phy_ant_get", e); return 0; }
+    char f[64];
+    snprintf(f, sizeof(f), "rx=%d def=%d tx=%d ant0=%u ant1=%u",
+             (int)cfg.rx_ant_mode, (int)cfg.rx_ant_default, (int)cfg.tx_ant_mode,
+             cfg.enabled_ant0, cfg.enabled_ant1);
+    eh_out("phy_ant_get", (int)e, f);
+    return 0;
+}
+#endif /* FEAT_PHY_ANT */
+
+/* ── external coexistence ───────────────────────────────────────────── */
 
 #if defined(CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX)
 static int cmd_coex_init(int argc, char **argv)
@@ -886,6 +967,12 @@ static const eh_api_entry_t s_cmds[] = {
     { "gpio_reset_pin",         cmd_gpio_reset_pin,          "gpio_reset_pin <pin>" },
     { "gpio_input_enable",      cmd_gpio_input_enable,       "gpio_input_enable <pin>" },
     { "gpio_set_pull_mode",     cmd_gpio_set_pull_mode,      "gpio_set_pull_mode <pin> <0=down|1=up>" },
+#endif
+#if defined(CONFIG_ESP_HOSTED_HOST_FEAT_PHY_ANT)
+    { "phy_ant_set_gpio",       cmd_phy_ant_set_gpio,        "phy_ant_set_gpio <g0> <g1> <g2> <g3> ('-' = unused)" },
+    { "phy_ant_get_gpio",       cmd_phy_ant_get_gpio,        "phy_ant_get_gpio" },
+    { "phy_ant_set",            cmd_phy_ant_set,             "phy_ant_set <rx> <def> <tx> <ant0> <ant1>" },
+    { "phy_ant_get",            cmd_phy_ant_get,             "phy_ant_get" },
 #endif
 #if defined(CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX)
     { "coex_init",              cmd_coex_init,               "coex_init" },

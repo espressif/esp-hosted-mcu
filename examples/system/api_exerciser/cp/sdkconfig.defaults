@@ -24,6 +24,7 @@ CONFIG_ESP_WIFI_NVS_ENABLED=y
 
 CONFIG_ESP_HOSTED_CP_FEAT_WIFI=y
 CONFIG_ESP_HOSTED_CP_FEAT_GPIO_EXP=y
+CONFIG_ESP_HOSTED_CP_FEAT_PHY_ANT=y
 CONFIG_ESP_HOSTED_CP_FEAT_CP_EXT_COEX=y
 # External coex must be enabled for CP_FEAT_CP_EXT_COEX_READY (=y only when this
 # is set) — else the ExtCoex RPC (0x18c) isn't dispatched and the exerciser's
