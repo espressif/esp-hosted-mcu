@@ -667,10 +667,11 @@ ESP32XX_SPI_CLK_FREQ_RANGE_MAX := 40
 
 			choice ESP_HOSTED_SDIO_RESET_GPIO_CONFIG
 				bool "RESET GPIO Config"
-				# M5Stack Tab5's C6 reset circuit is active-low; with the
-				# active-high default the slave never leaves reset and SDIO
-				# enumeration times out (sdmmc send_op_cond 0x107).
-				default ESP_HOSTED_SDIO_RESET_ACTIVE_LOW if ESP32P4_TAB5_C6_BOARD
+				# M5Stack Tab5: GPIO15 drives the C6's EN pin (low = reset),
+				# so the line must be left high after the reset pulse, which
+				# is "Active High" here. With Active Low the C6 is held in
+				# reset and SDIO enumeration times out (sdmmc send_op_cond 0x107).
+				default ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH if ESP32P4_TAB5_C6_BOARD
 				default ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH
 				help
 					"If Active High, High->Low->High will trigger reset (Low will trigger reset)

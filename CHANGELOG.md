@@ -2,6 +2,7 @@
 
 - host: `hosted_thread_cancel()` frees the static TCB and PSRAM stack when `CONFIG_ESP_HOSTED_DFLT_TASK_FROM_SPIRAM` is enabled. `xTaskCreateStatic()` leaves those buffers allocated, so the thread handle now keeps them
   - cancel suspends the task and waits until it is no longer running, then deletes it and frees both allocations. This is required on SMP, where the task can still be executing on another core
+- host SDIO: the M5Stack Tab5 board preset (`ESP32P4_TAB5_C6_BOARD`) now defaults to `ESP_HOSTED_SDIO_RESET_ACTIVE_HIGH`. GPIO15 drives the C6's EN pin, and with the previous Active Low default the C6 was held in reset after `transport_gpio_reset()` (`sdmmc send_op_cond 0x107`)
 
 # Releases
 
