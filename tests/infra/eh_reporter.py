@@ -424,7 +424,7 @@ def summarize(run_dir, retry_dir=None, regression=False, elapsed=None, prewarm=N
 
 
 
-# ── run history (checked-in CSV) ────────────────────────────────────────────
+# ── run history (local CSV, git-ignored) ────────────────────────────────────
 # Flake rate and speed are distribution questions; one run cannot answer either.
 HISTORY_CSV = Path(__file__).resolve().parents[1] / "run_history.csv"
 
