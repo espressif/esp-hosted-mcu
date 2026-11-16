@@ -842,6 +842,12 @@
     #define EH_HOST_PORT_SDIO_RX_STAGING_SLOTS                    2
   #endif
 
+  #ifdef CONFIG_ESP_HOSTED_HOST_SDIO_AGGR_TRACE
+    #define EH_HOST_PORT_SDIO_AGGR_TRACE                          1
+  #else
+    #define EH_HOST_PORT_SDIO_AGGR_TRACE                          0
+  #endif
+
   #ifdef CONFIG_ESP_HOSTED_HOST_SDIO_USE_MEMPOOL
     #define EH_HOST_PORT_SDIO_USE_MEMPOOL                         1
   #else

@@ -482,6 +482,8 @@ int eh_host_port_sdio_card_deinit(void *ctx)
 	return ESP_OK;
 }
 
+#define SDIO_REG_READ_TRIES 3
+
 int eh_host_port_sdio_read_reg(void *ctx, uint32_t reg, uint8_t *data, uint16_t size, bool lock_required)
 {
 	int res = 0;
@@ -497,10 +499,15 @@ int eh_host_port_sdio_read_reg(void *ctx, uint32_t reg, uint8_t *data, uint16_t 
 	ESP_LOGV(TAG, "%s: reg[0x%" PRIx32"] size[%u]", __func__, reg, size);
 
 	SDIO_LOCK(lock_required);
-	if (size <= 1) {
-		res = sdmmc_io_read_byte(card, SDIO_FUNC_1, reg, data);
-	} else {
-		res = sdmmc_io_read_bytes(card, SDIO_FUNC_1, reg, data, size);
+	/* Slave registers have no read side effects: re-read a CRC-corrupted reply */
+	for (int i = 0; i < SDIO_REG_READ_TRIES; i++) {
+		if (size <= 1) {
+			res = sdmmc_io_read_byte(card, SDIO_FUNC_1, reg, data);
+		} else {
+			res = sdmmc_io_read_bytes(card, SDIO_FUNC_1, reg, data, size);
+		}
+		if (res != ESP_ERR_INVALID_CRC)
+			break;
 	}
 	SDIO_UNLOCK(lock_required);
 	return res;

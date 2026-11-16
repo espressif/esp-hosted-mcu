@@ -47,6 +47,7 @@ What each test proves: [SCENARIOS.md](SCENARIOS.md).
 | `python3 tools/eh.py test emu -k <expr>` | only the tests that match `<expr>` |
 | `python3 tools/eh.py test emu --regression --jobs 3` | the regression, 3 tests in parallel |
 | `python3 tools/eh.py test hw -k <expr>` | the same tests on real boards |
+| `python3 tools/eh.py test emu-mcu --manual` | also the `manual` tests |
 | `cmake -S tests/unit/eh_frame -B build_unit && cmake --build build_unit && ctest --test-dir build_unit` | the `eh_frame` wire-format unit test, on the build machine |
 
 - `-k` filters the chosen set. `eh.py` adds `--sanity` only when you name
@@ -78,6 +79,7 @@ tests/
 | `allow_fail(reason)` | a known open bug; a failure does not fail the run |
 | `second_chance` | one rerun for a known emulator flake |
 | `retired` | another test covers it; it never runs |
+| `manual(reason)` | runs only when its file or node id is named, or with `--manual`; not counted as skipped |
 | `wifi`, `nw_split`, `power_save`, … | feature tags, for `-k` and `-m` |
 
 The run ends with one verdict line:

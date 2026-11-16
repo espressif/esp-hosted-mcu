@@ -134,6 +134,10 @@ def pytest_addoption(parser):
     parser.addoption(
         "--sanity", action="store_true", default=False,
         help="run only the @sanity set (eh.py's default when the run names nothing).")
+    parser.addoption(
+        "--manual", action="store_true", default=False,
+        help="also run @pytest.mark.manual tests (otherwise only when the run names "
+             "their file or node id).")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -142,6 +146,10 @@ def pytest_collection_modifyitems(config, items):
 
     - @pytest.mark.retired(reason="...") — DESELECTED: never runs, never in the
       pass/fail stats. For a case fully covered elsewhere, kept as a record.
+    - @pytest.mark.manual(reason="...") — DESELECTED (not skipped, not in the
+      stats) unless the run names the test's file or node id, or passes --manual.
+      Never part of sanity or regression. For tests that need a special setup,
+      such as negative tests with emulator fault injection.
     - @pytest.mark.maintenance(reason="...") — SKIPPED: shown as skipped
       'maintenance: <reason>'. Temporarily parked while its support is fixed.
     - @pytest.mark.requires_idf("<component>", "<KCONFIG_SYMBOL>", reason="...") —
@@ -171,9 +179,15 @@ def pytest_collection_modifyitems(config, items):
     genuine spi_fd failure blocks like every other wire."""
     sanity_only = config.getoption("sanity", default=False)
     excl_sanity = config.getoption("regression_exclude_sanity", default=False)
+    manual_all = config.getoption("manual", default=False)
+    named = {os.path.abspath(a.split("::")[0]) for a in config.args}
     retired, keep = [], []
     for item in items:
         if item.get_closest_marker("retired"):
+            retired.append(item)
+            continue
+        if (item.get_closest_marker("manual") and not manual_all
+                and os.path.abspath(str(item.path)) not in named):
             retired.append(item)
             continue
         m = item.get_closest_marker("maintenance")
