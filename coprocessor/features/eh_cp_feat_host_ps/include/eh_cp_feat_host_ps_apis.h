@@ -21,6 +21,12 @@ extern "C" {
  *
  * Any field may be NULL.  Callbacks run from the host_power_save_alert()
  * path — keep them short and ISR-safe-equivalent.
+ *
+ * host_power_save_on_ready_cb and host_power_save_off_prepare_cb run with the
+ * power-save transition lock held. A wake request waits for that lock, for
+ * at most its own timeout. So a callback that waits on a task which requests
+ * a wake (a console command, for example) stalls that request until it times
+ * out. Hand such work to another task instead.
  */
 typedef struct {
     void (*host_power_save_on_prepare_cb)(void);    /* Pre-enter:   host about to sleep */
