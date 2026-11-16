@@ -7,6 +7,7 @@ if(NOT CMAKE_SCRIPT_MODE_FILE AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE
 endif()
 
 set(EH_PATH "${CMAKE_CURRENT_LIST_DIR}")
+include("${EH_PATH}/tools/cmake/eh_checkout_check.cmake")
 
 if(NOT ESP_PLATFORM)
     set(_eh_cfg "${CMAKE_BINARY_DIR}/config")

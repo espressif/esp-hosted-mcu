@@ -36,6 +36,9 @@ endif()
 set(EH_PATH "$ENV{EH_PATH}"
     CACHE PATH "esp_hosted repo root" FORCE)
 
+# Before the Kconfig pipeline: it needs the esp-idf-kconfig submodule.
+include("${EH_PATH}/tools/cmake/eh_checkout_check.cmake")
+
 # ── Pull in the Kconfig pipeline (defines hosted_kconfig_apply +
 # internal helpers; also re-derives EH_PATH as a safety net).
 include("${EH_PATH}/tools/cmake/hosted_kconfig.cmake")
