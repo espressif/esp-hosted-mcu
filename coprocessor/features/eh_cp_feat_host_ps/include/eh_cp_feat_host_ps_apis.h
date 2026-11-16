@@ -19,14 +19,19 @@ extern "C" {
 /**
  * @brief Host-power-save event callbacks.
  *
- * Any field may be NULL.  Callbacks run from the host_power_save_alert()
- * path — keep them short and ISR-safe-equivalent.
+ * Any field may be NULL. Callbacks run in task context, from
+ * host_power_save_alert() or eh_cp_feat_host_ps_wakeup_host(). Keep them short
+ * and non-blocking.
  *
- * host_power_save_on_ready_cb and host_power_save_off_prepare_cb run with the
- * power-save transition lock held. A wake request waits for that lock, for
- * at most its own timeout. So a callback that waits on a task which requests
- * a wake (a console command, for example) stalls that request until it times
- * out. Hand such work to another task instead.
+ * host_power_save_on_ready_cb runs with the power-save transition lock held.
+ * host_power_save_off_prepare_cb runs without it when the host reports that it
+ * is awake. When the co-processor starts the wake, it also runs earlier, with
+ * the lock held. So it can run twice for one wake: keep it idempotent.
+ *
+ * A wake request waits for that lock for at most its own timeout. So a callback
+ * that holds the lock and waits on a task which requests a wake (a console
+ * command, for example) stalls that request until it times out. Hand such work
+ * to another task instead.
  */
 typedef struct {
     void (*host_power_save_on_prepare_cb)(void);    /* Pre-enter:   host about to sleep */
@@ -41,7 +46,7 @@ int  eh_cp_feat_host_ps_is_host_power_saving(void);
 /** @brief Check if the host needs to be woken up for this packet. */
 int  eh_cp_feat_host_ps_is_host_wakeup_needed(interface_buffer_handle_t *buf_handle);
 
-/** @brief Wake the host with a timeout (ms). Returns 0 on success. */
+/** @brief Wake the host with a timeout (ms). Returns 1 when the host is awake, 0 on failure or timeout. */
 int  eh_cp_feat_host_ps_wakeup_host(uint32_t timeout_ms);
 
 /** @brief Deliver a power-save alert event to the host_ps state machine. */

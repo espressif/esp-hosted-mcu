@@ -474,7 +474,10 @@ int wakeup_host(uint32_t timeout_ms)
 
 		/* The sleep path holds the lock while it runs host_power_save_on_ready_cb.
 		 * Bound the wait, so a callback that waits on this task cannot deadlock it. */
-		if (waited > cap || !ps_transition_lock_timeout(cap - (uint32_t)waited)) {
+		if (waited > cap)
+			return 0;                     /* caller drops (counted) */
+		if (!ps_transition_lock_timeout(cap - (uint32_t)waited)) {
+			ESP_LOGW(TAG, "wake: PS transition lock busy, a PS callback holds it");
 			return 0;                     /* caller drops (counted) */
 		}
 
