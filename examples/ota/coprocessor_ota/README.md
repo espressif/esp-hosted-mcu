@@ -175,9 +175,9 @@ ESP-Hosted Coprocessor OTA Config
 │     ├── (MyWiFiSSID) WiFi SSID                          │
 │     └── (········)   WiFi Password                      │
 ├── HTTPS OTA Configuration                               ⎬  HTTP OTA method
-│     ├── (…/firmware.bin) OTA Server URL                 │
+│     ├── [ ] Use self-signed certificate (testing only)  │
 │     ├── (30000) HTTPS connection timeout (ms)           │
-│     └── [ ] Use self-signed certificate (testing only)  ⎭
+│     └── (…/firmware.bin) OTA Server URL                 ⎭
 │
 ├── (slave_fw) Partition Label                            ←  Partition OTA method
 ├── [*] Delete OTA file after flashing                    ←  LittleFS OTA method
@@ -227,7 +227,8 @@ eh.py run
 
 - For HTTPS in testing, drop the server cert into
   `certs/server_cert.pem` and enable `Use self-signed certificate
-  (Testing Only)`.
+  (Testing Only)`. See [Test Server Tools](https://github.com/espressif/esp-hosted-mcu/tree/main/examples/ota/coprocessor_ota/mcu_host/components/ota_https/test_server)
+  for testing HTTPS OTA functionality with self-signed certificates.
 
 ---
 

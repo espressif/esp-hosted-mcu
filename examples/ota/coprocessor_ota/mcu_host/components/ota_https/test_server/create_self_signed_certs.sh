@@ -8,7 +8,17 @@ mkdir -p ../certs
 cd ../certs
 
 # Get your machine's IP address
-IP_ADDRESS=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "192.168.1.100")
+# various methods to get the IP address
+# - ipconfig
+# - ip (ipconfig no longer available on Ubuntu Linux)
+if command -v ipconfig &> /dev/null; then
+    IP_ADDRESS=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null)
+elif command -v ip &> /dev/null; then
+    IP_ADDRESS=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')
+fi
+# fallback if no ip address found
+IP_ADDRESS="${IP_ADDRESS:-192.168.1.100}"
+
 echo "Creating certificate for IP: $IP_ADDRESS"
 echo "If this IP is incorrect, please update the CN field manually"
 
