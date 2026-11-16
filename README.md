@@ -24,7 +24,7 @@ The host keeps the product logic. The ESP co-processor offloads the radio and ne
 git clone --recurse-submodules https://github.com/espressif/esp-hosted-mcu.git esp_hosted
 ```
 
-The repository is named `esp-hosted-mcu`, but the registry component is maintained as `esp_hosted`, so the repository is cloned into the `esp_hosted` directory for consistency.
+The directory must have the name `esp_hosted`. ESP-IDF uses the directory name as the component name.
 
 ## 2. Directory Structure
 
