@@ -75,18 +75,22 @@ if(ESP_PLATFORM)
         if(_eh_proj)
             file(TO_NATIVE_PATH "${_eh_proj}" _eh_proj)
             set(_eh_cd_proj "cd \"${_eh_proj}\"")
+            cmake_path(APPEND _eh_dependencies_path ${_eh_proj} "dependencies.lock")
+            file(TO_NATIVE_PATH "${_eh_dependencies_path}" _eh_dependencies_path)
         else()
             set(_eh_cd_proj "Go back to the example directory.")
+            set(_eh_dependencies_path "dependencies.lock")
         endif()
         _eh_checkout_fail(
             "ESP-Hosted checkout check 1 of 2 failed: directory name"
             "Rename the repository directory to \"esp_hosted\"."
             "ESP-IDF uses the directory name as the component name."
             "  1. cd \"${_eh_parent_n}\""
-            "  2. mv \"${_eh_dir_name}\" esp_hosted      (Windows cmd: ren)"
+            "  2. cmake -E rename \"${_eh_dir_name}\" esp_hosted"
             "  3. ${_eh_cd_proj}"
-            "  4. cmake -E rm -rf \"${_eh_build_n}\""
-            "  5. Run the build command again.")
+            "  4. cmake -E rm \"${_eh_dependencies_path}\"   (can fail if file does not exist)"
+            "  5. cmake -E rm -rf \"${_eh_build_n}\""
+            "  6. Run the build command again.")
     endif()
 endif()
 
@@ -104,11 +108,14 @@ if(EXISTS "${EH_PATH}/.gitmodules")
     if(_eh_sm_missing)
         file(TO_NATIVE_PATH "${EH_PATH}" _eh_src)
         file(TO_NATIVE_PATH "${_eh_build_dir}" _eh_build_n)
+        cmake_path(APPEND _eh_dependencies_path ${_eh_src} "dependencies.lock")
+        file(TO_NATIVE_PATH "${_eh_dependencies_path}" _eh_dependencies_path)
         if(EXISTS "${EH_PATH}/.git")
             set(_eh_sm_fix
                 "  1. git -C \"${_eh_src}\" submodule update --init --recursive"
-                "  2. cmake -E rm -rf \"${_eh_build_n}\""
-                "  3. Run the build command again.")
+                "  2. cmake -E rm \"${_eh_dependencies_path}\"   (can fail if file does not exist)"
+                "  3. cmake -E rm -rf \"${_eh_build_n}\""
+                "  4. Run the build command again.")
         else()
             set(_eh_sm_fix
                 "A ZIP download does not include submodules. Clone the repository:"
