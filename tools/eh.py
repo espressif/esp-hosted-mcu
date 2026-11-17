@@ -667,7 +667,7 @@ DEPS_DIR  = REPO_ROOT / ".deps"
 CONF_FILE = DEPS_DIR / "eh.conf"
 
 IDF_REPO        = "https://github.com/espressif/esp-idf.git"
-IDF_DEFAULT_REF = "v6.1"     # carries the SDIO send-cap fix (tools/idf_patches/
+IDF_DEFAULT_REF = "v6.1.1"   # carries the SDIO send-cap fix (tools/idf_patches/
                              # is a no-op here) and SPI slave-HD 3-wire mode.
 IDF_PATCH_DIR   = REPO_ROOT / "tools" / "idf_patches"
 IDF_TARGETS     = "all"   # install toolchains for all supported chips
