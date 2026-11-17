@@ -227,8 +227,7 @@ eh.py run
 
 - For HTTPS in testing, drop the server cert into
   `certs/server_cert.pem` and enable `Use self-signed certificate
-  (Testing Only)`. See [Test Server Tools](https://github.com/espressif/esp-hosted-mcu/tree/main/examples/ota/coprocessor_ota/mcu_host/components/ota_https/test_server)
-  for testing HTTPS OTA functionality with self-signed certificates.
+  (Testing Only)`.
 
 ---
 
@@ -327,9 +326,9 @@ ESP-Hosted Coprocessor OTA Config
 │     ├── (MyWiFiSSID) WiFi SSID                          │
 │     └── (········)   WiFi Password                      │
 ├── HTTPS OTA Configuration                               ⎬  HTTP OTA method
-│     ├── (…/firmware.bin) OTA Server URL                 │
+│     ├── [ ] Use self-signed certificate (testing only)  │
 │     ├── (30000) HTTPS connection timeout (ms)           │
-│     └── [ ] Use self-signed certificate (testing only)  ⎭
+│     └── (…/firmware.bin) OTA Server URL                 ⎭
 │
 ├── (slave_fw) Partition Label                            ←  Partition OTA method
 ├── [*] Delete OTA file after flashing                    ←  LittleFS OTA method
@@ -354,14 +353,23 @@ eh.py -p <host_usb_serial_port> flash monitor
 
 ### 3. Verify
 
-- **For the Partition / LittleFS methods: ensure sufficient flash + a custom partition table** (`partitions.csv`):
+- For the Partition / LittleFS methods
+
+  - **Ensure sufficient flash + a custom partition table** (`partitions.csv`):
   ota_0/ota_1 host slots, a `storage` LittleFS partition staging the CP
   image for the LittleFS method, and a `slave_fw` raw partition for the
   Partition method.
+  - **Copy the co-processor firmware to the `slave_fw_bin`
+    directory**. See the `README.md` for the
+    [Partition](https://github.com/espressif/esp-hosted-mcu/blob/main/examples/ota/coprocessor_ota/mcu_host/components/ota_partition/slave_fw_bin/README.md)
+    and
+    [LittleFS](https://github.com/espressif/esp-hosted-mcu/blob/main/examples/ota/coprocessor_ota/mcu_host/components/ota_littlefs/slave_fw_bin/README.md)
+    methods.
 
 - Host runs `eh_host_sys_get_cp_fw_version()` against the live CP and
   warns on major.minor mismatch before pushing.
 
 - For HTTPS in testing, drop the server cert into
   `certs/server_cert.pem` and enable `Use self-signed certificate
-  (Testing Only)`.
+  (Testing Only)`. See [Test Server Tools](https://github.com/espressif/esp-hosted-mcu/tree/main/examples/ota/coprocessor_ota/mcu_host/components/ota_https/test_server)
+  for testing HTTPS OTA functionality with self-signed certificates.
