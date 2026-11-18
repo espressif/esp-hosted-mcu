@@ -1,5 +1,6 @@
 # Unreleased
 
+- host/sdio: a register read that fails CRC (`0x109`) is read again, up to 2 times. A failed data read, or a TX credit read that keeps failing, now posts `EH_HOST_EVENT_TRANSPORT_FAILURE`; before, RX could stop for good
 - host: `esp_hosted_tx()` copies the frame also when `buff_zerocopy=1`. SDIO and USB send it after the call returns, so the old zero-copy path read the buffer after it was freed
 - host/cp: PHY antenna selection over RPC (`ESP_HOSTED_HOST_FEAT_PHY_ANT`, `ESP_HOSTED_CP_FEAT_PHY_ANT`). See [PHY Antenna](features/phy-antenna.md)
 - host: a co-processor without the handler for an RPC now returns `ESP_ERR_NOT_SUPPORTED` to the host caller

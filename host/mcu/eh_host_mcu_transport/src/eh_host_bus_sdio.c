@@ -180,6 +180,7 @@ static void show_config(void)
 
 #define BUFFER_AVAILABLE                  1
 #define BUFFER_UNAVAILABLE                0
+#define BUFFER_READ_FAILED                -1
 
 #define MAX_WRITE_BUF_RETRIES             50
 
@@ -645,25 +646,37 @@ static int sdio_get_len_from_slave(uint32_t *rx_size, bool is_lock_needed)
 
 #define MAX_BUFF_FETCH_PERIODICITY 30000
 
+/* The link is broken: tell the app, then restart the host if configured. */
+static void sdio_link_failed(const char *why)
+{
+	ESP_LOGE(TAG, "%s", why);
+	if (!s_running)
+		return;
+	esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
+#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
+	eh_host_port_restart_host();
+#endif
+}
+
 static int sdio_is_write_buffer_available(uint32_t buf_needed)
 {
 	static uint32_t buf_available = 0;
 	uint8_t retry = MAX_WRITE_BUF_RETRIES;
 	uint32_t max_retry_sdio_not_responding = 2;
 	uint32_t interval_us = 400;
+	bool cp_answered = false;
+	int ret;
 
 	if (buf_available < buf_needed) {
 		while (retry) {
-			if (sdio_get_tx_buffer_num(&buf_available, ACQUIRE_LOCK) ==
-					ESP_HOSTED_SDIO_UNRESPONSIVE_CODE) {
+			ret = sdio_get_tx_buffer_num(&buf_available, ACQUIRE_LOCK);
+			if (!ret)
+				cp_answered = true;
+			if (ret == ESP_HOSTED_SDIO_UNRESPONSIVE_CODE) {
 				max_retry_sdio_not_responding--;
 
 				if (!max_retry_sdio_not_responding) {
-					ESP_LOGE(TAG, "%s: SDIO slave unresponsive", __func__);
-					esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
-#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
-					eh_host_port_restart_host();
-#endif
+					sdio_link_failed("SDIO slave unresponsive");
 					return BUFFER_UNAVAILABLE;
 				}
 				continue;
@@ -688,6 +701,9 @@ static int sdio_is_write_buffer_available(uint32_t buf_needed)
 		buf_available -= buf_needed;
 
 	if (!retry) {
+		/* A whole wait (~0.5 s) without one good credit read: link is broken */
+		if (!cp_answered)
+			sdio_link_failed("TX credit read keeps failing");
 		return BUFFER_UNAVAILABLE;
 	}
 
@@ -705,9 +721,8 @@ static int sdio_tx_credit_ready(uint32_t buf_needed)
 
 	if (buf_cached < buf_needed) {
 		uint32_t avail = 0;
-		if (sdio_get_tx_buffer_num(&avail, ACQUIRE_LOCK) ==
-				ESP_HOSTED_SDIO_UNRESPONSIVE_CODE)
-			return BUFFER_UNAVAILABLE;      /* transient; outer loop bounds it */
+		if (sdio_get_tx_buffer_num(&avail, ACQUIRE_LOCK))
+			return BUFFER_READ_FAILED;      /* outer loop bounds it */
 		buf_cached = avail;
 	}
 
@@ -855,7 +870,7 @@ static void sdio_tx_aggregate_iter(void)
 		if (flush_after_pkt)
 			break;
 	}
-#if CONFIG_ESP_HOSTED_HOST_SDIO_AGGR_TRACE
+#if EH_HOST_PORT_SDIO_AGGR_TRACE
 	if (nframes > 1)
 		ESP_LOGI(TAG, "sdio aggr tx: packed %u frames (%lu B)",
 			         nframes, (unsigned long)aggr_len);
@@ -869,6 +884,7 @@ static void sdio_tx_aggregate_iter(void)
 		uint32_t buf_needed = (aggr_len + cap - 1) / cap;   /* == 1 by construction */
 		int wait_ms = has_ctrl ? SDIO_AGGR_CREDIT_WAIT_CTRL_MS : SDIO_AGGR_CREDIT_WAIT_BULK_MS;
 		int got = BUFFER_UNAVAILABLE;
+		bool cp_answered = false;
 
 		/* 1. Probe without the bus lock so RX can run during TX credit stalls.
 		 * 2. Spin briefly for the fast path, then yield to avoid starving
@@ -882,6 +898,8 @@ static void sdio_tx_aggregate_iter(void)
 				got = BUFFER_AVAILABLE;
 				break;
 			}
+			if (r != BUFFER_READ_FAILED)
+				cp_answered = true;
 			if (waited_us < SPIN_US) {
 				eh_host_port_task_delay_us(20);
 				waited_us += 20u;
@@ -899,6 +917,10 @@ static void sdio_tx_aggregate_iter(void)
 				ESP_LOGE(TAG, "SDIO aggr: no slave credits (%lu consecutive)%s — "
 				         "slave stalled?", (unsigned long)sdio_aggr_credit_timeouts,
 				         has_ctrl ? " [ctrl dropped]" : "");
+			if (!cp_answered && (sdio_aggr_credit_timeouts >= SDIO_AGGR_NO_CREDIT_WEDGE)) {
+				sdio_link_failed("TX credit read keeps failing");
+				sdio_aggr_credit_timeouts = 0;   /* next report after 8 more */
+			}
 			break;                                /* drop this aggregate */
 		}
 		sdio_aggr_credit_timeouts = 0;
@@ -922,11 +944,7 @@ static void sdio_tx_aggregate_iter(void)
 					if (++retries < MAX_SDIO_WRITE_RETRY)
 						continue;
 					SDIO_DRV_UNLOCK();
-					ESP_LOGE(TAG, "SDIO aggr: unrecoverable write failure");
-					esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
-#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
-					eh_host_port_restart_host();
-#endif
+					sdio_link_failed("SDIO aggr: unrecoverable write failure");
 					return;
 				}
 				data_left -= len_to_send;
@@ -1101,11 +1119,7 @@ static void sdio_write_streaming_iter(void)
 					continue;
 				} else {
 					SDIO_DRV_UNLOCK();
-					ESP_LOGE(TAG, "Unrecoverable host sdio state");
-					esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
-#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
-					eh_host_port_restart_host();
-#endif
+					sdio_link_failed("Unrecoverable host sdio state");
 					goto done;
 				}
 			}
@@ -1335,7 +1349,7 @@ static esp_err_t sdio_push_aggr_to_queue(uint8_t *buf, uint32_t buf_len)
 		buf_len -= aligned;
 	}
 out_ok:
-#if CONFIG_ESP_HOSTED_HOST_SDIO_AGGR_TRACE
+#if EH_HOST_PORT_SDIO_AGGR_TRACE
 	if (subframes > 1)
 		ESP_LOGI(TAG, "sdio aggr rx: %u sub-frames (%lu B)",
 			         subframes, (unsigned long)aggr_len);
@@ -1622,15 +1636,8 @@ static void sdio_read_task(void *pvParameters)
 
 #if DO_COMBINED_REG_READ
 			if (sdio_read_regs(reg_buf)) {
-				ESP_LOGE(TAG, "failed to read registers");
-
 				SDIO_DRV_UNLOCK();
-				if (s_running) {
-					esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
-#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
-					eh_host_port_restart_host();
-#endif
-				}
+				sdio_link_failed("failed to read registers");
 				continue;
 			}
 
@@ -1638,15 +1645,8 @@ static void sdio_read_task(void *pvParameters)
 		interrupts = *intr_index;
 #else
 			if (sdio_get_intr(&interrupts)) {
-				ESP_LOGE(TAG, "failed to read interrupt register");
-
 				SDIO_DRV_UNLOCK();
-				if (s_running) {
-					esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
-#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
-					eh_host_port_restart_host();
-#endif
-				}
+				sdio_link_failed("failed to read interrupt register");
 				continue;
 			}
 #endif
@@ -1677,15 +1677,9 @@ static void sdio_read_task(void *pvParameters)
 		ret = sdio_get_len_from_slave(&len_from_slave, ACQUIRE_LOCK);
 #endif
 		if (ret == ESP_ERR_INVALID_STATE) {
-			/* Bus fault (PKT_LEN reg all-ones): a transport failure, not a stray
-			 * zero-length. Post the event and (optionally) restart — don't retry. */
+			/* PKT_LEN reads all-ones: a bus fault, not a zero length */
 			SDIO_DRV_UNLOCK();
-			if (s_running) {
-				esp_event_post(EH_HOST_EVENT, (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE, NULL, 0, 0);
-#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
-				eh_host_port_restart_host();
-#endif
-			}
+			sdio_link_failed("PKT_LEN bus fault");
 			continue;
 		}
 		if (ret || !len_from_slave) {
@@ -1716,14 +1710,7 @@ static void sdio_read_task(void *pvParameters)
 			if (sdio_rx_staging_prealloc_pending &&
 			    sdio_prealloc_pending_rx_slots() != 0) {
 				SDIO_DRV_UNLOCK();
-				if (s_running) {
-					esp_event_post(EH_HOST_EVENT,
-						       (int32_t)EH_HOST_EVENT_TRANSPORT_FAILURE,
-						       NULL, 0, 0);
-#if EH_HOST_TRANSPORT_RESTART_ON_FAILURE
-					eh_host_port_restart_host();
-#endif
-				}
+				sdio_link_failed("RX staging prealloc failed");
 				continue;
 			}
 		}
@@ -1781,12 +1768,15 @@ static void sdio_read_task(void *pvParameters)
 
 		SDIO_DRV_UNLOCK();
 
-		/* TODO: revisit byte_count update on failure */
+		if (unlikely(ret)) {
+			/* The slave keeps the bytes of a failed read, so the count stays.
+			 * A re-read does not clear the bus; only a reset does. */
+			sdio_link_failed("RX data read failed");
+			continue;
+		}
+
 		sdio_rx_byte_count += len_from_slave;
 		sdio_rx_byte_count = sdio_rx_byte_count % ESP_RX_BYTE_MAX;
-
-		if (unlikely(ret))
-			continue;
 
 #if EH_HOST_PORT_SDIO_RX_STAGING_SLOTS == 1
 		/* Publish the only slot. A failed read never reaches here, so
