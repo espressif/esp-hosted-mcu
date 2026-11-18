@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* V2 BT controller lifecycle wrappers. */
 
+#include "eh_host_port_master_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

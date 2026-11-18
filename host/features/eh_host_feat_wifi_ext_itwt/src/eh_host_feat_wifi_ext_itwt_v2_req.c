@@ -2,6 +2,7 @@
 /* Wi-Fi extension: iTWT request composers + dispatch picker.
  * Bodies moved verbatim from central pack.c. */
 
+#include "eh_host_port_master_config.h"
 #include "rpc_ext_v2_pack_priv.h"
 
 #if EH_HOST_FEAT_WIFI_EXT_ITWT_READY

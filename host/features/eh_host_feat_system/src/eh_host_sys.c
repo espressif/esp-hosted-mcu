@@ -5,6 +5,7 @@
  */
 /* V2 impls of eh_host_sys.h wrappers. */
 
+#include "eh_host_port_master_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

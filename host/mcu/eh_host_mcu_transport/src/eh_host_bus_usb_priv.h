@@ -9,6 +9,7 @@
 #ifndef EH_HOST_BUS_USB_PRIV_H_
 #define EH_HOST_BUS_USB_PRIV_H_
 
+#include "eh_host_port_master_config.h"
 #include <stddef.h>
 #include <stdint.h>
 

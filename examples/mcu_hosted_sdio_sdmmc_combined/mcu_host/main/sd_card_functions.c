@@ -17,6 +17,7 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_idf_version.h"
 #include "esp_check.h"
+#include "esp_hosted.h"
 
 #if SOC_SDMMC_IO_POWER_EXTERNAL
 #include "sd_pwr_ctrl_by_on_chip_ldo.h"

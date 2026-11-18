@@ -5,6 +5,7 @@
  */
 /* esp_wifi_remote_* strong defs forwarding to eh_host_wifi_* / eh_host_sys_*. */
 
+#include "eh_host_port_master_config.h"
 #include <stdint.h>
 #include <stdlib.h>
 

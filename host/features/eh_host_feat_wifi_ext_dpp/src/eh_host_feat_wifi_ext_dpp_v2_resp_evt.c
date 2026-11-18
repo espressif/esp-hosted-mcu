@@ -2,6 +2,7 @@
 /* Wi-Fi extension: DPP response + event parsers.
  * Bodies moved verbatim from central decode.c. */
 
+#include "eh_host_port_master_config.h"
 #include <string.h>
 
 #include "eh_host_port.h"

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 /* Periodic dump of the host-side transport packet counters (Kconfig-gated). */
+#include "eh_host_port_master_config.h"
 #include "eh_host_pkt_stats.h"
 
 #if EH_HOST_PKT_STATS

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
+#include "eh_host_port_master_config.h"
 #include "rpc_ext_v2_decode_priv.h"
 
 #if EH_HOST_FEAT_CP_EXT_COEX_READY

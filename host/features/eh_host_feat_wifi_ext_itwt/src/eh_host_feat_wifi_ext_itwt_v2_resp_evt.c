@@ -2,6 +2,7 @@
 /* Wi-Fi extension: iTWT response + event parsers.
  * Bodies moved verbatim from central decode.c. */
 
+#include "eh_host_port_master_config.h"
 #include "rpc_ext_v2_decode_priv.h"
 
 #if EH_HOST_FEAT_WIFI_EXT_ITWT_READY

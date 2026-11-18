@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "eh_host_port_master_config.h"
 #include <stdint.h>
 #include <stdbool.h>
 
