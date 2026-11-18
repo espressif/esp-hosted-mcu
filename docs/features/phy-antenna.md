@@ -26,7 +26,7 @@ eh_host_phy_ant_set()      ─► esp_phy_set_ant()      ─► antenna 0 / 1 / 
 The calls behave as in ESP-IDF:
 
 - GPIO numbers are co-processor GPIOs.
-- A GPIO dropped from the configuration stays routed and reserved. Free it with `eh_host_cp_gpio_reset_pin()` ([GPIO Expander](gpio-expander.md)).
+- A GPIO dropped from the configuration stays routed. Before you use it again, call `eh_host_cp_gpio_reset_pin()` ([GPIO Expander](gpio-expander.md)).
 - The PHY drives `ANT_SEL` only while the radio is active.
 - The configuration is lost when the co-processor resets. Set it again after a restart.
 
@@ -44,7 +44,7 @@ The co-processor refuses a GPIO that the transport uses or that is reserved, for
 Without the co-processor feature, each host call returns `ESP_ERR_NOT_SUPPORTED`.
 
 > [!NOTE]
-> ESP-IDF v5.5 to v6.1 can refuse a free GPIO, for example GPIO 14 when GPIO 2 is reserved ([fix](https://gitlab.espressif.cn:6688/espressif/esp-idf/-/merge_requests/54665)). Without the fix, enable `ESP_HOSTED_CP_FEAT_PHY_ANT_IDF_GPIO_RSV_WORKAROUND` on the co-processor.
+> ESP-IDF without the fix can refuse a free GPIO, for example GPIO 14 when GPIO 2 is reserved ([fix](https://gitlab.espressif.cn:6688/espressif/esp-idf/-/merge_requests/54665)). Without the fix, enable `ESP_HOSTED_CP_FEAT_PHY_ANT_IDF_GPIO_RSV_WORKAROUND` on the co-processor.
 
 ---
 
