@@ -198,6 +198,21 @@ esp_err_t eh_cp_bt_enable(void);
 esp_err_t eh_cp_bt_disable(void);
 esp_err_t eh_cp_bt_deinit(bool mem_release);
 
+#if EH_CP_FEAT_BT_TX_POWER_READY
+#include "eh_bt_tx_power.h"
+/* esp_ble_tx_power_* with the level as a name (eh_bt_tx_power.h), not this
+ * chip's index. Set: ESP_ERR_NOT_SUPPORTED for a level this chip lacks,
+ * ESP_ERR_INVALID_STATE while the controller is idle. Get: EH_PWR_LVL_INVALID
+ * on error. ESP32 has no _enhanced API, as in IDF. */
+esp_err_t eh_cp_bt_tx_power_set(esp_ble_power_type_t power_type, eh_power_level_t power_level);
+eh_power_level_t eh_cp_bt_tx_power_get(esp_ble_power_type_t power_type);
+#if EH_CP_BT_PWR_HAS_ENHANCED
+esp_err_t eh_cp_bt_tx_power_set_enhanced(esp_ble_enhanced_power_type_t power_type, uint16_t handle,
+		eh_power_level_t power_level);
+eh_power_level_t eh_cp_bt_tx_power_get_enhanced(esp_ble_enhanced_power_type_t power_type, uint16_t handle);
+#endif
+#endif
+
 uint8_t eh_cp_bt_get_capabilities(void);
 uint32_t eh_cp_bt_get_ext_capabilities(void);
 

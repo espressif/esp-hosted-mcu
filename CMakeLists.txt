@@ -30,6 +30,10 @@ if(ESP_PLATFORM)
     if(CONFIG_ESP_HOSTED_HOST_FEAT_BT)
         list(APPEND _eh_feat_incs "examples/common_components/esp_hosted_bt_host_stack/include")
     endif()
+    # IDF's own esp_bt.h exists only with a local controller.
+    if(CONFIG_ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY AND NOT CONFIG_BT_CONTROLLER_ENABLED)
+        list(APPEND _eh_feat_incs "host/compat/bt/include")
+    endif()
 
     # ldgen places the feature-descriptor section into a declared region (no
     # "undeclared region" linker warning). Host and CP each map their own section.

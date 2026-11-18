@@ -1,0 +1,3 @@
+# Identical copies, checked by tools/check_mirrored_files.py (pre-commit + premerge_check).
+# BLE TX power level symbols (eh_cp_feat_bt / eh_host_feat_bt): host and CP must agree on every value.
+coprocessor/features/eh_cp_feat_bt/include/eh_bt_tx_power.h  host/features/eh_host_feat_bt/include/eh_bt_tx_power.h

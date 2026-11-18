@@ -69,4 +69,17 @@ if ESP_HOSTED_CP_FEAT_BT
 		bool
 		default y if ESP_HOSTED_CP_FEAT_BT_HCI_UART && ESP_HOSTED_CP_BT_CTRL_UART
 
+	config ESP_HOSTED_CP_FEAT_BT_TX_POWER
+		bool "BLE TX power control from host"
+		default y
+		help
+			Lets the host call esp_ble_tx_power_set/get and the _enhanced
+			variants on this controller. Disable to remove the code. The host
+			then gets ESP_ERR_NOT_SUPPORTED.
+
+	config ESP_HOSTED_CP_FEAT_BT_TX_POWER_READY
+		bool
+		# The porting_btdm controller (S31) builds the BLE TX power API only with BLE on.
+		default y if ESP_HOSTED_CP_FEAT_BT_TX_POWER && ESP_HOSTED_CP_FEAT_BT_READY && ESP_HOSTED_CP_FEAT_RPC_EXT_V2_READY && (!BT_DUAL_MODE_ARCH || BT_CTRL_BLE_ENABLE)
+
 endif # ESP_HOSTED_CP_FEAT_BT

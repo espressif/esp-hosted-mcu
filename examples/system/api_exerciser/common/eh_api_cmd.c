@@ -33,6 +33,13 @@
 #if defined(CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_ITWT_READY)
 #include "eh_host_feat_wifi_ext_itwt.h"
 #endif
+#if defined(CONFIG_ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY)
+#include "eh_host_bt.h"
+#if !defined(CONFIG_BT_CONTROLLER_ENABLED)
+#include "esp_bt.h"   /* hosted compat: IDF API, CP chip's level values */
+#define EH_API_BT_IDF_COMPAT 1
+#endif
+#endif
 
 /* The contract: exactly one newline-terminated line per command. */
 static void eh_out(const char *cmd, int rc, const char *fields)
@@ -769,6 +776,130 @@ static int cmd_phy_ant_get(int argc, char **argv)
 }
 #endif /* FEAT_PHY_ANT */
 
+/* ── BT controller + BLE TX power ───────────────────────────────────── */
+
+#if defined(CONFIG_ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY)
+static int bt_parse_u32(const char *s, uint32_t *out)
+{
+    char *end = NULL;
+    unsigned long v = strtoul(s, &end, 0);
+    if (!*s || *end || v > UINT32_MAX) return -1;
+    *out = (uint32_t)v;
+    return 0;
+}
+
+/* "P9" / "N12" -> its eh_power_level_t; a bare number passes through unchecked
+ * so the host and CP range checks are exercised. */
+static int bt_parse_level(const char *s, uint32_t *out)
+{
+    uint32_t x = 0;
+    if ((s[0] == 'P' || s[0] == 'N') && bt_parse_u32(s + 1, &x) == 0 && x < 100) {
+        *out = (s[0] == 'P' ? EH_PWR_LVL_BASE_P : EH_PWR_LVL_BASE_N) + x;
+        return 0;
+    }
+    return bt_parse_u32(s, out);
+}
+
+static void bt_out_level(const char *cmd, eh_power_level_t lvl)
+{
+    char f[32] = {0};
+    unsigned v = (unsigned)lvl;
+    if (v >= EH_PWR_LVL_BASE_P && v < EH_PWR_LVL_INVALID) {
+        snprintf(f, sizeof(f), "level=P%u", v - EH_PWR_LVL_BASE_P);
+    } else if (v >= EH_PWR_LVL_BASE_N && v < EH_PWR_LVL_BASE_P) {
+        snprintf(f, sizeof(f), "level=N%u", v - EH_PWR_LVL_BASE_N);
+    } else {
+        snprintf(f, sizeof(f), "level=INVALID");
+    }
+    eh_out(cmd, lvl == EH_PWR_LVL_INVALID ? -1 : 0, f);
+}
+
+static int cmd_bt_ctrl(int argc, char **argv)
+{
+    esp_err_t e = ESP_FAIL;
+    if (argc < 2) { eh_out("bt_ctrl", -1, "err=USAGE"); return 0; }
+    if (!strcmp(argv[1], "init"))         e = eh_host_bt_controller_init();
+    else if (!strcmp(argv[1], "enable"))  e = eh_host_bt_controller_enable();
+    else if (!strcmp(argv[1], "disable")) e = eh_host_bt_controller_disable();
+    else if (!strcmp(argv[1], "deinit"))  e = eh_host_bt_controller_deinit(false);
+    else { eh_out("bt_ctrl", -1, "err=USAGE"); return 0; }
+    eh_out_rc("bt_ctrl", e);
+    return 0;
+}
+
+static int cmd_bt_txpwr_set(int argc, char **argv)
+{
+    uint32_t type = 0, level = 0;
+    if (argc < 3 || bt_parse_u32(argv[1], &type) || bt_parse_level(argv[2], &level)) {
+        eh_out("bt_txpwr_set", -1, "err=USAGE");
+        return 0;
+    }
+    eh_out_rc("bt_txpwr_set", eh_host_bt_ble_tx_power_set((eh_ble_power_type_t)type,
+                                                          (eh_power_level_t)level));
+    return 0;
+}
+
+static int cmd_bt_txpwr_get(int argc, char **argv)
+{
+    uint32_t type = 0;
+    if (argc < 2 || bt_parse_u32(argv[1], &type)) { eh_out("bt_txpwr_get", -1, "err=USAGE"); return 0; }
+    bt_out_level("bt_txpwr_get", eh_host_bt_ble_tx_power_get((eh_ble_power_type_t)type));
+    return 0;
+}
+
+static int cmd_bt_txpwr_set_enh(int argc, char **argv)
+{
+    uint32_t type = 0, handle = 0, level = 0;
+    if (argc < 4 || bt_parse_u32(argv[1], &type) || bt_parse_u32(argv[2], &handle) ||
+        handle > UINT16_MAX || bt_parse_level(argv[3], &level)) {
+        eh_out("bt_txpwr_set_enh", -1, "err=USAGE");
+        return 0;
+    }
+    eh_out_rc("bt_txpwr_set_enh", eh_host_bt_ble_tx_power_set_enhanced(
+                  (eh_ble_enhanced_power_type_t)type, (uint16_t)handle, (eh_power_level_t)level));
+    return 0;
+}
+
+static int cmd_bt_txpwr_get_enh(int argc, char **argv)
+{
+    uint32_t type = 0, handle = 0;
+    if (argc < 3 || bt_parse_u32(argv[1], &type) || bt_parse_u32(argv[2], &handle) ||
+        handle > UINT16_MAX) {
+        eh_out("bt_txpwr_get_enh", -1, "err=USAGE");
+        return 0;
+    }
+    bt_out_level("bt_txpwr_get_enh", eh_host_bt_ble_tx_power_get_enhanced(
+                     (eh_ble_enhanced_power_type_t)type, (uint16_t)handle));
+    return 0;
+}
+
+#ifdef EH_API_BT_IDF_COMPAT
+/* IDF API with the configured CP chip's native level values. */
+static int cmd_bt_txpwr_set_idf(int argc, char **argv)
+{
+    uint32_t type = 0, level = 0;
+    if (argc < 3 || bt_parse_u32(argv[1], &type) || bt_parse_u32(argv[2], &level)) {
+        eh_out("bt_txpwr_set_idf", -1, "err=USAGE");
+        return 0;
+    }
+    eh_out_rc("bt_txpwr_set_idf", esp_ble_tx_power_set((esp_ble_power_type_t)type,
+                                                       (esp_power_level_t)level));
+    return 0;
+}
+
+static int cmd_bt_txpwr_get_idf(int argc, char **argv)
+{
+    uint32_t type = 0;
+    char f[24] = {0};
+    if (argc < 2 || bt_parse_u32(argv[1], &type)) { eh_out("bt_txpwr_get_idf", -1, "err=USAGE"); return 0; }
+    int native = (int)esp_ble_tx_power_get((esp_ble_power_type_t)type);
+    snprintf(f, sizeof(f), "native=%d", native);
+    eh_out("bt_txpwr_get_idf", 0, f);
+    return 0;
+}
+#endif
+#endif /* FEAT_BT_TX_POWER_READY */
+
 /* ── external coexistence ───────────────────────────────────────────── */
 
 #if defined(CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX)
@@ -973,6 +1104,17 @@ static const eh_api_entry_t s_cmds[] = {
     { "phy_ant_get_gpio",       cmd_phy_ant_get_gpio,        "phy_ant_get_gpio" },
     { "phy_ant_set",            cmd_phy_ant_set,             "phy_ant_set <rx> <def> <tx> <ant0> <ant1>" },
     { "phy_ant_get",            cmd_phy_ant_get,             "phy_ant_get" },
+#endif
+#if defined(CONFIG_ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY)
+    { "bt_ctrl",                cmd_bt_ctrl,                 "bt_ctrl <init|enable|disable|deinit>" },
+    { "bt_txpwr_set",           cmd_bt_txpwr_set,            "bt_txpwr_set <type> <P9|N12|raw>" },
+    { "bt_txpwr_get",           cmd_bt_txpwr_get,            "bt_txpwr_get <type>" },
+    { "bt_txpwr_set_enh",       cmd_bt_txpwr_set_enh,        "bt_txpwr_set_enh <type> <handle> <P9|N12|raw>" },
+    { "bt_txpwr_get_enh",       cmd_bt_txpwr_get_enh,        "bt_txpwr_get_enh <type> <handle>" },
+#ifdef EH_API_BT_IDF_COMPAT
+    { "bt_txpwr_set_idf",       cmd_bt_txpwr_set_idf,        "bt_txpwr_set_idf <type> <esp_power_level_t value>" },
+    { "bt_txpwr_get_idf",       cmd_bt_txpwr_get_idf,        "bt_txpwr_get_idf <type>" },
+#endif
 #endif
 #if defined(CONFIG_ESP_HOSTED_HOST_FEAT_CP_EXT_COEX)
     { "coex_init",              cmd_coex_init,               "coex_init" },

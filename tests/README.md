@@ -49,6 +49,7 @@ What each test proves: [SCENARIOS.md](SCENARIOS.md).
 | `python3 tools/eh.py test hw -k <expr>` | the same tests on real boards |
 | `python3 tools/eh.py test emu-mcu --manual` | also the `manual` tests |
 | `cmake -S tests/unit/eh_frame -B build_unit && cmake --build build_unit && ctest --test-dir build_unit` | the `eh_frame` wire-format unit test, on the build machine |
+| `python3 -m pytest tests/unit/bt_tx_power --confcutdir=tests/unit/bt_tx_power` | the BLE TX power level tables against the IDF headers (`$EH_UNIT_IDF_PATH`, else `.deps/esp-idf`, else `$IDF_PATH`), on the build machine |
 
 - `-k` filters the chosen set. `eh.py` adds `--sanity` only when you name
   nothing.

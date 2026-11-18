@@ -105,6 +105,8 @@ Header: `eh_host_bt.h`, `eh_host_feat_bt_mcu.h` · compat `esp_hosted_misc.h`
 | `eh_host_bt_controller_deinit(release_mem)` | `esp_hosted_bt_controller_deinit()` | Deinit it |
 | `eh_host_bt_apply_mac(mac6)` | — | Apply the BT MAC before controller bring-up |
 | `eh_host_bt_mcu_hci_register(rx, ctx)` → tx fn / `_unregister()` | — | The raw H4 HCI byte-pipe (MCU host) |
+| `eh_host_bt_ble_tx_power_set(type, level)` / `_get(type)` | `esp_ble_tx_power_set()` / `_get()` (`esp_bt.h`) | BLE TX power of the CP controller |
+| `eh_host_bt_ble_tx_power_set_enhanced(type, handle, level)` / `_get_enhanced()` | `esp_ble_tx_power_set_enhanced()` / `_get_enhanced()` | Same, per advertising, connection or ISO handle |
 
 ## Bluetooth — host-stack adapter
 Header: `esp_hosted_bt_host_stack.h` (component `examples/common_components/esp_hosted_bt_host_stack`)

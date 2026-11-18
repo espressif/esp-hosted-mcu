@@ -569,6 +569,15 @@ esp_err_t eh_cp_feat_rpc_ext_v2_rpc_req_dispatcher(Rpc *req, Rpc *resp, void *pr
             ret = req_phy_ant_get(req, resp, priv_data);
             break;
 #endif // EH_CP_FEAT_PHY_ANT_READY
+
+#if EH_CP_FEAT_BT_TX_POWER_READY
+        case RPC_ID__Req_BtSetTxPower:
+            ret = req_bt_set_tx_power(req, resp, priv_data);
+            break;
+        case RPC_ID__Req_BtGetTxPower:
+            ret = req_bt_get_tx_power(req, resp, priv_data);
+            break;
+#endif // EH_CP_FEAT_BT_TX_POWER_READY
 /* Non WiFi RPC Request Handlers - End */
         default:
             ESP_LOGE(TAG, "Unsupported command request [0x%x]", req->msg_id);

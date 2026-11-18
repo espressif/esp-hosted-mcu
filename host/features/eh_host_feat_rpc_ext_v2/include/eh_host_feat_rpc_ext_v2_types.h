@@ -387,6 +387,14 @@ typedef struct {
     uint32_t enabled_ant1;
 } eh_rpc_phy_ant_cfg_t;
 
+/* Req/Resp_BtSetTxPower, Req/Resp_BtGetTxPower. level: eh_power_level_t symbol. */
+typedef struct {
+    uint32_t enhanced;
+    uint32_t type;
+    uint32_t handle;
+    uint32_t level;
+} eh_rpc_bt_tx_power_t;
+
 /* ---- RF certification test (PHY cert test) mirrors ---- */
 typedef struct {
     uint32_t chan;          /* 1..14 */
@@ -680,6 +688,7 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_gpio_num_t          gpio_num;
         eh_rpc_phy_ant_gpio_t      phy_ant_gpio;
         eh_rpc_phy_ant_cfg_t       phy_ant_cfg;
+        eh_rpc_bt_tx_power_t       bt_tx_power;
         eh_rpc_phy_wifi_tx_t       phy_wifi_tx;
         eh_rpc_phy_wifi_rx_t       phy_wifi_rx;
         eh_rpc_phy_tone_t          phy_tone;

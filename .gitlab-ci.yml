@@ -46,6 +46,7 @@ premerge_check:
     - python3 tools/check_example_structure.py
     - bash tools/check_override_path_depth.sh
     - python3 tools/check_nano_printf_specifiers.py
+    - python3 tools/check_mirrored_files.py
 
 # Dead-gate guard: fail if a Kconfig `depends on`/`select`/`if` or a CMake
 # `if(CONFIG_...)` names an ESP_HOSTED_*/EH_* symbol that no Kconfig defines — a
@@ -79,6 +80,22 @@ unit_eh_frame:
     - cmake -S tests/unit/eh_frame -B build_unit
     - cmake --build build_unit
     - ctest --test-dir build_unit --output-on-failure
+
+# Off-target BLE TX power map test: the CP symbol map compiled against every
+# chip's esp_power_level_t from the image's ESP-IDF (host cc, no IDF build).
+unit_bt_tx_power:
+  stage: pre
+  image: espressif/idf:${IDF_VER}
+  tags: [build]
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH =~ /^release/'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - pip install pytest
+    - python3 -m pytest tests/unit/bt_tx_power --confcutdir=tests/unit/bt_tx_power -p no:cacheprovider -q -rs
 
 pre_commit:
   stage: pre

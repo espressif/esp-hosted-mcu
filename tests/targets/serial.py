@@ -30,7 +30,7 @@ from infra.emu_dut import settle_check
 from infra.serial_dut import SerialDut
 from tools.build_examples import CompatMatrix
 
-from .base import CAP_HOST_EXT_CAPS_LOG, Bench, BenchProvider, BenchSpec
+from .base import CAP_BT_CTRL, CAP_HOST_EXT_CAPS_LOG, Bench, BenchProvider, BenchSpec
 
 _DEFAULT_FLASH_BAUD = 2000000
 _DEFAULT_MONITOR_BAUD = 115200
@@ -127,6 +127,15 @@ def _rev_overlay(host_target, host_rev, port):
         return ['CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y'] if float(host_rev) < 3.0 else []
     except ValueError:
         return []
+
+
+# Chips whose BT controller has no BLE: ESP32-S2 has no Bluetooth at all.
+_NO_BLE = {"esp32s2"}
+
+
+def _bt_caps(cp_target):
+    """Real silicon runs the CP BT controller, if the chip has BLE."""
+    return frozenset() if cp_target in _NO_BLE else frozenset({CAP_BT_CTRL})
 
 
 def bench_config():
@@ -389,7 +398,7 @@ class SerialTarget(BenchProvider):
                 cp.stop()
 
         return Bench(duts=[host, cp], net=HwNet(host) if spec.wake else None,
-                     teardown=down, caps=self.caps)
+                     teardown=down, caps=self.caps | _bt_caps(cp_target))
 
     @staticmethod
     def _open(spec, name, port, baud, logpath, retries=5):

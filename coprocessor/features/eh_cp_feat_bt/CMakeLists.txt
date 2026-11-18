@@ -13,6 +13,9 @@ elseif(CONFIG_IDF_TARGET_ESP32C3 OR CONFIG_IDF_TARGET_ESP32S3)
 else()
     list(APPEND srcs "src/eh_cp_feat_bt_uart_esp32xx.c")
 endif()
+if(CONFIG_ESP_HOSTED_CP_FEAT_BT_TX_POWER_READY)
+    list(APPEND srcs "src/eh_cp_feat_bt_tx_power.c")
+endif()
 
 add_library(eh_cp_feat_bt STATIC ${srcs})
 target_include_directories(eh_cp_feat_bt

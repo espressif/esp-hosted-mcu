@@ -295,9 +295,13 @@ enum RpcId {
 
 	Req_SetContext                    = 408; // 0x198
 
+	/* BLE TX power (esp_ble_tx_power_set/get[_enhanced]) */
+	Req_BtSetTxPower                  = 409; // 0x199
+	Req_BtGetTxPower                  = 410; // 0x19A
+
 	/* Add new control path command response before Req_Max
 	 * and update Req_Max */
-	Req_Max = 409; //0x199
+	Req_Max = 411; //0x19B
 
 	/** Response Msgs **/
 	Resp_Base                         = 512;
@@ -492,9 +496,12 @@ enum RpcId {
 
 	Resp_SetContext                           = 664;
 
+	Resp_BtSetTxPower                         = 665;
+	Resp_BtGetTxPower                         = 666;
+
 	/* Add new control path command response before Resp_Max
 	 * and update Resp_Max */
-	Resp_Max = 665;
+	Resp_Max = 667;
 
 	/** Event Msgs **/
 	Event_Base = 768;
@@ -2357,6 +2364,29 @@ message Rpc_Resp_PhyBtTxTone {
 	int32 resp = 1;
 }
 
+/* esp_ble_tx_power_set[_enhanced]. level: eh_power_level_t symbol (eh_bt_tx_power.h),
+ * not the per-chip esp_power_level_t index. handle is used only when enhanced. */
+message Rpc_Req_BtSetTxPower {
+	bool   enhanced = 1;
+	uint32 type     = 2;
+	uint32 handle   = 3;
+	uint32 level    = 4;
+}
+message Rpc_Resp_BtSetTxPower {
+	int32 resp = 1;
+}
+
+/* esp_ble_tx_power_get[_enhanced] */
+message Rpc_Req_BtGetTxPower {
+	bool   enhanced = 1;
+	uint32 type     = 2;
+	uint32 handle   = 3;
+}
+message Rpc_Resp_BtGetTxPower {
+	int32  resp  = 1;
+	uint32 level = 2; /* eh_power_level_t symbol */
+}
+
 /* Custom RPC messages for user-defined packed structures */
 message Rpc_Req_CustomRpc {
 	uint32 custom_msg_id = 1;  /* User-defined message ID */
@@ -2559,6 +2589,8 @@ message Rpc {
 		Rpc_Req_PhyBleRx                    req_phy_ble_rx                    = 406;
 		Rpc_Req_PhyBtTxTone                 req_phy_bt_tx_tone                = 407;
 		Rpc_Req_SetContext                  req_set_context                   = 408;
+		Rpc_Req_BtSetTxPower                req_bt_set_tx_power               = 409;
+		Rpc_Req_BtGetTxPower                req_bt_get_tx_power               = 410;
 
 		/** Responses **/
 		Rpc_Resp_GetMacAddress              resp_get_mac_address               = 513;
@@ -2715,6 +2747,8 @@ message Rpc {
 		Rpc_Resp_PhyBleRx                   resp_phy_ble_rx                   = 662;
 		Rpc_Resp_PhyBtTxTone                resp_phy_bt_tx_tone               = 663;
 		Rpc_Resp_SetContext                 resp_set_context                  = 664;
+		Rpc_Resp_BtSetTxPower               resp_bt_set_tx_power              = 665;
+		Rpc_Resp_BtGetTxPower               resp_bt_get_tx_power              = 666;
 
 		/** Notifications **/
 		Rpc_Event_ESPInit                   event_esp_init                     = 769;

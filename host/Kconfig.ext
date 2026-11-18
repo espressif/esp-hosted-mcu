@@ -81,12 +81,14 @@ menu "Configure host"
 			bool "ESP32-H2"
 		config ESP_HOSTED_CP_TARGET_ESP32H4
 			bool "ESP32-H4"
+		config ESP_HOSTED_CP_TARGET_ESP32H21
+			bool "ESP32-H21"
 	endchoice
 
-	comment "<<< Suggestion: ESP32-H2/H4 have no Wi-Fi: Disable Wi-Fi Remote using -"
-		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && (ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4)
+	comment "<<< Suggestion: ESP32-H2/H4/H21 have no Wi-Fi: Disable Wi-Fi Remote using -"
+		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && (ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4 || ESP_HOSTED_CP_TARGET_ESP32H21)
 	comment "            Component config -> Wi-Fi Remote -> Enable Wi-Fi Remote component >>>"
-		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && (ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4)
+		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && (ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4 || ESP_HOSTED_CP_TARGET_ESP32H21)
 
 	comment "Conflict: Wi-Fi Remote SLAVE_IDF_TARGET differs from ESP-Hosted CP target"
 		depends on ESP_HOSTED_CP_TARGET_FROM_WIFI_REMOTE && ( \
@@ -113,6 +115,7 @@ menu "Configure host"
 		default "esp32s31" if ESP_HOSTED_CP_TARGET_ESP32S31
 		default "esp32h2" if ESP_HOSTED_CP_TARGET_ESP32H2
 		default "esp32h4" if ESP_HOSTED_CP_TARGET_ESP32H4
+		default "esp32h21" if ESP_HOSTED_CP_TARGET_ESP32H21
 		default "invalid"
 
 	# Classic BT (BR/EDR) needs SOC_BT_CLASSIC_SUPPORTED on the CP. IDF cannot
@@ -122,10 +125,10 @@ menu "Configure host"
 		default y if ESP_HOSTED_CP_TARGET_ESP32 || ESP_HOSTED_CP_TARGET_ESP32S31
 		default n
 
-	# H2 / H4 have no Wi-Fi; gate wifi knobs on this symbol.
+	# H2 / H4 / H21 have no Wi-Fi; gate wifi knobs on this symbol.
 	config ESP_HOSTED_PRIV_ENABLE_WIFI_OPTIONS
 		bool
-		default n if ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4
+		default n if ESP_HOSTED_CP_TARGET_ESP32H2 || ESP_HOSTED_CP_TARGET_ESP32H4 || ESP_HOSTED_CP_TARGET_ESP32H21
 		default y
 
 	choice ESP_HOSTED_DEV_BOARD  # ignore: multiple-definition

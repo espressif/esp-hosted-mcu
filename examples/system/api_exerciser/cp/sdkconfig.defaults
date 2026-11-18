@@ -10,8 +10,11 @@ CONFIG_ESP_HOSTED_CP_RPC_V2=y
 CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT=n
 
 # BT Configuration
-CONFIG_BT_ENABLED=n
-#CONFIG_BT_CONTROLLER_ONLY=y
+CONFIG_BT_ENABLED=y
+CONFIG_BT_CONTROLLER_ONLY=y
+CONFIG_ESP_HOSTED_CP_FEAT_BT=y
+CONFIG_ESP_HOSTED_CP_BT_ENABLED=y
+CONFIG_ESP_HOSTED_CP_FEAT_BT_HCI_VHCI=y
 
 # OTA
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
@@ -28,7 +31,7 @@ CONFIG_ESP_HOSTED_CP_FEAT_PHY_ANT=y
 CONFIG_ESP_HOSTED_CP_FEAT_CP_EXT_COEX=y
 # External coex must be enabled for CP_FEAT_CP_EXT_COEX_READY (=y only when this
 # is set) — else the ExtCoex RPC (0x18c) isn't dispatched and the exerciser's
-# coex_* commands come back "Unsupported". Safe here: BT is off and C5/C6 both
+# coex_* commands come back "Unsupported". Legal with BT on: C5/C6 both
 # have SOC_EXTERNAL_COEX_ADVANCE. Lets the coex RPC round-trip (rc from the coex
 # API) even without the physical coex wires — enough to test the RPC path.
 CONFIG_ESP_COEX_EXTERNAL_COEXIST_ENABLE=y

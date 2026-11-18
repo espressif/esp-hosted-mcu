@@ -44,6 +44,10 @@ EH_HOST_1.0 {
         eh_host_sys_unregister_event_handlers;
 
         /* ── Bluetooth ───────────────────────────────────────── */
+        eh_host_bt_ble_tx_power_get;
+        eh_host_bt_ble_tx_power_get_enhanced;
+        eh_host_bt_ble_tx_power_set;
+        eh_host_bt_ble_tx_power_set_enhanced;
         eh_host_bt_controller_deinit;
         eh_host_bt_controller_disable;
         eh_host_bt_controller_enable;
