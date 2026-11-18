@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "eh_host_port_master_config.h"
 #include "esp_check.h"
 #include "esp_log.h"
 

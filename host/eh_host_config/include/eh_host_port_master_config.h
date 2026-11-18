@@ -9,8 +9,8 @@
 
 #include "sdkconfig.h"
 
-/* Auto-included into every host TU. Pure Kconfig→macro translator;
- * no port-layer or IDF types. */
+/* Include in every file that uses these macros (check_config_redirect.py).
+ * Pure Kconfig→macro translator; no port-layer or IDF types. */
 
 /* GPIO logic levels consumed by *_VAL_ACTIVE/INACTIVE macros below. */
 #ifndef EH_GPIO_LOW
@@ -900,11 +900,6 @@
 
   #define EH_HOST_PORT_SPI_HD_HOST_INTERFACE 1
 
-  enum {
-    EH_HOST_PORT_SPI_HD_CONFIG_2_DATA_LINES,
-    EH_HOST_PORT_SPI_HD_CONFIG_4_DATA_LINES,
-  };
-
   #if CONFIG_ESP_HOSTED_SPI_HD_DR_ACTIVE_HIGH
     #define EH_HOST_PORT_SPI_HD_DATAREADY_ACTIVE_HIGH 1
   #else
@@ -1092,15 +1087,7 @@
   #define EH_HOST_PORT_WIFI_TX_DATA_THROTTLE_HIGH_THRESHOLD       0
 #endif
 
-/* Raw throughput testing */
-#ifndef ESP_TEST_RAW_TP_NONE
-#define ESP_TEST_RAW_TP_NONE              0
-#define ESP_TEST_RAW_TP                   (1 << 0)
-#define ESP_TEST_RAW_TP__ESP_TO_HOST      (1 << 1)
-#define ESP_TEST_RAW_TP__HOST_TO_ESP      (1 << 2)
-#define ESP_TEST_RAW_TP__BIDIRECTIONAL    (1 << 3)
-#endif
-
+/* Raw throughput testing; direction bits live in eh_host_raw_tp_stats.h */
 #define EH_HOST_PORT_TEST_RAW_TP     CONFIG_ESP_HOSTED_RAW_THROUGHPUT_TRANSPORT
 
 #if EH_HOST_PORT_TEST_RAW_TP

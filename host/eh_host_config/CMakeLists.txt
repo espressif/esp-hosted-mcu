@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Master-config INTERFACE: sdkconfig.h + master config header +
+# Master-config INTERFACE: include path of the master config header +
 # eh_common shared types. Single attachment point for every host TU.
 
 if(NOT TARGET eh_host_config)
@@ -17,9 +17,12 @@ if(NOT ESP_PLATFORM)
     )
 endif()
 
-target_compile_options(eh_host_config INTERFACE
-    "SHELL:-include eh_host_port_master_config.h"
-)
+# Non-IDF: the Kconfig pipeline has no IDF to deliver sdkconfig.h. C/C++ only.
+if(NOT ESP_PLATFORM)
+    target_compile_options(eh_host_config INTERFACE
+        "$<$<COMPILE_LANGUAGE:C,CXX>:SHELL:-include sdkconfig.h>"
+    )
+endif()
 
 # Bundle eh_common transitively.
 if(TARGET eh_common)

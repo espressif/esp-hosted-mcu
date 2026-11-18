@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 /* Periodic dump of the host-side transport packet counters (Kconfig-gated). */
+#include "eh_host_port_master_config.h"
 #include "eh_host_pkt_stats.h"
 
 #if EH_HOST_PKT_STATS
@@ -21,7 +22,7 @@ static esp_timer_handle_t s_stats_timer;
 static void pkt_stats_timer_func(void *arg)
 {
 	(void)arg;
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART
+#if EH_HOST_TRANSPORT_BUS_UART
 	{
 		struct eh_host_bus_uart_stats st;
 		eh_host_bus_uart_get_stats(&st);

@@ -235,7 +235,9 @@ esp_err_t ota_https_perform(const char* image_url)
         /* TESTING MODE - Self-signed certificate */
         .cert_pem = (const char *)server_cert_pem_start,
         .cert_len = server_cert_pem_end - server_cert_pem_start,
-        .skip_cert_common_name_check = CONFIG_OTA_SKIP_CERT_CN_CHECK,
+#ifdef CONFIG_OTA_SKIP_CERT_CN_CHECK
+        .skip_cert_common_name_check = true,
+#endif
         .use_global_ca_store = false,  // Use only our certificate
 #else
         /* PRODUCTION MODE - CA certificate bundle */

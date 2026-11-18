@@ -6,6 +6,8 @@
 /* Strong defs of esp_wifi_remote_* hooks not covered by
  * esp_wifi_remote_glue.c; each forwards to eh_host_wifi_* / eh_host_sys_*. */
 
+#include "eh_host_port_master_config.h"
+
 #if __has_include(<esp_wifi_remote.h>)
 
 #include "esp_err.h"

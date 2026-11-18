@@ -5,6 +5,7 @@
  */
 /* V2 impls of eh_host_sys.h wrappers. */
 
+#include "eh_host_port_master_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -24,7 +25,7 @@
 #include "eh_host_event.h"
 #include "esp_event.h"
 
-#if defined(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+#if EH_HOST_USB_RNDIS
 #include "eh_host_mcu_transport.h"
 #endif
 
@@ -110,7 +111,7 @@ esp_err_t eh_host_sys_get_mac(wifi_interface_t mode, uint8_t mac[6])
         return ESP_FAIL;
     }
     memcpy(mac, r->u.wifi_mac.mac, 6);
-#if defined(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+#if EH_HOST_USB_RNDIS
     if (mode == WIFI_IF_AP) {
         eh_host_mcu_transport_usb_rndis_set_ap_mac(mac);
     }
@@ -135,7 +136,7 @@ esp_err_t eh_host_sys_set_mac(wifi_interface_t mode, const uint8_t mac[6])
     }
     int status = r->resp_event_status;
     eh_rpc_ctrl_cmd_free(r);
-#if defined(CONFIG_ESP_HOSTED_HOST_USB_RNDIS)
+#if EH_HOST_USB_RNDIS
     if (status == ESP_OK && mode == WIFI_IF_AP) {
         eh_host_mcu_transport_usb_rndis_set_ap_mac(mac);
     }

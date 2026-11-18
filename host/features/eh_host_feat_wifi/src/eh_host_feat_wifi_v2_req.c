@@ -8,6 +8,7 @@
 /* strnlen needs POSIX.1-2008. */
 #define _POSIX_C_SOURCE 200809L
 
+#include "eh_host_port_master_config.h"
 #include <string.h>
 
 #include "eh_host_port_wifi.h"

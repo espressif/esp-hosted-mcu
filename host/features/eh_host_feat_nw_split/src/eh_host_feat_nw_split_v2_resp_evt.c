@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "eh_host_port_master_config.h"
 #include <string.h>
 
 #include "eh_host_port.h"

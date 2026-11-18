@@ -21,6 +21,7 @@
 
 #include "sd_card_example_common.h"
 #include "sd_card_functions.h"
+#include "esp_hosted.h"
 #include "esp_hosted_wifi.h"
 #include "esp_check.h"
 
