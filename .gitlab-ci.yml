@@ -306,7 +306,7 @@ build_cp_super_ext:
   parallel:
     matrix:
       - { IDF_IMAGE: "release-v6.0", TARGET: "esp32h2",  BUS: "" }   # BLE+OT, no wifi
-      - { IDF_IMAGE: "release-v6.0", TARGET: "esp32c5",  BUS: "" }
+      - { IDF_IMAGE: "v6.1.1",       TARGET: "esp32c5",  BUS: "" }
       - { IDF_IMAGE: "v5.5.1",       TARGET: "esp32c61", BUS: "" }
   script:
     - if ! bash tools/ci/decide_build.sh cp; then echo ">>> cp not affected by this change — skipping"; exit 0; fi
