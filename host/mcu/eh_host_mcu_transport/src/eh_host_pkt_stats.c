@@ -22,7 +22,7 @@ static esp_timer_handle_t s_stats_timer;
 static void pkt_stats_timer_func(void *arg)
 {
 	(void)arg;
-#if CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_UART
+#if EH_HOST_TRANSPORT_BUS_UART
 	{
 		struct eh_host_bus_uart_stats st;
 		eh_host_bus_uart_get_stats(&st);
