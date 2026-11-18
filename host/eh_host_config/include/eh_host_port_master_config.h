@@ -9,8 +9,8 @@
 
 #include "sdkconfig.h"
 
-/* Auto-included into every host TU. Pure Kconfig→macro translator;
- * no port-layer or IDF types. */
+/* Include in every file that uses these macros (check_config_redirect.py).
+ * Pure Kconfig→macro translator; no port-layer or IDF types. */
 
 /* GPIO logic levels consumed by *_VAL_ACTIVE/INACTIVE macros below. */
 #ifndef EH_GPIO_LOW
