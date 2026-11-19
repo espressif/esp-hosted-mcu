@@ -3,6 +3,15 @@
 
 #include <stdint.h>
 
+/* Raw-TP capability and direction bits; same wire values as the CP's eh_caps.h. */
+#ifndef ESP_TEST_RAW_TP_NONE
+#define ESP_TEST_RAW_TP_NONE              0
+#define ESP_TEST_RAW_TP                   (1 << 0)
+#define ESP_TEST_RAW_TP__ESP_TO_HOST      (1 << 1)
+#define ESP_TEST_RAW_TP__HOST_TO_ESP      (1 << 2)
+#define ESP_TEST_RAW_TP__BIDIRECTIONAL    (1 << 3)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
