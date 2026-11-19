@@ -338,6 +338,23 @@ typedef struct {
     uint8_t  idf_target[EH_RPC_IDF_TARGET_LEN];  /* CONFIG_IDF_TARGET */
 } eh_rpc_fw_version_t;
 
+/* Resp_AppGetDesc: the CP's esp_app_desc_t. Strings are NUL-terminated;
+ * app_elf_sha256_len is 0 when the CP does not send the hash. */
+typedef struct {
+    uint32_t magic_word;
+    uint32_t secure_version;
+    char     version[32];
+    char     project_name[32];
+    char     time[16];
+    char     date[16];
+    char     idf_ver[32];
+    uint8_t  app_elf_sha256[32];
+    uint32_t app_elf_sha256_len;
+    uint32_t min_efuse_blk_rev_full;
+    uint32_t max_efuse_blk_rev_full;
+    uint32_t mmu_page_size;
+} eh_rpc_app_desc_t;
+
 /* GPIO payloads mirror RpcGpioConfig field-by-field. drive_cap is
  * forward-compat (no wire support yet). */
 typedef struct {
@@ -673,6 +690,7 @@ typedef struct eh_rpc_ctrl_cmd_s {
         eh_rpc_country_code_t      country_code;
         eh_rpc_wifi_country_full_t wifi_country;
         eh_rpc_fw_version_t        fw_version;
+        eh_rpc_app_desc_t          app_desc;
         eh_rpc_wifi_protocols_t    wifi_protocols;
         eh_rpc_wifi_bandwidths_t   wifi_bandwidths;
         eh_rpc_wifi_twt_config_t   wifi_twt_config;

@@ -212,7 +212,7 @@ def test_control_plane(bench, transport, bench_gpio, request):
     # set_mac needs the iface stopped; on a started stack it may reject — assert
     # the RPC path is well-formed either way (getter above is the strict check).
     _drivable(host, t, 'sys_set_mac sta 02:00:00:11:22:33')
-    _ok(host, t, 'sys_app_desc', r'proj=\S* ver=\d+\.\d+\.\d+')  # proj may be empty on the CP
+    _ok(host, t, 'sys_app_desc', r'proj=\S+ ver=\S+ idf=\S+ sha=(?!0{64})[0-9a-f]{64} magic=abcd5432 sv=0 time= date= efuse=0-0 mmu=0')
 
     # ── wifi scalar round-trips (set v1→get→set v2→get→revert v1) ─────────
     _roundtrip(host, t, 'wifi_get_ps', 'ps', 'wifi_set_ps {}', 0, 2)

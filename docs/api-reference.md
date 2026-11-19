@@ -67,7 +67,7 @@ Header: `eh_host_sys.h` · compat `esp_hosted_misc.h`, `esp_hosted.h`
 | :--- | :--- | :--- |
 | `eh_host_sys_get_cp_fw_version()` | `esp_hosted_get_coprocessor_fwversion()` | CP firmware version |
 | `eh_host_sys_get_cp_info()` | `esp_hosted_get_cp_info()` | CP chip id + idf target name |
-| `eh_host_sys_get_cp_app_desc()` | `esp_hosted_get_coprocessor_app_desc()` | CP app descriptor |
+| `eh_host_sys_get_cp_app_desc()` | `esp_hosted_get_coprocessor_app_desc()` | CP app descriptor: project name, version, IDF version, ELF SHA-256. All fields with CP `CONFIG_ESP_HOSTED_ALLOW_FULL_APP_DESC` |
 | `eh_host_iface_mac_addr_get/set()` | `esp_hosted_iface_mac_addr_get/set()` | Get/set a MAC by `esp_mac_type_t` (incl. `ESP_MAC_BT`) |
 | `eh_host_iface_mac_addr_len_get()` | `esp_hosted_iface_mac_addr_len_get()` | Required MAC buffer length |
 
