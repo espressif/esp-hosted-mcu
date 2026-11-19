@@ -5,7 +5,6 @@
  */
 /* Base Wi-Fi Resp + Event parse dispatch. */
 
-#include "eh_host_port_master_config.h"
 #include <string.h>
 
 #include "eh_host_port.h"

@@ -5,7 +5,6 @@
  */
 /* Parse inbound Rpc frames; populate ctrl_cmd per msg_id. */
 
-#include "eh_host_port_master_config.h"
 #include <string.h>
 
 #include "esp_err.h"
