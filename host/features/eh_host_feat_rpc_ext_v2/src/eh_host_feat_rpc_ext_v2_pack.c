@@ -5,7 +5,6 @@
  */
 /* Compose+pack outbound Rpc requests; dispatch on ctx.msg_id. */
 
-#include "eh_host_port_master_config.h"
 #include <string.h>
 
 #include "eh_host_port.h"

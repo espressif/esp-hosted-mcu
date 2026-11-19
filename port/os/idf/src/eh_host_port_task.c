@@ -5,7 +5,6 @@
  */
 /* IDF task = xTaskCreate + exit-sem gate for join (no force-kill). */
 
-#include "eh_host_port_master_config.h"
 #include "eh_host_port_config.h"
 #include "eh_host_port_err.h"
 #include "eh_host_port_task.h"

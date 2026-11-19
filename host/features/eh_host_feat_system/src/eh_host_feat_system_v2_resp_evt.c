@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* System feature response + event parsers. */
 
-#include "eh_host_port_master_config.h"
 #include <string.h>
 
 #include "rpc_ext_v2_decode_priv.h"

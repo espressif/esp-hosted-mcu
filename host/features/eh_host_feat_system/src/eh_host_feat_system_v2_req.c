@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* System feature request composers + dispatch picker. */
 
-#include "eh_host_port_master_config.h"
 #include "rpc_ext_v2_pack_priv.h"
 
 #if EH_HOST_FEAT_SYSTEM_READY

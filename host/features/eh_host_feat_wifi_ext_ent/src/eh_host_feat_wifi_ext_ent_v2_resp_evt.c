@@ -2,7 +2,6 @@
 /* Wi-Fi extension: Enterprise / EAP response parsers.
  * Bodies moved verbatim from central decode.c. (No event surface today.) */
 
-#include "eh_host_port_master_config.h"
 #include "rpc_ext_v2_decode_priv.h"
 
 #if EH_HOST_FEAT_WIFI_EXT_ENT_READY

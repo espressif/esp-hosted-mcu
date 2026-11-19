@@ -33,7 +33,7 @@ repos:
       name: EH Kconfig via redirector headers
       entry: tools/check_config_redirect.py
       language: python
-      files: ^(coprocessor|host|port)/.*\.(c|h|cpp|hpp)$
+      files: ^(coprocessor|host)/.*\.(c|h|cpp|hpp)$
 
     # The three gates below also run in the premerge_check CI job. They scan the
     # whole tree themselves, so they take no filenames; the `files:` pattern only

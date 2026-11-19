@@ -3,7 +3,6 @@
 
 #define _POSIX_C_SOURCE 200809L
 
-#include "eh_host_port_master_config.h"
 #include "eh_host_port.h"
 #include "eh_host_port_wifi.h"  /* HE / iTWT IDF-version gates */
 
