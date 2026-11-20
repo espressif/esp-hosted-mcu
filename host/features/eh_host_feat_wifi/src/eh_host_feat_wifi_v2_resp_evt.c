@@ -252,6 +252,8 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
         c->resp_event_status = r->resp;
         if (r->ap_record) {
             copy_wifi_ap_record(&c->u.ap_record, r->ap_record);
+        } else if (c->resp_event_status == 0) {
+            c->resp_event_status = -1;
         }
         return 0;
     }
@@ -376,7 +378,10 @@ int rpc_ext_v2_parse_resp_wifi(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
             c->u.ap_records.records = arr;
             c->u.ap_records.number  = (uint32_t)n;
         } else {
-            c->u.ap_records.number = (uint32_t)r->number;
+            c->u.ap_records.number = 0;
+            if (r->number && c->resp_event_status == 0) {
+                c->resp_event_status = -1;
+            }
         }
         return 0;
     }
