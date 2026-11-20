@@ -227,25 +227,41 @@ esp_err_t eh_host_iface_mac_addr_get(uint8_t *mac, size_t mac_len, esp_mac_type_
     return ESP_OK;
 }
 
-/* Reuses Req_GetCoprocessorFwVersion; uncarried fields zero-filled. */
 esp_err_t eh_host_sys_get_cp_app_desc(esp_hosted_app_desc_t *app_desc)
 {
     if (!app_desc) return ESP_ERR_INVALID_ARG;
     memset(app_desc, 0, sizeof(*app_desc));
 
-    eh_host_coprocessor_fwver_t fw = {0};
-    esp_err_t rc = eh_host_sys_get_cp_fw_version(&fw);
-    if (rc != ESP_OK) return rc;
+    eh_rpc_ctrl_cmd_t *req = eh_rpc_ctrl_cmd_alloc();
+    if (!req) return ESP_FAIL;
 
-    app_desc->magic_word = ESP_HOSTED_APP_DESC_MAGIC_WORD;
-    /* "<major>.<minor>.<patch>" — matches upstream form. */
-    snprintf(app_desc->version, sizeof(app_desc->version),
-                   "%u.%u.%u",
-                   (unsigned int)fw.major1,
-                   (unsigned int)fw.minor1,
-                   (unsigned int)fw.patch1);
+    eh_rpc_ctrl_cmd_t *r = NULL;
+    if (eh_host_feat_rpc_request_sync(RPC_ID__Req_AppGetDesc,
+                                         req, (void **)&r) != 0) {
+        return ESP_FAIL;
+    }
+    /* The CP's error, e.g. ESP_ERR_NOT_SUPPORTED from a CP without the handler. */
+    esp_err_t st = (esp_err_t)r->resp_event_status;
+    if (st != ESP_OK) {
+        eh_rpc_ctrl_cmd_free(r);
+        return st;
+    }
 
-    /* TODO: surface idf_target via eh_host_sys_get_cp_info(). */
+    const eh_rpc_app_desc_t *d = &r->u.app_desc;
+    /* 3.0 and 3.1 CPs send magic_word only with the full descriptor. */
+    app_desc->magic_word             = d->magic_word ? d->magic_word : ESP_HOSTED_APP_DESC_MAGIC_WORD;
+    app_desc->secure_version         = d->secure_version;
+    app_desc->min_efuse_blk_rev_full = (uint16_t)d->min_efuse_blk_rev_full;
+    app_desc->max_efuse_blk_rev_full = (uint16_t)d->max_efuse_blk_rev_full;
+    app_desc->mmu_page_size          = (uint8_t)d->mmu_page_size;
+    memcpy(app_desc->version,      d->version,      sizeof(app_desc->version));
+    memcpy(app_desc->project_name, d->project_name, sizeof(app_desc->project_name));
+    memcpy(app_desc->time,         d->time,         sizeof(app_desc->time));
+    memcpy(app_desc->date,         d->date,         sizeof(app_desc->date));
+    memcpy(app_desc->idf_ver,      d->idf_ver,      sizeof(app_desc->idf_ver));
+    memcpy(app_desc->app_elf_sha256, d->app_elf_sha256, d->app_elf_sha256_len);
+
+    eh_rpc_ctrl_cmd_free(r);
     return ESP_OK;
 }
 

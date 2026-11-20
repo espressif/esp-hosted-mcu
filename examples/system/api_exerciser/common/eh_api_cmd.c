@@ -134,8 +134,22 @@ static int cmd_sys_app_desc(int argc, char **argv)
     memset(&d, 0, sizeof(d));
     esp_err_t e = eh_host_sys_get_cp_app_desc(&d);
     if (e == ESP_OK) {
-        char f[96];
-        snprintf(f, sizeof(f), "proj=%s ver=%s", d.project_name, d.version);
+        char sha[2 * sizeof(d.app_elf_sha256) + 1];
+        for (size_t i = 0; i < sizeof(d.app_elf_sha256); i++) {
+            snprintf(&sha[2 * i], 3, "%02x", d.app_elf_sha256[i]);
+        }
+        /* The build date has spaces ("Nov 19 2026"); keep each field one token. */
+        for (char *p = d.date; *p; p++) {
+            if (*p == ' ') *p = '_';
+        }
+        char f[320];
+        snprintf(f, sizeof(f),
+                 "proj=%s ver=%s idf=%s sha=%s magic=%08lx sv=%lu"
+                 " time=%s date=%s efuse=%u-%u mmu=%u",
+                 d.project_name, d.version, d.idf_ver, sha,
+                 (unsigned long)d.magic_word, (unsigned long)d.secure_version,
+                 d.time, d.date, (unsigned int)d.min_efuse_blk_rev_full,
+                 (unsigned int)d.max_efuse_blk_rev_full, (unsigned int)d.mmu_page_size);
         eh_out("sys_app_desc", (int)e, f);
     } else {
         eh_out_rc("sys_app_desc", e);

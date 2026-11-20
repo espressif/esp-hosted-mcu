@@ -469,16 +469,17 @@ esp_err_t req_app_get_desc(Rpc *req, Rpc *resp, void *priv_data)
 
 	app_desc = esp_app_get_description();
 	if (app_desc) {
+		p_c->magic_word = app_desc->magic_word;
 		RPC_RESP_COPY_STR(p_c->project_name, app_desc->project_name, sizeof(app_desc->project_name));
 		RPC_RESP_COPY_STR(p_c->version, app_desc->version, sizeof(app_desc->version));
 		RPC_RESP_COPY_STR(p_c->idf_ver, app_desc->idf_ver, sizeof(app_desc->idf_ver));
+		/* Lets the host identify the CP image. */
+		RPC_RESP_COPY_BYTES(p_c->app_elf_sha256, app_desc->app_elf_sha256, sizeof(app_desc->app_elf_sha256));
 #if EH_CP_ALLOW_FULL_APP_DESC
-		p_c->magic_word     = app_desc->magic_word;
 		p_c->secure_version = app_desc->secure_version;
 
 		RPC_RESP_COPY_STR(p_c->time, app_desc->time, sizeof(app_desc->time));
 		RPC_RESP_COPY_STR(p_c->date, app_desc->date, sizeof(app_desc->date));
-		RPC_RESP_COPY_BYTES(p_c->app_elf_sha256, app_desc->app_elf_sha256, sizeof(app_desc->app_elf_sha256));
 
 #if EH_CP_GOT_EFUSE_BLK_REV_APP_DESC
 		p_c->min_efuse_blk_rev_full = app_desc->min_efuse_blk_rev_full;

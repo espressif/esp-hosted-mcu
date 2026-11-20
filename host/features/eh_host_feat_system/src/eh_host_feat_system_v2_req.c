@@ -49,6 +49,16 @@ static int compose_req_get_fw_version(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
     return 0;
 }
 
+static int compose_req_app_get_desc(Rpc *rpc, const eh_rpc_ctrl_cmd_t *c,
+                                    alloc_track_t *trk)
+{
+    (void)c;
+    ALLOC_PAYLOAD(RpcReqAppGetDesc, req_app_get_desc,
+                  rpc__req__app_get_desc__init);
+    (void)p;
+    return 0;
+}
+
 compose_fn rpc_ext_v2_pick_req_system(int32_t msg_id)
 {
     switch (msg_id) {
@@ -56,6 +66,7 @@ compose_fn rpc_ext_v2_pick_req_system(int32_t msg_id)
     case RPC_ID__Req_SetMacAddress:           return compose_req_set_mac;
     case RPC_ID__Req_IfaceMacAddrSetGet:      return compose_req_iface_mac_addr;
     case RPC_ID__Req_GetCoprocessorFwVersion: return compose_req_get_fw_version;
+    case RPC_ID__Req_AppGetDesc:              return compose_req_app_get_desc;
     default:                                  return NULL;
     }
 }

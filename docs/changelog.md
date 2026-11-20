@@ -1,5 +1,8 @@
 # Unreleased
 
+- host: `esp_hosted_get_coprocessor_app_desc()` asks the co-processor for its app descriptor again, as in 2.x. Before, 3.x returned only the ESP-Hosted version in `version` and left the other fields empty. If the co-processor answers with an error, the call returns that error, for example `ESP_ERR_NOT_SUPPORTED` when the co-processor has no handler
+- cp: the app descriptor always includes the ELF SHA-256, so the host can identify the co-processor image. `CONFIG_ESP_HOSTED_ALLOW_FULL_APP_DESC` (from 2.x) is back and adds the other fields
+
 - host/sdio: a register read that fails CRC (`0x109`) is read again, up to 2 times. A failed data read, or a TX credit read that keeps failing, now posts `EH_HOST_EVENT_TRANSPORT_FAILURE`; before, RX could stop for good
 - cp/usb: the USB OTG device bus is available only with RPC v2
 - usb: enabled RNDIS option to transfer network data

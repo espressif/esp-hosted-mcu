@@ -64,6 +64,21 @@ config ESP_HOSTED_CP_FEAT_RPC_AUTO_INIT
 	help
 		When enabled, RPC auto-initialises during eh_cp_init().
 		Disable to manually call the init from app code.
+
+config ESP_HOSTED_ALLOW_FULL_APP_DESC
+	bool "Return the full app descriptor"
+	default n
+	depends on ESP_HOSTED_CP_RPC_V2
+	help
+		Sets what the CP returns when the host asks for its app
+		descriptor (esp_hosted_get_coprocessor_app_desc()).
+
+		Off: magic word, project name, version, IDF version and the
+		ELF SHA-256.
+		The host uses these to identify the CP image.
+
+		On: also the build time, build date, secure version, eFuse
+		block revisions and MMU page size.
 endmenu
 
 menu "RPC: Legacy Compatibility (disable to drop old host support)"

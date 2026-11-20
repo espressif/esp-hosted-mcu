@@ -42,6 +42,13 @@ def test_api_exerciser(bench, transport):
     r = eh_test_expect(host, r'EH rc=0 cmd=sys_fw_version ver=\d+\.\d+\.\d+', fail=FAIL, timeout=20)
     assert r.ok, f'[{transport}] sys_fw_version: {r.matched}'
 
+    # system: CP app descriptor over RPC. Default CP build: identity fields and
+    # the magic word; the full-descriptor fields stay empty.
+    host.write('sys_app_desc')
+    r = eh_test_expect(host, r'EH rc=0 cmd=sys_app_desc proj=\S+ ver=\S+ idf=\S+ sha=(?!0{64})[0-9a-f]{64} magic=abcd5432 sv=0 time= date= efuse=0-0 mmu=0',
+                       fail=FAIL, timeout=20)
+    assert r.ok, f'[{transport}] sys_app_desc: {r.matched}'
+
     # system: STA MAC readback
     host.write('sys_get_mac sta')
     r = eh_test_expect(host, r'EH rc=0 cmd=sys_get_mac mac=([0-9a-f]{2}:){5}[0-9a-f]{2}',
@@ -87,3 +94,23 @@ def test_api_exerciser(bench, transport):
     host.write('wifi_set_ps')
     r = eh_test_expect(host, r'EH rc=-1 cmd=wifi_set_ps err=USAGE', fail=FAIL, timeout=20)
     assert r.ok, f'[{transport}] wifi_set_ps usage guard: {r.matched}'
+
+
+@pytest.mark.system
+@pytest.mark.parametrize('transport', ['spi_fd'])
+@pytest.mark.second_chance
+def test_app_desc_full(bench, transport):
+    """CP with CONFIG_ESP_HOSTED_ALLOW_FULL_APP_DESC=y: every descriptor field reaches the host."""
+    b = bench(EXAMPLE, 'mcu_host', transport, timeout='120s',
+              cp_overlay=['CONFIG_ESP_HOSTED_ALLOW_FULL_APP_DESC=y'])
+    host = b['host']
+    r = eh_test_expect(host, r'EH api_exerciser ready', fail=FAIL, timeout=60)
+    assert r.ok, f'[{transport}] ready: {r.matched}'
+
+    host.write('sys_app_desc')
+    r = eh_test_expect(host, r'EH rc=0 cmd=sys_app_desc proj=\S+ ver=\S+ idf=\S+ '
+                             r'sha=(?!0{64})[0-9a-f]{64} magic=abcd5432 sv=\d+ '
+                             r'time=\d\d:\d\d:\d\d date=[A-Z][a-z]{2}_+\d{1,2}_\d{4} '
+                             r'efuse=\d+-\d+ mmu=[1-9]\d*',
+                       fail=FAIL, timeout=20)
+    assert r.ok, f'[{transport}] sys_app_desc full: {r.matched}'

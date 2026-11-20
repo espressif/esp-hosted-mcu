@@ -3,5 +3,6 @@ case RPC_ID__Req_GetMACAddress:
 case RPC_ID__Req_SetMacAddress:
 case RPC_ID__Req_IfaceMacAddrSetGet:
 case RPC_ID__Req_GetCoprocessorFwVersion:
+case RPC_ID__Req_AppGetDesc:
     return rpc_ext_v2_pick_req_system(msg_id);
 #endif
