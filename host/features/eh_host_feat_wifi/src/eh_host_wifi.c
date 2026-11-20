@@ -32,6 +32,9 @@
 #include "eh_host_wifi.h"
 #include "eh_host_wifi_priv.h"
 #include "eh_host_sta_fsm.h"
+#if EH_HOST_USB_RNDIS
+#include "eh_host_mcu_transport.h"
+#endif
 
 #include "eh_host_feat_rpc_ext_v2_api_common.h"
 
@@ -145,21 +148,49 @@ esp_err_t eh_host_wifi_start(void)   { return app_request(RPC_ID__Req_WifiStart,
 esp_err_t eh_host_wifi_stop(void)    { return app_request_first(RPC_ID__Req_WifiStop, EH_STA_EV_STOP_REQ); }
 esp_err_t eh_host_wifi_restore(void) { return eh_rpc_do_empty_request(RPC_ID__Req_WifiRestore); }
 
+#if EH_HOST_USB_RNDIS
+/* One RNDIS function is a single Ethernet pipe, so a received frame has no
+ * STA or SoftAP tag. set_mode records this route before the RPC and restores
+ * it if the RPC fails, so RX during the switch follows the requested mode.
+ * AP selects SoftAP. STA and NULL stay on STA. APSTA is only the in-flight
+ * value; the co-processor rejects it. */
+static eh_host_usb_rndis_route_t rndis_route_for_mode(wifi_mode_t mode)
+{
+    if (mode == WIFI_MODE_AP) {
+        return EH_HOST_USB_RNDIS_ROUTE_AP;
+    }
+    if (mode == WIFI_MODE_APSTA) {
+        return EH_HOST_USB_RNDIS_ROUTE_BOTH;
+    }
+    return EH_HOST_USB_RNDIS_ROUTE_STA;
+}
+#endif
+
 esp_err_t eh_host_wifi_set_mode(wifi_mode_t mode)
 {
     eh_rpc_ctrl_cmd_t *req = eh_rpc_ctrl_cmd_alloc();
     if (!req) return ESP_FAIL;
     req->u.wifi_mode.mode = (int32_t)mode;
     bool sta_gone = (mode == WIFI_MODE_AP || mode == WIFI_MODE_NULL) && eh_host_sta_fsm_take_sta();
+#if EH_HOST_USB_RNDIS
+    eh_host_usb_rndis_route_t prev_route =
+        eh_host_mcu_transport_usb_rndis_set_route(rndis_route_for_mode(mode));
+#endif
     eh_rpc_ctrl_cmd_t *r = NULL;
     if (eh_host_feat_rpc_request_sync(RPC_ID__Req_SetWifiMode, req, (void **)&r) != 0) {
         if (sta_gone) eh_host_sta_fsm_give_sta_back();
+#if EH_HOST_USB_RNDIS
+        eh_host_mcu_transport_usb_rndis_set_route(prev_route);
+#endif
         return ESP_FAIL;
     }
     int rc = r->resp_event_status;
     eh_rpc_ctrl_cmd_free(r);
-    if (rc != ESP_OK && sta_gone) {
-        eh_host_sta_fsm_give_sta_back();
+    if (rc != ESP_OK) {
+        if (sta_gone) eh_host_sta_fsm_give_sta_back();
+#if EH_HOST_USB_RNDIS
+        eh_host_mcu_transport_usb_rndis_set_route(prev_route);
+#endif
     }
     if (rc == ESP_OK) {
         eh_host_sta_fsm_set_mode(mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA,

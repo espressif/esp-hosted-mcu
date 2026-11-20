@@ -1,0 +1,9 @@
+# Enable this together with sdkconfig.defaults.esp32p4.usb.
+# The CP must use sdkconfig.defaults.esp32s31.usb_rndis.
+CONFIG_ESP_HOSTED_HOST_USB_RNDIS=y
+# Co-processor RNDIS composite descriptor is 303A:4081.
+CONFIG_ESP_HOSTED_HOST_USB_VID=0x303A
+CONFIG_ESP_HOSTED_HOST_USB_PID=0x4081
+# RNDIS queries the supported-OID list through the CDC class control pipe.
+CONFIG_USBH_CDC_CONTROL_TRANSFER_BUFFER_SIZE=2048
+CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=2048

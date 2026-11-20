@@ -24,24 +24,31 @@ menu "USB (OTG) Device Configuration (Experimental)"
 
 	config EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
 		bool "Enable USB RNDIS network class"
-		# Present, but not selectable until the RNDIS data plane is ready.
-		depends on n
 		default n
 		help
 			Composite device. CDC-ACM stays the control pipe (RPC, serial,
-			HCI, and flow control). STA and AP Ethernet frames move to one
-			RNDIS function. A received frame is AP when its source MAC is
-			the SoftAP MAC, and STA otherwise.
+			HCI, and flow control). The active STA or SoftAP Ethernet frames
+			move to one RNDIS function. The pipe carries one interface.
+			WIFI_MODE_APSTA is not supported.
 
-			Do not also enable TinyUSB MSC, MTP, Vendor, or NCM. Those
-			classes shift the default string table, which this descriptor
-			indexes directly.
+			Set TinyUSB network mode to ECM/RNDIS.
 
-			The MCU host driver is still CDC-ACM only. Enabling this
+			Do not also enable TinyUSB MSC, MTP, Vendor, NCM, or a second
+			CDC interface. Those classes shift the default string table,
+			which this descriptor indexes directly.
+
+			Enable ESP_HOSTED_HOST_USB_RNDIS on the host. Enabling this
 			removes STA and AP data from the framed CDC stream.
 
-			Set TinyUSB network mode to ECM/RNDIS
-			(CONFIG_TINYUSB_NET_MODE_ECM_RNDIS). A saved sdkconfig that
-			still has Network mode None will not build.
+			A saved sdkconfig that still has Network mode None will not
+			build.
+
+	if EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS && !TINYUSB_NET_MODE_ECM_RNDIS
+		comment "Select ECM/RNDIS:"
+		comment "Component config"
+		comment "└── TinyUSB Stack"
+		comment "    └── Network driver (ECM/NCM/RNDIS)"
+		comment "        └── Network mode ──> ECM/RNDIS"
+	endif
 
 endmenu

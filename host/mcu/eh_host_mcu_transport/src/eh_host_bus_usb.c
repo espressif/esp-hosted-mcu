@@ -743,7 +743,9 @@ int eh_host_bus_connect_to_slave(void)
         ESP_LOGI(TAG, "RST pin not configured; connecting via USB directly");
     }
 
-    ESP_LOGI(TAG, "Opening CDC-ACM device (timeout=%u ms)...", (unsigned int)s_cfg.connection_timeout_ms);
+    ESP_LOGI(TAG, "Opening CDC-ACM device %04x:%04x (timeout=%u ms)...",
+             s_cfg.vid, s_cfg.pid,
+             (unsigned int)s_cfg.connection_timeout_ms);
     if (!s_usb_ops || s_usb_ops->open() != 0) {
         return -1;
     }

@@ -104,6 +104,15 @@ esp_err_t req_wifi_set_mode(Rpc *req,
 			RpcReqSetMode, req_set_wifi_mode,
 			rpc__resp__set_mode__init);
 
+#if CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
+	/* One standard RNDIS function is a single Ethernet pipe. */
+	if (req_payload->mode == WIFI_MODE_APSTA) {
+		ESP_LOGE(TAG, "RNDIS carries one interface; APSTA is not supported");
+		resp_payload->resp = ESP_ERR_INVALID_ARG;
+		return ESP_OK;
+	}
+#endif
+
 	RPC_RET_FAIL_IF(esp_wifi_set_mode(req_payload->mode));
 
 	return ESP_OK;

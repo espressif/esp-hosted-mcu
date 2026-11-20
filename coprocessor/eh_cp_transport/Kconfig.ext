@@ -27,11 +27,12 @@ menu "CP transport"
 
 	config EH_TRANSPORT_CP_USB_OTG_DEVICE
 		bool "USB (OTG) (as Device) (Experimental)"
-		depends on SOC_USB_OTG_SUPPORTED
+		depends on SOC_USB_OTG_SUPPORTED && ESP_HOSTED_CP_RPC_V2
 		select TINYUSB_CDC_ENABLED
 		help
 			Coprocessor is a USB OTG device. ESP-Hosted frames, including RPC,
 			are carried on CDC ACM. TinyUSB CDC is enabled for this choice.
+			USB is available only with RPC v2.
 			Do not also select the USB CDC console; it uses the same controller.
 
 	endchoice

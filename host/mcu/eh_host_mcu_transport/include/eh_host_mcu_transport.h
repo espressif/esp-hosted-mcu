@@ -62,6 +62,17 @@ int eh_host_mcu_transport_is_tx_ready(void);
 /* Cache the CP SoftAP MAC for USB RNDIS RX interface demultiplexing. */
 void eh_host_mcu_transport_usb_rndis_set_ap_mac(const uint8_t mac[6]);
 
+/* RNDIS RX route. STA until the first successful mode set. Standard RNDIS
+ * carries a single interface (STA or SoftAP only). BOTH is held only while
+ * an APSTA set-mode request is in flight before the co-processor rejects it. */
+typedef enum {
+	EH_HOST_USB_RNDIS_ROUTE_STA = 0,
+	EH_HOST_USB_RNDIS_ROUTE_AP,
+	EH_HOST_USB_RNDIS_ROUTE_BOTH,
+} eh_host_usb_rndis_route_t;
+
+eh_host_usb_rndis_route_t eh_host_mcu_transport_usb_rndis_set_route(eh_host_usb_rndis_route_t route);
+
 #ifdef __cplusplus
 }
 #endif

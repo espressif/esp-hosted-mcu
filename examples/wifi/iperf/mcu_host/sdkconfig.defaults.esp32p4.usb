@@ -12,7 +12,7 @@ CONFIG_ESP_HOSTED_HOST_USB_STACK_CDC_ACM=y
 # To select it, comment out the CDC-ACM line above and uncomment the next line.
 # CONFIG_ESP_HOSTED_HOST_USB_STACK_CHERRYUSB=y
 # -1: no GPIO wired to the co-processor EN/RST line
-CONFIG_ESP_HOSTED_HOST_RESET_GPIO=-1
+CONFIG_ESP_HOSTED_HOST_RESET_GPIO=48
 
 # P4 USB OTG controller control-transfer size.
 CONFIG_USBH_CDC_CONTROL_TRANSFER_BUFFER_SIZE=2048

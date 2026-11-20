@@ -8,9 +8,9 @@
  * separate USB class: serial frames are queued for recv_task, which
  * reassembles ESP_SERIAL_IF and dispatches to RPC.
  *
- * CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS adds one RNDIS function.
- * STA and AP Ethernet frames use that function. RPC, serial, HCI, and
- * flow control stay on CDC-ACM.
+ * CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS adds one RNDIS function in
+ * eh_cp_transport_usb_otg_rndis.c. STA and AP Ethernet frames use that
+ * function. RPC, serial, HCI, and flow control stay on CDC-ACM.
  */
 
 #include "eh_cp_master_config.h"
@@ -59,94 +59,10 @@
 
 #include "tinyusb.h"
 #include "tinyusb_cdc_acm.h"
-
-#if CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
-#if !CONFIG_TINYUSB_NET_MODE_ECM_RNDIS
-#error "USB RNDIS requires TinyUSB network mode ECM/RNDIS. Set CONFIG_TINYUSB_NET_MODE_ECM_RNDIS=y if a saved sdkconfig still has Network mode None."
-#endif
-/* esp_tinyusb's default configuration descriptor emits NCM, not RNDIS.
- * String indexes below match descriptor_str_default with CDC plus the
- * ECM/RNDIS net strings and no MSC, MTP, or vendor class. */
-#if CONFIG_TINYUSB_MSC_ENABLED || CONFIG_TINYUSB_MTP_ENABLED || \
-		CONFIG_TINYUSB_VENDOR_COUNT || CONFIG_TINYUSB_NET_MODE_NCM
-#error "USB OTG RNDIS descriptor only supports CDC-ACM plus RNDIS. Disable TinyUSB MSC, MTP, Vendor, and NCM."
-#endif
-#if CONFIG_TINYUSB_CDC_COUNT > 1
-#error "USB OTG RNDIS descriptor provides one CDC-ACM interface (TINYUSB_CDC_COUNT must be 1)."
-#endif
-#include "class/net/net_device.h"
-#include "device/usbd_pvt.h"
-#include "esp_mac.h"
-#include "esp_wifi.h"
-
-/* 0x4000 | CDC (bit 0) | RNDIS (bit 7). The stock TinyUSB PID does not
- * change when RNDIS is added, so a host that cached CDC-only would not
- * re-read the configuration. */
-#define USB_RNDIS_PID          0x4081
-#define USB_STRID_CDC          4
-#define USB_STRID_NET          5
-#define USB_ETH_HDR_LEN        14
-#define USB_ETH_SRC_OFF        6
-#define USB_RNDIS_CFG_LEN      (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RNDIS_DESC_LEN)
-
-enum {
-	ITF_NUM_RNDIS = 0,
-	ITF_NUM_RNDIS_DATA,
-	ITF_NUM_CDC,
-	ITF_NUM_CDC_DATA,
-	ITF_NUM_TOTAL,
-};
-
-enum {
-	EPNUM_CDC_NOTIF = 1,
-	EPNUM_CDC_DATA,
-	EPNUM_RNDIS_NOTIF,
-	EPNUM_RNDIS_DATA,
-};
-
-uint8_t tud_network_mac_address[6];
-
-static const tusb_desc_device_t usb_rndis_dev_desc = {
-	.bLength = sizeof(tusb_desc_device_t),
-	.bDescriptorType = TUSB_DESC_DEVICE,
-	.bcdUSB = 0x0200,
-	.bDeviceClass = TUSB_CLASS_MISC,
-	.bDeviceSubClass = MISC_SUBCLASS_COMMON,
-	.bDeviceProtocol = MISC_PROTOCOL_IAD,
-	.bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-	.idVendor = TINYUSB_ESPRESSIF_VID,
-	.idProduct = USB_RNDIS_PID,
-	.bcdDevice = CONFIG_TINYUSB_DESC_BCD_DEVICE,
-	.iManufacturer = 1,
-	.iProduct = 2,
-	.iSerialNumber = 3,
-	.bNumConfigurations = 1,
-};
-
-static const uint8_t usb_rndis_fs_cfg[] = {
-	TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, USB_RNDIS_CFG_LEN,
-			TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-	TUD_RNDIS_DESCRIPTOR(ITF_NUM_RNDIS, USB_STRID_NET, 0x80 | EPNUM_RNDIS_NOTIF, 8,
-			EPNUM_RNDIS_DATA, 0x80 | EPNUM_RNDIS_DATA, 64),
-	TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, USB_STRID_CDC, 0x80 | EPNUM_CDC_NOTIF, 8,
-			EPNUM_CDC_DATA, 0x80 | EPNUM_CDC_DATA, 64),
-};
-
-#if TUD_OPT_HIGH_SPEED
-static const uint8_t usb_rndis_hs_cfg[] = {
-	TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, USB_RNDIS_CFG_LEN,
-			TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-	TUD_RNDIS_DESCRIPTOR(ITF_NUM_RNDIS, USB_STRID_NET, 0x80 | EPNUM_RNDIS_NOTIF, 64,
-			EPNUM_RNDIS_DATA, 0x80 | EPNUM_RNDIS_DATA, 512),
-	TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, USB_STRID_CDC, 0x80 | EPNUM_CDC_NOTIF, 64,
-			EPNUM_CDC_DATA, 0x80 | EPNUM_CDC_DATA, 512),
-};
-#endif
-#endif /* CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS */
+#include "eh_cp_transport_usb_otg_priv.h"
 
 #define HOSTED_USB_TX_QUEUE_SIZE   CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_TX_Q_SIZE
 #define HOSTED_USB_RX_QUEUE_SIZE   CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RX_Q_SIZE
-#define BUFFER_SIZE                MAX_TRANSPORT_BUF_SIZE
 /* One block for usb_rx_task, one for recv_task after dequeue. Same shape as
  * SDIO_TX_MEMPOOL_MARGIN, with the USB floor of RX_Q_SIZE + 2. */
 #define USB_RX_MEMPOOL_MARGIN      2
@@ -155,7 +71,6 @@ static const uint8_t usb_rndis_hs_cfg[] = {
 #define USB_CDC_CHUNK              512
 #define USB_TINYUSB_TASK_STACK     4096
 #define USB_TINYUSB_TASK_PRIO      5
-#define USB_TX_FLUSH_MS            1000
 
 static const char TAG[] = "USB_OTG_DRIVER";
 
@@ -179,11 +94,11 @@ static interface_context_t context;
 static struct hosted_mempool * buf_mp_tx_g;
 static struct hosted_mempool * buf_mp_rx_g;
 
-static SemaphoreHandle_t usb_rx_sem;
-static SemaphoreHandle_t usb_rx_credits;
+SemaphoreHandle_t usb_rx_sem;
+SemaphoreHandle_t usb_rx_credits;
 static SemaphoreHandle_t usb_tx_lock;
 static SemaphoreHandle_t usb_cdc_lock;
-static QueueHandle_t usb_rx_queue[MAX_PRIORITY_QUEUES];
+QueueHandle_t usb_rx_queue[MAX_PRIORITY_QUEUES];
 static StreamBufferHandle_t usb_rx_stream;
 static uint8_t * usb_scratch_buf;
 
@@ -200,7 +115,7 @@ static TaskHandle_t flow_ctrl_task_handle;
 static void usb_cdc_pull(void);
 
 #if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
-static volatile bool usb_exit_requested;
+volatile bool usb_exit_requested;
 #endif
 
 #define IS_HOST_POWER_SAVING() (!eh_cp_host_ps_reachable())
@@ -246,7 +161,7 @@ static inline void h_usb_buffer_tx_free(void *buf)
 	hosted_mempool_free(buf_mp_tx_g, buf);
 }
 
-static inline void *h_usb_buffer_rx_alloc(uint8_t need_memset)
+void *h_usb_buffer_rx_alloc(uint8_t need_memset)
 {
 	return hosted_mempool_alloc(buf_mp_rx_g, BUFFER_SIZE, need_memset);
 }
@@ -256,14 +171,14 @@ static inline void h_usb_buffer_rx_free(void *buf)
 	hosted_mempool_free(buf_mp_rx_g, buf);
 }
 
-static void usb_rx_credit_release(void)
+void usb_rx_credit_release(void)
 {
 	if (usb_rx_credits)
 		xSemaphoreGive(usb_rx_credits);
 	usb_cdc_pull();
 }
 
-static void usb_rx_read_done(void *handle)
+void usb_rx_read_done(void *handle)
 {
 	h_usb_buffer_rx_free(handle);
 	usb_rx_credit_release();
@@ -290,7 +205,7 @@ static void flow_ctrl_task(void *pvParameters)
 	}
 }
 
-static void start_rx_data_throttling_if_needed(void)
+void start_rx_data_throttling_if_needed(void)
 {
 	uint32_t queue_load;
 	uint8_t load_percent;
@@ -649,190 +564,6 @@ static int h_usb_read(interface_handle_t *if_handle, interface_buffer_handle_t *
 	return buf_handle->payload_len;
 }
 
-#if CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
-/* One RNDIS function carries both interfaces. The host's AP netdev uses
- * the SoftAP MAC as the Ethernet source; everything else is STA. */
-static uint8_t usb_rndis_if_type(const uint8_t *frame)
-{
-	uint8_t ap_mac[6];
-
-	if (esp_wifi_get_mac(WIFI_IF_AP, ap_mac) == ESP_OK &&
-			memcmp(frame + USB_ETH_SRC_OFF, ap_mac, sizeof(ap_mac)) == 0)
-		return ESP_AP_IF;
-	return ESP_STA_IF;
-}
-
-/* tinyusb_net copies this buffer and then renews the USB packet, so the
- * frame has to be queued before return. There is no NAK if the pool is empty. */
-static esp_err_t usb_rndis_rx_cb(void *buffer, uint16_t len, void *ctx)
-{
-	interface_buffer_handle_t buf_handle = {0};
-	uint8_t *buf;
-
-	(void)ctx;
-#if EH_CP_FEAT_HOST_PS_UNLOAD_BUS_WHILE_SLEEPING
-	if (usb_exit_requested)
-		return ESP_OK;
-#endif
-	if (!buffer || len < USB_ETH_HDR_LEN || len > BUFFER_SIZE || len > CFG_TUD_NET_MTU) {
-		ESP_LOGW(TAG, "rndis rx drop len %u", (unsigned)len);
-		return ESP_OK;
-	}
-	if (!usb_rx_credits || xSemaphoreTake(usb_rx_credits, 0) != pdTRUE) {
-		ESP_LOGW(TAG, "rndis rx drop, no credit");
-		return ESP_OK;
-	}
-
-	buf = h_usb_buffer_rx_alloc(MEMSET_NOT_REQUIRED);
-	if (!buf) {
-		ESP_LOGW(TAG, "rndis rx drop, no buffer");
-		usb_rx_credit_release();
-		return ESP_OK;
-	}
-
-	memcpy(buf, buffer, len);
-	buf_handle.if_type = usb_rndis_if_type(buf);
-	buf_handle.payload = buf;
-	buf_handle.payload_len = len;
-	buf_handle.free_buf_handle = usb_rx_read_done;
-	buf_handle.priv_buffer_handle = buf;
-
-#if ESP_PKT_STATS
-	if (buf_handle.if_type == ESP_STA_IF)
-		pkt_stats.hs_bus_sta_in++;
-#endif
-	if (!usb_rx_queue[PRIO_Q_OTHERS] ||
-			xQueueSend(usb_rx_queue[PRIO_Q_OTHERS], &buf_handle, 0) != pdTRUE) {
-		ESP_LOGW(TAG, "rndis rx drop, queue full");
-		usb_rx_read_done(buf);
-		return ESP_OK;
-	}
-	xSemaphoreGive(usb_rx_sem);
-	start_rx_data_throttling_if_needed();
-	return ESP_OK;
-}
-
-static SemaphoreHandle_t usb_rndis_tx_lock;
-static SemaphoreHandle_t usb_rndis_tx_busy;
-static SemaphoreHandle_t usb_rndis_tx_done;
-
-typedef struct {
-	const uint8_t *buf;
-	uint16_t len;
-	esp_err_t result;
-} usb_rndis_tx_t;
-
-static usb_rndis_tx_t usb_rndis_tx;
-
-/* esp_tinyusb compiles tinyusb_net.c for NCM only. RNDIS uses the
- * TinyUSB net callbacks directly. The copy runs on the TinyUSB task. */
-static void usb_rndis_tx_defer(void *ctx)
-{
-	(void)ctx;
-	if (!usb_rndis_tx_busy || xSemaphoreTake(usb_rndis_tx_busy, 0) != pdTRUE)
-		return;
-	if (tud_network_can_xmit(usb_rndis_tx.len)) {
-		tud_network_xmit(&usb_rndis_tx, usb_rndis_tx.len);
-		usb_rndis_tx.result = ESP_OK;
-	} else {
-		/* The preceding bulk IN is still pending. The CP TX task retries
-		 * after yielding; do not treat normal endpoint occupancy as a
-		 * disconnect or drop this frame. */
-		usb_rndis_tx.result = ESP_ERR_NOT_FINISHED;
-	}
-	xSemaphoreGive(usb_rndis_tx_busy);
-	if (usb_rndis_tx_done)
-		xSemaphoreGive(usb_rndis_tx_done);
-}
-
-uint16_t tud_network_xmit_cb(uint8_t *dst, void *ref, uint16_t arg)
-{
-	const usb_rndis_tx_t *pkt = ref;
-	uint16_t len = arg;
-
-	if (!pkt || !pkt->buf)
-		return 0;
-	if (len > pkt->len)
-		len = pkt->len;
-	memcpy(dst, pkt->buf, len);
-	return len;
-}
-
-bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
-{
-	usb_rndis_rx_cb((void *)src, size, NULL);
-	/* False makes the class driver renew the OUT packet. The frame
-	 * was copied above, or dropped. */
-	return false;
-}
-
-void tud_network_init_cb(void)
-{
-}
-
-static void usb_rndis_mac_init(void)
-{
-	if (esp_read_mac(tud_network_mac_address, ESP_MAC_WIFI_STA) != ESP_OK) {
-		memset(tud_network_mac_address, 0, sizeof(tud_network_mac_address));
-		tud_network_mac_address[0] = 0x02;
-		ESP_LOGW(TAG, "rndis MAC fallback to locally administered");
-	}
-}
-
-static esp_err_t usb_rndis_send(const uint8_t *frame, uint16_t len)
-{
-	esp_err_t err = ESP_ERR_TIMEOUT;
-	const TickType_t timeout = pdMS_TO_TICKS(USB_TX_FLUSH_MS);
-	const TickType_t start = xTaskGetTickCount();
-
-	if (len > CFG_TUD_NET_MTU) {
-		ESP_LOGE(TAG, "rndis frame %u exceeds MTU %u",
-				(unsigned)len, (unsigned)CFG_TUD_NET_MTU);
-		return ESP_ERR_INVALID_SIZE;
-	}
-	if (!usb_rndis_tx_lock || !usb_rndis_tx_busy || !usb_rndis_tx_done ||
-			xSemaphoreTake(usb_rndis_tx_lock, portMAX_DELAY) != pdTRUE)
-		return ESP_ERR_INVALID_STATE;
-
-	usb_rndis_tx.buf = frame;
-	usb_rndis_tx.len = len;
-
-	/* A completion is normally consumed below. Drain the token left by a
-	 * deferred send that timed out while the TinyUSB task was delayed. */
-	xSemaphoreTake(usb_rndis_tx_done, 0);
-	while ((xTaskGetTickCount() - start) < timeout) {
-		TickType_t elapsed = xTaskGetTickCount() - start;
-
-		if (elapsed >= timeout)
-			break;
-		usb_rndis_tx.result = ESP_ERR_TIMEOUT;
-		/* Do not take usb_tx_lock: the copy runs on the TinyUSB task. */
-		xSemaphoreGive(usb_rndis_tx_busy);
-		usbd_defer_func(usb_rndis_tx_defer, NULL, false);
-		if (xSemaphoreTake(usb_rndis_tx_done, timeout - elapsed) != pdTRUE) {
-			xSemaphoreTake(usb_rndis_tx_busy, portMAX_DELAY);
-			break;
-		}
-		xSemaphoreTake(usb_rndis_tx_busy, portMAX_DELAY);
-		err = usb_rndis_tx.result;
-		if (err != ESP_ERR_NOT_FINISHED)
-			break;
-
-		/* The network IN endpoint is still busy. Yield instead of spinning
-		 * in the TinyUSB task; the existing CP queues apply backpressure. */
-		vTaskDelay(1);
-	}
-	/* Endpoint occupancy is transient while retrying, but after the deadline
-	 * it is a transport timeout, not an in-progress send result. */
-	if (err == ESP_ERR_NOT_FINISHED)
-		err = ESP_ERR_TIMEOUT;
-	xSemaphoreTake(usb_rndis_tx_done, 0);
-	usb_rndis_tx.buf = NULL;
-	xSemaphoreGive(usb_rndis_tx_lock);
-	return err;
-}
-#endif /* CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS */
-
 static int32_t h_usb_write(interface_handle_t *handle, interface_buffer_handle_t *buf_handle)
 {
 	int32_t total_len = 0;
@@ -951,23 +682,17 @@ static interface_handle_t * h_usb_init(void)
 #endif
 	if (usb_rx_task_handle == NULL)
 		assert(xTaskCreate(usb_rx_task, "usb_rx_task",
-				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
-				CONFIG_ESP_HOSTED_TASK_PRIORITY_DEFAULT, &usb_rx_task_handle) == pdTRUE);
+				EH_CP_TASK_STACK_SIZE, NULL,
+				EH_CP_TASK_PRIO_DEFAULT, &usb_rx_task_handle) == pdTRUE);
 	if (flow_ctrl_task_handle == NULL)
 		assert(xTaskCreate(flow_ctrl_task, "usb_flow_ctrl",
-				CONFIG_ESP_HOSTED_DEFAULT_TASK_STACK_SIZE, NULL,
-				CONFIG_ESP_HOSTED_TASK_PRIORITY_DEFAULT, &flow_ctrl_task_handle) == pdTRUE);
+				EH_CP_TASK_STACK_SIZE, NULL,
+				EH_CP_TASK_PRIO_DEFAULT, &flow_ctrl_task_handle) == pdTRUE);
 
 	usb_configured = false;
 
 #if CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
-	usb_rndis_mac_init();
-	usb_rndis_tx_lock = xSemaphoreCreateMutex();
-	usb_rndis_tx_busy = xSemaphoreCreateBinary();
-	usb_rndis_tx_done = xSemaphoreCreateBinary();
-	assert(usb_rndis_tx_lock != NULL);
-	assert(usb_rndis_tx_busy != NULL);
-	assert(usb_rndis_tx_done != NULL);
+	usb_rndis_prepare();
 #endif
 	const tinyusb_config_t tusb_cfg = {
 #if SOC_USB_OTG_PERIPH_NUM > 1
@@ -983,10 +708,10 @@ static interface_handle_t * h_usb_init(void)
 		.event_cb = usb_tinyusb_event_cb,
 #if CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
 		.descriptor = {
-			.device = &usb_rndis_dev_desc,
-			.full_speed_config = usb_rndis_fs_cfg,
+			.device = usb_rndis_device_descriptor(),
+			.full_speed_config = usb_rndis_fs_config(),
 #if TUD_OPT_HIGH_SPEED
-			.high_speed_config = usb_rndis_hs_cfg,
+			.high_speed_config = usb_rndis_hs_config(),
 #endif
 		},
 #endif
@@ -1044,6 +769,9 @@ static void h_usb_deinit(interface_handle_t *handle)
 		vTaskDelete(flow_ctrl_task_handle);
 		flow_ctrl_task_handle = NULL;
 	}
+#if CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
+	usb_rndis_rx_stop_task();
+#endif
 	vTaskDelay(pdMS_TO_TICKS(20));
 
 	for (int i = 0; i < MAX_PRIORITY_QUEUES; i++) {
@@ -1091,18 +819,7 @@ static void h_usb_deinit(interface_handle_t *handle)
 		tinyusb_cdcacm_deinit(TINYUSB_CDC_ACM_0);
 	tinyusb_driver_uninstall();
 #if CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS
-	if (usb_rndis_tx_lock) {
-		vSemaphoreDelete(usb_rndis_tx_lock);
-		usb_rndis_tx_lock = NULL;
-	}
-	if (usb_rndis_tx_busy) {
-		vSemaphoreDelete(usb_rndis_tx_busy);
-		usb_rndis_tx_busy = NULL;
-	}
-	if (usb_rndis_tx_done) {
-		vSemaphoreDelete(usb_rndis_tx_done);
-		usb_rndis_tx_done = NULL;
-	}
+	usb_rndis_delete_tx_semaphores();
 #endif
 #endif
 }

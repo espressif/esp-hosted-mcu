@@ -5,7 +5,7 @@
 
 [Home](../../README.md) · [Getting Started: MCU](../getting-started-mcu.md) · [Architecture](../architecture.md) · [UART Design](uart.md)
 
-The MCU is the USB host. The coprocessor is a USB device. CDC-ACM carries every ESP-Hosted frame: RPC, HCI, power-save, and STA/AP.
+The MCU is the USB host. The coprocessor is a USB device. On the CDC-only bus, CDC-ACM carries every ESP-Hosted frame: RPC, HCI, power-save, and STA/AP. With RNDIS, CDC-ACM stays the control pipe and STA/AP Ethernet frames move to RNDIS. See [RNDIS data plane](#rndis-data-plane).
 
 ---
 
@@ -130,6 +130,48 @@ Select the bus with `CONFIG_ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST=y`.
 
 ---
 
+## RNDIS data plane
+
+Enable it on both ends: `CONFIG_EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS` on the co-processor and `CONFIG_ESP_HOSTED_HOST_USB_RNDIS` on the host. The host option is ESP32-P4 with `usb_host_cdc_acm` only. CherryUSB does not carry this data plane.
+
+CDC-ACM stays the control pipe: RPC, serial, HCI, power-save, and flow control. One RNDIS function carries the active STA or SoftAP Ethernet frames. The composite device is VID `0x303A`, PID `0x4081`. [STA and SoftAP routing](#sta-and-softap-routing) describes which interface receives each frame.
+
+### STA and SoftAP routing
+
+RNDIS stays standard Ethernet, so the pipe carries one interface. A mode switch does not re-enumerate USB. CDC-ACM remains the control pipe.
+
+The host records the route in `eh_host_wifi_set_mode()` before it sends the mode RPC, and restores the previous route if that RPC fails. Until the first successful set, every frame is STA. The co-processor classifies each received frame on the RNDIS receive worker by calling `esp_wifi_get_mode()`.
+
+| Mode | Frames go to |
+| :--- | :--- |
+| `WIFI_MODE_STA`, `WIFI_MODE_NULL` | STA |
+| `WIFI_MODE_AP` | SoftAP |
+
+A host `esp_wifi_set_mode(WIFI_MODE_APSTA)` returns `ESP_ERR_INVALID_ARG` and leaves the current mode unchanged. STA and SoftAP cannot share one standard RNDIS function.
+
+| Symbol | Default | Meaning |
+| :--- | :--- | :--- |
+| `ESP_HOSTED_HOST_USB_RNDIS_TX_Q_SIZE` | 20 | Ethernet frames accepted from lwIP while the bulk OUT worker is busy. A full queue waits until a slot is free |
+| `ESP_HOSTED_HOST_USB_RNDIS_RX_Q_SIZE` | 20 | Frames queued from the USB client task while `eh_rndis_rx` dispatches. A full queue dispatches that frame inline |
+
+Example overlays: `examples/wifi/iperf/cp/sdkconfig.defaults.esp32s31.usb_rndis` and `examples/wifi/iperf/mcu_host/sdkconfig.defaults.esp32p4.usb_rndis`. The api_exerciser copies match.
+
+### Settings ESP-Hosted cannot select
+
+These symbols belong to TinyUSB and to the USB host components that `iot_usbh_rndis` uses. A saved sdkconfig keeps the component default, and the build then fails.
+
+On the co-processor, under Component config → TinyUSB Stack → Network driver (ECM/NCM/RNDIS) → Network mode:
+
+- Set **ECM/RNDIS** (`CONFIG_TINYUSB_NET_MODE_ECM_RNDIS=y`). The stock default is None.
+- Leave MSC, MTP, Vendor, and NCM off, and keep a single CDC interface. The ESP-Hosted descriptor indexes the TinyUSB string table directly, and the stock TinyUSB configuration descriptor emits NCM.
+
+`iot_usbh_rndis` on the host reads the supported-OID list through the CDC control pipe. Its own menu, IoT USB Host RNDIS, stays at the default (CDC notification enabled). Set both control-transfer sizes to 2048:
+
+- Component config → IoT USB Host CDC → usbh CDC control transfer size (`CONFIG_USBH_CDC_CONTROL_TRANSFER_BUFFER_SIZE`). Default 256.
+- Component config → USB-OTG → Largest size of transfers to/from default endpoints (`CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE`).
+
+---
+
 ## Build
 
 From `examples/system/api_exerciser/mcu_host`:
@@ -145,4 +187,5 @@ In `examples/wifi/iperf/cp`, append `sdkconfig.defaults.esp32s31.usb_cdc` for a 
 | :--- | :--- | :--- |
 | `espressif/esp_tinyusb` `>=2.2.0` | ESP32-S2, S3, S31 | `EH_TRANSPORT_CP_USB_OTG_DEVICE` |
 | `espressif/usb_host_cdc_acm` | ESP32-P4 | `ESP_HOSTED_HOST_USB_STACK_CDC_ACM` |
+| `espressif/iot_usbh_rndis` `^0.5.2` | ESP32-P4 | `ESP_HOSTED_HOST_USB_RNDIS` |
 | `cherry-embedded/cherryusb` `>=1.6.0` | ESP32-P4 | `ESP_HOSTED_HOST_USB_STACK_CHERRYUSB` |

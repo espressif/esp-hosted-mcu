@@ -30,14 +30,30 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
 		config ESP_HOSTED_HOST_USB_RNDIS
 			bool "USB RNDIS data plane"
 			depends on ESP_HOSTED_HOST_USB_STACK_CDC_ACM && IDF_TARGET_ESP32P4
-			# Present, but not selectable until the RNDIS data plane is ready.
-			depends on n
 			default n
 			help
 				Use the ESP-IoT-Solution RNDIS host driver for STA and AP
 				Ethernet frames. CDC-ACM remains the control plane for RPC,
 				HCI, power-save, and flow-control frames. Enable the matching
 				EH_TRANSPORT_CP_USB_OTG_DEVICE_RNDIS option on the coprocessor.
+
+				Set the CDC and USB host control-transfer buffers to 2048
+				bytes. RNDIS queries the supported-OID list through that
+				pipe. A saved sdkconfig that still has the 256-byte default
+				will not build.
+
+		if ESP_HOSTED_HOST_USB_RNDIS && USBH_CDC_CONTROL_TRANSFER_BUFFER_SIZE < 2048
+			comment "Set control transfer size to 2048:"
+			comment "Component config"
+			comment "└── IoT USB Host CDC"
+			comment "    └── usbh CDC control transfer size"
+		endif
+		if ESP_HOSTED_HOST_USB_RNDIS && USB_HOST_CONTROL_TRANSFER_MAX_SIZE < 2048
+			comment "Set largest control transfer to 2048:"
+			comment "Component config"
+			comment "└── USB-OTG"
+			comment "    └── Largest size (in bytes) of transfers to/from default endpoints"
+		endif
 
 		config ESP_HOSTED_HOST_RESET_GPIO
 			int "Slave reset GPIO (RST/EN line)"
@@ -56,21 +72,23 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
 
 		config ESP_HOSTED_HOST_USB_VID
 			hex "USB Vendor ID (VID)"
-			default 0x303A if ESP_HOSTED_CP_TARGET_ESP32S31
-			default 0x0000
+			default 0x303A
 			range 0x0000 0xFFFF
 			help
 				Vendor ID used to identify the coprocessor. 0x0000 matches
-				any vendor (CDC_HOST_ANY_VID). ESP32-S31 defaults to 0x303A.
+				any vendor (CDC_HOST_ANY_VID). Default VID is 0x303A,
+				shared across all ESP32 chips.
 
 		config ESP_HOSTED_HOST_USB_PID
 			hex "USB Product ID (PID)"
+			default 0x4081 if ESP_HOSTED_HOST_USB_RNDIS
 			default 0x4001 if ESP_HOSTED_CP_TARGET_ESP32S31
 			default 0x0000
 			range 0x0000 0xFFFF
 			help
 				Product ID used to identify the coprocessor. 0x0000 matches
-				any product (CDC_HOST_ANY_PID). ESP32-S31 defaults to 0x4001.
+				any product (CDC_HOST_ANY_PID). CDC-ACM with RNDIS defaults
+				to 0x4081. CDC-only ESP32-S31 defaults to 0x4001.
 
 		config ESP_HOSTED_HOST_USB_TX_Q_SIZE
 			int "USB Host TX queue size"
@@ -107,20 +125,17 @@ if ESP_HOSTED_HOST_TRANSPORT_BUS_OTG_HOST
 			range 4 100
 			help
 				Maximum number of Ethernet frames accepted from lwIP while the
-				RNDIS bulk OUT worker is busy. A full queue returns a TX error
-				to lwIP so it backs off instead of overrunning the coprocessor.
+				RNDIS bulk OUT worker is busy. A full queue waits until a slot
+				is free.
 
-		config ESP_HOSTED_HOST_USB_RNDIS_TX_TASK_STACK
-			int "USB RNDIS TX task stack size"
+		config ESP_HOSTED_HOST_USB_RNDIS_RX_Q_SIZE
+			int "USB RNDIS RX queue size"
 			depends on ESP_HOSTED_HOST_USB_RNDIS
-			default 4096
-			range 2048 16384
-
-		config ESP_HOSTED_HOST_USB_RNDIS_TX_TASK_PRIO
-			int "USB RNDIS TX task priority"
-			depends on ESP_HOSTED_HOST_USB_RNDIS
-			default 22
-			range 1 25
+			default 20
+			range 4 100
+			help
+				Depth of Ethernet frames queued from the USB client task while
+				eh_rndis_rx dispatches. A full queue dispatches that frame inline.
 
 	endmenu
 
