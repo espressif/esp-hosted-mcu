@@ -40,6 +40,15 @@ static char *TAG = "ehcp_host_ps";
 	}
   }
 
+  /* Take the lock for at most timeout_ms. Returns false on a timeout. */
+  static inline bool ps_transition_lock_timeout(uint32_t timeout_ms)
+  {
+	if (!s_ps_transition_mtx) {
+		return true;
+	}
+	return xSemaphoreTake(s_ps_transition_mtx, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+  }
+
   static inline void ps_transition_unlock(void)
   {
 	if (s_ps_transition_mtx) {
@@ -461,7 +470,16 @@ int wakeup_host(uint32_t timeout_ms)
 	                   ? EH_CP_HOST_PS_WAKE_WAIT_MAX_MS : timeout_ms;
 
 	for (;;) {
-		ps_transition_lock();
+		uint64_t waited = GET_CURR_TIME_IN_MS() - start;
+
+		/* The sleep path holds the lock while it runs host_power_save_on_ready_cb.
+		 * Bound the wait, so a callback that waits on this task cannot deadlock it. */
+		if (waited > cap)
+			return 0;                     /* caller drops (counted) */
+		if (!ps_transition_lock_timeout(cap - (uint32_t)waited)) {
+			ESP_LOGW(TAG, "wake: PS transition lock busy, a PS callback holds it");
+			return 0;                     /* caller drops (counted) */
+		}
 
 		/* AWAKE: nothing to do (idempotent). */
 		if (eh_cp_host_ps_get() == EH_HOST_PS_AWAKE) {

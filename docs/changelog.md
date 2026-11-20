@@ -4,6 +4,7 @@
 - cp/usb: the USB OTG device bus is available only with RPC v2
 - usb: enabled RNDIS option to transfer network data
   - RNDIS frames follow the Wi-Fi mode when the host switches between STA and SoftAP. `esp_wifi_set_mode(WIFI_MODE_APSTA)` returns `ESP_ERR_INVALID_ARG` and leaves the mode unchanged, because one standard RNDIS function carries a single interface
+- cp/host_ps: `wakeup_host()` waits for the power-save transition lock for at most its timeout. A `host_power_save_on_ready_cb` that waited on a task requesting a wake (a console `wake-up`, for example) deadlocked both tasks
 - host: `esp_hosted_tx()` copies the frame also when `buff_zerocopy=1`. SDIO and USB send it after the call returns, so the old zero-copy path read the buffer after it was freed
 - host/cp: BLE TX power of the co-processor controller from the host: `esp_ble_tx_power_set/get[_enhanced]()` (IDF `esp_bt.h`, on hosts without a BT controller) and `eh_host_bt_ble_tx_power_*()`. On by default with the BT feature (`ESP_HOSTED_HOST_FEAT_BT_TX_POWER`, `ESP_HOSTED_CP_FEAT_BT_TX_POWER`). See [Bluetooth](features/bluetooth.md#ble-tx-power)
 - host: ESP32-H21 can be selected as co-processor target (`ESP_HOSTED_CP_TARGET_ESP32H21`), and the MCU host accepts its chip id (`0x19`). No ESP32-H21 co-processor build is tested yet: IDF marks the chip as preview
