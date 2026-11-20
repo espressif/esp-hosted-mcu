@@ -191,9 +191,8 @@ def test_phy_ant_gpio_idf_check(bench, transport, bench_gpio):
         _gpio_is(host, t, [a, b, '-', '-'])
     _set_gpio(host, t, UNUSED)
     _gpio_is(host, t, UNUSED)
-    # As in IDF, a dropped pin stays reserved until the app resets it.
-    _set_gpio(host, t, [a, '-', '-', '-'], REFUSED)
-    _gpio_is(host, t, UNUSED)
+    # Whether IDF keeps a dropped pin reserved depends on its version;
+    # gpio_reset_pin frees it on all of them.
     for pin in (a, b):
         _ok(host, t, f'gpio_reset_pin {pin}')
     _set_gpio(host, t, [a, '-', '-', '-'])

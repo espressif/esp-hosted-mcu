@@ -45,7 +45,7 @@ static esp_err_t ant_gpio_from_wire(const WifiAntGpioConfig *in,
     return ESP_OK;
 }
 
-/* Pins of the current config were reserved by gpio_config() on the last apply. */
+/* On IDF v6.1+, gpio_config() reserved the pins of the current config on the last apply. */
 static esp_err_t check_reserved(const esp_phy_ant_gpio_config_t *old,
                                 const esp_phy_ant_gpio_config_t *cfg)
 {
