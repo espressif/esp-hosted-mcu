@@ -185,4 +185,37 @@
 #  define EH_CP_BT_UART_FLOWCTRL_ENABLED        0
 #endif
 
+/* BLE TX power family = IDF components/bt/include/<dir> of the target's esp_bt.h.
+ *
+ *   Target | Uses    | Since IDF
+ *   -------+---------+----------
+ *   S3     | esp32c3 | v5.5
+ *   C61    | esp32c6 | v5.5
+ *   H21    | esp32h2 | v6.1
+ *
+ * https://github.com/espressif/esp-idf/blob/v6.1.1/components/bt/CMakeLists.txt#L7-L15 */
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#  define EH_CP_BT_PWR_FAMILY_ESP32             1
+#elif defined(CONFIG_IDF_TARGET_ESP32C2)
+#  define EH_CP_BT_PWR_FAMILY_ESP32C2           1
+#elif defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
+#  define EH_CP_BT_PWR_FAMILY_ESP32C3           1
+#elif defined(CONFIG_IDF_TARGET_ESP32C5)
+#  define EH_CP_BT_PWR_FAMILY_ESP32C5           1
+#elif defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C61)
+#  define EH_CP_BT_PWR_FAMILY_ESP32C6           1
+#elif defined(CONFIG_IDF_TARGET_ESP32H2) || defined(CONFIG_IDF_TARGET_ESP32H21)
+#  define EH_CP_BT_PWR_FAMILY_ESP32H2           1
+#elif defined(CONFIG_IDF_TARGET_ESP32H4)
+#  define EH_CP_BT_PWR_FAMILY_ESP32H4           1
+#elif defined(CONFIG_IDF_TARGET_ESP32S31)
+#  define EH_CP_BT_PWR_FAMILY_ESP32S31          1
+#endif
+/* ESP32 has no esp_ble_tx_power_*_enhanced(). */
+#if defined(EH_CP_BT_PWR_FAMILY_ESP32)
+#  define EH_CP_BT_PWR_HAS_ENHANCED             0
+#else
+#  define EH_CP_BT_PWR_HAS_ENHANCED             1
+#endif
+
 #endif /* EH_CP_CFG_BT_H */

@@ -14722,6 +14722,186 @@ void   rpc__resp__phy_bt_tx_tone__free_unpacked
   assert(message->base.descriptor == &rpc__resp__phy_bt_tx_tone__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   rpc__req__bt_set_tx_power__init
+                     (RpcReqBtSetTxPower         *message)
+{
+  static const RpcReqBtSetTxPower init_value = RPC__REQ__BT_SET_TX_POWER__INIT;
+  *message = init_value;
+}
+size_t rpc__req__bt_set_tx_power__get_packed_size
+                     (const RpcReqBtSetTxPower *message)
+{
+  assert(message->base.descriptor == &rpc__req__bt_set_tx_power__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__req__bt_set_tx_power__pack
+                     (const RpcReqBtSetTxPower *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__req__bt_set_tx_power__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__req__bt_set_tx_power__pack_to_buffer
+                     (const RpcReqBtSetTxPower *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__req__bt_set_tx_power__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcReqBtSetTxPower *
+       rpc__req__bt_set_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcReqBtSetTxPower *)
+     protobuf_c_message_unpack (&rpc__req__bt_set_tx_power__descriptor,
+                                allocator, len, data);
+}
+void   rpc__req__bt_set_tx_power__free_unpacked
+                     (RpcReqBtSetTxPower *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__req__bt_set_tx_power__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   rpc__resp__bt_set_tx_power__init
+                     (RpcRespBtSetTxPower         *message)
+{
+  static const RpcRespBtSetTxPower init_value = RPC__RESP__BT_SET_TX_POWER__INIT;
+  *message = init_value;
+}
+size_t rpc__resp__bt_set_tx_power__get_packed_size
+                     (const RpcRespBtSetTxPower *message)
+{
+  assert(message->base.descriptor == &rpc__resp__bt_set_tx_power__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__resp__bt_set_tx_power__pack
+                     (const RpcRespBtSetTxPower *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__resp__bt_set_tx_power__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__resp__bt_set_tx_power__pack_to_buffer
+                     (const RpcRespBtSetTxPower *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__resp__bt_set_tx_power__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcRespBtSetTxPower *
+       rpc__resp__bt_set_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcRespBtSetTxPower *)
+     protobuf_c_message_unpack (&rpc__resp__bt_set_tx_power__descriptor,
+                                allocator, len, data);
+}
+void   rpc__resp__bt_set_tx_power__free_unpacked
+                     (RpcRespBtSetTxPower *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__resp__bt_set_tx_power__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   rpc__req__bt_get_tx_power__init
+                     (RpcReqBtGetTxPower         *message)
+{
+  static const RpcReqBtGetTxPower init_value = RPC__REQ__BT_GET_TX_POWER__INIT;
+  *message = init_value;
+}
+size_t rpc__req__bt_get_tx_power__get_packed_size
+                     (const RpcReqBtGetTxPower *message)
+{
+  assert(message->base.descriptor == &rpc__req__bt_get_tx_power__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__req__bt_get_tx_power__pack
+                     (const RpcReqBtGetTxPower *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__req__bt_get_tx_power__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__req__bt_get_tx_power__pack_to_buffer
+                     (const RpcReqBtGetTxPower *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__req__bt_get_tx_power__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcReqBtGetTxPower *
+       rpc__req__bt_get_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcReqBtGetTxPower *)
+     protobuf_c_message_unpack (&rpc__req__bt_get_tx_power__descriptor,
+                                allocator, len, data);
+}
+void   rpc__req__bt_get_tx_power__free_unpacked
+                     (RpcReqBtGetTxPower *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__req__bt_get_tx_power__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   rpc__resp__bt_get_tx_power__init
+                     (RpcRespBtGetTxPower         *message)
+{
+  static const RpcRespBtGetTxPower init_value = RPC__RESP__BT_GET_TX_POWER__INIT;
+  *message = init_value;
+}
+size_t rpc__resp__bt_get_tx_power__get_packed_size
+                     (const RpcRespBtGetTxPower *message)
+{
+  assert(message->base.descriptor == &rpc__resp__bt_get_tx_power__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t rpc__resp__bt_get_tx_power__pack
+                     (const RpcRespBtGetTxPower *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &rpc__resp__bt_get_tx_power__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t rpc__resp__bt_get_tx_power__pack_to_buffer
+                     (const RpcRespBtGetTxPower *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &rpc__resp__bt_get_tx_power__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+RpcRespBtGetTxPower *
+       rpc__resp__bt_get_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (RpcRespBtGetTxPower *)
+     protobuf_c_message_unpack (&rpc__resp__bt_get_tx_power__descriptor,
+                                allocator, len, data);
+}
+void   rpc__resp__bt_get_tx_power__free_unpacked
+                     (RpcRespBtGetTxPower *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &rpc__resp__bt_get_tx_power__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 void   rpc__req__custom_rpc__init
                      (RpcReqCustomRpc         *message)
 {
@@ -29467,6 +29647,206 @@ const ProtobufCMessageDescriptor rpc__resp__phy_bt_tx_tone__descriptor =
   (ProtobufCMessageInit) rpc__resp__phy_bt_tx_tone__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
+static const ProtobufCFieldDescriptor rpc__req__bt_set_tx_power__field_descriptors[4] =
+{
+  {
+    NULL, /* CODE_SIZE */
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqBtSetTxPower, enhanced),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqBtSetTxPower, type),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqBtSetTxPower, handle),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqBtSetTxPower, level),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const ProtobufCIntRange rpc__req__bt_set_tx_power__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 4 }
+};
+const ProtobufCMessageDescriptor rpc__req__bt_set_tx_power__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  NULL,NULL,NULL,NULL, /* CODE_SIZE */
+  sizeof(RpcReqBtSetTxPower),
+  4,
+  rpc__req__bt_set_tx_power__field_descriptors,
+  NULL, /* CODE_SIZE */
+  1,  rpc__req__bt_set_tx_power__number_ranges,
+  (ProtobufCMessageInit) rpc__req__bt_set_tx_power__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rpc__resp__bt_set_tx_power__field_descriptors[1] =
+{
+  {
+    NULL, /* CODE_SIZE */
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespBtSetTxPower, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const ProtobufCIntRange rpc__resp__bt_set_tx_power__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor rpc__resp__bt_set_tx_power__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  NULL,NULL,NULL,NULL, /* CODE_SIZE */
+  sizeof(RpcRespBtSetTxPower),
+  1,
+  rpc__resp__bt_set_tx_power__field_descriptors,
+  NULL, /* CODE_SIZE */
+  1,  rpc__resp__bt_set_tx_power__number_ranges,
+  (ProtobufCMessageInit) rpc__resp__bt_set_tx_power__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rpc__req__bt_get_tx_power__field_descriptors[3] =
+{
+  {
+    NULL, /* CODE_SIZE */
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqBtGetTxPower, enhanced),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqBtGetTxPower, type),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcReqBtGetTxPower, handle),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const ProtobufCIntRange rpc__req__bt_get_tx_power__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 3 }
+};
+const ProtobufCMessageDescriptor rpc__req__bt_get_tx_power__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  NULL,NULL,NULL,NULL, /* CODE_SIZE */
+  sizeof(RpcReqBtGetTxPower),
+  3,
+  rpc__req__bt_get_tx_power__field_descriptors,
+  NULL, /* CODE_SIZE */
+  1,  rpc__req__bt_get_tx_power__number_ranges,
+  (ProtobufCMessageInit) rpc__req__bt_get_tx_power__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor rpc__resp__bt_get_tx_power__field_descriptors[2] =
+{
+  {
+    NULL, /* CODE_SIZE */
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespBtGetTxPower, resp),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(RpcRespBtGetTxPower, level),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const ProtobufCIntRange rpc__resp__bt_get_tx_power__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor rpc__resp__bt_get_tx_power__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  NULL,NULL,NULL,NULL, /* CODE_SIZE */
+  sizeof(RpcRespBtGetTxPower),
+  2,
+  rpc__resp__bt_get_tx_power__field_descriptors,
+  NULL, /* CODE_SIZE */
+  1,  rpc__resp__bt_get_tx_power__number_ranges,
+  (ProtobufCMessageInit) rpc__resp__bt_get_tx_power__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
 static const ProtobufCFieldDescriptor rpc__req__custom_rpc__field_descriptors[2] =
 {
   {
@@ -29759,7 +30139,7 @@ const ProtobufCMessageDescriptor rpc__event__context__descriptor =
   (ProtobufCMessageInit) rpc__event__context__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor rpc__field_descriptors[281] =
+static const ProtobufCFieldDescriptor rpc__field_descriptors[285] =
 {
   {
     NULL, /* CODE_SIZE */
@@ -31335,6 +31715,30 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[281] =
   },
   {
     NULL, /* CODE_SIZE */
+    409,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, req_bt_set_tx_power),
+    &rpc__req__bt_set_tx_power__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    410,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, req_bt_get_tx_power),
+    &rpc__req__bt_get_tx_power__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
     513,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
@@ -32871,6 +33275,30 @@ static const ProtobufCFieldDescriptor rpc__field_descriptors[281] =
   },
   {
     NULL, /* CODE_SIZE */
+    665,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, resp_bt_set_tx_power),
+    &rpc__resp__bt_set_tx_power__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
+    666,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(Rpc, payload_case),
+    offsetof(Rpc, resp_bt_get_tx_power),
+    &rpc__resp__bt_get_tx_power__descriptor,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    NULL, /* CODE_SIZE */
     769,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
@@ -33145,23 +33573,23 @@ static const ProtobufCIntRange rpc__number_ranges[18 + 1] =
   { 334, 58 },
   { 337, 60 },
   { 341, 63 },
-  { 513, 131 },
-  { 553, 169 },
-  { 567, 177 },
-  { 576, 180 },
-  { 581, 184 },
-  { 590, 186 },
-  { 593, 188 },
-  { 597, 191 },
-  { 769, 259 },
-  { 0, 281 }
+  { 513, 133 },
+  { 553, 171 },
+  { 567, 179 },
+  { 576, 182 },
+  { 581, 186 },
+  { 590, 188 },
+  { 593, 190 },
+  { 597, 193 },
+  { 769, 263 },
+  { 0, 285 }
 };
 const ProtobufCMessageDescriptor rpc__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
   NULL,NULL,NULL,NULL, /* CODE_SIZE */
   sizeof(Rpc),
-  281,
+  285,
   rpc__field_descriptors,
   NULL, /* CODE_SIZE */
   18,  rpc__number_ranges,
@@ -33369,7 +33797,7 @@ const ProtobufCEnumDescriptor rpc_feature_option__descriptor =
   rpc_feature_option__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
-static const ProtobufCEnumValue rpc_id__enum_values_by_number[329] =
+static const ProtobufCEnumValue rpc_id__enum_values_by_number[333] =
 {
   { NULL, NULL, 0 }, /* CODE_SIZE */
   { NULL, NULL, 256 }, /* CODE_SIZE */
@@ -33524,6 +33952,8 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[329] =
   { NULL, NULL, 407 }, /* CODE_SIZE */
   { NULL, NULL, 408 }, /* CODE_SIZE */
   { NULL, NULL, 409 }, /* CODE_SIZE */
+  { NULL, NULL, 410 }, /* CODE_SIZE */
+  { NULL, NULL, 411 }, /* CODE_SIZE */
   { NULL, NULL, 512 }, /* CODE_SIZE */
   { NULL, NULL, 513 }, /* CODE_SIZE */
   { NULL, NULL, 514 }, /* CODE_SIZE */
@@ -33676,6 +34106,8 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[329] =
   { NULL, NULL, 663 }, /* CODE_SIZE */
   { NULL, NULL, 664 }, /* CODE_SIZE */
   { NULL, NULL, 665 }, /* CODE_SIZE */
+  { NULL, NULL, 666 }, /* CODE_SIZE */
+  { NULL, NULL, 667 }, /* CODE_SIZE */
   { NULL, NULL, 768 }, /* CODE_SIZE */
   { NULL, NULL, 769 }, /* CODE_SIZE */
   { NULL, NULL, 770 }, /* CODE_SIZE */
@@ -33702,13 +34134,13 @@ static const ProtobufCEnumValue rpc_id__enum_values_by_number[329] =
   { NULL, NULL, 791 }, /* CODE_SIZE */
 };
 static const ProtobufCIntRange rpc_id__value_ranges[] = {
-{0, 0},{256, 1},{297, 40},{512, 153},{553, 192},{768, 305},{0, 329}
+{0, 0},{256, 1},{297, 40},{512, 155},{553, 194},{768, 309},{0, 333}
 };
 const ProtobufCEnumDescriptor rpc_id__descriptor =
 {
   PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
   NULL,NULL,NULL,NULL, /* CODE_SIZE */
-  329,
+  333,
   rpc_id__enum_values_by_number,
   0, NULL, /* CODE_SIZE */
   6,

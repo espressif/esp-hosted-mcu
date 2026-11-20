@@ -33,6 +33,10 @@ jobs:
         run: |
           python3 tools/check_example_structure.py
           bash tools/check_override_path_depth.sh
+      - name: Mirrored files identical
+        shell: bash
+        run: |
+          python3 tools/check_mirrored_files.py
 
   pre_commit:
     name: pre-commit

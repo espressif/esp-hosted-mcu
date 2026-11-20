@@ -22,6 +22,12 @@ target_link_libraries(esp_hosted_compat
         eh_host_config
 )
 
+# IDF esp_bt.h BLE TX power API, only where IDF has no esp_bt.h (no local controller).
+if(CONFIG_ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY AND NOT CONFIG_BT_CONTROLLER_ENABLED)
+    target_sources(esp_hosted_compat PRIVATE bt/src/esp_bt_compat.c)
+    target_include_directories(esp_hosted_compat PUBLIC bt/include)
+endif()
+
 # Feature deps — link only when the feature target exists.
 foreach(_feat bt system cp_ext_coex gpio_exp phy_ant ota heartbeat peer_data
               mem_monitor nw_split power_save openthread

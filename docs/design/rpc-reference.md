@@ -145,6 +145,8 @@ Each request has a corresponding response.
 | 126 | 321 | WifiGetAntGpio | Unreleased |
 | 127 | 322 | WifiSetAnt | Unreleased |
 | 128 | 323 | WifiGetAnt | Unreleased |
+| 129 | 409 | BtSetTxPower | Unreleased |
+| 130 | 410 | BtGetTxPower | Unreleased |
 
 ---
 

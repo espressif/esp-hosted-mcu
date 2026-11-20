@@ -31,6 +31,9 @@ static int parse_resp(const Rpc *rpc, eh_rpc_ctrl_cmd_t *c)
 #if EH_HOST_FEAT_PHY_ANT_READY
     #include "eh_host_feat_phy_ant_v2_resp_ids.inc"
 #endif
+#if EH_HOST_FEAT_BT_TX_POWER_READY
+    #include "eh_host_feat_bt_v2_resp_ids.inc"
+#endif
 #if EH_HOST_FEAT_RF_CERT_READY
     #include "eh_host_feat_rf_cert_v2_resp_ids.inc"
 #endif

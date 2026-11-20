@@ -25,7 +25,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))  # tests/
 from infra.expect_helper import eh_test_expect, FATAL_PATTERNS
-from targets.base import CAP_COEX_WIRED, CAP_GPIO_LOOPBACK, CAP_WIFI_ITWT
+from targets.base import CAP_BT_CTRL, CAP_COEX_WIRED, CAP_GPIO_LOOPBACK, CAP_WIFI_ITWT
 
 FAIL = FATAL_PATTERNS + ['bring-up timed out']
 EX = 'system/api_exerciser'
@@ -85,6 +85,67 @@ def _reaches_cp(host, t, cmd):
     base = cmd.split()[0]
     r = eh_test_expect(host, r'EH rc=(?!-1\b)-?\d+ cmd=' + base, fail=FAIL, timeout=30)
     assert r.ok, f'[{t}] {cmd}: no result other than ESP_FAIL: {r.matched}'
+
+
+def _rc(host, t, cmd, rcs, extra=''):
+    """Assert the command returns one of `rcs` (+ optional trailing field pattern); returns the rc."""
+    mark = _mark(host)
+    host.write(cmd)
+    alt = '|'.join(str(x) for x in rcs)
+    pat = rf'EH rc=({alt}) cmd=' + cmd.split()[0] + ((' ' + extra) if extra else r'\b')
+    r = eh_test_expect(host, pat, fail=FAIL, timeout=20)
+    assert r.ok, f'[{t}] {cmd}: want rc in {rcs}: {r.matched}'
+    return int(re.search(pat, _since(host, mark)).group(1))
+
+
+# esp_err_t values the BLE TX power step expects.
+INVALID_ARG, INVALID_STATE, NOT_SUPPORTED = 0x102, 0x103, 0x106
+
+
+def _bt_tx_power(host, t, caps):
+    """BLE TX power on the CP controller. Chip-agnostic: N12/N0/P3/P9 exist on
+    every chip; P1 only on ESP32 (an alias of P3); ESP32 has no _enhanced API."""
+    # A host built without BLE TX power (e.g. for an ESP32-S2 CP) has no bt_* commands.
+    mark = _mark(host)
+    host.write('bt_ctrl')
+    r = eh_test_expect(host, r'EH rc=-1 cmd=bt_ctrl|Unrecognized command', fail=FAIL, timeout=20)
+    assert r.ok, f'[{t}] bt_ctrl probe: {r.matched}'
+    if 'cmd=bt_ctrl' not in _since(host, mark):
+        return
+    _drivable(host, t, 'bt_ctrl disable')
+    _drivable(host, t, 'bt_ctrl deinit')
+    # Argument checks: host (not a level name) and CP (type out of range), any state.
+    _rc(host, t, 'bt_txpwr_set 11 7', [INVALID_ARG])
+    # A CP built without BLE TX power has no handler: NOT_SUPPORTED, nothing more to test.
+    if _rc(host, t, 'bt_txpwr_set 12 P9', [INVALID_ARG, NOT_SUPPORTED]) == NOT_SUPPORTED:
+        return
+    # Controller idle: the CP refuses without calling IDF.
+    _rc(host, t, 'bt_txpwr_set 11 P9', [INVALID_STATE])
+    _rc(host, t, 'bt_txpwr_get 11', [-1], 'level=INVALID')
+    if CAP_BT_CTRL not in caps:
+        return
+    _ok(host, t, 'bt_ctrl init')
+    _ok(host, t, 'bt_ctrl enable')
+    for lvl in ('N12', 'N0', 'P3', 'P9'):
+        _ok(host, t, f'bt_txpwr_set 11 {lvl}')
+        _ok(host, t, 'bt_txpwr_get 11', f'level={lvl}')
+    if _rc(host, t, 'bt_txpwr_set 11 P1', [0, NOT_SUPPORTED]) == 0:
+        _ok(host, t, 'bt_txpwr_get 11', 'level=P3')
+    if _rc(host, t, 'bt_txpwr_set_enh 0 0 P9', [0, NOT_SUPPORTED]) == 0:
+        _ok(host, t, 'bt_txpwr_get_enh 0 0', 'level=P9')
+        _rc(host, t, 'bt_txpwr_set_enh 8 0 P9', [NOT_SUPPORTED])
+    # IDF API (compat esp_bt.h): write back the native value it reads; the level holds.
+    _ok(host, t, 'bt_txpwr_set 11 P9')
+    mark = _mark(host)
+    host.write('bt_txpwr_get_idf 11')
+    pat = r'EH rc=0 cmd=bt_txpwr_get_idf native=(\d+)'
+    r = eh_test_expect(host, pat, fail=FAIL, timeout=20)
+    assert r.ok, f'[{t}] bt_txpwr_get_idf: {r.matched}'
+    native = re.search(pat, _since(host, mark)).group(1)
+    _ok(host, t, f'bt_txpwr_set_idf 11 {native}')
+    _ok(host, t, 'bt_txpwr_get 11', 'level=P9')
+    _ok(host, t, 'bt_ctrl disable')
+    _ok(host, t, 'bt_ctrl deinit')
 
 
 def _wifi_restore(host):
@@ -289,6 +350,9 @@ def test_control_plane(bench, transport, bench_gpio, request):
             _ok(host, t, cmd)
         else:
             _drivable(host, t, cmd)
+
+    # ── BLE TX power (CP BT controller) ───────────────────────────────────
+    _bt_tx_power(host, t, caps)
 
     # ── radio-reconfig / AP HARD STOPS, run LAST ──────────────────────────
     # wifi_set_protocol / wifi_set_bandwidth kick off a phymode + iTWT reconfig,

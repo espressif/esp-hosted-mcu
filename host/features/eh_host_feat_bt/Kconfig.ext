@@ -18,11 +18,25 @@ if ESP_HOSTED_HOST_FEAT_BT
 		  before bringing the controller up. A runtime cfg.bt_mac overrides
 		  it. 48-bit MAC as six colon-separated hex pairs.
 
+	config ESP_HOSTED_HOST_FEAT_BT_TX_POWER
+		bool "BLE TX power control"
+		default y
+		depends on !ESP_HOSTED_CP_TARGET_ESP32S2
+		help
+		  Adds eh_host_bt_ble_tx_power_set/get and the _enhanced variants.
+		  On a host without its own BT controller, esp_bt.h also gives the
+		  IDF names (esp_ble_tx_power_set, ESP_PWR_LVL_*). Disable to remove
+		  the code.
+
 endif # ESP_HOSTED_HOST_FEAT_BT
 
 config ESP_HOSTED_HOST_FEAT_BT_READY
 	bool
 	default y if ESP_HOSTED_HOST_FEAT_BT && ESP_HOSTED_HOST_FEAT_RPC_READY && ESP_HOSTED_HOST_FEAT_RPC_EXT_V2_READY
+
+config ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY
+	bool
+	default y if ESP_HOSTED_HOST_FEAT_BT_TX_POWER && ESP_HOSTED_HOST_FEAT_BT_READY
 
 # Removed in 3.0 — kept only to fail the build on a stale hosted-BT sdkconfig.
 config ESP_HOSTED_ENABLE_BT_BLUEDROID

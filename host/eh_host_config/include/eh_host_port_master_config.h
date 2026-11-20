@@ -141,6 +141,30 @@
 #  define EH_HOST_CP_TARGET_ESP32S31        0
 #endif
 
+#ifdef CONFIG_ESP_HOSTED_CP_TARGET_ESP32C61
+#  define EH_HOST_CP_TARGET_ESP32C61          1
+#else
+#  define EH_HOST_CP_TARGET_ESP32C61          0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_TARGET_ESP32H2
+#  define EH_HOST_CP_TARGET_ESP32H2           1
+#else
+#  define EH_HOST_CP_TARGET_ESP32H2           0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_TARGET_ESP32H21
+#  define EH_HOST_CP_TARGET_ESP32H21          1
+#else
+#  define EH_HOST_CP_TARGET_ESP32H21          0
+#endif
+
+#ifdef CONFIG_ESP_HOSTED_CP_TARGET_ESP32H4
+#  define EH_HOST_CP_TARGET_ESP32H4           1
+#else
+#  define EH_HOST_CP_TARGET_ESP32H4           0
+#endif
+
 #ifdef CONFIG_ESP_HOSTED_CP_HAS_BT_CLASSIC
 #  define EH_HOST_CP_HAS_BT_CLASSIC         1
 #else
@@ -335,6 +359,11 @@
 #  define EH_HOST_FEAT_BT_READY             1
 #else
 #  define EH_HOST_FEAT_BT_READY             0
+#endif
+#ifdef CONFIG_ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY
+#  define EH_HOST_FEAT_BT_TX_POWER_READY    1
+#else
+#  define EH_HOST_FEAT_BT_TX_POWER_READY    0
 #endif
 
 /* OpenThread (RCP feature-control on hosted link) */
@@ -688,6 +717,9 @@
 #if CONFIG_ESP_HOSTED_CP_TARGET_ESP32H4
   #define EH_HOST_PORT_SLAVE_TARGET_ESP32H4 1
 #endif
+#if CONFIG_ESP_HOSTED_CP_TARGET_ESP32H21
+  #define EH_HOST_PORT_SLAVE_TARGET_ESP32H21 1
+#endif
 
 /* Enforce single-slave-target. */
 #if defined(EH_HOST_PORT_SLAVE_TARGET_ESP32) + \
@@ -700,7 +732,8 @@
   defined(EH_HOST_PORT_SLAVE_TARGET_ESP32C61) + \
   defined(EH_HOST_PORT_SLAVE_TARGET_ESP32S31) + \
   defined(EH_HOST_PORT_SLAVE_TARGET_ESP32H2) + \
-  defined(EH_HOST_PORT_SLAVE_TARGET_ESP32H4) != 1
+  defined(EH_HOST_PORT_SLAVE_TARGET_ESP32H4) + \
+  defined(EH_HOST_PORT_SLAVE_TARGET_ESP32H21) != 1
   #error "No Slave Target or more than one Slave Target was defined."
 #endif
 

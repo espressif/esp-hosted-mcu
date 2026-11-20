@@ -12,9 +12,10 @@
  *   s_req_resp[id - Req_Base]  or  s_req_resp[id - Resp_Base]  (shared)
  *   s_event[id - Event_Base]
  *        |
- *        +--> offset --> s_pool: "GetMACAddress\0SetMacAddress\0..."
+ *        +--> N(GetMACAddress) = offsetof(pool member) --> "GetMACAddress"
  *
- * NO_NAME marks an unused id; the lookup then returns NULL.
+ * The pool is a struct of char arrays (no padding), so the compiler computes
+ * every offset. NO_NAME marks an unused id; the lookup then returns NULL.
  */
 
 #include <stddef.h>
@@ -23,364 +24,548 @@
 
 #define NO_NAME 0xFFFF
 
-static const char s_pool[] =
-    "GetMACAddress\0"
-    "SetMacAddress\0"
-    "GetWifiMode\0"
-    "SetWifiMode\0"
-    "SuppDppInit\0"
-    "SuppDppDeinit\0"
-    "SuppDppBootstrapGen\0"
-    "SuppDppStartListen\0"
-    "SuppDppStopListen\0"
-    "OTAActivate\0"
-    "AppGetDesc\0"
-    "MemMonitor\0"
-    "WifiScanParams\0"
-    "WifiSetPs\0"
-    "WifiGetPs\0"
-    "OTABegin\0"
-    "OTAWrite\0"
-    "OTAEnd\0"
-    "WifiSetMaxTxPower\0"
-    "WifiGetMaxTxPower\0"
-    "ConfigHeartbeat\0"
-    "WifiInit\0"
-    "WifiDeinit\0"
-    "WifiStart\0"
-    "WifiStop\0"
-    "WifiConnect\0"
-    "WifiDisconnect\0"
-    "WifiSetConfig\0"
-    "WifiGetConfig\0"
-    "WifiScanStart\0"
-    "WifiScanStop\0"
-    "WifiScanGetApNum\0"
-    "WifiScanGetApRecords\0"
-    "WifiClearApList\0"
-    "WifiRestore\0"
-    "WifiClearFastConnect\0"
-    "WifiDeauthSta\0"
-    "WifiStaGetApInfo\0"
-    "WifiSetProtocol\0"
-    "WifiGetProtocol\0"
-    "WifiSetBandwidth\0"
-    "WifiGetBandwidth\0"
-    "WifiSetChannel\0"
-    "WifiGetChannel\0"
-    "WifiSetCountry\0"
-    "WifiGetCountry\0"
-    "WifiSetPromiscuous\0"
-    "WifiGetPromiscuous\0"
-    "WifiSetPromiscuousFilter\0"
-    "WifiGetPromiscuousFilter\0"
-    "WifiSetPromiscuousCtrlFilter\0"
-    "WifiGetPromiscuousCtrlFilter\0"
-    "WifiApGetStaList\0"
-    "WifiApGetStaAid\0"
-    "WifiSetStorage\0"
-    "WifiSetVendorIe\0"
-    "WifiSetEventMask\0"
-    "WifiGetEventMask\0"
-    "Wifi80211Tx\0"
-    "WifiSetCsiConfig\0"
-    "WifiSetCsi\0"
-    "WifiSetAntGpio\0"
-    "WifiGetAntGpio\0"
-    "WifiSetAnt\0"
-    "WifiGetAnt\0"
-    "WifiGetTsfTime\0"
-    "WifiSetInactiveTime\0"
-    "WifiGetInactiveTime\0"
-    "WifiStatisDump\0"
-    "WifiSetRssiThreshold\0"
-    "WifiFtmInitiateSession\0"
-    "WifiFtmEndSession\0"
-    "WifiFtmRespSetOffset\0"
-    "WifiConfig11bRate\0"
-    "WifiConnectionlessModuleSetWakeInterval\0"
-    "WifiSetCountryCode\0"
-    "WifiGetCountryCode\0"
-    "WifiConfig80211TxRate\0"
-    "WifiDisablePmfConfig\0"
-    "WifiStaGetAid\0"
-    "WifiStaGetNegotiatedPhymode\0"
-    "WifiSetDynamicCs\0"
-    "WifiStaGetRssi\0"
-    "WifiSetProtocols\0"
-    "WifiGetProtocols\0"
-    "WifiSetBandwidths\0"
-    "WifiGetBandwidths\0"
-    "WifiSetBand\0"
-    "WifiGetBand\0"
-    "WifiSetBandMode\0"
-    "WifiGetBandMode\0"
-    "GetCoprocessorFwVersion\0"
-    "WifiScanGetApRecord\0"
-    "SetDhcpDnsStatus\0"
-    "GetDhcpDnsStatus\0"
-    "WifiStaTwtConfig\0"
-    "WifiStaItwtSetup\0"
-    "WifiStaItwtTeardown\0"
-    "WifiStaItwtSuspend\0"
-    "WifiStaItwtGetFlowIdStatus\0"
-    "WifiStaItwtSendProbeReq\0"
-    "WifiStaItwtSetTargetWakeTimeOffset\0"
-    "WifiStaEnterpriseEnable\0"
-    "WifiStaEnterpriseDisable\0"
-    "EapSetIdentity\0"
-    "EapClearIdentity\0"
-    "EapSetUsername\0"
-    "EapClearUsername\0"
-    "EapSetPassword\0"
-    "EapClearPassword\0"
-    "EapSetNewPassword\0"
-    "EapClearNewPassword\0"
-    "EapSetCaCert\0"
-    "EapClearCaCert\0"
-    "EapSetCertificateAndKey\0"
-    "EapClearCertificateAndKey\0"
-    "EapGetDisableTimeCheck\0"
-    "EapSetTtlsPhase2Method\0"
-    "EapSetSuitebCertification\0"
-    "EapSetPacFile\0"
-    "EapSetFastParams\0"
-    "EapUseDefaultCertBundle\0"
-    "WifiSetOkcSupport\0"
-    "EapSetDomainName\0"
-    "EapSetDisableTimeCheck\0"
-    "EapSetEapMethods\0"
-    "IfaceMacAddrSetGet\0"
-    "IfaceMacAddrLenGet\0"
-    "FeatureControl\0"
-    "CustomRpc\0"
-    "GpioConfig\0"
-    "GpioResetPin\0"
-    "GpioSetLevel\0"
-    "GpioGetLevel\0"
-    "GpioSetDirection\0"
-    "GpioInputEnable\0"
-    "GpioSetPullMode\0"
-    "ExtCoex\0"
-    "PhyWifiTx\0"
-    "PhyWifiRx\0"
-    "PhyWifiTxTone\0"
-    "PhyGetRxResult\0"
-    "PhyCmdStop\0"
-    "PhyTxContinEn\0"
-    "PhyCbw40mEn\0"
-    "PhyWifi11axTxSet\0"
-    "PhyBleTx\0"
-    "PhyBleRx\0"
-    "PhyBtTxTone\0"
-    "SetContext\0"
-    "ESPInit\0"
-    "Heartbeat\0"
-    "AP_StaConnected\0"
-    "AP_StaDisconnected\0"
-    "WifiEventNoArgs\0"
-    "StaScanDone\0"
-    "StaConnected\0"
-    "StaDisconnected\0"
-    "DhcpDnsStatus\0"
-    "StaItwtSetup\0"
-    "StaItwtTeardown\0"
-    "StaItwtSuspend\0"
-    "StaItwtProbe\0"
-    "SuppDppUriReady\0"
-    "SuppDppCfgRecvd\0"
-    "SuppDppFail\0"
-    "WifiDppUriReady\0"
-    "WifiDppCfgRecvd\0"
-    "WifiDppFail\0"
-    "Context\0"
-    ;
+struct rpc_name_pool {
+    char GetMACAddress[sizeof("GetMACAddress")];
+    char SetMacAddress[sizeof("SetMacAddress")];
+    char GetWifiMode[sizeof("GetWifiMode")];
+    char SetWifiMode[sizeof("SetWifiMode")];
+    char SuppDppInit[sizeof("SuppDppInit")];
+    char SuppDppDeinit[sizeof("SuppDppDeinit")];
+    char SuppDppBootstrapGen[sizeof("SuppDppBootstrapGen")];
+    char SuppDppStartListen[sizeof("SuppDppStartListen")];
+    char SuppDppStopListen[sizeof("SuppDppStopListen")];
+    char OTAActivate[sizeof("OTAActivate")];
+    char AppGetDesc[sizeof("AppGetDesc")];
+    char MemMonitor[sizeof("MemMonitor")];
+    char WifiScanParams[sizeof("WifiScanParams")];
+    char WifiSetPs[sizeof("WifiSetPs")];
+    char WifiGetPs[sizeof("WifiGetPs")];
+    char OTABegin[sizeof("OTABegin")];
+    char OTAWrite[sizeof("OTAWrite")];
+    char OTAEnd[sizeof("OTAEnd")];
+    char WifiSetMaxTxPower[sizeof("WifiSetMaxTxPower")];
+    char WifiGetMaxTxPower[sizeof("WifiGetMaxTxPower")];
+    char ConfigHeartbeat[sizeof("ConfigHeartbeat")];
+    char WifiInit[sizeof("WifiInit")];
+    char WifiDeinit[sizeof("WifiDeinit")];
+    char WifiStart[sizeof("WifiStart")];
+    char WifiStop[sizeof("WifiStop")];
+    char WifiConnect[sizeof("WifiConnect")];
+    char WifiDisconnect[sizeof("WifiDisconnect")];
+    char WifiSetConfig[sizeof("WifiSetConfig")];
+    char WifiGetConfig[sizeof("WifiGetConfig")];
+    char WifiScanStart[sizeof("WifiScanStart")];
+    char WifiScanStop[sizeof("WifiScanStop")];
+    char WifiScanGetApNum[sizeof("WifiScanGetApNum")];
+    char WifiScanGetApRecords[sizeof("WifiScanGetApRecords")];
+    char WifiClearApList[sizeof("WifiClearApList")];
+    char WifiRestore[sizeof("WifiRestore")];
+    char WifiClearFastConnect[sizeof("WifiClearFastConnect")];
+    char WifiDeauthSta[sizeof("WifiDeauthSta")];
+    char WifiStaGetApInfo[sizeof("WifiStaGetApInfo")];
+    char WifiSetProtocol[sizeof("WifiSetProtocol")];
+    char WifiGetProtocol[sizeof("WifiGetProtocol")];
+    char WifiSetBandwidth[sizeof("WifiSetBandwidth")];
+    char WifiGetBandwidth[sizeof("WifiGetBandwidth")];
+    char WifiSetChannel[sizeof("WifiSetChannel")];
+    char WifiGetChannel[sizeof("WifiGetChannel")];
+    char WifiSetCountry[sizeof("WifiSetCountry")];
+    char WifiGetCountry[sizeof("WifiGetCountry")];
+    char WifiSetPromiscuous[sizeof("WifiSetPromiscuous")];
+    char WifiGetPromiscuous[sizeof("WifiGetPromiscuous")];
+    char WifiSetPromiscuousFilter[sizeof("WifiSetPromiscuousFilter")];
+    char WifiGetPromiscuousFilter[sizeof("WifiGetPromiscuousFilter")];
+    char WifiSetPromiscuousCtrlFilter[sizeof("WifiSetPromiscuousCtrlFilter")];
+    char WifiGetPromiscuousCtrlFilter[sizeof("WifiGetPromiscuousCtrlFilter")];
+    char WifiApGetStaList[sizeof("WifiApGetStaList")];
+    char WifiApGetStaAid[sizeof("WifiApGetStaAid")];
+    char WifiSetStorage[sizeof("WifiSetStorage")];
+    char WifiSetVendorIe[sizeof("WifiSetVendorIe")];
+    char WifiSetEventMask[sizeof("WifiSetEventMask")];
+    char WifiGetEventMask[sizeof("WifiGetEventMask")];
+    char Wifi80211Tx[sizeof("Wifi80211Tx")];
+    char WifiSetCsiConfig[sizeof("WifiSetCsiConfig")];
+    char WifiSetCsi[sizeof("WifiSetCsi")];
+    char WifiSetAntGpio[sizeof("WifiSetAntGpio")];
+    char WifiGetAntGpio[sizeof("WifiGetAntGpio")];
+    char WifiSetAnt[sizeof("WifiSetAnt")];
+    char WifiGetAnt[sizeof("WifiGetAnt")];
+    char WifiGetTsfTime[sizeof("WifiGetTsfTime")];
+    char WifiSetInactiveTime[sizeof("WifiSetInactiveTime")];
+    char WifiGetInactiveTime[sizeof("WifiGetInactiveTime")];
+    char WifiStatisDump[sizeof("WifiStatisDump")];
+    char WifiSetRssiThreshold[sizeof("WifiSetRssiThreshold")];
+    char WifiFtmInitiateSession[sizeof("WifiFtmInitiateSession")];
+    char WifiFtmEndSession[sizeof("WifiFtmEndSession")];
+    char WifiFtmRespSetOffset[sizeof("WifiFtmRespSetOffset")];
+    char WifiConfig11bRate[sizeof("WifiConfig11bRate")];
+    char WifiConnectionlessModuleSetWakeInterval[sizeof("WifiConnectionlessModuleSetWakeInterval")];
+    char WifiSetCountryCode[sizeof("WifiSetCountryCode")];
+    char WifiGetCountryCode[sizeof("WifiGetCountryCode")];
+    char WifiConfig80211TxRate[sizeof("WifiConfig80211TxRate")];
+    char WifiDisablePmfConfig[sizeof("WifiDisablePmfConfig")];
+    char WifiStaGetAid[sizeof("WifiStaGetAid")];
+    char WifiStaGetNegotiatedPhymode[sizeof("WifiStaGetNegotiatedPhymode")];
+    char WifiSetDynamicCs[sizeof("WifiSetDynamicCs")];
+    char WifiStaGetRssi[sizeof("WifiStaGetRssi")];
+    char WifiSetProtocols[sizeof("WifiSetProtocols")];
+    char WifiGetProtocols[sizeof("WifiGetProtocols")];
+    char WifiSetBandwidths[sizeof("WifiSetBandwidths")];
+    char WifiGetBandwidths[sizeof("WifiGetBandwidths")];
+    char WifiSetBand[sizeof("WifiSetBand")];
+    char WifiGetBand[sizeof("WifiGetBand")];
+    char WifiSetBandMode[sizeof("WifiSetBandMode")];
+    char WifiGetBandMode[sizeof("WifiGetBandMode")];
+    char GetCoprocessorFwVersion[sizeof("GetCoprocessorFwVersion")];
+    char WifiScanGetApRecord[sizeof("WifiScanGetApRecord")];
+    char SetDhcpDnsStatus[sizeof("SetDhcpDnsStatus")];
+    char GetDhcpDnsStatus[sizeof("GetDhcpDnsStatus")];
+    char WifiStaTwtConfig[sizeof("WifiStaTwtConfig")];
+    char WifiStaItwtSetup[sizeof("WifiStaItwtSetup")];
+    char WifiStaItwtTeardown[sizeof("WifiStaItwtTeardown")];
+    char WifiStaItwtSuspend[sizeof("WifiStaItwtSuspend")];
+    char WifiStaItwtGetFlowIdStatus[sizeof("WifiStaItwtGetFlowIdStatus")];
+    char WifiStaItwtSendProbeReq[sizeof("WifiStaItwtSendProbeReq")];
+    char WifiStaItwtSetTargetWakeTimeOffset[sizeof("WifiStaItwtSetTargetWakeTimeOffset")];
+    char WifiStaEnterpriseEnable[sizeof("WifiStaEnterpriseEnable")];
+    char WifiStaEnterpriseDisable[sizeof("WifiStaEnterpriseDisable")];
+    char EapSetIdentity[sizeof("EapSetIdentity")];
+    char EapClearIdentity[sizeof("EapClearIdentity")];
+    char EapSetUsername[sizeof("EapSetUsername")];
+    char EapClearUsername[sizeof("EapClearUsername")];
+    char EapSetPassword[sizeof("EapSetPassword")];
+    char EapClearPassword[sizeof("EapClearPassword")];
+    char EapSetNewPassword[sizeof("EapSetNewPassword")];
+    char EapClearNewPassword[sizeof("EapClearNewPassword")];
+    char EapSetCaCert[sizeof("EapSetCaCert")];
+    char EapClearCaCert[sizeof("EapClearCaCert")];
+    char EapSetCertificateAndKey[sizeof("EapSetCertificateAndKey")];
+    char EapClearCertificateAndKey[sizeof("EapClearCertificateAndKey")];
+    char EapGetDisableTimeCheck[sizeof("EapGetDisableTimeCheck")];
+    char EapSetTtlsPhase2Method[sizeof("EapSetTtlsPhase2Method")];
+    char EapSetSuitebCertification[sizeof("EapSetSuitebCertification")];
+    char EapSetPacFile[sizeof("EapSetPacFile")];
+    char EapSetFastParams[sizeof("EapSetFastParams")];
+    char EapUseDefaultCertBundle[sizeof("EapUseDefaultCertBundle")];
+    char WifiSetOkcSupport[sizeof("WifiSetOkcSupport")];
+    char EapSetDomainName[sizeof("EapSetDomainName")];
+    char EapSetDisableTimeCheck[sizeof("EapSetDisableTimeCheck")];
+    char EapSetEapMethods[sizeof("EapSetEapMethods")];
+    char IfaceMacAddrSetGet[sizeof("IfaceMacAddrSetGet")];
+    char IfaceMacAddrLenGet[sizeof("IfaceMacAddrLenGet")];
+    char FeatureControl[sizeof("FeatureControl")];
+    char CustomRpc[sizeof("CustomRpc")];
+    char GpioConfig[sizeof("GpioConfig")];
+    char GpioResetPin[sizeof("GpioResetPin")];
+    char GpioSetLevel[sizeof("GpioSetLevel")];
+    char GpioGetLevel[sizeof("GpioGetLevel")];
+    char GpioSetDirection[sizeof("GpioSetDirection")];
+    char GpioInputEnable[sizeof("GpioInputEnable")];
+    char GpioSetPullMode[sizeof("GpioSetPullMode")];
+    char ExtCoex[sizeof("ExtCoex")];
+    char PhyWifiTx[sizeof("PhyWifiTx")];
+    char PhyWifiRx[sizeof("PhyWifiRx")];
+    char PhyWifiTxTone[sizeof("PhyWifiTxTone")];
+    char PhyGetRxResult[sizeof("PhyGetRxResult")];
+    char PhyCmdStop[sizeof("PhyCmdStop")];
+    char PhyTxContinEn[sizeof("PhyTxContinEn")];
+    char PhyCbw40mEn[sizeof("PhyCbw40mEn")];
+    char PhyWifi11axTxSet[sizeof("PhyWifi11axTxSet")];
+    char PhyBleTx[sizeof("PhyBleTx")];
+    char PhyBleRx[sizeof("PhyBleRx")];
+    char PhyBtTxTone[sizeof("PhyBtTxTone")];
+    char SetContext[sizeof("SetContext")];
+    char BtSetTxPower[sizeof("BtSetTxPower")];
+    char BtGetTxPower[sizeof("BtGetTxPower")];
+    char ESPInit[sizeof("ESPInit")];
+    char Heartbeat[sizeof("Heartbeat")];
+    char AP_StaConnected[sizeof("AP_StaConnected")];
+    char AP_StaDisconnected[sizeof("AP_StaDisconnected")];
+    char WifiEventNoArgs[sizeof("WifiEventNoArgs")];
+    char StaScanDone[sizeof("StaScanDone")];
+    char StaConnected[sizeof("StaConnected")];
+    char StaDisconnected[sizeof("StaDisconnected")];
+    char DhcpDnsStatus[sizeof("DhcpDnsStatus")];
+    char StaItwtSetup[sizeof("StaItwtSetup")];
+    char StaItwtTeardown[sizeof("StaItwtTeardown")];
+    char StaItwtSuspend[sizeof("StaItwtSuspend")];
+    char StaItwtProbe[sizeof("StaItwtProbe")];
+    char SuppDppUriReady[sizeof("SuppDppUriReady")];
+    char SuppDppCfgRecvd[sizeof("SuppDppCfgRecvd")];
+    char SuppDppFail[sizeof("SuppDppFail")];
+    char WifiDppUriReady[sizeof("WifiDppUriReady")];
+    char WifiDppCfgRecvd[sizeof("WifiDppCfgRecvd")];
+    char WifiDppFail[sizeof("WifiDppFail")];
+    char Context[sizeof("Context")];
+};
+
+_Static_assert(sizeof(struct rpc_name_pool) < NO_NAME, "name pool outgrows uint16_t offsets");
+
+static const struct rpc_name_pool s_pool = {
+    .GetMACAddress = "GetMACAddress",
+    .SetMacAddress = "SetMacAddress",
+    .GetWifiMode = "GetWifiMode",
+    .SetWifiMode = "SetWifiMode",
+    .SuppDppInit = "SuppDppInit",
+    .SuppDppDeinit = "SuppDppDeinit",
+    .SuppDppBootstrapGen = "SuppDppBootstrapGen",
+    .SuppDppStartListen = "SuppDppStartListen",
+    .SuppDppStopListen = "SuppDppStopListen",
+    .OTAActivate = "OTAActivate",
+    .AppGetDesc = "AppGetDesc",
+    .MemMonitor = "MemMonitor",
+    .WifiScanParams = "WifiScanParams",
+    .WifiSetPs = "WifiSetPs",
+    .WifiGetPs = "WifiGetPs",
+    .OTABegin = "OTABegin",
+    .OTAWrite = "OTAWrite",
+    .OTAEnd = "OTAEnd",
+    .WifiSetMaxTxPower = "WifiSetMaxTxPower",
+    .WifiGetMaxTxPower = "WifiGetMaxTxPower",
+    .ConfigHeartbeat = "ConfigHeartbeat",
+    .WifiInit = "WifiInit",
+    .WifiDeinit = "WifiDeinit",
+    .WifiStart = "WifiStart",
+    .WifiStop = "WifiStop",
+    .WifiConnect = "WifiConnect",
+    .WifiDisconnect = "WifiDisconnect",
+    .WifiSetConfig = "WifiSetConfig",
+    .WifiGetConfig = "WifiGetConfig",
+    .WifiScanStart = "WifiScanStart",
+    .WifiScanStop = "WifiScanStop",
+    .WifiScanGetApNum = "WifiScanGetApNum",
+    .WifiScanGetApRecords = "WifiScanGetApRecords",
+    .WifiClearApList = "WifiClearApList",
+    .WifiRestore = "WifiRestore",
+    .WifiClearFastConnect = "WifiClearFastConnect",
+    .WifiDeauthSta = "WifiDeauthSta",
+    .WifiStaGetApInfo = "WifiStaGetApInfo",
+    .WifiSetProtocol = "WifiSetProtocol",
+    .WifiGetProtocol = "WifiGetProtocol",
+    .WifiSetBandwidth = "WifiSetBandwidth",
+    .WifiGetBandwidth = "WifiGetBandwidth",
+    .WifiSetChannel = "WifiSetChannel",
+    .WifiGetChannel = "WifiGetChannel",
+    .WifiSetCountry = "WifiSetCountry",
+    .WifiGetCountry = "WifiGetCountry",
+    .WifiSetPromiscuous = "WifiSetPromiscuous",
+    .WifiGetPromiscuous = "WifiGetPromiscuous",
+    .WifiSetPromiscuousFilter = "WifiSetPromiscuousFilter",
+    .WifiGetPromiscuousFilter = "WifiGetPromiscuousFilter",
+    .WifiSetPromiscuousCtrlFilter = "WifiSetPromiscuousCtrlFilter",
+    .WifiGetPromiscuousCtrlFilter = "WifiGetPromiscuousCtrlFilter",
+    .WifiApGetStaList = "WifiApGetStaList",
+    .WifiApGetStaAid = "WifiApGetStaAid",
+    .WifiSetStorage = "WifiSetStorage",
+    .WifiSetVendorIe = "WifiSetVendorIe",
+    .WifiSetEventMask = "WifiSetEventMask",
+    .WifiGetEventMask = "WifiGetEventMask",
+    .Wifi80211Tx = "Wifi80211Tx",
+    .WifiSetCsiConfig = "WifiSetCsiConfig",
+    .WifiSetCsi = "WifiSetCsi",
+    .WifiSetAntGpio = "WifiSetAntGpio",
+    .WifiGetAntGpio = "WifiGetAntGpio",
+    .WifiSetAnt = "WifiSetAnt",
+    .WifiGetAnt = "WifiGetAnt",
+    .WifiGetTsfTime = "WifiGetTsfTime",
+    .WifiSetInactiveTime = "WifiSetInactiveTime",
+    .WifiGetInactiveTime = "WifiGetInactiveTime",
+    .WifiStatisDump = "WifiStatisDump",
+    .WifiSetRssiThreshold = "WifiSetRssiThreshold",
+    .WifiFtmInitiateSession = "WifiFtmInitiateSession",
+    .WifiFtmEndSession = "WifiFtmEndSession",
+    .WifiFtmRespSetOffset = "WifiFtmRespSetOffset",
+    .WifiConfig11bRate = "WifiConfig11bRate",
+    .WifiConnectionlessModuleSetWakeInterval = "WifiConnectionlessModuleSetWakeInterval",
+    .WifiSetCountryCode = "WifiSetCountryCode",
+    .WifiGetCountryCode = "WifiGetCountryCode",
+    .WifiConfig80211TxRate = "WifiConfig80211TxRate",
+    .WifiDisablePmfConfig = "WifiDisablePmfConfig",
+    .WifiStaGetAid = "WifiStaGetAid",
+    .WifiStaGetNegotiatedPhymode = "WifiStaGetNegotiatedPhymode",
+    .WifiSetDynamicCs = "WifiSetDynamicCs",
+    .WifiStaGetRssi = "WifiStaGetRssi",
+    .WifiSetProtocols = "WifiSetProtocols",
+    .WifiGetProtocols = "WifiGetProtocols",
+    .WifiSetBandwidths = "WifiSetBandwidths",
+    .WifiGetBandwidths = "WifiGetBandwidths",
+    .WifiSetBand = "WifiSetBand",
+    .WifiGetBand = "WifiGetBand",
+    .WifiSetBandMode = "WifiSetBandMode",
+    .WifiGetBandMode = "WifiGetBandMode",
+    .GetCoprocessorFwVersion = "GetCoprocessorFwVersion",
+    .WifiScanGetApRecord = "WifiScanGetApRecord",
+    .SetDhcpDnsStatus = "SetDhcpDnsStatus",
+    .GetDhcpDnsStatus = "GetDhcpDnsStatus",
+    .WifiStaTwtConfig = "WifiStaTwtConfig",
+    .WifiStaItwtSetup = "WifiStaItwtSetup",
+    .WifiStaItwtTeardown = "WifiStaItwtTeardown",
+    .WifiStaItwtSuspend = "WifiStaItwtSuspend",
+    .WifiStaItwtGetFlowIdStatus = "WifiStaItwtGetFlowIdStatus",
+    .WifiStaItwtSendProbeReq = "WifiStaItwtSendProbeReq",
+    .WifiStaItwtSetTargetWakeTimeOffset = "WifiStaItwtSetTargetWakeTimeOffset",
+    .WifiStaEnterpriseEnable = "WifiStaEnterpriseEnable",
+    .WifiStaEnterpriseDisable = "WifiStaEnterpriseDisable",
+    .EapSetIdentity = "EapSetIdentity",
+    .EapClearIdentity = "EapClearIdentity",
+    .EapSetUsername = "EapSetUsername",
+    .EapClearUsername = "EapClearUsername",
+    .EapSetPassword = "EapSetPassword",
+    .EapClearPassword = "EapClearPassword",
+    .EapSetNewPassword = "EapSetNewPassword",
+    .EapClearNewPassword = "EapClearNewPassword",
+    .EapSetCaCert = "EapSetCaCert",
+    .EapClearCaCert = "EapClearCaCert",
+    .EapSetCertificateAndKey = "EapSetCertificateAndKey",
+    .EapClearCertificateAndKey = "EapClearCertificateAndKey",
+    .EapGetDisableTimeCheck = "EapGetDisableTimeCheck",
+    .EapSetTtlsPhase2Method = "EapSetTtlsPhase2Method",
+    .EapSetSuitebCertification = "EapSetSuitebCertification",
+    .EapSetPacFile = "EapSetPacFile",
+    .EapSetFastParams = "EapSetFastParams",
+    .EapUseDefaultCertBundle = "EapUseDefaultCertBundle",
+    .WifiSetOkcSupport = "WifiSetOkcSupport",
+    .EapSetDomainName = "EapSetDomainName",
+    .EapSetDisableTimeCheck = "EapSetDisableTimeCheck",
+    .EapSetEapMethods = "EapSetEapMethods",
+    .IfaceMacAddrSetGet = "IfaceMacAddrSetGet",
+    .IfaceMacAddrLenGet = "IfaceMacAddrLenGet",
+    .FeatureControl = "FeatureControl",
+    .CustomRpc = "CustomRpc",
+    .GpioConfig = "GpioConfig",
+    .GpioResetPin = "GpioResetPin",
+    .GpioSetLevel = "GpioSetLevel",
+    .GpioGetLevel = "GpioGetLevel",
+    .GpioSetDirection = "GpioSetDirection",
+    .GpioInputEnable = "GpioInputEnable",
+    .GpioSetPullMode = "GpioSetPullMode",
+    .ExtCoex = "ExtCoex",
+    .PhyWifiTx = "PhyWifiTx",
+    .PhyWifiRx = "PhyWifiRx",
+    .PhyWifiTxTone = "PhyWifiTxTone",
+    .PhyGetRxResult = "PhyGetRxResult",
+    .PhyCmdStop = "PhyCmdStop",
+    .PhyTxContinEn = "PhyTxContinEn",
+    .PhyCbw40mEn = "PhyCbw40mEn",
+    .PhyWifi11axTxSet = "PhyWifi11axTxSet",
+    .PhyBleTx = "PhyBleTx",
+    .PhyBleRx = "PhyBleRx",
+    .PhyBtTxTone = "PhyBtTxTone",
+    .SetContext = "SetContext",
+    .BtSetTxPower = "BtSetTxPower",
+    .BtGetTxPower = "BtGetTxPower",
+    .ESPInit = "ESPInit",
+    .Heartbeat = "Heartbeat",
+    .AP_StaConnected = "AP_StaConnected",
+    .AP_StaDisconnected = "AP_StaDisconnected",
+    .WifiEventNoArgs = "WifiEventNoArgs",
+    .StaScanDone = "StaScanDone",
+    .StaConnected = "StaConnected",
+    .StaDisconnected = "StaDisconnected",
+    .DhcpDnsStatus = "DhcpDnsStatus",
+    .StaItwtSetup = "StaItwtSetup",
+    .StaItwtTeardown = "StaItwtTeardown",
+    .StaItwtSuspend = "StaItwtSuspend",
+    .StaItwtProbe = "StaItwtProbe",
+    .SuppDppUriReady = "SuppDppUriReady",
+    .SuppDppCfgRecvd = "SuppDppCfgRecvd",
+    .SuppDppFail = "SuppDppFail",
+    .WifiDppUriReady = "WifiDppUriReady",
+    .WifiDppCfgRecvd = "WifiDppCfgRecvd",
+    .WifiDppFail = "WifiDppFail",
+    .Context = "Context",
+};
+
+#define N(name) ((uint16_t)offsetof(struct rpc_name_pool, name))
 
 static const uint16_t s_req_resp[] = {
-    NO_NAME,   /* - */
-    0,       /* GetMACAddress */
-    14,      /* SetMacAddress */
-    28,      /* GetWifiMode */
-    40,      /* SetWifiMode */
-    52,      /* SuppDppInit */
-    64,      /* SuppDppDeinit */
-    78,      /* SuppDppBootstrapGen */
-    98,      /* SuppDppStartListen */
-    117,     /* SuppDppStopListen */
-    135,     /* OTAActivate */
-    147,     /* AppGetDesc */
-    158,     /* MemMonitor */
-    169,     /* WifiScanParams */
-    184,     /* WifiSetPs */
-    194,     /* WifiGetPs */
-    204,     /* OTABegin */
-    213,     /* OTAWrite */
-    222,     /* OTAEnd */
-    229,     /* WifiSetMaxTxPower */
-    247,     /* WifiGetMaxTxPower */
-    265,     /* ConfigHeartbeat */
-    281,     /* WifiInit */
-    290,     /* WifiDeinit */
-    301,     /* WifiStart */
-    311,     /* WifiStop */
-    320,     /* WifiConnect */
-    332,     /* WifiDisconnect */
-    347,     /* WifiSetConfig */
-    361,     /* WifiGetConfig */
-    375,     /* WifiScanStart */
-    389,     /* WifiScanStop */
-    402,     /* WifiScanGetApNum */
-    419,     /* WifiScanGetApRecords */
-    440,     /* WifiClearApList */
-    456,     /* WifiRestore */
-    468,     /* WifiClearFastConnect */
-    489,     /* WifiDeauthSta */
-    503,     /* WifiStaGetApInfo */
-    NO_NAME,   /* - */
-    NO_NAME,   /* - */
-    520,     /* WifiSetProtocol */
-    536,     /* WifiGetProtocol */
-    552,     /* WifiSetBandwidth */
-    569,     /* WifiGetBandwidth */
-    586,     /* WifiSetChannel */
-    601,     /* WifiGetChannel */
-    616,     /* WifiSetCountry */
-    631,     /* WifiGetCountry */
-    646,     /* WifiSetPromiscuous */
-    665,     /* WifiGetPromiscuous */
-    684,     /* WifiSetPromiscuousFilter */
-    709,     /* WifiGetPromiscuousFilter */
-    734,     /* WifiSetPromiscuousCtrlFilter */
-    763,     /* WifiGetPromiscuousCtrlFilter */
-    792,     /* WifiApGetStaList */
-    809,     /* WifiApGetStaAid */
-    825,     /* WifiSetStorage */
-    840,     /* WifiSetVendorIe */
-    856,     /* WifiSetEventMask */
-    873,     /* WifiGetEventMask */
-    890,     /* Wifi80211Tx */
-    902,     /* WifiSetCsiConfig */
-    919,     /* WifiSetCsi */
-    930,     /* WifiSetAntGpio */
-    945,     /* WifiGetAntGpio */
-    960,     /* WifiSetAnt */
-    971,     /* WifiGetAnt */
-    982,     /* WifiGetTsfTime */
-    997,     /* WifiSetInactiveTime */
-    1017,    /* WifiGetInactiveTime */
-    1037,    /* WifiStatisDump */
-    1052,    /* WifiSetRssiThreshold */
-    1073,    /* WifiFtmInitiateSession */
-    1096,    /* WifiFtmEndSession */
-    1114,    /* WifiFtmRespSetOffset */
-    1135,    /* WifiConfig11bRate */
-    1153,    /* WifiConnectionlessModuleSetWakeInterval */
-    1193,    /* WifiSetCountryCode */
-    1212,    /* WifiGetCountryCode */
-    1231,    /* WifiConfig80211TxRate */
-    1253,    /* WifiDisablePmfConfig */
-    1274,    /* WifiStaGetAid */
-    1288,    /* WifiStaGetNegotiatedPhymode */
-    1316,    /* WifiSetDynamicCs */
-    1333,    /* WifiStaGetRssi */
-    1348,    /* WifiSetProtocols */
-    1365,    /* WifiGetProtocols */
-    1382,    /* WifiSetBandwidths */
-    1400,    /* WifiGetBandwidths */
-    1418,    /* WifiSetBand */
-    1430,    /* WifiGetBand */
-    1442,    /* WifiSetBandMode */
-    1458,    /* WifiGetBandMode */
-    1474,    /* GetCoprocessorFwVersion */
-    1498,    /* WifiScanGetApRecord */
-    1518,    /* SetDhcpDnsStatus */
-    1535,    /* GetDhcpDnsStatus */
-    1552,    /* WifiStaTwtConfig */
-    1569,    /* WifiStaItwtSetup */
-    1586,    /* WifiStaItwtTeardown */
-    1606,    /* WifiStaItwtSuspend */
-    1625,    /* WifiStaItwtGetFlowIdStatus */
-    1652,    /* WifiStaItwtSendProbeReq */
-    1676,    /* WifiStaItwtSetTargetWakeTimeOffset */
-    1711,    /* WifiStaEnterpriseEnable */
-    1735,    /* WifiStaEnterpriseDisable */
-    1760,    /* EapSetIdentity */
-    1775,    /* EapClearIdentity */
-    1792,    /* EapSetUsername */
-    1807,    /* EapClearUsername */
-    1824,    /* EapSetPassword */
-    1839,    /* EapClearPassword */
-    1856,    /* EapSetNewPassword */
-    1874,    /* EapClearNewPassword */
-    1894,    /* EapSetCaCert */
-    1907,    /* EapClearCaCert */
-    1922,    /* EapSetCertificateAndKey */
-    1946,    /* EapClearCertificateAndKey */
-    1972,    /* EapGetDisableTimeCheck */
-    1995,    /* EapSetTtlsPhase2Method */
-    2018,    /* EapSetSuitebCertification */
-    2044,    /* EapSetPacFile */
-    2058,    /* EapSetFastParams */
-    2075,    /* EapUseDefaultCertBundle */
-    2099,    /* WifiSetOkcSupport */
-    2117,    /* EapSetDomainName */
-    2134,    /* EapSetDisableTimeCheck */
-    2157,    /* EapSetEapMethods */
-    2174,    /* IfaceMacAddrSetGet */
-    2193,    /* IfaceMacAddrLenGet */
-    2212,    /* FeatureControl */
-    2227,    /* CustomRpc */
-    2237,    /* GpioConfig */
-    2248,    /* GpioResetPin */
-    2261,    /* GpioSetLevel */
-    2274,    /* GpioGetLevel */
-    2287,    /* GpioSetDirection */
-    2304,    /* GpioInputEnable */
-    2320,    /* GpioSetPullMode */
-    2336,    /* ExtCoex */
-    2344,    /* PhyWifiTx */
-    2354,    /* PhyWifiRx */
-    2364,    /* PhyWifiTxTone */
-    2378,    /* PhyGetRxResult */
-    2393,    /* PhyCmdStop */
-    2404,    /* PhyTxContinEn */
-    2418,    /* PhyCbw40mEn */
-    2430,    /* PhyWifi11axTxSet */
-    2447,    /* PhyBleTx */
-    2456,    /* PhyBleRx */
-    2465,    /* PhyBtTxTone */
-    2477,    /* SetContext */
+    NO_NAME,
+    N(GetMACAddress),
+    N(SetMacAddress),
+    N(GetWifiMode),
+    N(SetWifiMode),
+    N(SuppDppInit),
+    N(SuppDppDeinit),
+    N(SuppDppBootstrapGen),
+    N(SuppDppStartListen),
+    N(SuppDppStopListen),
+    N(OTAActivate),
+    N(AppGetDesc),
+    N(MemMonitor),
+    N(WifiScanParams),
+    N(WifiSetPs),
+    N(WifiGetPs),
+    N(OTABegin),
+    N(OTAWrite),
+    N(OTAEnd),
+    N(WifiSetMaxTxPower),
+    N(WifiGetMaxTxPower),
+    N(ConfigHeartbeat),
+    N(WifiInit),
+    N(WifiDeinit),
+    N(WifiStart),
+    N(WifiStop),
+    N(WifiConnect),
+    N(WifiDisconnect),
+    N(WifiSetConfig),
+    N(WifiGetConfig),
+    N(WifiScanStart),
+    N(WifiScanStop),
+    N(WifiScanGetApNum),
+    N(WifiScanGetApRecords),
+    N(WifiClearApList),
+    N(WifiRestore),
+    N(WifiClearFastConnect),
+    N(WifiDeauthSta),
+    N(WifiStaGetApInfo),
+    NO_NAME,
+    NO_NAME,
+    N(WifiSetProtocol),
+    N(WifiGetProtocol),
+    N(WifiSetBandwidth),
+    N(WifiGetBandwidth),
+    N(WifiSetChannel),
+    N(WifiGetChannel),
+    N(WifiSetCountry),
+    N(WifiGetCountry),
+    N(WifiSetPromiscuous),
+    N(WifiGetPromiscuous),
+    N(WifiSetPromiscuousFilter),
+    N(WifiGetPromiscuousFilter),
+    N(WifiSetPromiscuousCtrlFilter),
+    N(WifiGetPromiscuousCtrlFilter),
+    N(WifiApGetStaList),
+    N(WifiApGetStaAid),
+    N(WifiSetStorage),
+    N(WifiSetVendorIe),
+    N(WifiSetEventMask),
+    N(WifiGetEventMask),
+    N(Wifi80211Tx),
+    N(WifiSetCsiConfig),
+    N(WifiSetCsi),
+    N(WifiSetAntGpio),
+    N(WifiGetAntGpio),
+    N(WifiSetAnt),
+    N(WifiGetAnt),
+    N(WifiGetTsfTime),
+    N(WifiSetInactiveTime),
+    N(WifiGetInactiveTime),
+    N(WifiStatisDump),
+    N(WifiSetRssiThreshold),
+    N(WifiFtmInitiateSession),
+    N(WifiFtmEndSession),
+    N(WifiFtmRespSetOffset),
+    N(WifiConfig11bRate),
+    N(WifiConnectionlessModuleSetWakeInterval),
+    N(WifiSetCountryCode),
+    N(WifiGetCountryCode),
+    N(WifiConfig80211TxRate),
+    N(WifiDisablePmfConfig),
+    N(WifiStaGetAid),
+    N(WifiStaGetNegotiatedPhymode),
+    N(WifiSetDynamicCs),
+    N(WifiStaGetRssi),
+    N(WifiSetProtocols),
+    N(WifiGetProtocols),
+    N(WifiSetBandwidths),
+    N(WifiGetBandwidths),
+    N(WifiSetBand),
+    N(WifiGetBand),
+    N(WifiSetBandMode),
+    N(WifiGetBandMode),
+    N(GetCoprocessorFwVersion),
+    N(WifiScanGetApRecord),
+    N(SetDhcpDnsStatus),
+    N(GetDhcpDnsStatus),
+    N(WifiStaTwtConfig),
+    N(WifiStaItwtSetup),
+    N(WifiStaItwtTeardown),
+    N(WifiStaItwtSuspend),
+    N(WifiStaItwtGetFlowIdStatus),
+    N(WifiStaItwtSendProbeReq),
+    N(WifiStaItwtSetTargetWakeTimeOffset),
+    N(WifiStaEnterpriseEnable),
+    N(WifiStaEnterpriseDisable),
+    N(EapSetIdentity),
+    N(EapClearIdentity),
+    N(EapSetUsername),
+    N(EapClearUsername),
+    N(EapSetPassword),
+    N(EapClearPassword),
+    N(EapSetNewPassword),
+    N(EapClearNewPassword),
+    N(EapSetCaCert),
+    N(EapClearCaCert),
+    N(EapSetCertificateAndKey),
+    N(EapClearCertificateAndKey),
+    N(EapGetDisableTimeCheck),
+    N(EapSetTtlsPhase2Method),
+    N(EapSetSuitebCertification),
+    N(EapSetPacFile),
+    N(EapSetFastParams),
+    N(EapUseDefaultCertBundle),
+    N(WifiSetOkcSupport),
+    N(EapSetDomainName),
+    N(EapSetDisableTimeCheck),
+    N(EapSetEapMethods),
+    N(IfaceMacAddrSetGet),
+    N(IfaceMacAddrLenGet),
+    N(FeatureControl),
+    N(CustomRpc),
+    N(GpioConfig),
+    N(GpioResetPin),
+    N(GpioSetLevel),
+    N(GpioGetLevel),
+    N(GpioSetDirection),
+    N(GpioInputEnable),
+    N(GpioSetPullMode),
+    N(ExtCoex),
+    N(PhyWifiTx),
+    N(PhyWifiRx),
+    N(PhyWifiTxTone),
+    N(PhyGetRxResult),
+    N(PhyCmdStop),
+    N(PhyTxContinEn),
+    N(PhyCbw40mEn),
+    N(PhyWifi11axTxSet),
+    N(PhyBleTx),
+    N(PhyBleRx),
+    N(PhyBtTxTone),
+    N(SetContext),
+    N(BtSetTxPower),
+    N(BtGetTxPower),
 };
 
 static const uint16_t s_event[] = {
-    NO_NAME,   /* - */
-    2488,    /* ESPInit */
-    2496,    /* Heartbeat */
-    2506,    /* AP_StaConnected */
-    2522,    /* AP_StaDisconnected */
-    2541,    /* WifiEventNoArgs */
-    2557,    /* StaScanDone */
-    2569,    /* StaConnected */
-    2582,    /* StaDisconnected */
-    2598,    /* DhcpDnsStatus */
-    2612,    /* StaItwtSetup */
-    2625,    /* StaItwtTeardown */
-    2641,    /* StaItwtSuspend */
-    2656,    /* StaItwtProbe */
-    2669,    /* SuppDppUriReady */
-    2685,    /* SuppDppCfgRecvd */
-    2701,    /* SuppDppFail */
-    2713,    /* WifiDppUriReady */
-    2729,    /* WifiDppCfgRecvd */
-    2745,    /* WifiDppFail */
-    2227,    /* CustomRpc */
-    158,     /* MemMonitor */
-    2757,    /* Context */
+    NO_NAME,
+    N(ESPInit),
+    N(Heartbeat),
+    N(AP_StaConnected),
+    N(AP_StaDisconnected),
+    N(WifiEventNoArgs),
+    N(StaScanDone),
+    N(StaConnected),
+    N(StaDisconnected),
+    N(DhcpDnsStatus),
+    N(StaItwtSetup),
+    N(StaItwtTeardown),
+    N(StaItwtSuspend),
+    N(StaItwtProbe),
+    N(SuppDppUriReady),
+    N(SuppDppCfgRecvd),
+    N(SuppDppFail),
+    N(WifiDppUriReady),
+    N(WifiDppCfgRecvd),
+    N(WifiDppFail),
+    N(CustomRpc),
+    N(MemMonitor),
+    N(Context),
 };
 
 static const char *name_at(const uint16_t *t, size_t n, int32_t i)
 {
-    return (i >= 0 && (size_t)i < n && t[i] != NO_NAME) ? &s_pool[t[i]] : NULL;
+    return (i >= 0 && (size_t)i < n && t[i] != NO_NAME) ?
+           (const char *)&s_pool + t[i] : NULL;
 }
 
 const char *eh_rpc_id_name_v2(int32_t msg_id)

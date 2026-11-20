@@ -52,6 +52,13 @@ repos:
       files: ^examples/.*idf_component\.yml$
       pass_filenames: false
 
+    - id: mirrored-files
+      name: EH Mirrored files identical (tools/mirrored_files.txt)
+      entry: tools/check_mirrored_files.py
+      language: python
+      always_run: true
+      pass_filenames: false
+
     - id: nano-printf-specifiers
       name: EH Nano-printf Specifiers
       entry: tools/check_nano_printf_specifiers.py

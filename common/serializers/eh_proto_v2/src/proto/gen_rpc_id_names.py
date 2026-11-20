@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Generate gen_v2_names.{c,h} (eh_rpc_id_name_v2()) from rpc_v2.proto: RpcId -> name
 without the Req_/Resp_/Event_ prefix. One string pool; Req_X and Resp_X share an offset
-table, so they must sit at the same offset from their base (checked here).
+table, so they must sit at the same offset from their base (checked here). The compiler
+computes each offset (offsetof a pool member named after the RPC), so a new RPC adds
+lines to the generated file and changes no existing line.
 
   gen_rpc_id_names.py           write src/gen_v2_names.c and include/gen_v2_names.h
   gen_rpc_id_names.py --check   exit 1 if they differ from what rpc_v2.proto generates
@@ -37,19 +39,16 @@ def generate(proto_path):
         sys.exit("gen_rpc_id_names: Req_/Resp_ ids no longer mirror each other; "
                  "split the shared offset table")
 
-    pool, offset = [], {}
-
-    def off(name):
-        if name not in offset:
-            offset[name] = sum(len(s) + 1 for s in pool)
-            pool.append(name)
-        return offset[name]
+    pool = []
 
     def table(ids):
         row = [None] * (max(ids.values()) + 1)
         for name, i in ids.items():
             row[i] = name
-        return [(off(n), n) if n else (NO_NAME, "-") for n in row]
+        for n in row:
+            if n and n not in pool:
+                pool.append(n)
+        return row
 
     req_resp, events = table(req), table(evt)
     assert sum(len(s) + 1 for s in pool) < NO_NAME
@@ -68,9 +67,10 @@ def generate(proto_path):
            " *   s_req_resp[id - Req_Base]  or  s_req_resp[id - Resp_Base]  (shared)",
            " *   s_event[id - Event_Base]",
            " *        |",
-           " *        +--> offset --> s_pool: \"GetMACAddress\\0SetMacAddress\\0...\"",
+           " *        +--> N(GetMACAddress) = offsetof(pool member) --> \"GetMACAddress\"",
            " *",
-           " * NO_NAME marks an unused id; the lookup then returns NULL.",
+           " * The pool is a struct of char arrays (no padding), so the compiler computes",
+           " * every offset. NO_NAME marks an unused id; the lookup then returns NULL.",
            " */",
            "",
            "#include <stddef.h>",
@@ -79,16 +79,21 @@ def generate(proto_path):
            "",
            "#define NO_NAME 0xFFFF",
            "",
-           "static const char s_pool[] ="]
-    out += ['    "%s\\0"' % s for s in pool] + ["    ;", ""]
+           "struct rpc_name_pool {"]
+    out += ['    char %s[sizeof("%s")];' % (s, s) for s in pool] + ["};", ""]
+    out += ["_Static_assert(sizeof(struct rpc_name_pool) < NO_NAME, \"name pool outgrows uint16_t offsets\");",
+            "",
+            "static const struct rpc_name_pool s_pool = {"]
+    out += ['    .%s = "%s",' % (s, s) for s in pool] + ["};", ""]
+    out += ["#define N(name) ((uint16_t)offsetof(struct rpc_name_pool, name))", ""]
     for sym, rows in (("s_req_resp", req_resp), ("s_event", events)):
         out.append("static const uint16_t %s[] = {" % sym)
-        out += ["    %s,%s/* %s */" % ("NO_NAME" if o == NO_NAME else o, " " * max(1, 8 - len(str(o))), n)
-                for o, n in rows]
+        out += ["    N(%s)," % n if n else "    NO_NAME," for n in rows]
         out += ["};", ""]
     out += ["static const char *name_at(const uint16_t *t, size_t n, int32_t i)",
             "{",
-            "    return (i >= 0 && (size_t)i < n && t[i] != NO_NAME) ? &s_pool[t[i]] : NULL;",
+            "    return (i >= 0 && (size_t)i < n && t[i] != NO_NAME) ?",
+            "           (const char *)&s_pool + t[i] : NULL;",
             "}",
             "",
             "const char *eh_rpc_id_name_v2(int32_t msg_id)",

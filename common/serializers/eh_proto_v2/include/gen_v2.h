@@ -342,6 +342,10 @@ typedef struct RpcReqPhyBleRx RpcReqPhyBleRx;
 typedef struct RpcRespPhyBleRx RpcRespPhyBleRx;
 typedef struct RpcReqPhyBtTxTone RpcReqPhyBtTxTone;
 typedef struct RpcRespPhyBtTxTone RpcRespPhyBtTxTone;
+typedef struct RpcReqBtSetTxPower RpcReqBtSetTxPower;
+typedef struct RpcRespBtSetTxPower RpcRespBtSetTxPower;
+typedef struct RpcReqBtGetTxPower RpcReqBtGetTxPower;
+typedef struct RpcRespBtGetTxPower RpcRespBtGetTxPower;
 typedef struct RpcReqCustomRpc RpcReqCustomRpc;
 typedef struct RpcRespCustomRpc RpcRespCustomRpc;
 typedef struct RpcEventCustomRpc RpcEventCustomRpc;
@@ -1109,13 +1113,24 @@ typedef enum _RpcId {
    */
   RPC_ID__Req_SetContext = 408,
   /*
+   * BLE TX power (esp_ble_tx_power_set/get[_enhanced]) 
+   */
+  /*
+   * 0x199
+   */
+  RPC_ID__Req_BtSetTxPower = 409,
+  /*
+   * 0x19A
+   */
+  RPC_ID__Req_BtGetTxPower = 410,
+  /*
    * Add new control path command response before Req_Max
    * and update Req_Max 
    */
   /*
-   *0x199
+   *0x19B
    */
-  RPC_ID__Req_Max = 409,
+  RPC_ID__Req_Max = 411,
   /*
    ** Response Msgs *
    */
@@ -1292,11 +1307,13 @@ typedef enum _RpcId {
   RPC_ID__Resp_PhyBleRx = 662,
   RPC_ID__Resp_PhyBtTxTone = 663,
   RPC_ID__Resp_SetContext = 664,
+  RPC_ID__Resp_BtSetTxPower = 665,
+  RPC_ID__Resp_BtGetTxPower = 666,
   /*
    * Add new control path command response before Resp_Max
    * and update Resp_Max 
    */
-  RPC_ID__Resp_Max = 665,
+  RPC_ID__Resp_Max = 667,
   /*
    ** Event Msgs *
    */
@@ -6072,6 +6089,62 @@ struct  RpcRespPhyBtTxTone
 
 
 /*
+ * esp_ble_tx_power_set[_enhanced]. level: eh_power_level_t symbol (eh_bt_tx_power.h),
+ * not the per-chip esp_power_level_t index. handle is used only when enhanced. 
+ */
+struct  RpcReqBtSetTxPower
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean enhanced;
+  uint32_t type;
+  uint32_t handle;
+  uint32_t level;
+};
+#define RPC__REQ__BT_SET_TX_POWER__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__bt_set_tx_power__descriptor) \
+, 0, 0, 0, 0 }
+
+
+struct  RpcRespBtSetTxPower
+{
+  ProtobufCMessage base;
+  int32_t resp;
+};
+#define RPC__RESP__BT_SET_TX_POWER__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__bt_set_tx_power__descriptor) \
+, 0 }
+
+
+/*
+ * esp_ble_tx_power_get[_enhanced] 
+ */
+struct  RpcReqBtGetTxPower
+{
+  ProtobufCMessage base;
+  protobuf_c_boolean enhanced;
+  uint32_t type;
+  uint32_t handle;
+};
+#define RPC__REQ__BT_GET_TX_POWER__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__req__bt_get_tx_power__descriptor) \
+, 0, 0, 0 }
+
+
+struct  RpcRespBtGetTxPower
+{
+  ProtobufCMessage base;
+  int32_t resp;
+  /*
+   * eh_power_level_t symbol 
+   */
+  uint32_t level;
+};
+#define RPC__RESP__BT_GET_TX_POWER__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&rpc__resp__bt_get_tx_power__descriptor) \
+, 0, 0 }
+
+
+/*
  * Custom RPC messages for user-defined packed structures 
  */
 struct  RpcReqCustomRpc
@@ -6307,6 +6380,8 @@ typedef enum {
   RPC__PAYLOAD_REQ_PHY_BLE_RX = 406,
   RPC__PAYLOAD_REQ_PHY_BT_TX_TONE = 407,
   RPC__PAYLOAD_REQ_SET_CONTEXT = 408,
+  RPC__PAYLOAD_REQ_BT_SET_TX_POWER = 409,
+  RPC__PAYLOAD_REQ_BT_GET_TX_POWER = 410,
   RPC__PAYLOAD_RESP_GET_MAC_ADDRESS = 513,
   RPC__PAYLOAD_RESP_SET_MAC_ADDRESS = 514,
   RPC__PAYLOAD_RESP_GET_WIFI_MODE = 515,
@@ -6435,6 +6510,8 @@ typedef enum {
   RPC__PAYLOAD_RESP_PHY_BLE_RX = 662,
   RPC__PAYLOAD_RESP_PHY_BT_TX_TONE = 663,
   RPC__PAYLOAD_RESP_SET_CONTEXT = 664,
+  RPC__PAYLOAD_RESP_BT_SET_TX_POWER = 665,
+  RPC__PAYLOAD_RESP_BT_GET_TX_POWER = 666,
   RPC__PAYLOAD_EVENT_ESP_INIT = 769,
   RPC__PAYLOAD_EVENT_HEARTBEAT = 770,
   RPC__PAYLOAD_EVENT_AP_STA_CONNECTED = 771,
@@ -6503,6 +6580,8 @@ struct  Rpc
     RpcEventWifiDppUriReady *event_wifi_dpp_uri_ready;
     RpcEventWifiEventNoArgs *event_wifi_event_no_args;
     RpcReqAppGetDesc *req_app_get_desc;
+    RpcReqBtGetTxPower *req_bt_get_tx_power;
+    RpcReqBtSetTxPower *req_bt_set_tx_power;
     RpcReqConfigHeartbeat *req_config_heartbeat;
     RpcReqCustomRpc *req_custom_rpc;
     RpcReqEapClearCaCert *req_eap_clear_ca_cert;
@@ -6634,6 +6713,8 @@ struct  Rpc
     RpcReqWifiStart *req_wifi_start;
     RpcReqWifiStop *req_wifi_stop;
     RpcRespAppGetDesc *resp_app_get_desc;
+    RpcRespBtGetTxPower *resp_bt_get_tx_power;
+    RpcRespBtSetTxPower *resp_bt_set_tx_power;
     RpcRespConfigHeartbeat *resp_config_heartbeat;
     RpcRespCustomRpc *resp_custom_rpc;
     RpcRespEapClearCaCert *resp_eap_clear_ca_cert;
@@ -12984,6 +13065,82 @@ RpcRespPhyBtTxTone *
 void   rpc__resp__phy_bt_tx_tone__free_unpacked
                      (RpcRespPhyBtTxTone *message,
                       ProtobufCAllocator *allocator);
+/* RpcReqBtSetTxPower methods */
+void   rpc__req__bt_set_tx_power__init
+                     (RpcReqBtSetTxPower         *message);
+size_t rpc__req__bt_set_tx_power__get_packed_size
+                     (const RpcReqBtSetTxPower   *message);
+size_t rpc__req__bt_set_tx_power__pack
+                     (const RpcReqBtSetTxPower   *message,
+                      uint8_t             *out);
+size_t rpc__req__bt_set_tx_power__pack_to_buffer
+                     (const RpcReqBtSetTxPower   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqBtSetTxPower *
+       rpc__req__bt_set_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__bt_set_tx_power__free_unpacked
+                     (RpcReqBtSetTxPower *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespBtSetTxPower methods */
+void   rpc__resp__bt_set_tx_power__init
+                     (RpcRespBtSetTxPower         *message);
+size_t rpc__resp__bt_set_tx_power__get_packed_size
+                     (const RpcRespBtSetTxPower   *message);
+size_t rpc__resp__bt_set_tx_power__pack
+                     (const RpcRespBtSetTxPower   *message,
+                      uint8_t             *out);
+size_t rpc__resp__bt_set_tx_power__pack_to_buffer
+                     (const RpcRespBtSetTxPower   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespBtSetTxPower *
+       rpc__resp__bt_set_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__bt_set_tx_power__free_unpacked
+                     (RpcRespBtSetTxPower *message,
+                      ProtobufCAllocator *allocator);
+/* RpcReqBtGetTxPower methods */
+void   rpc__req__bt_get_tx_power__init
+                     (RpcReqBtGetTxPower         *message);
+size_t rpc__req__bt_get_tx_power__get_packed_size
+                     (const RpcReqBtGetTxPower   *message);
+size_t rpc__req__bt_get_tx_power__pack
+                     (const RpcReqBtGetTxPower   *message,
+                      uint8_t             *out);
+size_t rpc__req__bt_get_tx_power__pack_to_buffer
+                     (const RpcReqBtGetTxPower   *message,
+                      ProtobufCBuffer     *buffer);
+RpcReqBtGetTxPower *
+       rpc__req__bt_get_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__req__bt_get_tx_power__free_unpacked
+                     (RpcReqBtGetTxPower *message,
+                      ProtobufCAllocator *allocator);
+/* RpcRespBtGetTxPower methods */
+void   rpc__resp__bt_get_tx_power__init
+                     (RpcRespBtGetTxPower         *message);
+size_t rpc__resp__bt_get_tx_power__get_packed_size
+                     (const RpcRespBtGetTxPower   *message);
+size_t rpc__resp__bt_get_tx_power__pack
+                     (const RpcRespBtGetTxPower   *message,
+                      uint8_t             *out);
+size_t rpc__resp__bt_get_tx_power__pack_to_buffer
+                     (const RpcRespBtGetTxPower   *message,
+                      ProtobufCBuffer     *buffer);
+RpcRespBtGetTxPower *
+       rpc__resp__bt_get_tx_power__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   rpc__resp__bt_get_tx_power__free_unpacked
+                     (RpcRespBtGetTxPower *message,
+                      ProtobufCAllocator *allocator);
 /* RpcReqCustomRpc methods */
 void   rpc__req__custom_rpc__init
                      (RpcReqCustomRpc         *message);
@@ -14081,6 +14238,18 @@ typedef void (*RpcReqPhyBtTxTone_Closure)
 typedef void (*RpcRespPhyBtTxTone_Closure)
                  (const RpcRespPhyBtTxTone *message,
                   void *closure_data);
+typedef void (*RpcReqBtSetTxPower_Closure)
+                 (const RpcReqBtSetTxPower *message,
+                  void *closure_data);
+typedef void (*RpcRespBtSetTxPower_Closure)
+                 (const RpcRespBtSetTxPower *message,
+                  void *closure_data);
+typedef void (*RpcReqBtGetTxPower_Closure)
+                 (const RpcReqBtGetTxPower *message,
+                  void *closure_data);
+typedef void (*RpcRespBtGetTxPower_Closure)
+                 (const RpcRespBtGetTxPower *message,
+                  void *closure_data);
 typedef void (*RpcReqCustomRpc_Closure)
                  (const RpcReqCustomRpc *message,
                   void *closure_data);
@@ -14446,6 +14615,10 @@ extern const ProtobufCMessageDescriptor rpc__req__phy_ble_rx__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__phy_ble_rx__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__phy_bt_tx_tone__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__phy_bt_tx_tone__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__bt_set_tx_power__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__bt_set_tx_power__descriptor;
+extern const ProtobufCMessageDescriptor rpc__req__bt_get_tx_power__descriptor;
+extern const ProtobufCMessageDescriptor rpc__resp__bt_get_tx_power__descriptor;
 extern const ProtobufCMessageDescriptor rpc__req__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__resp__custom_rpc__descriptor;
 extern const ProtobufCMessageDescriptor rpc__event__custom_rpc__descriptor;

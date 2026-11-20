@@ -31,6 +31,13 @@ endif()
 target_sources(eh_host_feat_bt PRIVATE
     "src/eh_host_bt.c"
 )
+if(CONFIG_ESP_HOSTED_HOST_FEAT_BT_TX_POWER_READY)
+    target_sources(eh_host_feat_bt PRIVATE
+        "src/eh_host_bt_tx_power.c"
+        "src/eh_host_feat_bt_v2_req.c"
+        "src/eh_host_feat_bt_v2_resp_evt.c"
+    )
+endif()
 target_link_libraries(eh_host_feat_bt PRIVATE
     eh_host_feat_rpc_ext_v2
     eh_host_feat_rpc

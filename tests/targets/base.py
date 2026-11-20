@@ -21,6 +21,7 @@ CAP_GPIO_LOOPBACK = "gpio_loopback"  # GPIO reads back what was driven (emu mode
 CAP_WIFI_ITWT = "wifi_itwt"   # coprocessor supports 802.11ax iTWT (HE SoC: C5/C6/C61)
 CAP_ANT_SEL_PAD = "ant_sel_pad"  # PHY ANT_SEL signals reach the pad (real silicon; not emu)
 CAP_HOST_EXT_CAPS_LOG = "host_ext_caps_log"  # MCU host prints the CP ext-caps list at boot
+CAP_BT_CTRL = "bt_ctrl"       # CP BT controller really runs (emu stubs it: status stays idle)
 
 
 @dataclass

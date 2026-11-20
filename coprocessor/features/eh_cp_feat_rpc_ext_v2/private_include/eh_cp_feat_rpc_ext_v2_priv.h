@@ -303,6 +303,10 @@ esp_err_t req_feature_control(Rpc *req, Rpc *resp, void *priv_data);
 esp_err_t req_feature_control_bt(RpcReqFeatureControl *req_payload,
                                  RpcRespFeatureControl *resp_payload);
 #endif
+#if EH_CP_FEAT_BT_TX_POWER_READY
+esp_err_t req_bt_set_tx_power(Rpc *req, Rpc *resp, void *priv_data);
+esp_err_t req_bt_get_tx_power(Rpc *req, Rpc *resp, void *priv_data);
+#endif
 #if EH_CP_FEAT_OPENTHREAD_READY
 esp_err_t req_feature_control_openthread(RpcReqFeatureControl *req_payload,
                                          RpcRespFeatureControl *resp_payload);

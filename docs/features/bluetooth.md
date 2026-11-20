@@ -112,6 +112,76 @@ ESP_ERROR_CHECK(esp_hosted_bt_host_stack_setup(&cfg));   // MAC (opt) + controll
 
 ---
 
+## BLE TX power
+
+The host can set and get the BLE TX power of the co-processor controller. Kconfig `ESP_HOSTED_HOST_FEAT_BT_TX_POWER` (host) and `ESP_HOSTED_CP_FEAT_BT_TX_POWER` (co-processor) enable it. Both are on by default when the BT feature is on.
+
+**IDF API (`#include "esp_bt.h"`).** On a host without its own BT controller (for example ESP32-P4), ESP-Hosted gives the IDF functions `esp_ble_tx_power_set/get()` and `esp_ble_tx_power_set_enhanced/get_enhanced()`. The `ESP_PWR_LVL_*` values are those of the co-processor chip that `ESP_HOSTED_CP_TARGET` selects, as in IDF on that chip.
+
+**ESP-Hosted API (`eh_host_bt.h`).** `eh_host_bt_ble_tx_power_*()` take the same arguments. The level is an `eh_power_level_t` name (`EH_PWR_LVL_P9` = +9 dBm). The name has the same value for all co-processors, so one host binary works with any co-processor.
+
+The co-processor applies the level by its name. If the host is configured for a different co-processor chip:
+
+- A level that the real co-processor has gets the correct dBm.
+- A level that it does not have gives `ESP_ERR_NOT_SUPPORTED`.
+
+| Result | Cause |
+| :--- | :--- |
+| `ESP_ERR_INVALID_STATE` | The co-processor controller is not initialized. Call `esp_hosted_bt_controller_init()` first. |
+| `ESP_ERR_NOT_SUPPORTED` | The co-processor chip has no such level or `_enhanced` power type. ESP32 has no `_enhanced` API. The co-processor has `ESP_HOSTED_CP_FEAT_BT_TX_POWER` or Bluetooth disabled. |
+| `ESP_FAIL` | No response. Co-processor firmware older than this feature does not reply, so the call returns after the RPC timeout. |
+| `ESP_ERR_INVALID_ARG` | The value is not a level name, or the power type of `esp_ble_tx_power_set()` is `ESP_BLE_PWR_TYPE_NUM` or higher. |
+| `ESP_PWR_LVL_INVALID` from a get | The get failed. On an ESP32 co-processor the IDF API returns `-1`, because ESP32 has no `ESP_PWR_LVL_INVALID`. |
+
+An extended-advertising `tx_power` that the host stack sends over HCI overrides this level for that advertising set, as in IDF.
+
+### Level values per chip
+
+In IDF, `esp_power_level_t` is an index into the power table of the chip, not a dBm value. The same name has a different value on different chips: `ESP_PWR_LVL_P9` is 7 on ESP32 and 11 on ESP32-C6. The name gives the nominal TX power. The real output depends on the chip, the board and the RF calibration.
+
+- **Number**: the `ESP_PWR_LVL_*` value in IDF for that chip. The compat `esp_bt.h` uses the value of the chip that `ESP_HOSTED_CP_TARGET` selects.
+- **`*`**: an IDF alias. It has the same value as the next canonical level, so it gives that level's power. For example, on ESP32 `N14` gives -12 dBm. A get returns the canonical name.
+- **—**: the chip has no such name. Its use does not compile with the compat `esp_bt.h`. Through `eh_host_bt_ble_tx_power_set()` it gives `ESP_ERR_NOT_SUPPORTED`.
+- **ESP-Hosted wire value**: `EH_PWR_LVL_N<x>` = 100 + x and `EH_PWR_LVL_P<x>` = 200 + x, the same for every chip (`eh_bt_tx_power.h`).
+
+<!-- bt-tx-power-levels:begin -->
+| Level | Nominal dBm | ESP32 | C2 | C3, S3 | C5 | C6, C61 | H2, H21 | H4, S31 |
+|---|---|---|---|---|---|---|---|---|
+| `N24` | -24 | — | 0 | 0 | 0 | — | 0 | 0 |
+| `N21` | -21 | — | 1 | 1 | 1 | — | 1 | 1 |
+| `N18` | -18 | — | 2 | 2 | 2 | — | 2 | 2 |
+| `N15` | -15 | — | 3 | 3 | 3 | 3 | 3 | 3 |
+| `N14` | -14 | 0* | — | — | — | — | — | — |
+| `N12` | -12 | 0 | 4 | 4 | 4 | 4 | 4 | 4 |
+| `N11` | -11 | 1* | — | — | — | — | — | — |
+| `N9` | -9 | 1 | 5 | 5 | 5 | 5 | 5 | 5 |
+| `N8` | -8 | 2* | — | — | — | — | — | — |
+| `N6` | -6 | 2 | 6 | 6 | 6 | 6 | 6 | 6 |
+| `N5` | -5 | 3* | — | — | — | — | — | — |
+| `N3` | -3 | 3 | 7 | 7 | 7 | 7 | 7 | 7 |
+| `N2` | -2 | 4* | — | — | — | — | — | — |
+| `N0` | 0 | 4 | 8 | 8 | 8 | 8 | 8 | 8 |
+| `P1` | +1 | 5* | — | — | — | — | — | — |
+| `P3` | +3 | 5 | 9 | 9 | 9 | 9 | 9 | 9 |
+| `P4` | +4 | 6* | — | — | — | — | — | — |
+| `P6` | +6 | 6 | 10 | 10 | 10 | 10 | 10 | 10 |
+| `P7` | +7 | 7* | — | — | — | — | — | — |
+| `P9` | +9 | 7 | 11 | 11 | 11 | 11 | 11 | 11 |
+| `P12` | +12 | — | 12 | 12 | 12 | 12 | 12 | 12 |
+| `P15` | +15 | — | 13 | 13 | 13 | 13 | 13 | 13 |
+| `P16` | +16 | — | — | — | — | — | 14* | 14 |
+| `P17` | +17 | — | — | — | — | — | 14* | 15 |
+| `P18` | +18 | — | 14 | 14 | 14 | 14 | 14 | 16 |
+| `P19` | +19 | — | — | — | — | — | 15* | 17 |
+| `P20` | +20 | — | 15 | 15 | 15 | 15 | 15 | 18 |
+| `P21` | +21 | — | 15* | 15* | — | — | — | — |
+| `INVALID` | — | — | 255 | 255 | 255 | 255 | 255 | 255 |
+<!-- bt-tx-power-levels:end -->
+
+Values are from ESP-IDF v5.5 to v6.1.1 (ESP32-H4 and ESP32-S31: v6.1 and later). `tests/unit/bt_tx_power` fails if this table differs from the IDF headers.
+
+---
+
 ## Start here
 
 - **Linux host** — no ESP-Hosted BT example needed. Bring up the transport via [Getting Started: Linux](../getting-started-linux.md), then use BlueZ (`bluetoothctl`) directly.
