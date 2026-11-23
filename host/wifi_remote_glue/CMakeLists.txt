@@ -14,8 +14,10 @@ endif()
 
 # EAP/DPP bridge — compile when at least one underlying feature is enabled.
 if(CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_ENT_READY OR
-   CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_DPP_READY)
+    CONFIG_ESP_HOSTED_HOST_FEAT_WIFI_EXT_DPP_READY)
     target_sources(esp_wifi_remote_glue PRIVATE src/esp_eap_dpp_with_hosted.c)
+    target_link_options(esp_wifi_remote_glue INTERFACE
+        "LINKER:--undefined=eh_eap_dpp_with_hosted_anchor")
 endif()
 
 target_link_libraries(esp_wifi_remote_glue
