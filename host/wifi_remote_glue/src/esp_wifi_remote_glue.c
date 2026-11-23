@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "esp_err.h"
 
@@ -39,8 +40,22 @@
 static esp_remote_channel_t s_sta_ch;
 static esp_remote_channel_t s_ap_ch;
 
-/* Default netifs, cached: they outlive every association; cleared on Wi-Fi deinit. */
+/* Station and AP netifs, cached: cleared at each STA/AP start and on Wi-Fi deinit. */
 static esp_netif_t *s_netif[2];
+
+#ifdef ESP_PLATFORM
+/* The station netif is matched by its "sta" description, not its key, so an app may
+ * register it under any key. Only a started netif (lwIP input attached) matches: a
+ * second "sta" netif that is never started, e.g. one whose owner fails to create its
+ * AP netif, is never picked or cached. */
+static bool match_started_sta_netif(esp_netif_t *netif, void *ctx)
+{
+    (void)ctx;
+    const char *desc = esp_netif_get_desc(netif);
+    struct netif *impl = (struct netif *)esp_netif_get_netif_impl(netif);
+    return desc && strcmp(desc, "sta") == 0 && impl && impl->input;
+}
+#endif
 
 /* lwIP input attached: netif_add runs on the event loop after STA_START is posted,
  * and a frame before it faults in wlanif_input. */
@@ -50,7 +65,8 @@ static inline bool hosted_netif_input_ready(bool is_ap, bool *has_ip)
     int i = is_ap ? 1 : 0;
     esp_netif_t *n = s_netif[i];
     if (__builtin_expect(n == NULL, 0)) {
-        n = esp_netif_get_handle_from_ifkey(is_ap ? "WIFI_AP_DEF" : "WIFI_STA_DEF");
+        n = is_ap ? esp_netif_get_handle_from_ifkey("WIFI_AP_DEF")
+                  : esp_netif_find_if(match_started_sta_netif, NULL);
         if (!n) {
             return false;
         }
