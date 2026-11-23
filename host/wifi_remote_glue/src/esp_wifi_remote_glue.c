@@ -2,8 +2,6 @@
  * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
- *
- * Changed from esp-hosted-mcu 3.1.0: the RX guard finds the station netif by description, not key.
  */
 /* esp_wifi_remote_* strong defs forwarding to eh_host_wifi_* / eh_host_sys_*. */
 
