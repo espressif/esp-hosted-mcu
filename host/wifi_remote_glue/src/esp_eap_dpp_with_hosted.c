@@ -1,4 +1,8 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /* Strong defs for esp_eap_client_remote_* / esp_supp_dpp_* forwarding
  * to eh_host_wifi_ent_* / eh_host_wifi_dpp_* (else upstream weak
  * fallbacks return NOT_SUPPORTED). */
@@ -19,6 +23,8 @@
 #if EH_HOST_FEAT_WIFI_EXT_DPP_READY
 #include "eh_host_wifi_dpp.h"
 #endif
+
+const char eh_eap_dpp_with_hosted_anchor = 0;
 
 #if EH_HOST_FEAT_WIFI_EXT_ENT_READY
 
