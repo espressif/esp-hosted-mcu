@@ -65,20 +65,22 @@ typedef struct {
 #  define ESP_HOSTED_BT_HOST_STACK_DEFAULT_TYPE ESP_HOSTED_BT_HOST_STACK_CUSTOM
 #endif
 
-#define ESP_HOSTED_BT_HOST_STACK_CONFIG_DEFAULT() (esp_hosted_bt_host_stack_cfg_t){ \
-    .stack = ESP_HOSTED_BT_HOST_STACK_DEFAULT_TYPE, \
+#define ESP_HOSTED_BT_HOST_STACK_CONFIG_INIT(stack_type, rx_fn, rx_ctx) (esp_hosted_bt_host_stack_cfg_t){ \
+    .stack = (stack_type), \
     .bt_mac = NULL, .bring_up_controller = true, \
     .controller_ready_timeout_ms = EH_BT_CTRL_DEFAULT_READY_TIMEOUT_MS, \
-    .custom = { 0 } }
+    .custom = { .rx = (rx_fn), .ctx = (rx_ctx), .tx = NULL } }
+
+#define ESP_HOSTED_BT_HOST_STACK_CONFIG_DEFAULT() \
+    ESP_HOSTED_BT_HOST_STACK_CONFIG_INIT(ESP_HOSTED_BT_HOST_STACK_DEFAULT_TYPE, NULL, NULL)
 
 /* Explicit + compile-time-guarded selectors (transparency + fail-before-flash). */
-#define ESP_HOSTED_BT_HOST_STACK_CONFIG_NIMBLE() (esp_hosted_bt_host_stack_cfg_t){ \
-    .stack = ESP_HOSTED_BT_HOST_STACK_NIMBLE, .bring_up_controller = true }
-#define ESP_HOSTED_BT_HOST_STACK_CONFIG_BLUEDROID() (esp_hosted_bt_host_stack_cfg_t){ \
-    .stack = ESP_HOSTED_BT_HOST_STACK_BLUEDROID, .bring_up_controller = true }
-#define ESP_HOSTED_BT_HOST_STACK_CONFIG_CUSTOM(rx_fn, rx_ctx) (esp_hosted_bt_host_stack_cfg_t){ \
-    .stack = ESP_HOSTED_BT_HOST_STACK_CUSTOM, .bring_up_controller = true, \
-    .custom = { .rx = (rx_fn), .ctx = (rx_ctx) } }
+#define ESP_HOSTED_BT_HOST_STACK_CONFIG_NIMBLE() \
+    ESP_HOSTED_BT_HOST_STACK_CONFIG_INIT(ESP_HOSTED_BT_HOST_STACK_NIMBLE, NULL, NULL)
+#define ESP_HOSTED_BT_HOST_STACK_CONFIG_BLUEDROID() \
+    ESP_HOSTED_BT_HOST_STACK_CONFIG_INIT(ESP_HOSTED_BT_HOST_STACK_BLUEDROID, NULL, NULL)
+#define ESP_HOSTED_BT_HOST_STACK_CONFIG_CUSTOM(rx_fn, rx_ctx) \
+    ESP_HOSTED_BT_HOST_STACK_CONFIG_INIT(ESP_HOSTED_BT_HOST_STACK_CUSTOM, (rx_fn), (rx_ctx))
 
 /**
  * @brief Bring the hosted BT binding up: (optional) set MAC, init+enable the CP
